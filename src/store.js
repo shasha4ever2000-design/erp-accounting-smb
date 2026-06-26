@@ -79,6 +79,8 @@ const DEFAULT_SETTINGS = {
   prepaid:       { prefix: 'PRE-',   next: 1 },
   expenseClaim:  { prefix: 'EXP-',   next: 1 },
   workOrder:     { prefix: 'WO-',    next: 1 },
+  project:       { prefix: 'PRJ-',   next: 1 },
+  theme:         'light',
 }
 
 function nextNum(prefix, n) {
@@ -999,7 +1001,8 @@ export const useStore = create(
                 { accountId: tx.bankAccountId,  debit: 0,         credit: tx.amount, description: tx.description },
               ]
         const je = get().addJournalEntry({
-          date: tx.date, description: tx.description, reference: tx.reference || '', type: tx.type, lines,
+          date: tx.date, description: tx.description, reference: tx.reference || '', type: tx.type,
+          projectId: tx.projectId || null, lines,
         })
         set((s) => ({
           bankTransactions: [...s.bankTransactions, { ...tx, id: uuid(), journalEntryId: je.id, createdAt: new Date().toISOString() }],
@@ -1014,6 +1017,102 @@ export const useStore = create(
             journalEntries: s.journalEntries.filter((j) => j.id !== tx?.journalEntryId),
           }
         }),
+
+      // ─── PROJECTS & JOB COSTING ────────────────────────────────────
+      projects: [],
+
+      addProject: (proj) => {
+        const s = get()
+        const { prefix, next } = s.settings.project
+        const number = nextNum(prefix, next)
+        const newProj = { ...proj, id: uuid(), number, status: proj.status || 'active', createdAt: new Date().toISOString() }
+        set((st) => ({
+          projects: [...st.projects, newProj],
+          settings: { ...st.settings, project: { ...st.settings.project, next: next + 1 } },
+        }))
+        return newProj
+      },
+
+      updateProject: (id, patch) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+
+      deleteProject: (id) =>
+        set((s) => ({
+          projects: s.projects.filter((p) => p.id !== id),
+          timeEntries: s.timeEntries.filter((t) => t.projectId !== id),
+        })),
+
+      // Record project income or cost — posts to the ledger AND tags the project
+      recordProjectTransaction: (projectId, tx) => {
+        get().addBankTransaction({ ...tx, projectId })
+      },
+
+      // ─── TIME TRACKING (billable) ──────────────────────────────────
+      timeEntries: [],
+
+      addTimeEntry: (entry) =>
+        set((s) => ({ timeEntries: [...s.timeEntries, { ...entry, id: uuid(), createdAt: new Date().toISOString() }] })),
+
+      updateTimeEntry: (id, patch) =>
+        set((s) => ({ timeEntries: s.timeEntries.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+
+      deleteTimeEntry: (id) =>
+        set((s) => ({ timeEntries: s.timeEntries.filter((t) => t.id !== id) })),
+
+      // ─── BUDGETS (annual, per account) ─────────────────────────────
+      budgets: [],
+
+      setBudget: (accountId, year, amount) =>
+        set((s) => {
+          const existing = s.budgets.find((b) => b.accountId === accountId && b.year === year)
+          if (existing)
+            return { budgets: s.budgets.map((b) => (b.id === existing.id ? { ...b, amount } : b)) }
+          return { budgets: [...s.budgets, { id: uuid(), accountId, year, amount }] }
+        }),
+
+      deleteBudget: (id) =>
+        set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+
+      // ─── BANK RECONCILIATION ───────────────────────────────────────
+      // marks individual JE lines (by je id + account) as reconciled per statement
+      reconciliations: [],
+
+      toggleReconciled: (bankAccountId, journalEntryId) =>
+        set((s) => {
+          const key = `${bankAccountId}::${journalEntryId}`
+          const has = s.reconciliations.includes(key)
+          return { reconciliations: has ? s.reconciliations.filter((k) => k !== key) : [...s.reconciliations, key] }
+        }),
+
+      // ─── THEME ─────────────────────────────────────────────────────
+      setTheme: (theme) =>
+        set((s) => ({ settings: { ...s.settings, theme } })),
+
+      // ─── BACKUP / RESTORE ──────────────────────────────────────────
+      exportData: () => {
+        const s = get()
+        const slices = [
+          'settings', 'accounts', 'bankAccounts', 'customers', 'suppliers', 'inventoryItems',
+          'journalEntries', 'invoices', 'quotations', 'creditNotes', 'purchaseOrders', 'purchases',
+          'debitNotes', 'departments', 'employees', 'payrollRuns', 'fixedAssets', 'assetDepreciations',
+          'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
+          'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
+        ]
+        const out = { _app: 'erp-accounting-smb', _version: 5, _exportedAt: new Date().toISOString() }
+        slices.forEach((k) => { out[k] = s[k] })
+        return out
+      },
+
+      importData: (data) => {
+        if (!data || data._app !== 'erp-accounting-smb') throw new Error('Invalid backup file')
+        const { _app, _version, _exportedAt, ...slices } = data
+        set((s) => ({ ...s, ...slices }))
+      },
+
+      resetAllData: () => {
+        if (typeof localStorage !== 'undefined') localStorage.removeItem('erp-v1')
+        if (typeof window !== 'undefined') window.location.reload()
+      },
 
       // ─── COMPUTED ──────────────────────────────────────────────────
       getAccountBalance: (accountId, startDate, endDate) => {
@@ -1049,7 +1148,7 @@ export const useStore = create(
     }),
     {
       name: 'erp-v1',
-      version: 4,
+      version: 5,
       migrate: (persisted, version) => {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
@@ -1079,6 +1178,17 @@ export const useStore = create(
           if (!persisted.expenseClaims)      persisted.expenseClaims      = []
           if (!persisted.billsOfMaterials)   persisted.billsOfMaterials   = []
           if (!persisted.workOrders)         persisted.workOrders         = []
+        }
+        if (version < 5) {
+          persisted.settings = {
+            ...persisted.settings,
+            project: persisted.settings?.project || { prefix: 'PRJ-', next: 1 },
+            theme:   persisted.settings?.theme   || 'light',
+          }
+          if (!persisted.projects)        persisted.projects        = []
+          if (!persisted.timeEntries)     persisted.timeEntries     = []
+          if (!persisted.budgets)         persisted.budgets         = []
+          if (!persisted.reconciliations) persisted.reconciliations = []
         }
         return persisted
       },

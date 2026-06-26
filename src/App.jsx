@@ -1,4 +1,6 @@
+import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
+import { useStore } from './store'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import ChartOfAccounts from './pages/ChartOfAccounts'
@@ -31,8 +33,18 @@ import Payroll from './pages/Payroll'
 import JournalEntries from './pages/JournalEntries'
 import Reports from './pages/Reports'
 import Settings from './pages/Settings'
+import Projects from './pages/Projects'
+import Budgets from './pages/Budgets'
 
 export default function App() {
+  const theme = useStore((s) => s.settings.theme || 'light')
+
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') root.classList.add('dark')
+    else root.classList.remove('dark')
+  }, [theme])
+
   return (
     <Layout>
       <Routes>
@@ -70,6 +82,10 @@ export default function App() {
         <Route path="/prepaid-expenses" element={<PrepaidExpenses />} />
         <Route path="/leases" element={<Leases />} />
         <Route path="/expense-claims" element={<ExpenseClaims />} />
+        <Route path="/budgets" element={<Budgets />} />
+
+        {/* Projects */}
+        <Route path="/projects" element={<Projects />} />
 
         {/* Fixed Assets */}
         <Route path="/fixed-assets" element={<FixedAssets />} />

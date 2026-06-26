@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, Cart
 const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)' },
   { id: 'bs', label: 'Balance Sheet' },
+  { id: 'cf', label: 'Cash Flow Statement' },
   { id: 'tb', label: 'Trial Balance' },
   { id: 'gl', label: 'General Ledger' },
   { id: 'ar', label: 'Accounts Receivable Aging' },
@@ -15,7 +16,7 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, journalEntries, invoices, purchases, getAllBalances, settings } = useStore()
+  const { accounts, journalEntries, invoices, purchases, bankAccounts, getAllBalances, settings } = useStore()
   const sym = settings.company.currencySymbol
   const company = settings.company
 
@@ -437,6 +438,76 @@ export default function Reports() {
     )
   }
 
+  // ─── Cash Flow Statement (direct, ledger-accurate) ────────────
+  const CFReport = () => {
+    const cashAccIds = new Set(bankAccounts.map((b) => b.accountId))
+    const typeCat = (t) => {
+      if (['fixed_asset', 'asset_disposal'].includes(t)) return 'investing'
+      if (['loan', 'capital', 'drawings', 'financing'].includes(t)) return 'financing'
+      return 'operating'
+    }
+    let opening = 0
+    const cats = { operating: [], investing: [], financing: [] }
+    journalEntries.forEach((je) => {
+      const delta = je.lines.filter((l) => cashAccIds.has(l.accountId)).reduce((s, l) => s + (l.debit || 0) - (l.credit || 0), 0)
+      if (delta === 0) return
+      if (je.date < startDate) { opening += delta; return }
+      if (je.date > endDate) return
+      cats[typeCat(je.type)].push({ date: je.date, desc: je.description, ref: je.number, amount: delta })
+    })
+    const catTotal = (c) => cats[c].reduce((s, x) => s + x.amount, 0)
+    const net = catTotal('operating') + catTotal('investing') + catTotal('financing')
+    const closing = opening + net
+
+    const Group = ({ title, items, total, color }) => (
+      <div className="mb-5">
+        <h4 className={`font-bold text-sm uppercase tracking-wide mb-2 ${color}`}>{title}</h4>
+        <table className="w-full text-sm">
+          <tbody>
+            {items.length === 0 && <tr><td className="py-1.5 pl-3 text-gray-400 text-sm">No activity</td></tr>}
+            {items.map((x, i) => (
+              <tr key={i} className="border-b border-gray-50 dark:border-slate-700/50">
+                <td className="py-1.5 pl-3 text-gray-500 dark:text-slate-400 text-xs w-24">{fmtDate(x.date)}</td>
+                <td className="py-1.5 text-gray-600 dark:text-slate-300">{x.desc}</td>
+                <td className={`py-1.5 text-right font-medium ${x.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{fmtMoney(x.amount, sym)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-gray-200 dark:border-slate-600">
+              <td colSpan={2} className="py-2 pl-3 font-bold text-gray-800 dark:text-slate-100">Net Cash from {title}</td>
+              <td className={`py-2 text-right font-bold ${total >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(total, sym)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Cash Flow Statement for {fmtDate(startDate)} to {fmtDate(endDate)}</p>
+        </div>
+        <div className="p-6">
+          <div className="flex justify-between text-sm mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
+            <span className="font-semibold text-gray-700 dark:text-slate-200">Opening Cash &amp; Bank Balance</span>
+            <span className="font-bold text-gray-800 dark:text-slate-100">{fmtMoney(opening, sym)}</span>
+          </div>
+          <Group title="Operating Activities" items={cats.operating} total={catTotal('operating')} color="text-blue-700 dark:text-blue-400" />
+          <Group title="Investing Activities" items={cats.investing} total={catTotal('investing')} color="text-purple-700 dark:text-purple-400" />
+          <Group title="Financing Activities" items={cats.financing} total={catTotal('financing')} color="text-orange-700 dark:text-orange-400" />
+          <div className="flex justify-between text-base border-t-2 border-gray-300 dark:border-slate-600 pt-3 mt-2">
+            <span className="font-bold text-gray-900 dark:text-slate-100">Net Change in Cash</span>
+            <span className={`font-bold ${net >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>{fmtMoney(net, sym)}</span>
+          </div>
+          <div className="flex justify-between text-base border-t-4 border-gray-800 dark:border-slate-400 pt-3 mt-3">
+            <span className="font-black text-gray-900 dark:text-slate-100">Closing Cash &amp; Bank Balance</span>
+            <span className="font-black text-gray-900 dark:text-slate-100">{fmtMoney(closing, sym)}</span>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <div>
       <PageHeader title="Financial Reports" subtitle="Powered by double-entry bookkeeping" />
@@ -459,6 +530,7 @@ export default function Reports() {
       <div className="print:pt-0">
         {report === 'pl' && <PLReport />}
         {report === 'bs' && <BSReport />}
+        {report === 'cf' && <CFReport />}
         {report === 'tb' && <TBReport />}
         {report === 'gl' && <GLReport />}
         {report === 'ar' && <ARReport />}

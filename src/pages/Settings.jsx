@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useStore } from '../store'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
-import { Save, AlertTriangle, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database } from 'lucide-react'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -18,7 +18,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, exportData, importData } = useStore()
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
@@ -26,6 +26,37 @@ export default function Settings() {
   const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
+  const fileRef = useRef(null)
+
+  const handleExport = () => {
+    const data = exportData()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `erp-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result)
+        if (!confirm('Restoring will REPLACE all current data with the backup. Continue?')) return
+        importData(data)
+        alert('Backup restored successfully! The page will reload.')
+        window.location.reload()
+      } catch (err) {
+        alert('Could not read this backup file: ' + err.message)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   const setCompanyField = (k, v) => setCompany((c) => ({ ...c, [k]: v }))
   const setTaxField = (k, v) => setTax((t) => ({ ...t, [k]: v }))
@@ -185,6 +216,25 @@ export default function Settings() {
               <p>• Help with VAT calculations, payroll deductions, and more</p>
             </div>
           </div>
+        </Card>
+
+        {/* Backup & Restore */}
+        <Card className="p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Database size={14} className="text-white" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Backup &amp; Restore</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            Your data lives in this browser. Download a backup regularly so you never lose it — and restore it on any device or browser.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Btn variant="success" onClick={handleExport}><Download size={15} /> Download Backup</Btn>
+            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> Restore from File</Btn>
+            <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
+          </div>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Backup files contain all invoices, transactions, customers, settings and more in one portable file.</p>
         </Card>
 
         {/* Danger Zone */}
