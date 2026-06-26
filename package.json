@@ -3,10 +3,16 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "description": "Professional double-entry ERP & accounting for small and medium businesses.",
+  "author": "ERP Accounting",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port 5173",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:electron": "vite build",
+    "electron:dev": "vite build && electron .",
+    "dist": "electron-builder"
   },
   "dependencies": {
     "react": "^18.3.1",
@@ -24,5 +30,15 @@
     "postcss": "^8.4.45",
     "tailwindcss": "^3.4.11",
     "vite": "^5.4.2"
+  },
+  "build": {
+    "appId": "com.shasha.erpaccounting",
+    "productName": "ERP Accounting",
+    "files": ["electron/**/*", "dist-electron-web/**/*"],
+    "directories": { "output": "release", "buildResources": "build" },
+    "win": { "target": "nsis", "icon": "build/icon.png" },
+    "mac": { "target": "dmg", "icon": "build/icon.png", "category": "public.app-category.business" },
+    "linux": { "target": "AppImage", "icon": "build/icon.png", "category": "Office" },
+    "nsis": { "oneClick": false, "allowToChangeInstallationDirectory": true, "createDesktopShortcut": true }
   }
 }

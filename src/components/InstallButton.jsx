@@ -7,8 +7,9 @@ export default function InstallButton() {
   const [showHelp, setShowHelp] = useState(false)
 
   useEffect(() => {
+    const isNative = window.location.protocol === 'file:' || /electron/i.test(navigator.userAgent)
     const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone
-    if (standalone) setInstalled(true)
+    if (standalone || isNative) setInstalled(true)
 
     const onPrompt = (e) => { e.preventDefault(); setDeferred(e) }
     const onInstalled = () => { setInstalled(true); setDeferred(null) }
