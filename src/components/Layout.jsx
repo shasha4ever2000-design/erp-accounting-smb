@@ -1,10 +1,12 @@
 import { NavLink } from 'react-router-dom'
 import { useStore } from '../store'
+import AIAssistant from './AIAssistant'
 import {
   LayoutDashboard, BookOpen, Users, FileText, ShoppingCart,
   Package, Landmark, BarChart3, Settings, Building2, TrendingUp,
   ClipboardList, FileCheck, FileMinus, FilePlus, Truck,
   UserCheck, Building, DollarSign, Wrench, Sliders, Wallet,
+  Home, Clock, Receipt, Factory,
 } from 'lucide-react'
 
 const NAV = [
@@ -28,9 +30,15 @@ const NAV = [
   { label: 'Purchase Invoices',  path: '/purchases',        icon: ShoppingCart },
   { label: 'Debit Notes',        path: '/debit-notes',      icon: FilePlus },
 
-  { divider: 'Inventory' },
+  { divider: 'Inventory & Production' },
   { label: 'Inventory Items',    path: '/inventory',        icon: Package },
   { label: 'Stock Adjustments',  path: '/stock-adjustments',icon: Sliders },
+  { label: 'Manufacturing',      path: '/manufacturing',    icon: Factory },
+
+  { divider: 'Financials' },
+  { label: 'Prepaid Expenses',   path: '/prepaid-expenses', icon: Clock },
+  { label: 'Leases & Rent',      path: '/leases',           icon: Home },
+  { label: 'Expense Claims',     path: '/expense-claims',   icon: Receipt },
 
   { divider: 'Fixed Assets' },
   { label: 'Fixed Assets',       path: '/fixed-assets',     icon: Wrench },
@@ -106,6 +114,9 @@ export default function Layout({ children }) {
       <main className="flex-1 overflow-y-auto">
         <div className="min-h-full p-8">{children}</div>
       </main>
+
+      {/* Floating AI Assistant */}
+      <AIAssistant />
     </div>
   )
 }

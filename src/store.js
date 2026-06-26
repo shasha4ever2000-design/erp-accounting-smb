@@ -9,19 +9,25 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false },
+  { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
+  { id: 'acc-wip',    code: '1420', name: 'Work-in-Progress',            type: 'asset',     subtype: 'current',     isSystem: false },
+  { id: 'acc-fingoods',code:'1430', name: 'Finished Goods',              type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-prepaid',code: '1500', name: 'Prepaid Expenses',            type: 'asset',     subtype: 'current',     isSystem: false },
   // ASSETS – Non-Current
   { id: 'acc-fixed',  code: '1600', name: 'Fixed Assets – Cost',        type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-depr',   code: '1610', name: 'Accumulated Depreciation',   type: 'asset',     subtype: 'non_current', isSystem: true  },
+  { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-paye',   code: '2201', name: 'PAYE Tax Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-sspay',  code: '2202', name: 'Social Security Payable',    type: 'liability', subtype: 'current',     isSystem: false },
+  { id: 'acc-expclaim',code:'2210', name: 'Employee Expense Claims',    type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-accrued',code: '2300', name: 'Accrued Expenses',           type: 'liability', subtype: 'current',     isSystem: false },
   // LIABILITIES – Non-Current
   { id: 'acc-loan',   code: '2400', name: 'Bank Loan',                  type: 'liability', subtype: 'non_current', isSystem: false },
+  { id: 'acc-leasepay',code:'2500', name: 'Lease Liability',            type: 'liability', subtype: 'non_current', isSystem: false },
   // EQUITY
   { id: 'acc-capital', code: '3001', name: "Owner's Capital",           type: 'equity',    subtype: 'equity',      isSystem: false },
   { id: 'acc-retained',code: '3002', name: 'Retained Earnings',         type: 'equity',    subtype: 'equity',      isSystem: true  },
@@ -45,6 +51,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-invadj', code: '5010', name: 'Inventory Adjustments',      type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-lossdis',code: '5011', name: 'Loss on Asset Disposal',     type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-purret', code: '5012', name: 'Purchase Returns',           type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-mfgcost',code: '5013', name: 'Manufacturing Costs',        type: 'expense',   subtype: 'expense',     isSystem: false },
 ]
 
 const DEFAULT_BANK_ACCOUNTS = [
@@ -64,9 +71,14 @@ const DEFAULT_SETTINGS = {
   purchaseOrder: { prefix: 'PO-',   next: 1 },
   creditNote:    { prefix: 'CN-',   next: 1 },
   debitNote:     { prefix: 'DN-',   next: 1 },
-  payroll:       { prefix: 'PR-',   next: 1 },
-  fixedAsset:    { prefix: 'FA-',   next: 1 },
-  stockAdj:      { prefix: 'ADJ-',  next: 1 },
+  ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
+  payroll:       { prefix: 'PR-',    next: 1 },
+  fixedAsset:    { prefix: 'FA-',    next: 1 },
+  stockAdj:      { prefix: 'ADJ-',   next: 1 },
+  lease:         { prefix: 'LEASE-', next: 1 },
+  prepaid:       { prefix: 'PRE-',   next: 1 },
+  expenseClaim:  { prefix: 'EXP-',   next: 1 },
+  workOrder:     { prefix: 'WO-',    next: 1 },
 }
 
 function nextNum(prefix, n) {
@@ -91,6 +103,9 @@ export const useStore = create(
 
       updateInvoiceSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, invoice: { ...s.settings.invoice, ...patch } } })),
+
+      updateAiSettings: (patch) =>
+        set((s) => ({ settings: { ...s.settings, ai: { ...(s.settings.ai || {}), ...patch } } })),
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
       accounts: DEFAULT_ACCOUNTS,
@@ -706,6 +721,269 @@ export const useStore = create(
           }
         }),
 
+      // ─── PREPAID EXPENSES ──────────────────────────────────────────
+      prepaidExpenses: [],
+
+      addPrepaidExpense: (pre) => {
+        const s = get()
+        const { prefix, next } = s.settings.prepaid
+        const number = nextNum(prefix, next)
+        const bankAccId = pre.bankAccountId || 'acc-bank1'
+        const je = get().addJournalEntry({
+          date: pre.startDate,
+          description: `Prepaid: ${pre.name} (${number})`,
+          reference: number, type: 'prepaid',
+          lines: [
+            { accountId: 'acc-prepaid', debit: pre.amount,  credit: 0,          description: pre.name },
+            { accountId: bankAccId,     debit: 0,           credit: pre.amount, description: pre.name },
+          ],
+        })
+        const newPre = {
+          ...pre, id: uuid(), number, amortized: 0, remaining: pre.amount,
+          journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        set((st) => ({
+          prepaidExpenses: [...st.prepaidExpenses, newPre],
+          settings: { ...st.settings, prepaid: { ...st.settings.prepaid, next: next + 1 } },
+        }))
+        return newPre
+      },
+
+      amortizePrepaid: (id, { date, amount, period }) => {
+        const pre = get().prepaidExpenses.find((p) => p.id === id)
+        if (!pre) return
+        const expAccId = pre.expenseAccountId || 'acc-admin'
+        const je = get().addJournalEntry({
+          date,
+          description: `Amortize Prepaid: ${pre.name} (${period})`,
+          reference: pre.number, type: 'prepaid_amort',
+          lines: [
+            { accountId: expAccId,      debit: amount, credit: 0,      description: `${pre.name} – ${period}` },
+            { accountId: 'acc-prepaid', debit: 0,      credit: amount, description: `${pre.name} – ${period}` },
+          ],
+        })
+        const newAmortized = pre.amortized + amount
+        const newRemaining = pre.amount - newAmortized
+        set((st) => ({
+          prepaidExpenses: st.prepaidExpenses.map((p) =>
+            p.id === id ? { ...p, amortized: newAmortized, remaining: Math.max(0, newRemaining) } : p
+          ),
+        }))
+        return je
+      },
+
+      deletePrepaidExpense: (id) =>
+        set((s) => {
+          const pre = s.prepaidExpenses.find((p) => p.id === id)
+          return {
+            prepaidExpenses: s.prepaidExpenses.filter((p) => p.id !== id),
+            journalEntries: s.journalEntries.filter((j) => j.id !== pre?.journalEntryId),
+          }
+        }),
+
+      // ─── LEASES ────────────────────────────────────────────────────
+      leases: [],
+
+      addLease: (lease) => {
+        const s = get()
+        const { prefix, next } = s.settings.lease
+        const number = nextNum(prefix, next)
+        const newLease = { ...lease, id: uuid(), number, status: 'active', payments: [], createdAt: new Date().toISOString() }
+        set((st) => ({
+          leases: [...st.leases, newLease],
+          settings: { ...st.settings, lease: { ...st.settings.lease, next: next + 1 } },
+        }))
+        return newLease
+      },
+
+      recordLeasePayment: (leaseId, payment) => {
+        const lease = get().leases.find((l) => l.id === leaseId)
+        if (!lease) return
+        const bankAccId = payment.bankAccountId || lease.bankAccountId || 'acc-bank1'
+        const expAccId  = payment.expenseAccountId || lease.expenseAccountId || 'acc-rent'
+        const je = get().addJournalEntry({
+          date: payment.date,
+          description: `Lease Payment – ${lease.name} (${payment.period || payment.date})`,
+          reference: lease.number, type: 'lease_payment',
+          lines: [
+            { accountId: expAccId,  debit: payment.amount,  credit: 0,              description: `${lease.name}` },
+            { accountId: bankAccId, debit: 0,               credit: payment.amount, description: `${lease.name}` },
+          ],
+        })
+        set((st) => ({
+          leases: st.leases.map((l) =>
+            l.id === leaseId
+              ? { ...l, payments: [...(l.payments || []), { ...payment, id: uuid(), journalEntryId: je.id }] }
+              : l
+          ),
+        }))
+        return je
+      },
+
+      terminateLease: (id, terminationDate) =>
+        set((s) => ({
+          leases: s.leases.map((l) => l.id === id ? { ...l, status: 'terminated', terminationDate } : l),
+        })),
+
+      deleteLease: (id) =>
+        set((s) => ({ leases: s.leases.filter((l) => l.id !== id) })),
+
+      // ─── EXPENSE CLAIMS ────────────────────────────────────────────
+      expenseClaims: [],
+
+      addExpenseClaim: (claim) => {
+        const s = get()
+        const { prefix, next } = s.settings.expenseClaim
+        const number = nextNum(prefix, next)
+        const newClaim = { ...claim, id: uuid(), number, status: 'pending', createdAt: new Date().toISOString() }
+        set((st) => ({
+          expenseClaims: [...st.expenseClaims, newClaim],
+          settings: { ...st.settings, expenseClaim: { ...st.settings.expenseClaim, next: next + 1 } },
+        }))
+        return newClaim
+      },
+
+      approveExpenseClaim: (id) => {
+        const claim = get().expenseClaims.find((c) => c.id === id)
+        if (!claim || claim.status !== 'pending') return
+        const expAccId = claim.expenseAccountId || 'acc-admin'
+        const je = get().addJournalEntry({
+          date: claim.date,
+          description: `Expense Claim Approved: ${claim.number} – ${claim.employeeName}`,
+          reference: claim.number, type: 'expense_claim',
+          lines: [
+            { accountId: expAccId,       debit: claim.amount, credit: 0,            description: claim.description },
+            { accountId: 'acc-expclaim', debit: 0,            credit: claim.amount, description: claim.description },
+          ],
+        })
+        set((st) => ({
+          expenseClaims: st.expenseClaims.map((c) =>
+            c.id === id ? { ...c, status: 'approved', approvalJEId: je.id } : c
+          ),
+        }))
+      },
+
+      payExpenseClaim: (id, bankAccountId, payDate) => {
+        const claim = get().expenseClaims.find((c) => c.id === id)
+        if (!claim || claim.status !== 'approved') return
+        const bankAccId = bankAccountId || 'acc-bank1'
+        const je = get().addJournalEntry({
+          date: payDate || claim.date,
+          description: `Expense Claim Paid: ${claim.number} – ${claim.employeeName}`,
+          reference: claim.number, type: 'expense_claim_payment',
+          lines: [
+            { accountId: 'acc-expclaim', debit: claim.amount,  credit: 0,            description: claim.description },
+            { accountId: bankAccId,      debit: 0,             credit: claim.amount, description: claim.description },
+          ],
+        })
+        set((st) => ({
+          expenseClaims: st.expenseClaims.map((c) =>
+            c.id === id ? { ...c, status: 'paid', paymentJEId: je.id, paymentDate: payDate } : c
+          ),
+        }))
+      },
+
+      deleteExpenseClaim: (id) =>
+        set((s) => {
+          const claim = s.expenseClaims.find((c) => c.id === id)
+          return {
+            expenseClaims: s.expenseClaims.filter((c) => c.id !== id),
+            journalEntries: s.journalEntries.filter(
+              (j) => j.id !== claim?.approvalJEId && j.id !== claim?.paymentJEId
+            ),
+          }
+        }),
+
+      // ─── BILLS OF MATERIALS ────────────────────────────────────────
+      billsOfMaterials: [],
+
+      addBOM: (bom) =>
+        set((s) => ({ billsOfMaterials: [...s.billsOfMaterials, { ...bom, id: uuid(), createdAt: new Date().toISOString() }] })),
+
+      updateBOM: (id, patch) =>
+        set((s) => ({ billsOfMaterials: s.billsOfMaterials.map((b) => (b.id === id ? { ...b, ...patch } : b)) })),
+
+      deleteBOM: (id) =>
+        set((s) => ({ billsOfMaterials: s.billsOfMaterials.filter((b) => b.id !== id) })),
+
+      // ─── WORK ORDERS ───────────────────────────────────────────────
+      workOrders: [],
+
+      addWorkOrder: (wo) => {
+        const s = get()
+        const { prefix, next } = s.settings.workOrder
+        const number = nextNum(prefix, next)
+        const newWO = { ...wo, id: uuid(), number, status: 'draft', createdAt: new Date().toISOString() }
+        set((st) => ({
+          workOrders: [...st.workOrders, newWO],
+          settings: { ...st.settings, workOrder: { ...st.settings.workOrder, next: next + 1 } },
+        }))
+        return newWO
+      },
+
+      startWorkOrder: (id) =>
+        set((s) => ({
+          workOrders: s.workOrders.map((w) => w.id === id ? { ...w, status: 'in_progress', startedAt: new Date().toISOString() } : w),
+        })),
+
+      completeWorkOrder: (id, completionDate) => {
+        const wo = get().workOrders.find((w) => w.id === id)
+        if (!wo || wo.status === 'completed') return
+        const qty = wo.targetQuantity || 1
+
+        const rawLines = []
+        let totalMaterialCost = 0
+        ;(wo.components || []).forEach((comp) => {
+          const lineAmt = (comp.unitCost || 0) * (comp.quantity || 0) * qty
+          totalMaterialCost += lineAmt
+          if (lineAmt > 0)
+            rawLines.push({ accountId: comp.materialAccountId || 'acc-rawmat', debit: 0, credit: lineAmt, description: comp.name })
+        })
+
+        const wipAccId     = wo.wipAccountId     || 'acc-wip'
+        const finGoodsAccId = wo.finGoodsAccountId || 'acc-fingoods'
+
+        const lines = [
+          { accountId: wipAccId, debit: totalMaterialCost, credit: 0, description: `WO ${wo.number} – Materials to WIP` },
+          ...rawLines,
+        ]
+        const je1 = get().addJournalEntry({
+          date: completionDate || new Date().toISOString().slice(0, 10),
+          description: `Work Order ${wo.number} – Issue Materials`,
+          reference: wo.number, type: 'work_order_issue', lines,
+        })
+        const je2 = get().addJournalEntry({
+          date: completionDate || new Date().toISOString().slice(0, 10),
+          description: `Work Order ${wo.number} – Finished Goods`,
+          reference: wo.number, type: 'work_order_complete',
+          lines: [
+            { accountId: finGoodsAccId, debit: totalMaterialCost,  credit: 0,                   description: `Finished: ${wo.outputName}` },
+            { accountId: wipAccId,      debit: 0,                  credit: totalMaterialCost, description: `Finished: ${wo.outputName}` },
+          ],
+        })
+
+        const outputQty = (wo.outputQuantity || 1) * qty
+        set((st) => ({
+          workOrders: st.workOrders.map((w) =>
+            w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
+          ),
+          inventoryItems: st.inventoryItems.map((item) =>
+            item.id === wo.outputItemId ? { ...item, quantity: (item.quantity || 0) + outputQty } : item
+          ),
+        }))
+      },
+
+      deleteWorkOrder: (id) =>
+        set((s) => {
+          const wo = s.workOrders.find((w) => w.id === id)
+          return {
+            workOrders: s.workOrders.filter((w) => w.id !== id),
+            journalEntries: s.journalEntries.filter(
+              (j) => j.id !== wo?.jeIssueId && j.id !== wo?.jeCompleteId
+            ),
+          }
+        }),
+
       // ─── DIRECT BANK TRANSACTIONS ──────────────────────────────────
       bankTransactions: [],
 
@@ -771,9 +1049,9 @@ export const useStore = create(
     }),
     {
       name: 'erp-v1',
-      version: 3,
+      version: 4,
       migrate: (persisted, version) => {
-        if (version < 3) {
+        if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
           const newAccounts = DEFAULT_ACCOUNTS.filter((a) => !existingIds.has(a.id))
           persisted.accounts = [...(persisted.accounts || []), ...newAccounts]
@@ -796,6 +1074,11 @@ export const useStore = create(
           if (!persisted.fixedAssets)        persisted.fixedAssets        = []
           if (!persisted.assetDepreciations) persisted.assetDepreciations = []
           if (!persisted.stockAdjustments)   persisted.stockAdjustments   = []
+          if (!persisted.prepaidExpenses)    persisted.prepaidExpenses    = []
+          if (!persisted.leases)             persisted.leases             = []
+          if (!persisted.expenseClaims)      persisted.expenseClaims      = []
+          if (!persisted.billsOfMaterials)   persisted.billsOfMaterials   = []
+          if (!persisted.workOrders)         persisted.workOrders         = []
         }
         return persisted
       },

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
-import { Save, AlertTriangle } from 'lucide-react'
+import { Save, AlertTriangle, Sparkles, Eye, EyeOff } from 'lucide-react'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -18,22 +18,26 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings } = useStore()
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
   const [invoice, setInvoice] = useState({ ...settings.invoice })
+  const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
+  const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
 
   const setCompanyField = (k, v) => setCompany((c) => ({ ...c, [k]: v }))
   const setTaxField = (k, v) => setTax((t) => ({ ...t, [k]: v }))
   const setInvoiceField = (k, v) => setInvoice((i) => ({ ...i, [k]: v }))
+  const setAiField = (k, v) => setAi((a) => ({ ...a, [k]: v }))
 
   const handleSave = () => {
     const curr = CURRENCIES.find((c) => c.code === company.currency)
     updateCompany({ ...company, currencySymbol: curr?.symbol || company.currencySymbol })
     updateTax(tax)
     updateInvoiceSettings(invoice)
+    updateAiSettings(ai)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -139,6 +143,46 @@ export default function Settings() {
                 onChange={(e) => setInvoiceField('notes', e.target.value)}
                 placeholder="e.g. Thank you for your business! Payment due within 30 days."
               />
+            </div>
+          </div>
+        </Card>
+
+        {/* AI Assistant */}
+        <Card className="p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
+              <Sparkles size={14} className="text-white" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-800">AI Assistant</h2>
+          </div>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Claude API Key</label>
+              <div className="relative">
+                <input
+                  type={showKey ? 'text' : 'password'}
+                  value={ai.apiKey}
+                  onChange={(e) => setAiField('apiKey', e.target.value)}
+                  placeholder="sk-ant-api03-..."
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono"
+                />
+                <button onClick={() => setShowKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                  {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">Your key is stored locally in the browser only. Get a key at console.anthropic.com.</p>
+            </div>
+            <Select label="Model" value={ai.model} onChange={(e) => setAiField('model', e.target.value)}>
+              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 – Fast &amp; Economical (Recommended)</option>
+              <option value="claude-sonnet-4-6">Claude Sonnet 4.6 – Balanced</option>
+              <option value="claude-opus-4-8">Claude Opus 4.8 – Most Capable</option>
+            </Select>
+            <div className="bg-violet-50 rounded-lg p-3 text-xs text-violet-700 space-y-1">
+              <p className="font-medium">What the AI assistant can do:</p>
+              <p>• Answer questions about your live financial data (AR, AP, balances, invoices)</p>
+              <p>• Explain accounting concepts and double-entry bookkeeping</p>
+              <p>• Guide you through ERP modules and workflows</p>
+              <p>• Help with VAT calculations, payroll deductions, and more</p>
             </div>
           </div>
         </Card>

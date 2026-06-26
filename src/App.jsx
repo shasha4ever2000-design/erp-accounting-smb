@@ -19,6 +19,10 @@ import BankAccounts from './pages/BankAccounts'
 import Banking from './pages/Banking'
 import Inventory from './pages/Inventory'
 import StockAdjustments from './pages/StockAdjustments'
+import PrepaidExpenses from './pages/PrepaidExpenses'
+import Leases from './pages/Leases'
+import ExpenseClaims from './pages/ExpenseClaims'
+import Manufacturing from './pages/Manufacturing'
 import FixedAssets from './pages/FixedAssets'
 import FixedAssetForm from './pages/FixedAssetForm'
 import Departments from './pages/Departments'
@@ -60,6 +64,12 @@ export default function App() {
         {/* Inventory */}
         <Route path="/inventory" element={<Inventory />} />
         <Route path="/stock-adjustments" element={<StockAdjustments />} />
+        <Route path="/manufacturing" element={<Manufacturing />} />
+
+        {/* Financials */}
+        <Route path="/prepaid-expenses" element={<PrepaidExpenses />} />
+        <Route path="/leases" element={<Leases />} />
+        <Route path="/expense-claims" element={<ExpenseClaims />} />
 
         {/* Fixed Assets */}
         <Route path="/fixed-assets" element={<FixedAssets />} />
