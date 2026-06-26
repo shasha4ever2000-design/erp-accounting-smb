@@ -9,7 +9,7 @@ import {
   ClipboardList, FileCheck, FileMinus, FilePlus, Truck,
   UserCheck, Building, DollarSign, Wrench, Sliders, Wallet,
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
-  Sun, Moon, Menu,
+  Sun, Moon, Menu, Repeat, Warehouse,
 } from 'lucide-react'
 
 const NAV = [
@@ -25,6 +25,7 @@ const NAV = [
   { label: 'Customers',          path: '/customers',        icon: Users },
   { label: 'Quotations',         path: '/quotations',       icon: FileCheck },
   { label: 'Sales Invoices',     path: '/invoices',         icon: FileText },
+  { label: 'Recurring Invoices', path: '/recurring-invoices', icon: Repeat },
   { label: 'Credit Notes',       path: '/credit-notes',     icon: FileMinus },
 
   { divider: 'Purchases' },
@@ -35,6 +36,7 @@ const NAV = [
 
   { divider: 'Inventory & Production' },
   { label: 'Inventory Items',    path: '/inventory',        icon: Package },
+  { label: 'Warehouses',         path: '/warehouses',       icon: Warehouse },
   { label: 'Stock Adjustments',  path: '/stock-adjustments',icon: Sliders },
   { label: 'Manufacturing',      path: '/manufacturing',    icon: Factory },
 
@@ -129,7 +131,7 @@ export default function Layout({ children }) {
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="h-14 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-100 dark:border-slate-800 flex items-center gap-3 px-4 lg:px-6">
+        <header className="no-print h-14 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-100 dark:border-slate-800 flex items-center gap-3 px-4 lg:px-6">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500 dark:text-slate-400">
             <Menu size={20} />
           </button>

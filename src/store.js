@@ -80,8 +80,13 @@ const DEFAULT_SETTINGS = {
   expenseClaim:  { prefix: 'EXP-',   next: 1 },
   workOrder:     { prefix: 'WO-',    next: 1 },
   project:       { prefix: 'PRJ-',   next: 1 },
+  recurring:     { prefix: 'SUB-',   next: 1 },
   theme:         'light',
 }
+
+const DEFAULT_WAREHOUSES = [
+  { id: 'wh-main', name: 'Main Warehouse', location: '', isDefault: true },
+]
 
 function nextNum(prefix, n) {
   return `${prefix}${String(n).padStart(4, '0')}`
@@ -1018,6 +1023,127 @@ export const useStore = create(
           }
         }),
 
+      // ─── WAREHOUSES & STOCK TRANSFERS ──────────────────────────────
+      warehouses: DEFAULT_WAREHOUSES,
+      stockTransfers: [],
+
+      addWarehouse: (wh) =>
+        set((s) => ({ warehouses: [...s.warehouses, { ...wh, id: uuid(), isDefault: false }] })),
+
+      updateWarehouse: (id, patch) =>
+        set((s) => ({ warehouses: s.warehouses.map((w) => (w.id === id ? { ...w, ...patch } : w)) })),
+
+      deleteWarehouse: (id) =>
+        set((s) => {
+          const wh = s.warehouses.find((w) => w.id === id)
+          if (wh?.isDefault) return s
+          return { warehouses: s.warehouses.filter((w) => w.id !== id) }
+        }),
+
+      // returns stock of an item in a warehouse (lazily defaults all stock to the default warehouse)
+      getItemStock: (item, warehouseId) => {
+        if (!item) return 0
+        const defWh = get().warehouses.find((w) => w.isDefault)?.id || 'wh-main'
+        const map = item.stockByWarehouse
+        if (!map) return warehouseId === defWh ? (item.quantity || 0) : 0
+        return map[warehouseId] || 0
+      },
+
+      addStockTransfer: ({ itemId, fromWarehouseId, toWarehouseId, quantity, date, notes }) => {
+        const qty = Number(quantity) || 0
+        if (qty <= 0 || fromWarehouseId === toWarehouseId) return
+        set((s) => {
+          const defWh = s.warehouses.find((w) => w.isDefault)?.id || 'wh-main'
+          return {
+            inventoryItems: s.inventoryItems.map((it) => {
+              if (it.id !== itemId) return it
+              const map = it.stockByWarehouse ? { ...it.stockByWarehouse } : { [defWh]: it.quantity || 0 }
+              map[fromWarehouseId] = (map[fromWarehouseId] || 0) - qty
+              map[toWarehouseId]   = (map[toWarehouseId]   || 0) + qty
+              return { ...it, stockByWarehouse: map }
+            }),
+            stockTransfers: [...s.stockTransfers, { id: uuid(), itemId, fromWarehouseId, toWarehouseId, quantity: qty, date, notes: notes || '', createdAt: new Date().toISOString() }],
+          }
+        })
+      },
+
+      deleteStockTransfer: (id) =>
+        set((s) => {
+          const tr = s.stockTransfers.find((t) => t.id === id)
+          if (!tr) return s
+          return {
+            stockTransfers: s.stockTransfers.filter((t) => t.id !== id),
+            inventoryItems: s.inventoryItems.map((it) => {
+              if (it.id !== tr.itemId || !it.stockByWarehouse) return it
+              const map = { ...it.stockByWarehouse }
+              map[tr.fromWarehouseId] = (map[tr.fromWarehouseId] || 0) + tr.quantity
+              map[tr.toWarehouseId]   = (map[tr.toWarehouseId]   || 0) - tr.quantity
+              return { ...it, stockByWarehouse: map }
+            }),
+          }
+        }),
+
+      // ─── RECURRING / SUBSCRIPTION INVOICES ─────────────────────────
+      recurringInvoices: [],
+
+      addRecurringInvoice: (rec) => {
+        const s = get()
+        const { prefix, next } = s.settings.recurring
+        const number = nextNum(prefix, next)
+        const newRec = { ...rec, id: uuid(), number, status: 'active', generatedCount: 0, lastGenerated: null, createdAt: new Date().toISOString() }
+        set((st) => ({
+          recurringInvoices: [...st.recurringInvoices, newRec],
+          settings: { ...st.settings, recurring: { ...st.settings.recurring, next: next + 1 } },
+        }))
+        return newRec
+      },
+
+      updateRecurringInvoice: (id, patch) =>
+        set((s) => ({ recurringInvoices: s.recurringInvoices.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
+
+      deleteRecurringInvoice: (id) =>
+        set((s) => ({ recurringInvoices: s.recurringInvoices.filter((r) => r.id !== id) })),
+
+      advanceDate: (dateStr, frequency) => {
+        const d = new Date(dateStr)
+        if (frequency === 'weekly')      d.setDate(d.getDate() + 7)
+        else if (frequency === 'biweekly') d.setDate(d.getDate() + 14)
+        else if (frequency === 'monthly')  d.setMonth(d.getMonth() + 1)
+        else if (frequency === 'quarterly')d.setMonth(d.getMonth() + 3)
+        else if (frequency === 'yearly')   d.setFullYear(d.getFullYear() + 1)
+        return d.toISOString().slice(0, 10)
+      },
+
+      // Generate real invoices for every active schedule whose nextDate has arrived
+      generateDueRecurring: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        const due = get().recurringInvoices.filter((r) => r.status === 'active' && r.nextDate <= today)
+        let created = 0
+        due.forEach((r) => {
+          let nextDate = r.nextDate
+          let count = r.generatedCount || 0
+          // catch up on any missed cycles, up to a sane cap
+          let guard = 0
+          while (nextDate <= today && r.status === 'active' && guard < 60) {
+            if (r.endDate && nextDate > r.endDate) break
+            const due30 = get().advanceDate(nextDate, 'monthly')
+            get().addInvoice({
+              customerId: r.customerId, customerName: r.customerName,
+              date: nextDate, dueDate: due30,
+              items: r.items, subtotal: r.subtotal, taxAmount: r.taxAmount, total: r.total,
+              notes: (r.notes ? r.notes + ' ' : '') + `(Recurring ${r.number})`,
+            })
+            created++
+            count++
+            nextDate = get().advanceDate(nextDate, r.frequency)
+            guard++
+          }
+          const ended = r.endDate && nextDate > r.endDate
+          get().updateRecurringInvoice(r.id, { nextDate, generatedCount: count, lastGenerated: today, status: ended ? 'completed' : 'active' })
+        })
+        return created
+      },
+
       // ─── PROJECTS & JOB COSTING ────────────────────────────────────
       projects: [],
 
@@ -1097,8 +1223,9 @@ export const useStore = create(
           'debitNotes', 'departments', 'employees', 'payrollRuns', 'fixedAssets', 'assetDepreciations',
           'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
+          'warehouses', 'stockTransfers', 'recurringInvoices',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 5, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 6, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -1148,7 +1275,7 @@ export const useStore = create(
     }),
     {
       name: 'erp-v1',
-      version: 5,
+      version: 6,
       migrate: (persisted, version) => {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
@@ -1189,6 +1316,15 @@ export const useStore = create(
           if (!persisted.timeEntries)     persisted.timeEntries     = []
           if (!persisted.budgets)         persisted.budgets         = []
           if (!persisted.reconciliations) persisted.reconciliations = []
+        }
+        if (version < 6) {
+          persisted.settings = {
+            ...persisted.settings,
+            recurring: persisted.settings?.recurring || { prefix: 'SUB-', next: 1 },
+          }
+          if (!persisted.warehouses)        persisted.warehouses        = DEFAULT_WAREHOUSES
+          if (!persisted.stockTransfers)    persisted.stockTransfers    = []
+          if (!persisted.recurringInvoices) persisted.recurringInvoices = []
         }
         return persisted
       },

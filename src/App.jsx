@@ -35,6 +35,8 @@ import Reports from './pages/Reports'
 import Settings from './pages/Settings'
 import Projects from './pages/Projects'
 import Budgets from './pages/Budgets'
+import Warehouses from './pages/Warehouses'
+import RecurringInvoices from './pages/RecurringInvoices'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
@@ -44,6 +46,20 @@ export default function App() {
     if (theme === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
   }, [theme])
+
+  // Force light mode while printing so PDFs/invoices are clean, then restore
+  useEffect(() => {
+    const before = () => document.documentElement.classList.remove('dark')
+    const after = () => {
+      if ((useStore.getState().settings.theme || 'light') === 'dark') document.documentElement.classList.add('dark')
+    }
+    window.addEventListener('beforeprint', before)
+    window.addEventListener('afterprint', after)
+    return () => {
+      window.removeEventListener('beforeprint', before)
+      window.removeEventListener('afterprint', after)
+    }
+  }, [])
 
   return (
     <Layout>
@@ -63,6 +79,7 @@ export default function App() {
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/new" element={<InvoiceForm />} />
         <Route path="/invoices/:id" element={<InvoiceView />} />
+        <Route path="/recurring-invoices" element={<RecurringInvoices />} />
         <Route path="/credit-notes" element={<CreditNotes />} />
 
         {/* Purchases */}
@@ -75,6 +92,7 @@ export default function App() {
 
         {/* Inventory */}
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/warehouses" element={<Warehouses />} />
         <Route path="/stock-adjustments" element={<StockAdjustments />} />
         <Route path="/manufacturing" element={<Manufacturing />} />
 

@@ -17,10 +17,11 @@
 }
 
 @media print {
-  aside { display: none !important; }
+  aside, header { display: none !important; }
   main { overflow: visible !important; }
   .no-print { display: none !important; }
   body { background: white !important; }
+  @page { margin: 14mm; }
 }
 
 /* Smooth scrollbar */
