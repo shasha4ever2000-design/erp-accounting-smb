@@ -3,6 +3,7 @@ import { NavLink } from 'react-router-dom'
 import { useStore } from '../store'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
+import InstallButton from './InstallButton'
 import {
   LayoutDashboard, BookOpen, Users, FileText, ShoppingCart,
   Package, Landmark, BarChart3, Settings, Building2, TrendingUp,
@@ -144,6 +145,7 @@ export default function Layout({ children }) {
             <kbd className="hidden sm:inline text-[10px] border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">⌘K</kbd>
           </button>
           <div className="flex-1" />
+          <InstallButton />
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"

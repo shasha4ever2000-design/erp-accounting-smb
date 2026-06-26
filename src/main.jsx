@@ -11,3 +11,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     </BrowserRouter>
   </React.StrictMode>
 )
+
+// Register service worker for offline / installable desktop edition
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/erp-accounting-smb/sw.js').catch(() => {})
+  })
+}
