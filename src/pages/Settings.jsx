@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database } from 'lucide-react'
 
@@ -98,6 +99,11 @@ export default function Settings() {
     updateInvoiceSettings(invoice)
     updateAiSettings(ai)
     updateZatca(zatca)
+    // keep the company-picker label in sync with the company name
+    try {
+      const auth = useAuth.getState()
+      if (auth.currentCompanyId && company.name) auth.renameCompany(auth.currentCompanyId, company.name)
+    } catch { /* ignore */ }
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }

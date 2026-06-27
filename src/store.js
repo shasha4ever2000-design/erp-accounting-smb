@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
+import { currentCompanyKey } from './boot'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -1326,7 +1327,7 @@ export const useStore = create(
       },
 
       resetAllData: () => {
-        if (typeof localStorage !== 'undefined') localStorage.removeItem('erp-v1')
+        try { if (typeof localStorage !== 'undefined') localStorage.removeItem(currentCompanyKey()) } catch { /* ignore */ }
         if (typeof window !== 'undefined') window.location.reload()
       },
 
@@ -1363,7 +1364,7 @@ export const useStore = create(
       },
     }),
     {
-      name: 'erp-v1',
+      name: currentCompanyKey(),
       version: 9,
       storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {

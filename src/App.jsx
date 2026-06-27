@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useStore } from './store'
+import { useAuth } from './auth'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard'
 import ChartOfAccounts from './pages/ChartOfAccounts'
@@ -46,12 +47,24 @@ import Currencies from './pages/Currencies'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
+  const companyName = useStore((s) => s.settings.company.name)
+  const updateCompany = useStore((s) => s.updateCompany)
 
   useEffect(() => {
     const root = document.documentElement
     if (theme === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
   }, [theme])
+
+  // A freshly created company inherits its name from the company picker label
+  useEffect(() => {
+    const auth = useAuth.getState()
+    const comp = auth.companies.find((c) => c.id === auth.currentCompanyId)
+    if (comp && comp.name && (!companyName || companyName === 'My Company') && comp.name !== companyName) {
+      updateCompany({ name: comp.name })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Force light mode while printing so PDFs/invoices are clean, then restore
   useEffect(() => {

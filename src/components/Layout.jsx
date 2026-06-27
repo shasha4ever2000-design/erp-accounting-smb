@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
 import InstallButton from './InstallButton'
@@ -12,7 +13,7 @@ import {
   UserCheck, Building, DollarSign, Wrench, Sliders, Wallet,
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
-  Truck as TruckIcon, Coins,
+  Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
 } from 'lucide-react'
 
 const NAV = [
@@ -160,6 +161,7 @@ export default function Layout({ children }) {
             <span className="flex-1 text-left">Search…</span>
             <kbd className="hidden sm:inline text-[10px] border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">⌘K</kbd>
           </button>
+          <CompanySwitcher />
           <div className="flex-1" />
           <InstallButton />
           <button
@@ -169,6 +171,7 @@ export default function Layout({ children }) {
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+          <UserMenu />
         </header>
 
         {/* Storage-full warning */}
@@ -190,6 +193,88 @@ export default function Layout({ children }) {
       {/* Command palette + AI Assistant */}
       <CommandPalette />
       <AIAssistant />
+    </div>
+  )
+}
+
+function useOutside(onClose) {
+  const ref = useRef(null)
+  useEffect(() => {
+    const h = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose() }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [onClose])
+  return ref
+}
+
+function CompanySwitcher() {
+  const companies = useAuth((s) => s.companies)
+  const currentCompanyId = useAuth((s) => s.currentCompanyId)
+  const switchCompany = useAuth((s) => s.switchCompany)
+  const createCompany = useAuth((s) => s.createCompany)
+  const exitToCompanies = useAuth((s) => s.exitToCompanies)
+  const [open, setOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [name, setName] = useState('')
+  const ref = useOutside(() => setOpen(false))
+  const current = companies.find((c) => c.id === currentCompanyId)
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:border-gray-300 dark:hover:border-slate-600 max-w-[200px]">
+        <Building2 size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+        <span className="truncate">{current?.name || 'Company'}</span>
+        <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
+      </button>
+      {open && (
+        <div className="absolute left-0 mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 py-1.5">
+          <p className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">Companies</p>
+          <div className="max-h-60 overflow-y-auto">
+            {companies.map((c) => (
+              <button key={c.id} onClick={() => switchCompany(c.id)} className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+                <span className="truncate">{c.name}</span>
+                {c.id === currentCompanyId && <Check size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />}
+              </button>
+            ))}
+          </div>
+          <div className="border-t border-gray-100 dark:border-slate-700 mt-1 pt-1">
+            {creating ? (
+              <div className="px-3 py-2 flex gap-2">
+                <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name.trim() && createCompany(name.trim())} placeholder="Company name" className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <button onClick={() => name.trim() && createCompany(name.trim())} className="text-sm text-blue-600 font-medium">Add</button>
+              </div>
+            ) : (
+              <button onClick={() => setCreating(true)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><Plus size={15} /> New company</button>
+            )}
+            <button onClick={() => exitToCompanies()} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"><Building2 size={15} /> Manage companies…</button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function UserMenu() {
+  const logout = useAuth((s) => s.logout)
+  const user = useAuth((s) => s.users.find((u) => u.id === s.currentUserId))
+  const [open, setOpen] = useState(false)
+  const ref = useOutside(() => setOpen(false))
+  const initials = (user?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
+
+  return (
+    <div className="relative" ref={ref}>
+      <button onClick={() => setOpen((o) => !o)} className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+        {initials}
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 py-1.5">
+          <div className="px-3 py-2 border-b border-gray-100 dark:border-slate-700">
+            <p className="text-sm font-semibold text-gray-800 dark:text-slate-100 truncate">{user?.name}</p>
+            <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{user?.email}</p>
+          </div>
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><LogOut size={15} /> Log out</button>
+        </div>
+      )}
     </div>
   )
 }
