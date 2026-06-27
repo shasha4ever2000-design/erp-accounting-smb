@@ -85,6 +85,7 @@ const DEFAULT_SETTINGS = {
   company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
   tax:           { enabled: false, rate: 15, name: 'VAT' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
+  customFields:  { customer: [], supplier: [] },
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30 },
   purchase:      { prefix: 'PUR-',  next: 1 },
   journal:       { prefix: 'JE-',   next: 1 },
@@ -141,6 +142,9 @@ export const useStore = create(
 
       updateZatca: (patch) =>
         set((s) => ({ settings: { ...s.settings, zatca: { ...(s.settings.zatca || {}), ...patch } } })),
+
+      updateCustomFields: (patch) =>
+        set((s) => ({ settings: { ...s.settings, customFields: { ...(s.settings.customFields || { customer: [], supplier: [] }), ...patch } } })),
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
       accounts: DEFAULT_ACCOUNTS,
@@ -1431,7 +1435,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 11,
+      version: 12,
       storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {
        try {
@@ -1517,6 +1521,12 @@ export const useStore = create(
             requisition: persisted.settings?.requisition || { prefix: 'REQ-', next: 1 },
           }
           if (!persisted.requisitions) persisted.requisitions = []
+        }
+        if (version < 12) {
+          persisted.settings = {
+            ...persisted.settings,
+            customFields: persisted.settings?.customFields || { customer: [], supplier: [] },
+          }
         }
         return persisted
        } catch (e) {

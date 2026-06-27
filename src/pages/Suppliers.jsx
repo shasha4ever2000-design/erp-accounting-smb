@@ -4,20 +4,22 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '' }
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
 
 export default function Suppliers() {
   const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings } = useStore()
   const sym = settings.company.currencySymbol
+  const customDefs = settings.customFields?.supplier || []
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (s) => { setEditing(s); setForm({ name: s.name, email: s.email || '', phone: s.phone || '', address: s.address || '', taxId: s.taxId || '', notes: s.notes || '' }); setModal(true) }
+  const openEdit = (s) => { setEditing(s); setForm({ name: s.name, email: s.email || '', phone: s.phone || '', address: s.address || '', taxId: s.taxId || '', notes: s.notes || '', customFields: s.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
@@ -118,6 +120,14 @@ export default function Suppliers() {
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} />
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} />
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} />
+          {customDefs.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-700">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">Custom Fields</p>
+              {customDefs.map((label) => (
+                <Input key={label} label={label} value={form.customFields?.[label] || ''} onChange={(e) => setCustom(label, e.target.value)} />
+              ))}
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={close}>Cancel</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Supplier'}</Btn>

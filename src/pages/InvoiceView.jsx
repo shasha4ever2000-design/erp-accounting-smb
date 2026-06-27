@@ -4,6 +4,7 @@ import QRCode from 'qrcode'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
+import { numberToWords } from '../utils/numberToWords'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import { ArrowLeft, DollarSign, Printer, Trash2 } from 'lucide-react'
 
@@ -190,6 +191,13 @@ export default function InvoiceView() {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Amount in words */}
+          <div className="mt-4 pt-3 border-t border-gray-100">
+            <p className="text-xs text-gray-500">
+              <span className="font-semibold">Amount in words:</span> {numberToWords(invoice.total)} {company.currency} only
+            </p>
           </div>
 
           {/* ZATCA QR code */}

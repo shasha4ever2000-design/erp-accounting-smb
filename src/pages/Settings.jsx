@@ -19,13 +19,22 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, exportData, importData } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, exportData, importData } = useStore()
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
   const [invoice, setInvoice] = useState({ ...settings.invoice })
   const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
   const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
+  const [customFields, setCustomFields] = useState({ customer: [...(settings.customFields?.customer || [])], supplier: [...(settings.customFields?.supplier || [])] })
+  const [newCf, setNewCf] = useState({ customer: '', supplier: '' })
+  const addCf = (entity) => {
+    const label = newCf[entity].trim()
+    if (!label || customFields[entity].includes(label)) return
+    setCustomFields((c) => ({ ...c, [entity]: [...c[entity], label] }))
+    setNewCf((n) => ({ ...n, [entity]: '' }))
+  }
+  const removeCf = (entity, label) => setCustomFields((c) => ({ ...c, [entity]: c[entity].filter((l) => l !== label) }))
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
@@ -101,6 +110,7 @@ export default function Settings() {
     updateInvoiceSettings(invoice)
     updateAiSettings(ai)
     updateZatca(zatca)
+    updateCustomFields(customFields)
     // keep the company-picker label in sync with the company name
     try {
       const auth = useAuth.getState()
@@ -319,6 +329,32 @@ export default function Settings() {
               </>
             )}
           </div>
+        </Card>
+
+        {/* Custom Fields */}
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">Custom Fields</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Add your own fields to customer and supplier records (e.g. “Account Manager”, “Credit Limit”, “Region”).</p>
+          {['customer', 'supplier'].map((entity) => (
+            <div key={entity} className="mb-4 last:mb-0">
+              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2 capitalize">{entity} fields</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {customFields[entity].length === 0 && <span className="text-xs text-gray-300 dark:text-slate-600">None yet</span>}
+                {customFields[entity].map((label) => (
+                  <span key={label} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-full pl-3 pr-1.5 py-1 text-sm">
+                    {label}
+                    <button onClick={() => removeCf(entity, label)} className="w-4 h-4 rounded-full bg-gray-300 dark:bg-slate-600 text-white flex items-center justify-center text-xs hover:bg-red-400">×</button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={newCf[entity]} onChange={(e) => setNewCf((n) => ({ ...n, [entity]: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && addCf(entity)}
+                  placeholder={`Add a ${entity} field…`} className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <Btn size="sm" variant="secondary" onClick={() => addCf(entity)}>Add</Btn>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Remember to click <strong>Save Settings</strong> to apply.</p>
         </Card>
 
         {/* Backup & Restore */}
