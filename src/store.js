@@ -60,8 +60,9 @@ const DEFAULT_BANK_ACCOUNTS = [
 ]
 
 const DEFAULT_SETTINGS = {
-  company: { name: 'My Company', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01' },
+  company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01' },
   tax:           { enabled: false, rate: 15, name: 'VAT' },
+  zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30 },
   purchase:      { prefix: 'PUR-',  next: 1 },
   journal:       { prefix: 'JE-',   next: 1 },
@@ -113,6 +114,9 @@ export const useStore = create(
 
       updateAiSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ai: { ...(s.settings.ai || {}), ...patch } } })),
+
+      updateZatca: (patch) =>
+        set((s) => ({ settings: { ...s.settings, zatca: { ...(s.settings.zatca || {}), ...patch } } })),
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
       accounts: DEFAULT_ACCOUNTS,
@@ -1275,7 +1279,7 @@ export const useStore = create(
     }),
     {
       name: 'erp-v1',
-      version: 6,
+      version: 7,
       migrate: (persisted, version) => {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
@@ -1325,6 +1329,15 @@ export const useStore = create(
           if (!persisted.warehouses)        persisted.warehouses        = DEFAULT_WAREHOUSES
           if (!persisted.stockTransfers)    persisted.stockTransfers    = []
           if (!persisted.recurringInvoices) persisted.recurringInvoices = []
+        }
+        if (version < 7) {
+          persisted.settings = {
+            ...persisted.settings,
+            zatca: persisted.settings?.zatca || { enabled: false, vatNumber: '', crNumber: '', showQr: true },
+          }
+          if (persisted.settings.company && persisted.settings.company.arabicName === undefined) {
+            persisted.settings.company.arabicName = ''
+          }
         }
         return persisted
       },

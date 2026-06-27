@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import QRCode from 'qrcode'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
+import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import { ArrowLeft, DollarSign, Printer, Trash2 } from 'lucide-react'
 
@@ -15,6 +17,23 @@ export default function InvoiceView() {
   const invoice = invoices.find((i) => i.id === id)
   const [payModal, setPayModal] = useState(false)
   const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
+  const [qrUrl, setQrUrl] = useState('')
+
+  const zatca = settings.zatca || {}
+  const zatcaOn = zatca.enabled && zatca.showQr
+
+  useEffect(() => {
+    if (!invoice || !zatcaOn) { setQrUrl(''); return }
+    const payload = zatcaTlvBase64({
+      sellerName: company.arabicName || company.name,
+      vatNumber: zatca.vatNumber,
+      timestamp: invoiceTimestamp(invoice),
+      total: invoice.total,
+      vatTotal: invoice.taxAmount || 0,
+    })
+    QRCode.toDataURL(payload, { margin: 1, width: 220 }).then(setQrUrl).catch(() => setQrUrl(''))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, zatcaOn, zatca.vatNumber])
 
   if (!invoice) return (
     <div className="text-center py-20">
@@ -70,13 +89,21 @@ export default function InvoiceView() {
           <div className="flex justify-between items-start mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900">{company.name}</h1>
+              {company.arabicName && <p className="text-xl font-bold text-gray-800" dir="rtl">{company.arabicName}</p>}
               {company.address && <p className="text-gray-500 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
               {company.phone && <p className="text-gray-400 text-sm">{company.phone}</p>}
               {company.email && <p className="text-gray-400 text-sm">{company.email}</p>}
-              {company.taxId && <p className="text-gray-400 text-sm">Tax ID: {company.taxId}</p>}
+              {zatca.enabled && zatca.vatNumber
+                ? <p className="text-gray-600 text-sm font-medium mt-1">VAT No · الرقم الضريبي: {zatca.vatNumber}</p>
+                : company.taxId && <p className="text-gray-400 text-sm">Tax ID: {company.taxId}</p>}
+              {zatca.enabled && zatca.crNumber && <p className="text-gray-400 text-sm">CR · السجل التجاري: {zatca.crNumber}</p>}
             </div>
             <div className="text-right">
               <p className="text-4xl font-black text-blue-600">INVOICE</p>
+              {zatca.enabled
+                ? <p className="text-sm font-semibold text-gray-600" dir="rtl">فاتورة ضريبية مبسطة</p>
+                : null}
+              {zatca.enabled && <p className="text-xs text-gray-400">Simplified Tax Invoice</p>}
               <p className="text-2xl font-bold text-gray-800 mt-1">{invoice.number}</p>
               <Badge className={`mt-2 ${statusColor(invoice.status)}`}>
                 {invoice.status.toUpperCase()}
@@ -161,6 +188,18 @@ export default function InvoiceView() {
               )}
             </div>
           </div>
+
+          {/* ZATCA QR code */}
+          {zatcaOn && qrUrl && (
+            <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
+              <div className="text-sm">
+                <p className="font-semibold text-gray-700">ZATCA Compliant E-Invoice</p>
+                <p className="text-gray-500" dir="rtl">فاتورة إلكترونية متوافقة مع هيئة الزكاة والضريبة والجمارك</p>
+                <p className="text-xs text-gray-400 mt-1">Scan the QR code to verify this tax invoice.</p>
+              </div>
+              <img src={qrUrl} alt="ZATCA QR" className="w-28 h-28" />
+            </div>
+          )}
 
           {/* Notes */}
           {invoice.notes && (

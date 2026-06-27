@@ -37,6 +37,7 @@ import Projects from './pages/Projects'
 import Budgets from './pages/Budgets'
 import Warehouses from './pages/Warehouses'
 import RecurringInvoices from './pages/RecurringInvoices'
+import Statements from './pages/Statements'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
@@ -115,6 +116,7 @@ export default function App() {
         <Route path="/payroll" element={<Payroll />} />
 
         {/* Reports & System */}
+        <Route path="/statements" element={<Statements />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>

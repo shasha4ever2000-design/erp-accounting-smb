@@ -57,6 +57,7 @@ const NAV = [
   { label: 'Payroll',            path: '/payroll',           icon: DollarSign },
 
   { divider: 'Reports & System' },
+  { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
   { label: 'Settings',           path: '/settings',          icon: Settings },
 ]

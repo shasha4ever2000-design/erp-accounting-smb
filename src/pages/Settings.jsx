@@ -18,15 +18,24 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, exportData, importData } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, exportData, importData } = useStore()
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
   const [invoice, setInvoice] = useState({ ...settings.invoice })
   const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
+  const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
+
+  const setZatcaField = (k, v) => setZatca((z) => ({ ...z, [k]: v }))
+
+  const applySaudiPreset = () => {
+    setCompany((c) => ({ ...c, currency: 'SAR', currencySymbol: 'SAR' }))
+    setTax((t) => ({ ...t, enabled: true, name: 'VAT', rate: 15 }))
+    setZatca((z) => ({ ...z, enabled: true, showQr: true }))
+  }
 
   const handleExport = () => {
     const data = exportData()
@@ -69,6 +78,7 @@ export default function Settings() {
     updateTax(tax)
     updateInvoiceSettings(invoice)
     updateAiSettings(ai)
+    updateZatca(zatca)
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -98,6 +108,7 @@ export default function Settings() {
           <h2 className="text-base font-semibold text-gray-800 mb-4">Company Information</h2>
           <div className="space-y-4">
             <Input label="Company Name *" value={company.name} onChange={(e) => setCompanyField('name', e.target.value)} />
+            <Input label="Company Name (Arabic) · الاسم بالعربية" value={company.arabicName || ''} onChange={(e) => setCompanyField('arabicName', e.target.value)} dir="rtl" placeholder="اسم الشركة" />
             <Input label="Email" type="email" value={company.email} onChange={(e) => setCompanyField('email', e.target.value)} />
             <Input label="Phone" value={company.phone} onChange={(e) => setCompanyField('phone', e.target.value)} />
             <div>
@@ -215,6 +226,43 @@ export default function Settings() {
               <p>• Guide you through ERP modules and workflows</p>
               <p>• Help with VAT calculations, payroll deductions, and more</p>
             </div>
+          </div>
+        </Card>
+
+        {/* Saudi Arabia · ZATCA E-Invoicing */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-white text-xs font-bold">KSA</div>
+              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Saudi Arabia · ZATCA E-Invoicing</h2>
+            </div>
+            <Btn size="sm" variant="secondary" onClick={applySaudiPreset}>Apply Saudi preset</Btn>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            Generate ZATCA (Fatoorah) compliant simplified tax invoices with a scannable QR code, bilingual Arabic/English layout, and 15% VAT.
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="zatcaEnabled" checked={zatca.enabled} onChange={(e) => setZatcaField('enabled', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
+              <label htmlFor="zatcaEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">Enable ZATCA e-invoicing</label>
+            </div>
+            {zatca.enabled && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="VAT Registration Number" value={zatca.vatNumber} onChange={(e) => setZatcaField('vatNumber', e.target.value)} placeholder="3xxxxxxxxxxxxx3" />
+                  <Input label="Commercial Registration (CR)" value={zatca.crNumber} onChange={(e) => setZatcaField('crNumber', e.target.value)} placeholder="10xxxxxxxx" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="zatcaQr" checked={zatca.showQr} onChange={(e) => setZatcaField('showQr', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
+                  <label htmlFor="zatcaQr" className="text-sm font-medium text-gray-700 dark:text-slate-300">Show ZATCA QR code on invoices</label>
+                </div>
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-xs text-green-700 dark:text-green-300 space-y-1">
+                  <p className="font-medium">The QR code encodes (per ZATCA Phase 1):</p>
+                  <p>• Seller name &amp; VAT number · Invoice timestamp · Total with VAT · VAT amount</p>
+                  <p>Set currency to SAR and VAT to 15% using “Apply Saudi preset”, then Save.</p>
+                </div>
+              </>
+            )}
           </div>
         </Card>
 

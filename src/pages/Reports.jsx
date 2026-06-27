@@ -9,6 +9,7 @@ const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)' },
   { id: 'bs', label: 'Balance Sheet' },
   { id: 'cf', label: 'Cash Flow Statement' },
+  { id: 'vat', label: 'VAT Return (ZATCA)' },
   { id: 'tb', label: 'Trial Balance' },
   { id: 'gl', label: 'General Ledger' },
   { id: 'ar', label: 'Accounts Receivable Aging' },
@@ -508,6 +509,63 @@ export default function Reports() {
     )
   }
 
+  // ─── VAT Return (ZATCA / KSA) ─────────────────────────────────
+  const VATReport = () => {
+    const inRange = (d) => d && d >= startDate && d <= endDate
+    const taxableSales = invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date) && (i.taxAmount || 0) > 0).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const zeroExemptSales = invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date) && !(i.taxAmount > 0)).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const outputVat = accountBalance('acc-vatout', balances)
+    const taxablePurch = purchases.filter((p) => p.status !== 'cancelled' && inRange(p.date) && (p.taxAmount || 0) > 0).reduce((s, p) => s + (p.subtotal || 0), 0)
+    const inputVat = accountBalance('acc-vatin', balances)
+    const netVat = outputVat - inputVat
+
+    const Row = ({ n, label, ar, amount, bold, strong }) => (
+      <tr className={`border-b border-gray-100 dark:border-slate-700/50 ${strong ? 'bg-gray-50 dark:bg-slate-800/60' : ''}`}>
+        <td className="px-4 py-2.5 text-gray-400 dark:text-slate-500 text-xs w-10">{n}</td>
+        <td className={`px-2 py-2.5 ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>
+          {label}<span className="block text-xs text-gray-400 dark:text-slate-500" dir="rtl">{ar}</span>
+        </td>
+        <td className={`px-4 py-2.5 text-right font-mono ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>{fmtMoney(amount, sym)}</td>
+      </tr>
+    )
+
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">VAT Return · إقرار ضريبة القيمة المضافة — {fmtDate(startDate)} to {fmtDate(endDate)}</p>
+          </div>
+          <div className="text-right text-xs text-gray-400 dark:text-slate-500">
+            {settings.zatca?.vatNumber && <p>VAT No: {settings.zatca.vatNumber}</p>}
+            <p>Rate: {settings.tax?.rate ?? 15}%</p>
+          </div>
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-slate-800/60">
+            <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+              <th className="px-4 py-2 text-left">#</th>
+              <th className="px-2 py-2 text-left">Description</th>
+              <th className="px-4 py-2 text-right">Amount ({sym})</th>
+            </tr>
+          </thead>
+          <tbody>
+            <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" amount={taxableSales} />
+            <Row n="2" label="Output VAT" ar="ضريبة المخرجات" amount={outputVat} bold />
+            <Row n="3" label="Zero-rated / exempt sales" ar="مبيعات معفاة / صفرية" amount={zeroExemptSales} />
+            <Row n="4" label="Standard rated purchases" ar="المشتريات الخاضعة للضريبة" amount={taxablePurch} />
+            <Row n="5" label="Input VAT (recoverable)" ar="ضريبة المدخلات" amount={inputVat} bold />
+            <Row n="6" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة" amount={netVat} bold strong />
+          </tbody>
+        </table>
+        <div className={`p-5 flex items-center justify-between ${netVat >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+          <span className="font-bold text-gray-800 dark:text-slate-100">{netVat >= 0 ? 'VAT Payable to ZATCA' : 'VAT Reclaimable from ZATCA'}</span>
+          <span className={`text-xl font-black ${netVat >= 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>{fmtMoney(Math.abs(netVat), sym)}</span>
+        </div>
+      </Card>
+    )
+  }
+
   return (
     <div>
       <PageHeader title="Financial Reports" subtitle="Powered by double-entry bookkeeping" />
@@ -531,6 +589,7 @@ export default function Reports() {
         {report === 'pl' && <PLReport />}
         {report === 'bs' && <BSReport />}
         {report === 'cf' && <CFReport />}
+        {report === 'vat' && <VATReport />}
         {report === 'tb' && <TBReport />}
         {report === 'gl' && <GLReport />}
         {report === 'ar' && <ARReport />}

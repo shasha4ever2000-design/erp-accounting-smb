@@ -30,7 +30,9 @@ const COMMANDS = [
   { label: 'Departments', path: '/departments', group: 'Go to' },
   { label: 'Employees', path: '/employees', group: 'Go to' },
   { label: 'Payroll', path: '/payroll', group: 'Go to' },
+  { label: 'Statements of Account', path: '/statements', group: 'Go to' },
   { label: 'Reports', path: '/reports', group: 'Go to' },
+  { label: 'VAT Return (ZATCA)', path: '/reports', group: 'Go to' },
   { label: 'Settings', path: '/settings', group: 'Go to' },
   // Quick actions
   { label: 'New Sales Invoice', path: '/invoices/new', group: 'Create' },
