@@ -44,6 +44,8 @@ import POS from './pages/POS'
 import Reconciliation from './pages/Reconciliation'
 import DeliveryNotes from './pages/DeliveryNotes'
 import Currencies from './pages/Currencies'
+import Analytics from './pages/Analytics'
+import AuditLog from './pages/AuditLog'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
@@ -138,9 +140,11 @@ export default function App() {
         <Route path="/payroll" element={<Payroll />} />
 
         {/* Reports & System */}
+        <Route path="/analytics" element={<Analytics />} />
         <Route path="/currencies" element={<Currencies />} />
         <Route path="/statements" element={<Statements />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>

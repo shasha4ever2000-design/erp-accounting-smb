@@ -14,6 +14,7 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
+  PieChart, History,
 } from 'lucide-react'
 
 const NAV = [
@@ -64,9 +65,11 @@ const NAV = [
   { label: 'Payroll',            path: '/payroll',           icon: DollarSign },
 
   { divider: 'Reports & System' },
+  { label: 'Analytics',          path: '/analytics',         icon: PieChart },
   { label: 'Currencies',         path: '/currencies',        icon: Coins },
   { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
+  { label: 'Audit Log',          path: '/audit-log',         icon: History },
   { label: 'Settings',           path: '/settings',          icon: Settings },
 ]
 

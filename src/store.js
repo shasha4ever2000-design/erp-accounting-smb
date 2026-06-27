@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import { currentCompanyKey } from './boot'
+import { useAuth } from './auth'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -215,6 +216,18 @@ export const useStore = create(
       deleteInventoryItem: (id) =>
         set((s) => ({ inventoryItems: s.inventoryItems.filter((i) => i.id !== id) })),
 
+      // ─── AUDIT / ACTIVITY LOG ──────────────────────────────────────
+      auditLog: [],
+
+      logActivity: (action, detail) => {
+        let user = 'System'
+        try { user = useAuth.getState().users.find((u) => u.id === useAuth.getState().currentUserId)?.name || 'System' } catch { /* ignore */ }
+        const entry = { id: uuid(), ts: new Date().toISOString(), user, action, detail: detail || '' }
+        set((st) => ({ auditLog: [...(st.auditLog || []).slice(-999), entry] }))
+      },
+
+      clearAuditLog: () => set({ auditLog: [] }),
+
       // ─── JOURNAL ENTRIES ───────────────────────────────────────────
       journalEntries: [],
 
@@ -227,6 +240,7 @@ export const useStore = create(
           journalEntries: [...st.journalEntries, newJE],
           settings: { ...st.settings, journal: { ...st.settings.journal, next: st.settings.journal.next + 1 } },
         }))
+        get().logActivity('Posted ' + String(newJE.type || 'entry').replace(/_/g, ' '), `${number} · ${entry.description || ''}`.trim())
         return newJE
       },
 
@@ -303,14 +317,14 @@ export const useStore = create(
       updateInvoice: (id, patch) =>
         set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
 
-      deleteInvoice: (id) =>
-        set((s) => {
-          const inv = s.invoices.find((i) => i.id === id)
-          return {
-            invoices: s.invoices.filter((i) => i.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId),
-          }
-        }),
+      deleteInvoice: (id) => {
+        const inv = get().invoices.find((i) => i.id === id)
+        get().logActivity('Deleted invoice', inv?.number || id)
+        set((s) => ({
+          invoices: s.invoices.filter((i) => i.id !== id),
+          journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId),
+        }))
+      },
 
       // ─── QUOTATIONS / ESTIMATES ────────────────────────────────────
       quotations: [],
@@ -480,14 +494,14 @@ export const useStore = create(
       updatePurchase: (id, patch) =>
         set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
 
-      deletePurchase: (id) =>
-        set((s) => {
-          const pur = s.purchases.find((p) => p.id === id)
-          return {
-            purchases: s.purchases.filter((p) => p.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== pur?.journalEntryId),
-          }
-        }),
+      deletePurchase: (id) => {
+        const pur = get().purchases.find((p) => p.id === id)
+        get().logActivity('Deleted purchase', pur?.number || id)
+        set((s) => ({
+          purchases: s.purchases.filter((p) => p.id !== id),
+          journalEntries: s.journalEntries.filter((j) => j.id !== pur?.journalEntryId),
+        }))
+      },
 
       // ─── DEBIT NOTES (Purchase Returns) ────────────────────────────
       debitNotes: [],
@@ -1313,9 +1327,9 @@ export const useStore = create(
           'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
-          'deliveryNotes', 'currencies',
+          'deliveryNotes', 'currencies', 'auditLog',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 9, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 10, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -1365,7 +1379,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 9,
+      version: 10,
       storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {
        try {
@@ -1441,6 +1455,9 @@ export const useStore = create(
           }
           if (!persisted.deliveryNotes) persisted.deliveryNotes = []
           if (!persisted.currencies) persisted.currencies = []
+        }
+        if (version < 10) {
+          if (!persisted.auditLog) persisted.auditLog = []
         }
         return persisted
        } catch (e) {
