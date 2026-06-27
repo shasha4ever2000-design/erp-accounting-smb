@@ -10,7 +10,7 @@ import {
   ClipboardList, FileCheck, FileMinus, FilePlus, Truck,
   UserCheck, Building, DollarSign, Wrench, Sliders, Wallet,
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
-  Sun, Moon, Menu, Repeat, Warehouse,
+  Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
 } from 'lucide-react'
 
 const NAV = [
@@ -20,9 +20,12 @@ const NAV = [
   { divider: 'Cash & Banking' },
   { label: 'Cash & Bank Accounts', path: '/bank-accounts', icon: Wallet },
   { label: 'Bank Transactions',    path: '/banking',        icon: Landmark },
+  { label: 'Bank Reconciliation',  path: '/reconciliation', icon: CheckSquare },
   { label: 'Journal Entries',      path: '/journals',       icon: ClipboardList },
 
   { divider: 'Sales' },
+  { label: 'Sales Pipeline (CRM)',path: '/pipeline',        icon: Filter },
+  { label: 'Point of Sale',      path: '/pos',              icon: Store },
   { label: 'Customers',          path: '/customers',        icon: Users },
   { label: 'Quotations',         path: '/quotations',       icon: FileCheck },
   { label: 'Sales Invoices',     path: '/invoices',         icon: FileText },

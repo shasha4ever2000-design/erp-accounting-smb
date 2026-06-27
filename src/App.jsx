@@ -38,6 +38,9 @@ import Budgets from './pages/Budgets'
 import Warehouses from './pages/Warehouses'
 import RecurringInvoices from './pages/RecurringInvoices'
 import Statements from './pages/Statements'
+import Pipeline from './pages/Pipeline'
+import POS from './pages/POS'
+import Reconciliation from './pages/Reconciliation'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
@@ -71,9 +74,12 @@ export default function App() {
         {/* Cash & Banking */}
         <Route path="/bank-accounts" element={<BankAccounts />} />
         <Route path="/banking" element={<Banking />} />
+        <Route path="/reconciliation" element={<Reconciliation />} />
         <Route path="/journals" element={<JournalEntries />} />
 
         {/* Sales */}
+        <Route path="/pipeline" element={<Pipeline />} />
+        <Route path="/pos" element={<POS />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/quotations" element={<Quotations />} />
         <Route path="/quotations/new" element={<QuotationForm />} />

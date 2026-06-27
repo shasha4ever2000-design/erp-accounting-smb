@@ -157,8 +157,11 @@ export const useStore = create(
       // ─── CUSTOMERS ─────────────────────────────────────────────────
       customers: [],
 
-      addCustomer: (c) =>
-        set((s) => ({ customers: [...s.customers, { ...c, id: uuid(), createdAt: new Date().toISOString() }] })),
+      addCustomer: (c) => {
+        const newC = { ...c, id: uuid(), createdAt: new Date().toISOString() }
+        set((s) => ({ customers: [...s.customers, newC] }))
+        return newC
+      },
 
       updateCustomer: (id, patch) =>
         set((s) => ({ customers: s.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
@@ -1148,6 +1151,29 @@ export const useStore = create(
         return created
       },
 
+      // ─── CRM · SALES PIPELINE ──────────────────────────────────────
+      leads: [],
+
+      addLead: (lead) =>
+        set((s) => ({ leads: [...s.leads, { ...lead, id: uuid(), stage: lead.stage || 'new', createdAt: new Date().toISOString() }] })),
+
+      updateLead: (id, patch) =>
+        set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+
+      deleteLead: (id) =>
+        set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
+
+      convertLeadToCustomer: (id) => {
+        const lead = get().leads.find((l) => l.id === id)
+        if (!lead) return null
+        const cust = get().addCustomer({
+          name: lead.company || lead.name, email: lead.email || '', phone: lead.phone || '',
+          address: lead.address || '', taxId: '', contactPerson: lead.name || '',
+        })
+        get().updateLead(id, { stage: 'won', convertedCustomerId: cust?.id })
+        return cust
+      },
+
       // ─── PROJECTS & JOB COSTING ────────────────────────────────────
       projects: [],
 
@@ -1227,9 +1253,9 @@ export const useStore = create(
           'debitNotes', 'departments', 'employees', 'payrollRuns', 'fixedAssets', 'assetDepreciations',
           'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
-          'warehouses', 'stockTransfers', 'recurringInvoices',
+          'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 6, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 8, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -1279,7 +1305,7 @@ export const useStore = create(
     }),
     {
       name: 'erp-v1',
-      version: 7,
+      version: 8,
       migrate: (persisted, version) => {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
@@ -1338,6 +1364,9 @@ export const useStore = create(
           if (persisted.settings.company && persisted.settings.company.arabicName === undefined) {
             persisted.settings.company.arabicName = ''
           }
+        }
+        if (version < 8) {
+          if (!persisted.leads) persisted.leads = []
         }
         return persisted
       },
