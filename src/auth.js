@@ -22,6 +22,8 @@ export const useAuth = create(
       currentCompanyId: null,
 
       currentUser: () => get().users.find((u) => u.id === get().currentUserId) || null,
+      currentRole: () => get().users.find((u) => u.id === get().currentUserId)?.role || 'viewer',
+      isManager: () => ['owner', 'admin'].includes(get().users.find((u) => u.id === get().currentUserId)?.role),
 
       signup: async ({ name, email, password }) => {
         name = (name || '').trim()
@@ -32,10 +34,29 @@ export const useAuth = create(
         if (get().users.some((u) => u.email === email)) return { error: 'An account with this email already exists.' }
         const salt = newId()
         const hash = await sha256Hex(salt + ':' + password)
-        const user = { id: newId(), name, email, salt, hash, createdAt: new Date().toISOString() }
+        // The very first account is the Owner; later self-signups default to Viewer.
+        const role = get().users.length === 0 ? 'owner' : 'viewer'
+        const user = { id: newId(), name, email, salt, hash, role, createdAt: new Date().toISOString() }
         set((s) => ({ users: [...s.users, user], currentUserId: user.id }))
         return { ok: true }
       },
+
+      setUserRole: (id, role) =>
+        set((s) => {
+          // never remove the last owner
+          const owners = s.users.filter((u) => u.role === 'owner')
+          const target = s.users.find((u) => u.id === id)
+          if (target?.role === 'owner' && role !== 'owner' && owners.length <= 1) return s
+          return { users: s.users.map((u) => (u.id === id ? { ...u, role } : u)) }
+        }),
+
+      removeUser: (id) =>
+        set((s) => {
+          if (id === s.currentUserId) return s
+          const target = s.users.find((u) => u.id === id)
+          if (target?.role === 'owner' && s.users.filter((u) => u.role === 'owner').length <= 1) return s
+          return { users: s.users.filter((u) => u.id !== id) }
+        }),
 
       login: async ({ email, password }) => {
         email = (email || '').trim().toLowerCase()
@@ -71,6 +92,15 @@ export const useAuth = create(
         }))
       },
     }),
-    { name: 'erp-auth', version: 1 }
+    {
+      name: 'erp-auth',
+      version: 2,
+      migrate: (persisted, version) => {
+        if (version < 2 && persisted?.users) {
+          persisted.users = persisted.users.map((u, i) => ({ ...u, role: u.role || (i === 0 ? 'owner' : 'viewer') }))
+        }
+        return persisted
+      },
+    }
   )
 )

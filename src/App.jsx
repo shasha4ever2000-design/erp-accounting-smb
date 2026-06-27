@@ -46,6 +46,8 @@ import DeliveryNotes from './pages/DeliveryNotes'
 import Currencies from './pages/Currencies'
 import Analytics from './pages/Analytics'
 import AuditLog from './pages/AuditLog'
+import Requisitions from './pages/Requisitions'
+import Team from './pages/Team'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
@@ -108,6 +110,7 @@ export default function App() {
         <Route path="/credit-notes" element={<CreditNotes />} />
 
         {/* Purchases */}
+        <Route path="/requisitions" element={<Requisitions />} />
         <Route path="/suppliers" element={<Suppliers />} />
         <Route path="/purchase-orders" element={<PurchaseOrders />} />
         <Route path="/purchase-orders/new" element={<PurchaseOrderForm />} />
@@ -145,6 +148,7 @@ export default function App() {
         <Route path="/statements" element={<Statements />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/audit-log" element={<AuditLog />} />
+        <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </Layout>

@@ -3,8 +3,9 @@ import { useAuth } from '../auth'
 import { Building2, Plus, LogOut, Pencil, Trash2, ArrowRight, TrendingUp } from 'lucide-react'
 
 export default function CompanyScreen() {
-  const { companies, createCompany, switchCompany, renameCompany, deleteCompany, logout, currentUser } = useAuth()
+  const { companies, createCompany, switchCompany, renameCompany, deleteCompany, logout, currentUser, isManager } = useAuth()
   const user = currentUser()
+  const manager = isManager()
   const [creating, setCreating] = useState(companies.length === 0)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState(null)
@@ -63,7 +64,7 @@ export default function CompanyScreen() {
                   <div className="w-11 h-11 rounded-lg bg-blue-50 flex items-center justify-center"><Building2 size={20} className="text-blue-600" /></div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button onClick={() => { setEditing(c.id); setEditName(c.name) }} className="text-gray-400 hover:text-blue-600 p-1"><Pencil size={14} /></button>
-                    <button onClick={() => { if (confirm(`Delete "${c.name}" and ALL its data? This cannot be undone.`)) deleteCompany(c.id) }} className="text-gray-400 hover:text-red-600 p-1"><Trash2 size={14} /></button>
+                    {manager && <button onClick={() => { if (confirm(`Delete "${c.name}" and ALL its data? This cannot be undone.`)) deleteCompany(c.id) }} className="text-gray-400 hover:text-red-600 p-1"><Trash2 size={14} /></button>}
                   </div>
                 </div>
                 {editing === c.id ? (

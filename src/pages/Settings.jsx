@@ -41,6 +41,8 @@ export default function Settings() {
     e.target.value = ''
   }
 
+  const isManager = useAuth((s) => s.isManager())
+
   const storageKB = (() => {
     try {
       const v = localStorage.getItem('erp-v1') || ''
@@ -364,7 +366,7 @@ export default function Settings() {
                 <p className="text-sm font-medium text-gray-800">Reset All Data</p>
                 <p className="text-xs text-gray-500">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
               </div>
-              <Btn variant="danger" size="sm" onClick={handleReset}>Reset Data</Btn>
+              {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>Reset Data</Btn> : <span className="text-xs text-gray-400 dark:text-slate-500">Owners / Admins only</span>}
             </div>
           </div>
         </Card>

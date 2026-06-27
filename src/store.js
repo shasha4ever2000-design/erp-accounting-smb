@@ -105,6 +105,7 @@ const DEFAULT_SETTINGS = {
   project:       { prefix: 'PRJ-',   next: 1 },
   recurring:     { prefix: 'SUB-',   next: 1 },
   delivery:      { prefix: 'DLV-',   next: 1 },
+  requisition:   { prefix: 'REQ-',   next: 1 },
   theme:         'light',
 }
 
@@ -1187,6 +1188,57 @@ export const useStore = create(
         return created
       },
 
+      // ─── PURCHASE REQUISITIONS & APPROVALS ─────────────────────────
+      requisitions: [],
+
+      addRequisition: (req) => {
+        const s = get()
+        const { prefix, next } = s.settings.requisition
+        const number = nextNum(prefix, next)
+        const newReq = { ...req, id: uuid(), number, status: 'pending', createdAt: new Date().toISOString() }
+        set((st) => ({
+          requisitions: [...st.requisitions, newReq],
+          settings: { ...st.settings, requisition: { ...st.settings.requisition, next: next + 1 } },
+        }))
+        get().logActivity('Created requisition', `${number} · ${req.requestedBy || ''}`.trim())
+        return newReq
+      },
+
+      approveRequisition: (id, approver) => {
+        const req = get().requisitions.find((r) => r.id === id)
+        if (!req || req.status !== 'pending') return
+        set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'approved', approvedBy: approver, approvedAt: new Date().toISOString() } : r)) }))
+        get().logActivity('Approved requisition', req.number)
+      },
+
+      rejectRequisition: (id, approver, reason) => {
+        const req = get().requisitions.find((r) => r.id === id)
+        if (!req || req.status !== 'pending') return
+        set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'rejected', approvedBy: approver, rejectedReason: reason || '', approvedAt: new Date().toISOString() } : r)) }))
+        get().logActivity('Rejected requisition', req.number)
+      },
+
+      deleteRequisition: (id) =>
+        set((s) => ({ requisitions: s.requisitions.filter((r) => r.id !== id) })),
+
+      convertRequisitionToPO: (id) => {
+        const req = get().requisitions.find((r) => r.id === id)
+        if (!req || req.status !== 'approved') return null
+        const items = (req.items || []).map((i) => ({
+          description: i.description, quantity: i.quantity || 0, unitPrice: i.estPrice || 0,
+          taxRate: 0, subtotal: (i.quantity || 0) * (i.estPrice || 0), accountId: 'acc-admin',
+        }))
+        const subtotal = items.reduce((s, i) => s + i.subtotal, 0)
+        const po = get().addPurchaseOrder({
+          supplierId: req.supplierId || null, supplierName: req.supplierName || 'Supplier',
+          date: new Date().toISOString().slice(0, 10), deliveryDate: req.neededBy || '',
+          items, subtotal, taxAmount: 0, total: subtotal, notes: `From requisition ${req.number}`,
+        })
+        set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'ordered', purchaseOrderId: po.id } : r)) }))
+        get().logActivity('Requisition → PO', `${req.number} → ${po.number}`)
+        return po
+      },
+
       // ─── DELIVERY NOTES ────────────────────────────────────────────
       deliveryNotes: [],
 
@@ -1327,9 +1379,9 @@ export const useStore = create(
           'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
-          'deliveryNotes', 'currencies', 'auditLog',
+          'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 10, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 11, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -1379,7 +1431,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 10,
+      version: 11,
       storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {
        try {
@@ -1458,6 +1510,13 @@ export const useStore = create(
         }
         if (version < 10) {
           if (!persisted.auditLog) persisted.auditLog = []
+        }
+        if (version < 11) {
+          persisted.settings = {
+            ...persisted.settings,
+            requisition: persisted.settings?.requisition || { prefix: 'REQ-', next: 1 },
+          }
+          if (!persisted.requisitions) persisted.requisitions = []
         }
         return persisted
        } catch (e) {

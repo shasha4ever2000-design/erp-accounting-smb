@@ -49,6 +49,23 @@ export default function Dashboard() {
   const arBalance = accountBalance('acc-ar')
   const apBalance = accountBalance('acc-ap')
 
+  // Balance Sheet & P&L groupings (Manager-style summaries)
+  const groupBy = (type) => accounts
+    .filter((a) => a.type === type)
+    .map((a) => ({ ...a, balance: accountBalance(a.id) }))
+    .filter((a) => Math.abs(a.balance) > 0.009)
+  const assetAccs = useMemo(() => groupBy('asset'), [balances, accounts])
+  const liabAccs = useMemo(() => groupBy('liability'), [balances, accounts])
+  const equityAccs = useMemo(() => groupBy('equity'), [balances, accounts])
+  const revenueAccs = useMemo(() => groupBy('revenue'), [balances, accounts])
+  const expenseAccs = useMemo(() => groupBy('expense'), [balances, accounts])
+  const sumBal = (arr) => arr.reduce((s, a) => s + a.balance, 0)
+  const netProfit = totalRevenue - totalExpenses
+  const totalLiab = sumBal(liabAccs)
+  const totalEquityBase = sumBal(equityAccs)
+  const totalEquity = totalEquityBase + netProfit
+  const balanced = Math.abs(totalAssets - (totalLiab + totalEquity)) < 0.01
+
   const overdueInvoices = invoices.filter((i) => {
     if (i.status === 'paid') return false
     return i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10)
@@ -153,6 +170,40 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Balance Sheet (left) & Profit and Loss (right) — Manager-style summaries */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <Card className="overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Balance Sheet</h2>
+            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Full report →</button>
+          </div>
+          <div className="p-5 text-sm">
+            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" />
+            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" />
+            <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" />
+            <div className="flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-bold text-gray-900 dark:text-slate-100">
+              <span>Liabilities + Equity</span>
+              <span className={balanced ? '' : 'text-red-600'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Profit &amp; Loss</h2>
+            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Full report →</button>
+          </div>
+          <div className="p-5 text-sm">
+            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" />
+            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" />
+            <div className={`flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-black text-base ${netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
+              <span className="text-gray-900 dark:text-slate-100">Net {netProfit >= 0 ? 'Profit' : 'Loss'}</span>
+              <span>{fmtMoney(Math.abs(netProfit), sym)}</span>
+            </div>
+          </div>
+        </Card>
+      </div>
+
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue vs Expenses chart */}
         <Card className="xl:col-span-2 p-6">
@@ -247,6 +298,25 @@ export default function Dashboard() {
           </table>
         )}
       </Card>
+    </div>
+  )
+}
+
+function BSPLSection({ title, rows, total, sym, color }) {
+  return (
+    <div className="mb-4">
+      <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{title}</p>
+      {rows.length === 0 ? (
+        <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">None</p>
+      ) : rows.map((a) => (
+        <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
+          <span className="truncate pr-2">{a.name}</span>
+          <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
+        </div>
+      ))}
+      <div className="flex justify-between border-t border-gray-100 dark:border-slate-700 mt-1 pt-1 font-semibold text-gray-800 dark:text-slate-100">
+        <span>Total {title}</span><span>{fmtMoney(total, sym)}</span>
+      </div>
     </div>
   )
 }
