@@ -1,9 +1,10 @@
-import { useState } from 'react'
-import { NavLink } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
 import InstallButton from './InstallButton'
+import ErrorBoundary from './ErrorBoundary'
 import {
   LayoutDashboard, BookOpen, Users, FileText, ShoppingCart,
   Package, Landmark, BarChart3, Settings, Building2, TrendingUp,
@@ -73,6 +74,14 @@ export default function Layout({ children }) {
   const theme = useStore((s) => s.settings.theme || 'light')
   const setTheme = useStore((s) => s.setTheme)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [storageWarn, setStorageWarn] = useState(false)
+  const location = useLocation()
+
+  useEffect(() => {
+    const onErr = () => setStorageWarn(true)
+    window.addEventListener('erp-storage-error', onErr)
+    return () => window.removeEventListener('erp-storage-error', onErr)
+  }, [])
 
   const openPalette = () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
@@ -162,9 +171,19 @@ export default function Layout({ children }) {
           </button>
         </header>
 
+        {/* Storage-full warning */}
+        {storageWarn && (
+          <div className="no-print bg-amber-500 text-white text-sm px-4 py-2 flex items-center justify-between gap-3">
+            <span>⚠️ Your browser storage is full — recent changes may not be saved. Open <strong>Settings → Backup</strong> to download your data, then free up space.</span>
+            <button onClick={() => setStorageWarn(false)} className="font-bold px-2">✕</button>
+          </div>
+        )}
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="min-h-full p-6 lg:p-8">{children}</div>
+          <div className="min-h-full p-6 lg:p-8">
+            <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
+          </div>
         </main>
       </div>
 

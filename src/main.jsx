@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, HashRouter } from 'react-router-dom'
 import App from './App'
+import ErrorBoundary from './components/ErrorBoundary'
 import './index.css'
 
 // In the desktop (Electron) build the app is served from a local custom scheme,
@@ -15,7 +16,9 @@ const routerProps = isDesktop ? {} : { basename: '/erp-accounting-smb' }
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <Router {...routerProps}>
-      <App />
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
     </Router>
   </React.StrictMode>
 )

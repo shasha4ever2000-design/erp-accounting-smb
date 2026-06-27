@@ -1,6 +1,26 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
+
+// Quota-safe storage: never let a full localStorage throw and crash the app.
+const safeStorage = {
+  getItem: (name) => {
+    try { return localStorage.getItem(name) } catch { return null }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value)
+    } catch (e) {
+      console.warn('ERP: could not save to local storage (it may be full).', e)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erp-storage-error'))
+      }
+    }
+  },
+  removeItem: (name) => {
+    try { localStorage.removeItem(name) } catch { /* ignore */ }
+  },
+}
 
 const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
@@ -1345,7 +1365,9 @@ export const useStore = create(
     {
       name: 'erp-v1',
       version: 9,
+      storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {
+       try {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
           const newAccounts = DEFAULT_ACCOUNTS.filter((a) => !existingIds.has(a.id))
@@ -1420,6 +1442,10 @@ export const useStore = create(
           if (!persisted.currencies) persisted.currencies = []
         }
         return persisted
+       } catch (e) {
+        console.warn('ERP: data migration issue, continuing with existing data.', e)
+        return persisted
+       }
       },
     }
   )

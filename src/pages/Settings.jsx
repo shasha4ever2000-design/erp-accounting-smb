@@ -40,6 +40,14 @@ export default function Settings() {
     e.target.value = ''
   }
 
+  const storageKB = (() => {
+    try {
+      const v = localStorage.getItem('erp-v1') || ''
+      return Math.round(v.length / 1024)
+    } catch { return 0 }
+  })()
+  const storagePct = Math.min(100, Math.round((storageKB / 5120) * 100))
+
   const setZatcaField = (k, v) => setZatca((z) => ({ ...z, [k]: v }))
 
   const applySaudiPreset = () => {
@@ -322,6 +330,17 @@ export default function Settings() {
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
           </div>
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Backup files contain all invoices, transactions, customers, settings and more in one portable file.</p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
+              <span>Browser storage used</span>
+              <span>~{storageKB} KB of ~5,120 KB</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+              <div className={`h-full ${storagePct > 85 ? 'bg-red-500' : storagePct > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${storagePct}%` }} />
+            </div>
+            {storagePct > 85 && <p className="text-xs text-red-500 mt-1">Storage is nearly full — download a backup and consider removing your logo or old data.</p>}
+          </div>
         </Card>
 
         {/* Danger Zone */}
