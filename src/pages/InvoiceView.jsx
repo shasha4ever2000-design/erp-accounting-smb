@@ -87,7 +87,9 @@ export default function InvoiceView() {
         <Card className="p-8 print:shadow-none">
           {/* Header */}
           <div className="flex justify-between items-start mb-8">
-            <div>
+            <div className="flex items-start gap-4">
+              {company.logo && <img src={company.logo} alt="logo" className="h-16 w-auto object-contain" />}
+              <div>
               <h1 className="text-3xl font-bold text-gray-900">{company.name}</h1>
               {company.arabicName && <p className="text-xl font-bold text-gray-800" dir="rtl">{company.arabicName}</p>}
               {company.address && <p className="text-gray-500 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
@@ -97,9 +99,10 @@ export default function InvoiceView() {
                 ? <p className="text-gray-600 text-sm font-medium mt-1">VAT No · الرقم الضريبي: {zatca.vatNumber}</p>
                 : company.taxId && <p className="text-gray-400 text-sm">Tax ID: {company.taxId}</p>}
               {zatca.enabled && zatca.crNumber && <p className="text-gray-400 text-sm">CR · السجل التجاري: {zatca.crNumber}</p>}
+              </div>
             </div>
             <div className="text-right">
-              <p className="text-4xl font-black text-blue-600">INVOICE</p>
+              <p className="text-4xl font-black" style={{ color: company.accentColor || '#2563eb' }}>INVOICE</p>
               {zatca.enabled
                 ? <p className="text-sm font-semibold text-gray-600" dir="rtl">فاتورة ضريبية مبسطة</p>
                 : null}

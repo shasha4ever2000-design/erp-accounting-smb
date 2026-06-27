@@ -11,6 +11,7 @@ import {
   UserCheck, Building, DollarSign, Wrench, Sliders, Wallet,
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
+  Truck as TruckIcon, Coins,
 } from 'lucide-react'
 
 const NAV = [
@@ -30,6 +31,7 @@ const NAV = [
   { label: 'Quotations',         path: '/quotations',       icon: FileCheck },
   { label: 'Sales Invoices',     path: '/invoices',         icon: FileText },
   { label: 'Recurring Invoices', path: '/recurring-invoices', icon: Repeat },
+  { label: 'Delivery Notes',     path: '/delivery-notes',   icon: TruckIcon },
   { label: 'Credit Notes',       path: '/credit-notes',     icon: FileMinus },
 
   { divider: 'Purchases' },
@@ -60,6 +62,7 @@ const NAV = [
   { label: 'Payroll',            path: '/payroll',           icon: DollarSign },
 
   { divider: 'Reports & System' },
+  { label: 'Currencies',         path: '/currencies',        icon: Coins },
   { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
   { label: 'Settings',           path: '/settings',          icon: Settings },

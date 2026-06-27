@@ -41,6 +41,8 @@ import Statements from './pages/Statements'
 import Pipeline from './pages/Pipeline'
 import POS from './pages/POS'
 import Reconciliation from './pages/Reconciliation'
+import DeliveryNotes from './pages/DeliveryNotes'
+import Currencies from './pages/Currencies'
 
 export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
@@ -87,6 +89,7 @@ export default function App() {
         <Route path="/invoices/new" element={<InvoiceForm />} />
         <Route path="/invoices/:id" element={<InvoiceView />} />
         <Route path="/recurring-invoices" element={<RecurringInvoices />} />
+        <Route path="/delivery-notes" element={<DeliveryNotes />} />
         <Route path="/credit-notes" element={<CreditNotes />} />
 
         {/* Purchases */}
@@ -122,6 +125,7 @@ export default function App() {
         <Route path="/payroll" element={<Payroll />} />
 
         {/* Reports & System */}
+        <Route path="/currencies" element={<Currencies />} />
         <Route path="/statements" element={<Statements />} />
         <Route path="/reports" element={<Reports />} />
         <Route path="/settings" element={<Settings />} />

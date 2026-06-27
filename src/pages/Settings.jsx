@@ -28,6 +28,17 @@ export default function Settings() {
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
+  const logoRef = useRef(null)
+
+  const handleLogo = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 500 * 1024) return alert('Please use a logo under 500 KB.')
+    const reader = new FileReader()
+    reader.onload = (ev) => setCompany((c) => ({ ...c, logo: ev.target.result }))
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
 
   const setZatcaField = (k, v) => setZatca((z) => ({ ...z, [k]: v }))
 
@@ -225,6 +236,34 @@ export default function Settings() {
               <p>• Explain accounting concepts and double-entry bookkeeping</p>
               <p>• Guide you through ERP modules and workflows</p>
               <p>• Help with VAT calculations, payroll deductions, and more</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Invoice Branding */}
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Invoice Branding</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Company Logo</label>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50">
+                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No logo</span>}
+                </div>
+                <div className="space-y-2">
+                  <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>Upload Logo</Btn>
+                  {company.logo && <Btn size="sm" variant="ghost" onClick={() => setCompanyField('logo', '')}>Remove</Btn>}
+                  <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogo} className="hidden" />
+                  <p className="text-xs text-gray-400 dark:text-slate-500">PNG/JPG/SVG, under 500 KB. Appears on invoices &amp; delivery notes.</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Accent Color</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={company.accentColor || '#2563eb'} onChange={(e) => setCompanyField('accentColor', e.target.value)} className="w-12 h-9 rounded border border-gray-200 dark:border-slate-600 cursor-pointer" />
+                <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{company.accentColor || '#2563eb'}</span>
+              </div>
             </div>
           </div>
         </Card>

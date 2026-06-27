@@ -60,7 +60,7 @@ const DEFAULT_BANK_ACCOUNTS = [
 ]
 
 const DEFAULT_SETTINGS = {
-  company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01' },
+  company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
   tax:           { enabled: false, rate: 15, name: 'VAT' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30 },
@@ -82,6 +82,7 @@ const DEFAULT_SETTINGS = {
   workOrder:     { prefix: 'WO-',    next: 1 },
   project:       { prefix: 'PRJ-',   next: 1 },
   recurring:     { prefix: 'SUB-',   next: 1 },
+  delivery:      { prefix: 'DLV-',   next: 1 },
   theme:         'light',
 }
 
@@ -1151,6 +1152,43 @@ export const useStore = create(
         return created
       },
 
+      // ─── DELIVERY NOTES ────────────────────────────────────────────
+      deliveryNotes: [],
+
+      addDeliveryNote: (dn) => {
+        const s = get()
+        const { prefix, next } = s.settings.delivery
+        const number = nextNum(prefix, next)
+        const newDN = { ...dn, id: uuid(), number, status: dn.status || 'pending', createdAt: new Date().toISOString() }
+        set((st) => ({
+          deliveryNotes: [...st.deliveryNotes, newDN],
+          settings: { ...st.settings, delivery: { ...st.settings.delivery, next: next + 1 } },
+        }))
+        return newDN
+      },
+
+      updateDeliveryNote: (id, patch) =>
+        set((s) => ({ deliveryNotes: s.deliveryNotes.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+
+      deleteDeliveryNote: (id) =>
+        set((s) => ({ deliveryNotes: s.deliveryNotes.filter((d) => d.id !== id) })),
+
+      // ─── CURRENCIES & EXCHANGE RATES ───────────────────────────────
+      // rate = units of this currency per 1 unit of the base (company) currency
+      currencies: [],
+
+      addCurrency: (c) =>
+        set((s) => {
+          if (s.currencies.some((x) => x.code === c.code)) return s
+          return { currencies: [...s.currencies, { ...c, id: uuid(), rate: Number(c.rate) || 1, updatedAt: new Date().toISOString() }] }
+        }),
+
+      updateCurrency: (id, patch) =>
+        set((s) => ({ currencies: s.currencies.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c)) })),
+
+      deleteCurrency: (id) =>
+        set((s) => ({ currencies: s.currencies.filter((c) => c.id !== id) })),
+
       // ─── CRM · SALES PIPELINE ──────────────────────────────────────
       leads: [],
 
@@ -1254,8 +1292,9 @@ export const useStore = create(
           'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
+          'deliveryNotes', 'currencies',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 8, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 9, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -1305,7 +1344,7 @@ export const useStore = create(
     }),
     {
       name: 'erp-v1',
-      version: 8,
+      version: 9,
       migrate: (persisted, version) => {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
@@ -1367,6 +1406,18 @@ export const useStore = create(
         }
         if (version < 8) {
           if (!persisted.leads) persisted.leads = []
+        }
+        if (version < 9) {
+          persisted.settings = {
+            ...persisted.settings,
+            delivery: persisted.settings?.delivery || { prefix: 'DLV-', next: 1 },
+          }
+          if (persisted.settings.company) {
+            if (persisted.settings.company.logo === undefined) persisted.settings.company.logo = ''
+            if (persisted.settings.company.accentColor === undefined) persisted.settings.company.accentColor = '#2563eb'
+          }
+          if (!persisted.deliveryNotes) persisted.deliveryNotes = []
+          if (!persisted.currencies) persisted.currencies = []
         }
         return persisted
       },
