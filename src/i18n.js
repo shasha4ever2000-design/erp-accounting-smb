@@ -644,6 +644,18 @@ const AR = {
   // ── Print / PDF ──
   'Download PDF': 'تنزيل PDF', 'Back': 'رجوع',
 
+  // ── Bank statement import ──
+  'Import Statement (CSV)': 'استيراد كشف حساب (CSV)',
+  'Import Bank Statement': 'استيراد كشف الحساب البنكي',
+  'Upload a bank statement CSV to auto-match and clear transactions. Expected columns: Date, Description, Amount (or Debit/Credit).': 'ارفع ملف كشف حساب بنكي (CSV) لمطابقة المعاملات وتسويتها تلقائياً. الأعمدة المتوقعة: التاريخ، الوصف، المبلغ (أو مدين/دائن).',
+  'Could not detect Date and Amount columns. Expected headers like Date, Description, Amount (or Debit/Credit).': 'تعذّر اكتشاف عمودي التاريخ والمبلغ. الرؤوس المتوقعة مثل: التاريخ، الوصف، المبلغ (أو مدين/دائن).',
+  'Could not read this file.': 'تعذّرت قراءة هذا الملف.',
+  'matched to your ledger': 'تمت مطابقتها مع دفترك',
+  'not found in your books': 'غير موجودة في دفاترك',
+  'Unmatched statement lines': 'بنود الكشف غير المطابقة',
+  'Record these in the Banking module, then re-import to clear them.': 'سجّل هذه في وحدة البنوك، ثم أعد الاستيراد لتسويتها.',
+  'Clear matched transactions': 'تسوية المعاملات المطابقة',
+
   // ── Number format ──
   'Number Format': 'تنسيق الأرقام',
   'Western digits (0 1 2 3)': 'الأرقام الغربية (0 1 2 3)',
