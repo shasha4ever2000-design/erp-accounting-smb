@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { StatCard, Card, Badge } from '../components/UI'
+import { useT } from '../i18n'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
   FileText, ShoppingCart, Clock, DollarSign, ArrowRight,
@@ -15,6 +16,7 @@ import { format, subMonths, parseISO, isValid } from 'date-fns'
 export default function Dashboard() {
   const { invoices, purchases, accounts, getAllBalances, settings } = useStore()
   const sym = settings.company.currencySymbol
+  const t = useT()
 
   const balances = useMemo(() => getAllBalances(), [getAllBalances])
 
@@ -108,32 +110,32 @@ export default function Dashboard() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">Dashboard</h1>
-        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">Financial overview — {format(new Date(), 'MMMM d, yyyy')}</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('Dashboard')}</h1>
+        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{format(new Date(), 'MMMM d, yyyy')}</p>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
-          label="Total Revenue"
+          label={t('Total Revenue')}
           value={fmtMoney(totalRevenue, sym)}
           color="green"
           icon={<TrendingUp size={18} />}
         />
         <StatCard
-          label="Total Expenses"
+          label={t('Total Expenses')}
           value={fmtMoney(totalExpenses, sym)}
           color="red"
           icon={<TrendingDown size={18} />}
         />
         <StatCard
-          label="Net Profit"
+          label={t('Net Profit')}
           value={fmtMoney(totalRevenue - totalExpenses, sym)}
           color={totalRevenue - totalExpenses >= 0 ? 'blue' : 'orange'}
           icon={<DollarSign size={18} />}
         />
         <StatCard
-          label="Cash & Bank"
+          label={t('Cash & Bank')}
           value={fmtMoney(cashBalance, sym)}
           color="purple"
           icon={<DollarSign size={18} />}
@@ -142,28 +144,28 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
-          label="Accounts Receivable"
+          label={t('Accounts Receivable')}
           value={fmtMoney(arBalance, sym)}
-          sub="Amount owed to you"
+          sub={t('Amount owed to you')}
           color="blue"
           icon={<FileText size={18} />}
         />
         <StatCard
-          label="Accounts Payable"
+          label={t('Accounts Payable')}
           value={fmtMoney(apBalance, sym)}
-          sub="Amount you owe"
+          sub={t('Amount you owe')}
           color="orange"
           icon={<ShoppingCart size={18} />}
         />
         <StatCard
-          label="Overdue Invoices"
+          label={t('Overdue Invoices')}
           value={overdueInvoices.length}
           sub={overdueInvoices.length ? 'Require attention' : 'All clear'}
           color={overdueInvoices.length ? 'red' : 'green'}
           icon={<AlertCircle size={18} />}
         />
         <StatCard
-          label="Total Assets"
+          label={t('Total Assets')}
           value={fmtMoney(totalAssets, sym)}
           color="blue"
           icon={<CheckCircle2 size={18} />}
@@ -174,15 +176,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Balance Sheet</h2>
-            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Full report →</button>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Balance Sheet')}</h2>
+            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
             <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" />
             <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" />
             <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" />
             <div className="flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-bold text-gray-900 dark:text-slate-100">
-              <span>Liabilities + Equity</span>
+              <span>{t('Liabilities + Equity')}</span>
               <span className={balanced ? '' : 'text-red-600'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
             </div>
           </div>
@@ -190,14 +192,14 @@ export default function Dashboard() {
 
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Profit &amp; Loss</h2>
-            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">Full report →</button>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Profit & Loss')}</h2>
+            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
             <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" />
             <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" />
             <div className={`flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-black text-base ${netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
-              <span className="text-gray-900 dark:text-slate-100">Net {netProfit >= 0 ? 'Profit' : 'Loss'}</span>
+              <span className="text-gray-900 dark:text-slate-100">{netProfit >= 0 ? t('Net Profit') : t('Net Loss')}</span>
               <span>{fmtMoney(Math.abs(netProfit), sym)}</span>
             </div>
           </div>
@@ -232,7 +234,7 @@ export default function Dashboard() {
 
         {/* Quick links */}
         <Card className="p-5">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Quick Actions</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Quick Actions')}</h2>
           <div className="space-y-2">
             {[
               { label: 'New Sales Invoice', path: '/invoices/new', color: 'text-blue-600 dark:text-blue-400' },
@@ -258,9 +260,9 @@ export default function Dashboard() {
       {/* Recent Invoices */}
       <Card className="mt-6">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Recent Sales Invoices</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Recent Sales Invoices')}</h2>
           <button onClick={() => navigate('/invoices')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-            View all <ArrowRight size={13} />
+            {t('View all')} <ArrowRight size={13} />
           </button>
         </div>
         {recentInvoices.length === 0 ? (
@@ -303,9 +305,10 @@ export default function Dashboard() {
 }
 
 function BSPLSection({ title, rows, total, sym, color }) {
+  const t = useT()
   return (
     <div className="mb-4">
-      <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{title}</p>
+      <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{t(title)}</p>
       {rows.length === 0 ? (
         <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">None</p>
       ) : rows.map((a) => (
@@ -315,7 +318,7 @@ function BSPLSection({ title, rows, total, sym, color }) {
         </div>
       ))}
       <div className="flex justify-between border-t border-gray-100 dark:border-slate-700 mt-1 pt-1 font-semibold text-gray-800 dark:text-slate-100">
-        <span>Total {title}</span><span>{fmtMoney(total, sym)}</span>
+        <span>{t('Total')} {t(title)}</span><span>{fmtMoney(total, sym)}</span>
       </div>
     </div>
   )

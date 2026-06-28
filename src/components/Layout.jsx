@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
+import { useI18n, useT } from '../i18n'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
 import InstallButton from './InstallButton'
@@ -14,7 +15,7 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
-  PieChart, History, ClipboardCheck, UsersRound,
+  PieChart, History, ClipboardCheck, UsersRound, Globe,
 } from 'lucide-react'
 
 const NAV = [
@@ -79,6 +80,9 @@ export default function Layout({ children }) {
   const company = useStore((s) => s.settings.company)
   const theme = useStore((s) => s.settings.theme || 'light')
   const setTheme = useStore((s) => s.setTheme)
+  const t = useT()
+  const lang = useI18n((s) => s.lang)
+  const toggleLang = useI18n((s) => s.toggle)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [storageWarn, setStorageWarn] = useState(false)
   const location = useLocation()
@@ -116,7 +120,7 @@ export default function Layout({ children }) {
             if (item.divider) {
               return (
                 <p key={i} className="px-5 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
-                  {item.divider}
+                  {t(item.divider)}
                 </p>
               )
             }
@@ -136,7 +140,7 @@ export default function Layout({ children }) {
                 }
               >
                 <Icon size={15} className="flex-shrink-0" />
-                <span className="flex-1 truncate text-[13px]">{item.label}</span>
+                <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
               </NavLink>
             )
           })}
@@ -163,12 +167,19 @@ export default function Layout({ children }) {
             className="flex items-center gap-2 text-sm text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:border-gray-300 dark:hover:border-slate-600 transition-colors w-full max-w-xs"
           >
             <Search size={15} />
-            <span className="flex-1 text-left">Search…</span>
+            <span className="flex-1 text-left">{t('Search…')}</span>
             <kbd className="hidden sm:inline text-[10px] border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">⌘K</kbd>
           </button>
           <CompanySwitcher />
           <div className="flex-1" />
           <InstallButton />
+          <button
+            onClick={toggleLang}
+            className="flex items-center gap-1.5 p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+            title={lang === 'ar' ? 'English' : 'العربية'}
+          >
+            <Globe size={18} /><span className="hidden sm:inline">{lang === 'ar' ? 'EN' : 'ع'}</span>
+          </button>
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
@@ -223,6 +234,7 @@ function CompanySwitcher() {
   const [name, setName] = useState('')
   const ref = useOutside(() => setOpen(false))
   const current = companies.find((c) => c.id === currentCompanyId)
+  const t = useT()
 
   return (
     <div className="relative" ref={ref}>
@@ -233,7 +245,7 @@ function CompanySwitcher() {
       </button>
       {open && (
         <div className="absolute left-0 mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 py-1.5">
-          <p className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">Companies</p>
+          <p className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">{t('Companies')}</p>
           <div className="max-h-60 overflow-y-auto">
             {companies.map((c) => (
               <button key={c.id} onClick={() => switchCompany(c.id)} className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
@@ -249,9 +261,9 @@ function CompanySwitcher() {
                 <button onClick={() => name.trim() && createCompany(name.trim())} className="text-sm text-blue-600 font-medium">Add</button>
               </div>
             ) : (
-              <button onClick={() => setCreating(true)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><Plus size={15} /> New company</button>
+              <button onClick={() => setCreating(true)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><Plus size={15} /> {t('New company')}</button>
             )}
-            <button onClick={() => exitToCompanies()} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"><Building2 size={15} /> Manage companies…</button>
+            <button onClick={() => exitToCompanies()} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"><Building2 size={15} /> {t('Manage companies…')}</button>
           </div>
         </div>
       )}
@@ -264,6 +276,7 @@ function UserMenu() {
   const user = useAuth((s) => s.users.find((u) => u.id === s.currentUserId))
   const [open, setOpen] = useState(false)
   const ref = useOutside(() => setOpen(false))
+  const t = useT()
   const initials = (user?.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()
 
   return (
@@ -277,7 +290,7 @@ function UserMenu() {
             <p className="text-sm font-semibold text-gray-800 dark:text-slate-100 truncate">{user?.name}</p>
             <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{user?.email}</p>
           </div>
-          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><LogOut size={15} /> Log out</button>
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><LogOut size={15} /> {t('Log out')}</button>
         </div>
       )}
     </div>

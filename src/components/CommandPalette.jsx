@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, CornerDownLeft } from 'lucide-react'
+import { useT } from '../i18n'
 
 const COMMANDS = [
   { label: 'Dashboard', path: '/', group: 'Go to' },
@@ -53,6 +54,7 @@ const COMMANDS = [
 
 export default function CommandPalette() {
   const navigate = useNavigate()
+  const t = useT()
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [active, setActive] = useState(0)
@@ -113,7 +115,7 @@ export default function CommandPalette() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Search modules or actions…"
+            placeholder={t('Search modules or actions…')}
             className="flex-1 bg-transparent outline-none text-sm text-gray-800 dark:text-slate-100 placeholder-gray-400"
           />
           <kbd className="hidden sm:inline-block text-[10px] text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</kbd>
@@ -125,7 +127,7 @@ export default function CommandPalette() {
             lastGroup = cmd.group
             return (
               <div key={cmd.path + cmd.label}>
-                {showGroup && <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">{cmd.group}</p>}
+                {showGroup && <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">{t(cmd.group)}</p>}
                 <button
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(cmd)}
@@ -133,7 +135,7 @@ export default function CommandPalette() {
                     active === i ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700'
                   }`}
                 >
-                  <span>{cmd.label}</span>
+                  <span>{t(cmd.label)}</span>
                   {active === i && <CornerDownLeft size={14} className="opacity-80" />}
                 </button>
               </div>
