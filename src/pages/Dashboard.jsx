@@ -14,7 +14,7 @@ import {
 import { format, subMonths, parseISO, isValid } from 'date-fns'
 
 export default function Dashboard() {
-  const { invoices, purchases, accounts, getAllBalances, settings } = useStore()
+  const { invoices, purchases, accounts, getAllBalances, settings, recurringInvoices, leases } = useStore()
   const sym = settings.company.currencySymbol
   const t = useT()
 
@@ -93,6 +93,52 @@ export default function Dashboard() {
     }
     return months
   }, [invoices, purchases])
+
+  // 6-month projected cash position: opening cash + expected AR/AP due,
+  // recurring invoice inflows and active lease outflows.
+  const forecast = useMemo(() => {
+    const today = new Date()
+    const months = []
+    for (let i = 0; i < 6; i++) {
+      const d = new Date(today.getFullYear(), today.getMonth() + i, 1)
+      months.push({ key: format(d, 'yyyy-MM'), label: format(d, 'MMM'), inflow: 0, outflow: 0 })
+    }
+    const bucket = (dateStr) => {
+      if (!dateStr) return -1
+      const ym = String(dateStr).slice(0, 7)
+      if (ym < months[0].key) return 0 // overdue / due now → current month
+      return months.findIndex((m) => m.key === ym)
+    }
+    invoices.forEach((inv) => {
+      if (inv.status === 'paid' || inv.status === 'cancelled') return
+      const bal = (inv.total || 0) - (inv.amountPaid || 0)
+      const i = bucket(inv.dueDate || inv.date)
+      if (bal > 0 && i >= 0) months[i].inflow += bal
+    })
+    purchases.forEach((p) => {
+      if (p.status === 'paid') return
+      const bal = (p.total || 0) - (p.amountPaid || 0)
+      const i = bucket(p.dueDate || p.date)
+      if (bal > 0 && i >= 0) months[i].outflow += bal
+    })
+    recurringInvoices.forEach((r) => {
+      if (r.status !== 'active') return
+      const amt = r.total || 0
+      const mult = r.frequency === 'weekly' ? 4 : r.frequency === 'biweekly' ? 2 : r.frequency === 'quarterly' ? 1 / 3 : r.frequency === 'yearly' ? 1 / 12 : 1
+      months.forEach((m, i) => { if (i > 0) m.inflow += amt * mult })
+    })
+    leases.forEach((l) => {
+      if (l.status !== 'active') return
+      months.forEach((m, i) => { if (i > 0) m.outflow += (l.monthlyRent || 0) })
+    })
+    let running = cashBalance
+    return months.map((m) => {
+      running += m.inflow - m.outflow
+      return { month: m.label, Projected: Math.round(running) }
+    })
+  }, [invoices, purchases, recurringInvoices, leases, cashBalance])
+
+  const forecastLow = forecast.length ? Math.min(...forecast.map((f) => f.Projected)) : 0
 
   const statusBadge = (status) => {
     const map = {
@@ -256,6 +302,36 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Cash-flow forecast */}
+      <Card className="mt-6 p-6">
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Cash-Flow Forecast — Next 6 Months')}</h2>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{t('Projected from receivables, payables, recurring invoices and leases')}</p>
+          </div>
+          {forecastLow < 0 && (
+            <div className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2.5 py-1 rounded-full">
+              <AlertCircle size={13} /> {t('Projected cash shortfall')}: {fmtMoney(forecastLow, sym)}
+            </div>
+          )}
+        </div>
+        <ResponsiveContainer width="100%" height={220}>
+          <AreaChart data={forecast} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
+            <defs>
+              <linearGradient id="fc" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.18} />
+                <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
+            <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} />
+            <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2} />
+          </AreaChart>
+        </ResponsiveContainer>
+      </Card>
 
       {/* Recent Invoices */}
       <Card className="mt-6">

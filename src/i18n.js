@@ -582,6 +582,9 @@ const AR = {
   'Record Bank Transaction': 'تسجيل معاملة بنكية', 'View Reports': 'عرض التقارير',
   'Revenue vs Expenses — Last 6 Months': 'الإيرادات مقابل المصروفات — آخر 6 أشهر',
   'Require attention': 'تتطلب انتباهاً', 'All clear': 'كل شيء على ما يرام', 'None': 'لا شيء',
+  'Cash-Flow Forecast — Next 6 Months': 'توقعات التدفق النقدي — الأشهر الستة القادمة',
+  'Projected from receivables, payables, recurring invoices and leases': 'متوقعة من الذمم المدينة والدائنة والفواتير المتكررة وعقود الإيجار',
+  'Projected cash shortfall': 'عجز نقدي متوقع',
 
   // ── Reports tabs ──
   'Income Statement (P&L)': 'قائمة الدخل (الأرباح والخسائر)', 'Balance Sheet': 'الميزانية العمومية',
