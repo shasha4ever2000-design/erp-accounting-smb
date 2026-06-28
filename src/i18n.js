@@ -680,6 +680,11 @@ const AR = {
   'A different manager must approve (segregation of duties)': 'يجب أن يعتمدها مدير مختلف (الفصل بين المهام)',
   'Saved as Pending. Stock and the ledger only change once a different manager approves it.': 'يُحفظ كـ«قيد الانتظار». لا يتغيّر المخزون ولا القيود إلا بعد اعتماد مدير مختلف له.',
   'Submit for Approval': 'إرسال للاعتماد',
+  '— Expense / non-stock —': '— مصروف / غير مخزون —',
+  '— Service / non-stock —': '— خدمة / غير مخزون —',
+  'Received into stock (perpetual, weighted-average)': 'يُستلم في المخزون (مستمر، متوسط مرجح)',
+  'Issues stock & posts COGS at average cost': 'يصرف المخزون ويسجل تكلفة البضاعة بمتوسط التكلفة',
+  'Purchase': 'شراء',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 
   // ── Print / PDF ──

@@ -288,14 +288,54 @@ export const useStore = create(
           reference: number, type: 'invoice', lines,
         })
 
+        // Perpetual issue: reduce stock + post COGS at weighted-average cost for tracked lines.
+        const issue = {} // itemId -> qty
+        let cogs = 0
+        invoice.items.forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q <= 0) return
+          const it = get().inventoryItems.find((i) => i.id === line.itemId)
+          if (!it) return
+          issue[line.itemId] = (issue[line.itemId] || 0) + q
+          cogs += q * (it.costPrice || 0)
+        })
+        let cogsJeId = null
+        if (cogs > 0) {
+          const cje = get().addJournalEntry({
+            date: invoice.date, description: `Cost of Sales – ${number}`, reference: number, type: 'cogs',
+            lines: [
+              { accountId: 'acc-cogs', debit: cogs, credit: 0, description: 'Cost of goods sold' },
+              { accountId: 'acc-inv',  debit: 0,    credit: cogs, description: 'Inventory reduction' },
+            ],
+          })
+          cogsJeId = cje.id
+        }
+
         const newInvoice = {
           ...invoice, id: uuid(), number, status: 'sent', amountPaid: 0, payments: [],
-          journalEntryId: je.id, createdAt: new Date().toISOString(),
+          journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
         }
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
           invoices: [...st.invoices, newInvoice],
+          inventoryItems: st.inventoryItems.map((it) => {
+            const q = issue[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) - q }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) - q
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
           settings: { ...st.settings, invoice: { ...st.settings.invoice, next: next + 1 } },
         }))
+        Object.entries(issue).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: invoice.date, type: 'sale', qtyChange: -q, ref: number, note: `Sold to ${invoice.customerName || 'customer'}` })
+        })
         return newInvoice
       },
 
@@ -332,9 +372,29 @@ export const useStore = create(
       deleteInvoice: (id) => {
         const inv = get().invoices.find((i) => i.id === id)
         get().logActivity('Deleted invoice', inv?.number || id)
+        // Restore any stock issued by this invoice's tracked lines.
+        const restore = {}
+        ;(inv?.items || []).forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q > 0) restore[line.itemId] = (restore[line.itemId] || 0) + q
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((s) => ({
           invoices: s.invoices.filter((i) => i.id !== id),
-          journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId),
+          journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId && j.id !== inv?.cogsJournalEntryId),
+          stockMovements: s.stockMovements.filter((m) => m.ref !== inv?.number),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = restore[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) + q }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) + q
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
         }))
       },
 
@@ -469,10 +529,41 @@ export const useStore = create(
           ...purchase, id: uuid(), number, status: 'received', amountPaid: 0, payments: [],
           journalEntryId: je.id, createdAt: new Date().toISOString(),
         }
+
+        // Perpetual inventory: receive tracked lines into stock at weighted-average cost.
+        const recv = {} // itemId -> { qty, cost }
+        purchase.items.forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q <= 0) return
+          recv[line.itemId] = recv[line.itemId] || { qty: 0, cost: 0 }
+          recv[line.itemId].qty += q
+          recv[line.itemId].cost += line.subtotal || 0
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
           purchases: [...st.purchases, newPurchase],
+          inventoryItems: st.inventoryItems.map((it) => {
+            const u = recv[it.id]
+            if (!u) return it
+            const oldQty = it.quantity || 0
+            const newQty = oldQty + u.qty
+            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
+            const patch = { quantity: newQty, costPrice: newCost }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) + u.qty
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
           settings: { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } },
         }))
+        // Movement ledger entries for each received item.
+        Object.entries(recv).forEach(([itemId, u]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: purchase.date, type: 'purchase', qtyChange: u.qty, ref: number, note: `Received from ${purchase.supplierName || 'supplier'}` })
+        })
         return newPurchase
       },
 
@@ -512,9 +603,29 @@ export const useStore = create(
       deletePurchase: (id) => {
         const pur = get().purchases.find((p) => p.id === id)
         get().logActivity('Deleted purchase', pur?.number || id)
+        // Reverse any perpetual stock received by this purchase.
+        const recv = {}
+        ;(pur?.items || []).forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q > 0) recv[line.itemId] = (recv[line.itemId] || 0) + q
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((s) => ({
           purchases: s.purchases.filter((p) => p.id !== id),
           journalEntries: s.journalEntries.filter((j) => j.id !== pur?.journalEntryId),
+          stockMovements: s.stockMovements.filter((m) => m.ref !== pur?.number),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = recv[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) - q }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) - q
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
         }))
       },
 

@@ -8,11 +8,11 @@ import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 
 const EXPENSE_TYPES = ['asset', 'expense']
-const emptyLine = () => ({ id: uuid(), description: '', quantity: 1, unitPrice: 0, taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
+const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
 
 export default function PurchaseForm() {
   const navigate = useNavigate()
-  const { suppliers, accounts, settings, addPurchase } = useStore()
+  const { suppliers, accounts, inventoryItems, settings, addPurchase } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
@@ -43,6 +43,13 @@ export default function PurchaseForm() {
       items: f.items.map((line) => {
         if (line.id !== lineId) return line
         const updated = { ...line, [key]: value }
+        if (key === 'itemId' && value) {
+          const it = inventoryItems.find((i) => i.id === value)
+          if (it) {
+            if (!updated.description) updated.description = it.name
+            updated.accountId = it.inventoryAccountId || 'acc-inv'
+          }
+        }
         const qty = parseFloat(updated.quantity) || 0
         const price = parseFloat(updated.unitPrice) || 0
         const tax = parseFloat(updated.taxRate) || 0
@@ -105,9 +112,17 @@ export default function PurchaseForm() {
                 <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_80px_100px_80px_80px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                   <div className="space-y-1">
                     <Input value={line.description} onChange={(e) => updateLine(line.id, 'description', e.target.value)} placeholder="Item or expense description" />
-                    <Select value={line.accountId} onChange={(e) => updateLine(line.id, 'accountId', e.target.value)}>
-                      {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
-                    </Select>
+                    {inventoryItems.length > 0 && (
+                      <Select value={line.itemId} onChange={(e) => updateLine(line.id, 'itemId', e.target.value)}>
+                        <option value="">{t('— Expense / non-stock —')}</option>
+                        {inventoryItems.map((i) => <option key={i.id} value={i.id}>📦 {i.name}</option>)}
+                      </Select>
+                    )}
+                    {line.itemId
+                      ? <p className="text-[11px] text-blue-600 dark:text-blue-400 px-1">{t('Received into stock (perpetual, weighted-average)')}</p>
+                      : <Select value={line.accountId} onChange={(e) => updateLine(line.id, 'accountId', e.target.value)}>
+                          {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
+                        </Select>}
                   </div>
                   <Input type="number" min="0" step="0.01" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', e.target.value)} />
                   <Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(line.id, 'unitPrice', e.target.value)} />
