@@ -3,8 +3,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { exportCSV } from '../utils/csv'
-import { Plus, Pencil, Trash2, Users, Search, Download } from 'lucide-react'
+import ExportMenu from '../components/ExportMenu'
+import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
 
@@ -45,14 +45,14 @@ export default function Customers() {
     !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleExport = () => exportCSV('customers', customers, [
+  const exportCols = [
     { key: 'name', label: t('Name') },
     { key: 'email', label: t('Email') },
     { key: 'phone', label: t('Phone') },
     { key: 'taxId', label: t('Tax / VAT ID') },
     { key: 'address', label: t('Address') },
-    { key: 'balance', label: t('Balance'), map: (_, c) => getBalance(c.id).toFixed(2) },
-  ])
+    { key: 'balance', label: t('Balance'), right: true, map: (_, c) => getBalance(c.id).toFixed(2) },
+  ]
 
   return (
     <div>
@@ -61,9 +61,7 @@ export default function Customers() {
         subtitle={`${customers.length} ${t('customers')}`}
         action={
           <div className="flex items-center gap-2">
-            {customers.length > 0 && (
-              <Btn variant="secondary" onClick={handleExport}><Download size={15} /> {t('Export CSV')}</Btn>
-            )}
+            {customers.length > 0 && <ExportMenu filename="customers" title={t('Customers')} rows={customers} columns={exportCols} />}
             <Btn onClick={openNew}><Plus size={15} /> {t('New Customer')}</Btn>
           </div>
         }

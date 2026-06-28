@@ -642,6 +642,7 @@ const AR = {
 
   // ── CSV export ──
   'Export CSV': 'تصدير CSV', 'Export': 'تصدير',
+  'CSV (.csv)': 'CSV (.csv)', 'Excel (.xlsx)': 'إكسل (.xlsx)', 'PDF (.pdf)': 'PDF (.pdf)',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 
   // ── Print / PDF ──

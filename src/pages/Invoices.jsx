@@ -4,8 +4,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { exportCSV } from '../utils/csv'
-import { Plus, Search, FileText, Download } from 'lucide-react'
+import ExportMenu from '../components/ExportMenu'
+import { Plus, Search, FileText } from 'lucide-react'
 
 export default function Invoices() {
   const { invoices, settings } = useStore()
@@ -38,16 +38,16 @@ export default function Invoices() {
     paid: invoices.filter((i) => i.status === 'paid').length,
   }
 
-  const handleExport = () => exportCSV('sales-invoices', sorted, [
+  const exportCols = [
     { key: 'number', label: t('Invoice #') },
     { key: 'customerName', label: t('Customer') },
     { key: 'date', label: t('Date') },
     { key: 'dueDate', label: t('Due') },
-    { key: 'total', label: t('Total') },
-    { key: 'amountPaid', label: t('Paid') },
-    { key: 'balance', label: t('Balance'), map: (_, inv) => (inv.total - inv.amountPaid).toFixed(2) },
+    { key: 'total', label: t('Total'), right: true },
+    { key: 'amountPaid', label: t('Paid'), right: true },
+    { key: 'balance', label: t('Balance'), right: true, map: (_, inv) => (inv.total - inv.amountPaid).toFixed(2) },
     { key: 'status', label: t('Status') },
-  ])
+  ]
 
   return (
     <div>
@@ -56,11 +56,7 @@ export default function Invoices() {
         subtitle={`${invoices.length} ${t('invoices')} ${t('total')}`}
         action={
           <div className="flex items-center gap-2">
-            {invoices.length > 0 && (
-              <Btn variant="secondary" onClick={handleExport}>
-                <Download size={15} /> {t('Export CSV')}
-              </Btn>
-            )}
+            {invoices.length > 0 && <ExportMenu filename="sales-invoices" title={t('Sales Invoices')} rows={sorted} columns={exportCols} />}
             <Btn onClick={() => navigate('/invoices/new')}>
               <Plus size={15} /> {t('New Invoice')}
             </Btn>

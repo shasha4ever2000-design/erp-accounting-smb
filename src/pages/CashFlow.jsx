@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
-import { exportCSV } from '../utils/csv'
+import ExportMenu from '../components/ExportMenu'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import { ArrowLeftRight, ArrowRight, Trash2, Landmark, Download, TrendingUp, TrendingDown, Wallet, CalendarClock, Play, Pause, CreditCard } from 'lucide-react'
 
@@ -109,14 +109,14 @@ export default function CashFlow() {
   const handleDeleteSchedule = (sc) => { if (confirm('Delete this scheduled transfer?')) deleteScheduledTransfer(sc.id) }
   const sortedSchedules = [...scheduledTransfers].sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || ''))
 
-  const exportMovements = () => exportCSV(`cash-movements-${from}_${to}`, movements, [
+  const movementCols = [
     { key: 'date', label: t('Date') },
     { key: 'desc', label: t('Description') },
     { key: 'account', label: t('Account') },
     { key: 'ref', label: t('Ref') },
-    { key: 'in', label: t('Money In'), map: (_, m) => (m.amount > 0 ? m.amount.toFixed(2) : '') },
-    { key: 'out', label: t('Money Out'), map: (_, m) => (m.amount < 0 ? Math.abs(m.amount).toFixed(2) : '') },
-  ])
+    { key: 'in', label: t('Money In'), right: true, map: (_, m) => (m.amount > 0 ? m.amount.toFixed(2) : '') },
+    { key: 'out', label: t('Money Out'), right: true, map: (_, m) => (m.amount < 0 ? Math.abs(m.amount).toFixed(2) : '') },
+  ]
 
   const fromBal = getBalance(form.fromAccountId)
 
@@ -234,7 +234,7 @@ export default function CashFlow() {
       <Card>
         <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2"><Landmark size={15} className="text-gray-400" /> {t('Cash Movements')}</h3>
-          {movements.length > 0 && <Btn size="sm" variant="secondary" onClick={exportMovements}><Download size={13} /> {t('Export CSV')}</Btn>}
+          {movements.length > 0 && <ExportMenu size="sm" filename={`cash-movements-${from}_${to}`} title={t('Cash Movements')} subtitle={`${fmtDate(from)} — ${fmtDate(to)}`} rows={movements} columns={movementCols} />}
         </div>
         {movements.length === 0 ? (
           <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No cash movements in this period')}</div>

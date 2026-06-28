@@ -4,8 +4,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { exportCSV } from '../utils/csv'
-import { Plus, Search, DollarSign, Trash2, Download } from 'lucide-react'
+import ExportMenu from '../components/ExportMenu'
+import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
 import { today } from '../utils/formatters'
 
 export default function Purchases() {
@@ -63,16 +63,16 @@ export default function Purchases() {
     paid: purchases.filter((p) => p.status === 'paid').length,
   }
 
-  const handleExport = () => exportCSV('purchase-invoices', sorted, [
+  const exportCols = [
     { key: 'number', label: t('Invoice #') },
     { key: 'supplierName', label: t('Supplier') },
     { key: 'supplierRef', label: t('Ref') },
     { key: 'date', label: t('Date') },
     { key: 'dueDate', label: t('Due') },
-    { key: 'total', label: t('Total') },
-    { key: 'balance', label: t('Balance'), map: (_, p) => (p.total - p.amountPaid).toFixed(2) },
+    { key: 'total', label: t('Total'), right: true },
+    { key: 'balance', label: t('Balance'), right: true, map: (_, p) => (p.total - p.amountPaid).toFixed(2) },
     { key: 'status', label: t('Status') },
-  ])
+  ]
 
   return (
     <div>
@@ -81,9 +81,7 @@ export default function Purchases() {
         subtitle={`${purchases.length} ${t('purchase invoices')}`}
         action={
           <div className="flex items-center gap-2">
-            {purchases.length > 0 && (
-              <Btn variant="secondary" onClick={handleExport}><Download size={15} /> {t('Export CSV')}</Btn>
-            )}
+            {purchases.length > 0 && <ExportMenu filename="purchase-invoices" title={t('Purchase Invoices')} rows={sorted} columns={exportCols} />}
             <Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>
           </div>
         }

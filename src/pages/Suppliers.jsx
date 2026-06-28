@@ -3,8 +3,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { exportCSV } from '../utils/csv'
-import { Plus, Pencil, Trash2, Search, Download } from 'lucide-react'
+import ExportMenu from '../components/ExportMenu'
+import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
 
@@ -45,14 +45,14 @@ export default function Suppliers() {
     !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.email || '').toLowerCase().includes(search.toLowerCase())
   )
 
-  const handleExport = () => exportCSV('suppliers', suppliers, [
+  const exportCols = [
     { key: 'name', label: t('Name') },
     { key: 'email', label: t('Email') },
     { key: 'phone', label: t('Phone') },
     { key: 'taxId', label: t('Tax / VAT ID') },
     { key: 'address', label: t('Address') },
-    { key: 'balance', label: t('Balance'), map: (_, s) => getBalance(s.id).toFixed(2) },
-  ])
+    { key: 'balance', label: t('Balance'), right: true, map: (_, s) => getBalance(s.id).toFixed(2) },
+  ]
 
   return (
     <div>
@@ -61,9 +61,7 @@ export default function Suppliers() {
         subtitle={`${suppliers.length} ${t('suppliers')}`}
         action={
           <div className="flex items-center gap-2">
-            {suppliers.length > 0 && (
-              <Btn variant="secondary" onClick={handleExport}><Download size={15} /> {t('Export CSV')}</Btn>
-            )}
+            {suppliers.length > 0 && <ExportMenu filename="suppliers" title={t('Suppliers')} rows={suppliers} columns={exportCols} />}
             <Btn onClick={openNew}><Plus size={15} /> {t('New Supplier')}</Btn>
           </div>
         }
