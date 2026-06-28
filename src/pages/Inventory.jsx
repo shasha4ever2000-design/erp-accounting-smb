@@ -3,7 +3,8 @@ import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
+import { exportCSV } from '../utils/csv'
+import { Plus, Pencil, Trash2, Search, Package, Download } from 'lucide-react'
 
 const emptyForm = {
   name: '', code: '', description: '', unit: 'pcs',
@@ -56,12 +57,29 @@ export default function Inventory() {
   const totalValue = inventoryItems.reduce((s, i) => s + (i.quantity || 0) * (i.costPrice || 0), 0)
   const lowStock = inventoryItems.filter((i) => (i.reorderLevel || 0) > 0 && (i.quantity || 0) <= (i.reorderLevel || 0))
 
+  const handleExport = () => exportCSV('inventory', inventoryItems, [
+    { key: 'code', label: t('Code') },
+    { key: 'name', label: t('Item Name') },
+    { key: 'unit', label: t('Unit') },
+    { key: 'costPrice', label: t('Cost Price') },
+    { key: 'salePrice', label: t('Sale Price') },
+    { key: 'quantity', label: t('Qty on Hand') },
+    { key: 'stockValue', label: t('Stock Value'), map: (_, i) => ((i.quantity || 0) * (i.costPrice || 0)).toFixed(2) },
+  ])
+
   return (
     <div>
       <PageHeader
         title={t('Inventory Items')}
         subtitle={`${inventoryItems.length} ${t('items')} • ${fmtMoney(totalValue, sym)} ${t('total value')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Item')}</Btn>}
+        action={
+          <div className="flex items-center gap-2">
+            {inventoryItems.length > 0 && (
+              <Btn variant="secondary" onClick={handleExport}><Download size={15} /> {t('Export CSV')}</Btn>
+            )}
+            <Btn onClick={openNew}><Plus size={15} /> {t('New Item')}</Btn>
+          </div>
+        }
       />
 
       {lowStock.length > 0 && (

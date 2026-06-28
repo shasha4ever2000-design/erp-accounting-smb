@@ -4,7 +4,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
+import { exportCSV } from '../utils/csv'
+import { Plus, Search, DollarSign, Trash2, Download } from 'lucide-react'
 import { today } from '../utils/formatters'
 
 export default function Purchases() {
@@ -62,12 +63,30 @@ export default function Purchases() {
     paid: purchases.filter((p) => p.status === 'paid').length,
   }
 
+  const handleExport = () => exportCSV('purchase-invoices', sorted, [
+    { key: 'number', label: t('Invoice #') },
+    { key: 'supplierName', label: t('Supplier') },
+    { key: 'supplierRef', label: t('Ref') },
+    { key: 'date', label: t('Date') },
+    { key: 'dueDate', label: t('Due') },
+    { key: 'total', label: t('Total') },
+    { key: 'balance', label: t('Balance'), map: (_, p) => (p.total - p.amountPaid).toFixed(2) },
+    { key: 'status', label: t('Status') },
+  ])
+
   return (
     <div>
       <PageHeader
         title={t('Purchase Invoices')}
         subtitle={`${purchases.length} ${t('purchase invoices')}`}
-        action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>}
+        action={
+          <div className="flex items-center gap-2">
+            {purchases.length > 0 && (
+              <Btn variant="secondary" onClick={handleExport}><Download size={15} /> {t('Export CSV')}</Btn>
+            )}
+            <Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>
+          </div>
+        }
       />
 
       <div className="flex gap-2 mb-5 flex-wrap">

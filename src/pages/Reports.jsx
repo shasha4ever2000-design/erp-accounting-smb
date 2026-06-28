@@ -3,6 +3,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
+import { exportCSV } from '../utils/csv'
+import { Download } from 'lucide-react'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 
@@ -568,6 +570,53 @@ export default function Reports() {
     )
   }
 
+  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap'].includes(report)
+
+  const exportReportCSV = () => {
+    if (report === 'tb') {
+      const rows = accounts.map((a) => {
+        const b = allBalances[a.id] || { dr: 0, cr: 0 }
+        return { code: a.code, name: a.name, netDr: b.dr > b.cr ? b.dr - b.cr : 0, netCr: b.cr > b.dr ? b.cr - b.dr : 0 }
+      }).filter((r) => r.netDr || r.netCr)
+      exportCSV(`trial-balance-${endDate}`, rows, [
+        { key: 'code', label: t('Code') }, { key: 'name', label: t('Account') },
+        { key: 'netDr', label: t('Debit'), map: (v) => v ? Number(v).toFixed(2) : '' },
+        { key: 'netCr', label: t('Credit'), map: (v) => v ? Number(v).toFixed(2) : '' },
+      ])
+    } else if (report === 'pl') {
+      const mk = (type, lbl) => accounts.filter((a) => a.type === type).map((a) => ({ type: lbl, name: a.name, balance: accountBalance(a.id, balances) })).filter((a) => a.balance)
+      const rows = [...mk('revenue', t('Revenue')), ...mk('expense', t('Expense'))]
+      exportCSV(`income-statement-${startDate}_${endDate}`, rows, [
+        { key: 'type', label: t('Type') }, { key: 'name', label: t('Account') },
+        { key: 'balance', label: t('Amount'), map: (v) => Number(v).toFixed(2) },
+      ])
+    } else if (report === 'bs') {
+      const mk = (type, lbl) => accounts.filter((a) => a.type === type).map((a) => ({ section: lbl, name: a.name, balance: accountBalance(a.id, allBalances) })).filter((a) => a.balance)
+      const rows = [...mk('asset', t('Assets')), ...mk('liability', t('Liabilities')), ...mk('equity', t('Equity'))]
+      exportCSV(`balance-sheet-${endDate}`, rows, [
+        { key: 'section', label: t('Section') }, { key: 'name', label: t('Account') },
+        { key: 'balance', label: t('Amount'), map: (v) => Number(v).toFixed(2) },
+      ])
+    } else if (report === 'ar' || report === 'ap') {
+      const src = report === 'ar'
+        ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
+        : purchases.filter((p) => p.status !== 'paid')
+      const todayStr = new Date().toISOString().slice(0, 10)
+      const rows = src.map((d) => {
+        const due = d.dueDate || d.date
+        const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
+        return { number: d.number, party: report === 'ar' ? d.customerName : d.supplierName, due, days: days > 0 ? days : 0, amt: d.total - d.amountPaid }
+      }).sort((a, b) => b.days - a.days)
+      exportCSV(`${report}-aging-${todayStr}`, rows, [
+        { key: 'number', label: t('Invoice #') },
+        { key: 'party', label: report === 'ar' ? t('Customer') : t('Supplier') },
+        { key: 'due', label: t('Due') },
+        { key: 'days', label: t('Days Overdue') },
+        { key: 'amt', label: t('Balance'), map: (v) => Number(v).toFixed(2) },
+      ])
+    }
+  }
+
   return (
     <div>
       <PageHeader title="Financial Reports" subtitle="Powered by double-entry bookkeeping" />
@@ -583,7 +632,10 @@ export default function Reports() {
           </div>
           <Input label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
           <Input label="To" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
-          <Btn variant="secondary" onClick={() => window.print()}>Print / Export</Btn>
+          {canExport && (
+            <Btn variant="secondary" onClick={exportReportCSV}><Download size={15} /> {t('Export CSV')}</Btn>
+          )}
+          <Btn variant="secondary" onClick={() => window.print()}>{t('Print / Export')}</Btn>
         </div>
       </Card>
 

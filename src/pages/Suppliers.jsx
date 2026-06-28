@@ -3,7 +3,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
-import { Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { exportCSV } from '../utils/csv'
+import { Plus, Pencil, Trash2, Search, Download } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
 
@@ -44,12 +45,28 @@ export default function Suppliers() {
     !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.email || '').toLowerCase().includes(search.toLowerCase())
   )
 
+  const handleExport = () => exportCSV('suppliers', suppliers, [
+    { key: 'name', label: t('Name') },
+    { key: 'email', label: t('Email') },
+    { key: 'phone', label: t('Phone') },
+    { key: 'taxId', label: t('Tax / VAT ID') },
+    { key: 'address', label: t('Address') },
+    { key: 'balance', label: t('Balance'), map: (_, s) => getBalance(s.id).toFixed(2) },
+  ])
+
   return (
     <div>
       <PageHeader
         title={t('Suppliers')}
         subtitle={`${suppliers.length} ${t('suppliers')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Supplier')}</Btn>}
+        action={
+          <div className="flex items-center gap-2">
+            {suppliers.length > 0 && (
+              <Btn variant="secondary" onClick={handleExport}><Download size={15} /> {t('Export CSV')}</Btn>
+            )}
+            <Btn onClick={openNew}><Plus size={15} /> {t('New Supplier')}</Btn>
+          </div>
+        }
       />
 
       <div className="relative mb-5 max-w-sm">

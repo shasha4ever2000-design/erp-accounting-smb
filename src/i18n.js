@@ -636,6 +636,10 @@ const AR = {
   'Add some invoices and purchases to see charts and insights here.': 'أضف بعض الفواتير والمشتريات لرؤية الرسوم البيانية والتحليلات هنا.',
   'No foreign currencies yet. Add one above, or click a suggestion.': 'لا توجد عملات أجنبية بعد. أضف واحدة أعلاه، أو انقر على اقتراح.',
   'Transactions — tick each one that appears on your bank statement': 'المعاملات — ضع علامة على كل معاملة تظهر في كشف حسابك البنكي',
+
+  // ── CSV export ──
+  'Export CSV': 'تصدير CSV', 'Export': 'تصدير',
+  'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 }
 
 export const useI18n = create(
