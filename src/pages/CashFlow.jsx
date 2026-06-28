@@ -3,15 +3,23 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { exportCSV } from '../utils/csv'
-import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, StatCard, EmptyState, Table, Tr, Td } from '../components/UI'
-import { ArrowLeftRight, ArrowRight, Trash2, Landmark, Download, TrendingUp, TrendingDown, Wallet } from 'lucide-react'
+import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
+import { ArrowLeftRight, ArrowRight, Trash2, Landmark, Download, TrendingUp, TrendingDown, Wallet, CalendarClock, Play, Pause, CreditCard } from 'lucide-react'
+
+const FREQ_LABELS = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
 
 export default function CashFlow() {
   const t = useT()
-  const { bankAccounts, accounts, journalEntries, bankTransfers, getAllBalances, addBankTransfer, deleteBankTransfer, settings } = useStore()
+  const {
+    bankAccounts, accounts, journalEntries, bankTransfers, getAllBalances, addBankTransfer, deleteBankTransfer,
+    scheduledTransfers, addScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, postScheduledTransfer, settings,
+  } = useStore()
   const sym = settings.company.currencySymbol
+  const todayStr = today()
 
   const bankAccIds = bankAccounts.map((b) => b.accountId)
+  // Liability accounts that can be a transfer endpoint (credit cards, loans, overdrafts)
+  const liabilityXfer = accounts.filter((a) => a.type === 'liability' && (['acc-creditcard', 'acc-loan'].includes(a.id) || /credit card|loan|overdraft|line of credit/i.test(a.name)))
   const balances = getAllBalances()
   const getBalance = (accId) => {
     const b = balances[accId]
@@ -69,6 +77,37 @@ export default function CashFlow() {
   const handleDelete = (tf) => { if (confirm('Delete this transfer?')) deleteBankTransfer(tf.id) }
 
   const sortedTransfers = [...bankTransfers].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''))
+
+  // Endpoint <option>s grouped into Cash & Bank and Credit Cards & Loans.
+  const accountOptions = (
+    <>
+      <optgroup label={t('Cash & Bank')}>
+        {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
+      </optgroup>
+      {liabilityXfer.length > 0 && (
+        <optgroup label={t('Credit Cards & Loans')}>
+          {liabilityXfer.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+        </optgroup>
+      )}
+    </>
+  )
+
+  // ─── Scheduled transfers ───────────────────────────────────────
+  const emptySched = () => ({ fromAccountId: bankAccIds[0] || '', toAccountId: bankAccIds[1] || bankAccIds[0] || '', amount: '', fee: '', feeAccountId: defaultFee, frequency: 'monthly', nextDate: todayStr, reference: '', notes: '' })
+  const [schedModal, setSchedModal] = useState(false)
+  const [schedForm, setSchedForm] = useState(emptySched())
+  const setSched = (k, v) => setSchedForm((f) => ({ ...f, [k]: v }))
+
+  const handleSaveSchedule = () => {
+    const amount = parseFloat(schedForm.amount)
+    if (!amount || amount <= 0) return alert('Enter a valid amount.')
+    if (schedForm.fromAccountId === schedForm.toAccountId) return alert('Source and destination must differ.')
+    addScheduledTransfer({ ...schedForm, amount, fee: parseFloat(schedForm.fee) || 0 })
+    setSchedModal(false)
+    setSchedForm(emptySched())
+  }
+  const handleDeleteSchedule = (sc) => { if (confirm('Delete this scheduled transfer?')) deleteScheduledTransfer(sc.id) }
+  const sortedSchedules = [...scheduledTransfers].sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || ''))
 
   const exportMovements = () => exportCSV(`cash-movements-${from}_${to}`, movements, [
     { key: 'date', label: t('Date') },
@@ -145,6 +184,52 @@ export default function CashFlow() {
         )}
       </Card>
 
+      {/* Scheduled transfers */}
+      <Card className="mb-6">
+        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2"><CalendarClock size={15} className="text-gray-400" /> {t('Scheduled Transfers')}</h3>
+          <Btn size="sm" variant="secondary" onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={13} /> {t('New Scheduled Transfer')}</Btn>
+        </div>
+        {sortedSchedules.length === 0 ? (
+          <EmptyState icon="📅" title={t('No scheduled transfers')} desc={t('Automate recurring sweeps — e.g. a monthly transfer to savings or a card payment.')} action={<Btn onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={14} /> {t('New Scheduled Transfer')}</Btn>} />
+        ) : (
+          <Table headers={[t('From'), '', t('To'), { label: t('Amount'), right: true }, t('Frequency'), t('Next Date'), { label: '', right: true }]}>
+            {sortedSchedules.map((sc) => {
+              const due = sc.active && sc.nextDate <= todayStr
+              return (
+                <Tr key={sc.id} className={!sc.active ? 'opacity-50' : ''}>
+                  <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(sc.fromAccountId)}</Td>
+                  <Td className="text-gray-300 dark:text-slate-600"><ArrowRight size={14} /></Td>
+                  <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(sc.toAccountId)}</Td>
+                  <Td right className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(sc.amount, sym)}{sc.fee > 0 ? <span className="text-xs text-gray-400"> +{fmtMoney(sc.fee, sym)}</span> : null}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{t(FREQ_LABELS[sc.frequency] || sc.frequency)}</Td>
+                  <Td>
+                    <span className="flex items-center gap-2">
+                      <span className={due ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}>{fmtDate(sc.nextDate)}</span>
+                      {due && <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{t('Due')}</Badge>}
+                      {!sc.active && <Badge className="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">{t('Paused')}</Badge>}
+                    </span>
+                  </Td>
+                  <Td right>
+                    <div className="flex items-center justify-end gap-1">
+                      {sc.active && (
+                        <Btn size="sm" variant={due ? 'success' : 'ghost'} onClick={() => postScheduledTransfer(sc.id)} title={t('Post now')}>
+                          <Play size={13} /> {due ? t('Post now') : ''}
+                        </Btn>
+                      )}
+                      <Btn size="sm" variant="ghost" onClick={() => updateScheduledTransfer(sc.id, { active: !sc.active })} title={sc.active ? t('Pause') : t('Resume')}>
+                        {sc.active ? <Pause size={13} className="text-amber-500" /> : <Play size={13} className="text-green-600" />}
+                      </Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => handleDeleteSchedule(sc)}><Trash2 size={13} className="text-red-400" /></Btn>
+                    </div>
+                  </Td>
+                </Tr>
+              )
+            })}
+          </Table>
+        )}
+      </Card>
+
       {/* Cash movements ledger */}
       <Card>
         <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
@@ -174,10 +259,10 @@ export default function CashFlow() {
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <Select label={t('From Account')} value={form.fromAccountId} onChange={(e) => setField('fromAccountId', e.target.value)}>
-              {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
+              {accountOptions}
             </Select>
             <Select label={t('To Account')} value={form.toAccountId} onChange={(e) => setField('toAccountId', e.target.value)}>
-              {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
+              {accountOptions}
             </Select>
           </div>
           <div className="bg-gray-50 dark:bg-slate-700/40 rounded-lg p-2.5 text-sm text-gray-600 dark:text-slate-300 flex justify-between">
@@ -208,6 +293,37 @@ export default function CashFlow() {
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleTransfer}><ArrowLeftRight size={15} /> {t('Transfer Funds')}</Btn>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Scheduled transfer modal */}
+      <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('New Scheduled Transfer')}>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-3">
+            <Select label={t('From Account')} value={schedForm.fromAccountId} onChange={(e) => setSched('fromAccountId', e.target.value)}>
+              {accountOptions}
+            </Select>
+            <Select label={t('To Account')} value={schedForm.toAccountId} onChange={(e) => setSched('toAccountId', e.target.value)}>
+              {accountOptions}
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={schedForm.amount} onChange={(e) => setSched('amount', e.target.value)} />
+            <Input label={`${t('Bank Fee')} (${sym})`} type="number" min="0" step="0.01" value={schedForm.fee} onChange={(e) => setSched('fee', e.target.value)} placeholder="0.00" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Select label={t('Frequency')} value={schedForm.frequency} onChange={(e) => setSched('frequency', e.target.value)}>
+              {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
+            </Select>
+            <Input label={t('Next Date')} type="date" value={schedForm.nextDate} onChange={(e) => setSched('nextDate', e.target.value)} />
+          </div>
+          <Input label={t('Reference')} value={schedForm.reference} onChange={(e) => setSched('reference', e.target.value)} placeholder={t('Transfer ref, cheque #...')} />
+          <Textarea label={t('Notes')} value={schedForm.notes} onChange={(e) => setSched('notes', e.target.value)} rows={2} placeholder={t('Optional note for this transfer')} />
+          <p className="text-xs text-gray-400 dark:text-slate-500">{t('Nothing posts automatically — due transfers appear here with a “Post now” button.')}</p>
+          <div className="flex justify-end gap-2 pt-1">
+            <Btn variant="secondary" onClick={() => setSchedModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleSaveSchedule}><CalendarClock size={15} /> {t('Save Schedule')}</Btn>
           </div>
         </div>
       </Modal>

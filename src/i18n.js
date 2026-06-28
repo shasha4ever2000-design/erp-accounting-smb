@@ -663,6 +663,14 @@ const AR = {
   'Transfer ref, cheque #...': 'مرجع التحويل، رقم الشيك...',
   'Optional note for this transfer': 'ملاحظة اختيارية لهذا التحويل',
   'Notes': 'ملاحظات', 'Bank Charges': 'رسوم بنكية',
+  'Cash & Bank': 'النقد والبنوك', 'Credit Cards & Loans': 'البطاقات الائتمانية والقروض', 'Credit Card': 'بطاقة ائتمان',
+  'Scheduled Transfers': 'التحويلات المجدولة', 'New Scheduled Transfer': 'تحويل مجدول جديد',
+  'No scheduled transfers': 'لا توجد تحويلات مجدولة',
+  'Automate recurring sweeps — e.g. a monthly transfer to savings or a card payment.': 'أتمتة التحويلات المتكررة — مثل تحويل شهري إلى المدخرات أو سداد بطاقة.',
+  'Frequency': 'التكرار', 'Next Date': 'التاريخ التالي', 'Due': 'مستحق', 'Paused': 'متوقف مؤقتاً',
+  'Post now': 'سجّل الآن', 'Save Schedule': 'حفظ الجدول',
+  'Nothing posts automatically — due transfers appear here with a “Post now” button.': 'لا يُسجَّل شيء تلقائياً — تظهر التحويلات المستحقة هنا مع زر «سجّل الآن».',
+  'Weekly': 'أسبوعي', 'Every 2 weeks': 'كل أسبوعين', 'Monthly': 'شهري', 'Quarterly': 'ربع سنوي', 'Yearly': 'سنوي',
 
   // ── Bank statement import ──
   'Import Statement (CSV)': 'استيراد كشف حساب (CSV)',

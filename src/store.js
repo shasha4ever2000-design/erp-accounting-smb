@@ -49,6 +49,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-expclaim',code:'2210', name: 'Employee Expense Claims',    type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-accrued',code: '2300', name: 'Accrued Expenses',           type: 'liability', subtype: 'current',     isSystem: false },
   // LIABILITIES – Non-Current
+  { id: 'acc-creditcard',code:'2410', name: 'Credit Card',             type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-loan',   code: '2400', name: 'Bank Loan',                  type: 'liability', subtype: 'non_current', isSystem: false },
   { id: 'acc-leasepay',code:'2500', name: 'Lease Liability',            type: 'liability', subtype: 'non_current', isSystem: false },
   // EQUITY
@@ -1116,6 +1117,43 @@ export const useStore = create(
             journalEntries: s.journalEntries.filter((j) => j.id !== tf?.journalEntryId),
           }
         }),
+
+      // ─── SCHEDULED (RECURRING) TRANSFERS ───────────────────────────
+      // Define a transfer once; post it (and advance its next date) when due.
+      scheduledTransfers: [],
+
+      addScheduledTransfer: (sc) =>
+        set((s) => ({
+          scheduledTransfers: [...s.scheduledTransfers, {
+            ...sc, id: uuid(), active: true, lastPosted: null, postedCount: 0, createdAt: new Date().toISOString(),
+          }],
+        })),
+
+      updateScheduledTransfer: (id, patch) =>
+        set((s) => ({ scheduledTransfers: s.scheduledTransfers.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+
+      deleteScheduledTransfer: (id) =>
+        set((s) => ({ scheduledTransfers: s.scheduledTransfers.filter((x) => x.id !== id) })),
+
+      // Post a scheduled transfer now (on its scheduled date) and roll the next date forward.
+      postScheduledTransfer: (id) => {
+        const sc = get().scheduledTransfers.find((x) => x.id === id)
+        if (!sc) return null
+        const onDate = sc.nextDate || new Date().toISOString().slice(0, 10)
+        const rec = get().addBankTransfer({
+          date: onDate, fromAccountId: sc.fromAccountId, toAccountId: sc.toAccountId,
+          amount: sc.amount, fee: sc.fee || 0, feeAccountId: sc.feeAccountId,
+          reference: sc.reference || '', notes: (sc.notes ? sc.notes + ' ' : '') + '(Scheduled)',
+        })
+        if (rec) {
+          const nextDate = get().advanceDate(onDate, sc.frequency)
+          set((s) => ({
+            scheduledTransfers: s.scheduledTransfers.map((x) =>
+              x.id === id ? { ...x, nextDate, lastPosted: onDate, postedCount: (x.postedCount || 0) + 1 } : x),
+          }))
+        }
+        return rec
+      },
 
       // ─── WAREHOUSES & STOCK TRANSFERS ──────────────────────────────
       warehouses: DEFAULT_WAREHOUSES,
