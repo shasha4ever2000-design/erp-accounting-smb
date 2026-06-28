@@ -47,11 +47,11 @@ export default function DeliveryNotes() {
     if (!dn) { setViewing(null); return null }
     return (
       <div>
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400"><ArrowLeft size={15} /> Back</button>
+        <div className="flex items-center justify-between mb-6 no-print">
+          <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400"><ArrowLeft size={15} /> {t('Back')}</button>
           <div className="flex gap-2">
             {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> {t('Mark Delivered')}</Btn>}
-            <Btn size="sm" variant="secondary" onClick={() => window.print()}><Printer size={14} /> Print</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => window.print()}><Printer size={14} /> {t('Download PDF')}</Btn>
           </div>
         </div>
         <div className="max-w-3xl mx-auto">

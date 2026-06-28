@@ -52,11 +52,13 @@ export default function Statements() {
 
   return (
     <div>
-      <PageHeader
-        title="Statements of Account"
-        subtitle="Printable customer & supplier account statements"
-        action={entity && <Btn variant="secondary" onClick={() => window.print()}><Printer size={14} /> Print / PDF</Btn>}
-      />
+      <div className="no-print">
+        <PageHeader
+          title="Statements of Account"
+          subtitle="Printable customer & supplier account statements"
+          action={entity && <Btn variant="secondary" onClick={() => window.print()}><Printer size={14} /> {t('Download PDF')}</Btn>}
+        />
+      </div>
 
       <Card className="p-5 mb-6 no-print">
         <div className="flex flex-wrap gap-4 items-end">

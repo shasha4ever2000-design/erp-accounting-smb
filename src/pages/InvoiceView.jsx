@@ -67,13 +67,13 @@ export default function InvoiceView() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 no-print">
         <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
           <ArrowLeft size={15} /> {t('Back to Invoices')}
         </button>
         <div className="flex items-center gap-2">
           <Btn variant="secondary" size="sm" onClick={() => window.print()}>
-            <Printer size={14} /> Print
+            <Printer size={14} /> {t('Download PDF')}
           </Btn>
           {invoice.status !== 'paid' && (
             <Btn size="sm" onClick={() => setPayModal(true)}>

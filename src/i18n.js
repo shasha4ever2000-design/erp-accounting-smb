@@ -641,6 +641,9 @@ const AR = {
   'Export CSV': 'تصدير CSV', 'Export': 'تصدير',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 
+  // ── Print / PDF ──
+  'Download PDF': 'تنزيل PDF', 'Back': 'رجوع',
+
   // ── Number format ──
   'Number Format': 'تنسيق الأرقام',
   'Western digits (0 1 2 3)': 'الأرقام الغربية (0 1 2 3)',

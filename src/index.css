@@ -17,11 +17,33 @@
 }
 
 @media print {
-  aside, header { display: none !important; }
-  main { overflow: visible !important; }
+  /* Chrome: hide app chrome, print only the document */
+  aside, header, nav { display: none !important; }
+  main { overflow: visible !important; padding: 0 !important; }
   .no-print { display: none !important; }
-  body { background: white !important; }
-  @page { margin: 14mm; }
+
+  /* Force a clean light document regardless of dark mode */
+  html.dark body, body { background: #fff !important; }
+  html.dark * {
+    background-color: transparent !important;
+    color: #111 !important;
+    border-color: #e5e7eb !important;
+  }
+
+  /* Preserve colored fills/QR/badges (e.g. status chips, table headers) */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* The printable document fills the page, no card chrome */
+  main .max-w-3xl, main .max-w-4xl { max-width: 100% !important; margin: 0 !important; }
+  .print\:shadow-none { box-shadow: none !important; border: none !important; }
+
+  /* Avoid awkward breaks inside table rows and totals */
+  tr, .avoid-break { break-inside: avoid; page-break-inside: avoid; }
+
+  @page { margin: 14mm; size: A4; }
 }
 
 /* Smooth scrollbar */
