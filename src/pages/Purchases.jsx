@@ -66,7 +66,7 @@ export default function Purchases() {
     <div>
       <PageHeader
         title={t('Purchase Invoices')}
-        subtitle={`${purchases.length} purchase invoice${purchases.length !== 1 ? 's' : ''}`}
+        subtitle={`${purchases.length} ${t('purchase invoices')}`}
         action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>}
       />
 

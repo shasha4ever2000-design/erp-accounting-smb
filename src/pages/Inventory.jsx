@@ -60,7 +60,7 @@ export default function Inventory() {
     <div>
       <PageHeader
         title={t('Inventory Items')}
-        subtitle={`${inventoryItems.length} items • ${fmtMoney(totalValue, sym)} total value`}
+        subtitle={`${inventoryItems.length} ${t('items')} • ${fmtMoney(totalValue, sym)} ${t('total value')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Item')}</Btn>}
       />
 

@@ -108,7 +108,7 @@ export default function Manufacturing() {
       <div className="grid grid-cols-3 gap-4 mb-6">
         <StatCard label="Bills of Materials" value={billsOfMaterials.length} color="blue"   icon={<ListOrdered size={18} />} sub="production recipes" />
         <StatCard label="Active Work Orders"  value={activeWOs}               color="amber"  icon={<Factory size={18} />}    sub="in production" />
-        <StatCard label="Completed Orders"    value={completedWOs}            color="green"  icon={<CheckCircle size={18} />} sub={`${fmtMoney(totalOutput, sym)} total cost`} />
+        <StatCard label="Completed Orders"    value={completedWOs}            color="green"  icon={<CheckCircle size={18} />} sub={`${fmtMoney(totalOutput, sym)} ${t('total cost')}`} />
       </div>
 
       {/* Tabs */}

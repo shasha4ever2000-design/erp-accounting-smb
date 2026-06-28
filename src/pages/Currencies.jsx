@@ -58,7 +58,7 @@ export default function Currencies() {
     <div>
       <PageHeader
         title="Currencies & Exchange Rates"
-        subtitle={`Base currency: ${base} · maintain rates for foreign-currency reporting`}
+        subtitle={`${t('Base currency:')} ${base} · ${t('maintain rates for foreign-currency reporting')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('Add Currency')}</Btn>}
       />
 
@@ -98,7 +98,7 @@ export default function Currencies() {
         {currencies.length === 0 ? (
           <div className="py-12 text-center">
             <Coins size={30} className="mx-auto mb-3 text-gray-300 dark:text-slate-600" />
-            <p className="text-gray-400 dark:text-slate-500 text-sm">No foreign currencies yet. Add one above, or click a suggestion.</p>
+            <p className="text-gray-400 dark:text-slate-500 text-sm">{t('No foreign currencies yet. Add one above, or click a suggestion.')}</p>
           </div>
         ) : (
           <table className="w-full text-sm">

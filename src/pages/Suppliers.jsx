@@ -48,7 +48,7 @@ export default function Suppliers() {
     <div>
       <PageHeader
         title={t('Suppliers')}
-        subtitle={`${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''}`}
+        subtitle={`${suppliers.length} ${t('suppliers')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Supplier')}</Btn>}
       />
 

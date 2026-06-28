@@ -614,6 +614,28 @@ const AR = {
   'Day-to-day bookkeeping': 'مسك الدفاتر اليومي', 'Read-only access': 'صلاحية القراءة فقط',
   'New Lead': 'عميل محتمل جديد', 'Contacted': 'تم التواصل', 'Proposal': 'عرض مقدّم',
   'Edit Lead': 'تعديل العميل المحتمل',
+
+  // ── Dynamic subtitle nouns / fragments ──
+  'customers': 'عميل', 'suppliers': 'مورد', 'departments': 'قسم', 'entries': 'قيد',
+  'invoices': 'فاتورة', 'total': 'إجمالاً', 'items': 'صنف', 'total value': 'إجمالي القيمة',
+  'accounts': 'حساب', 'Total balance:': 'الرصيد الإجمالي:', 'locations': 'موقع', 'items tracked': 'صنف متتبع',
+  'purchase invoices': 'فاتورة شراء', 'total purchase orders': 'إجمالي أوامر الشراء', 'total quotations': 'إجمالي عروض الأسعار',
+  'active': 'نشط', 'Net': 'صافي', 'Monthly payroll:': 'الرواتب الشهرية:',
+  'active employees': 'موظف نشط', 'monthly payroll': 'رواتب شهرية', 'monthly recurring': 'متكرر شهرياً',
+  'open': 'مفتوح', 'weighted': 'مرجّح', 'awaiting approval': 'بانتظار الموافقة',
+  'approvals need an Admin/Owner': 'تتطلب الموافقات مسؤولاً أو مالكاً',
+  'recorded activities · who did what, and when': 'نشاط مسجّل · من فعل ماذا، ومتى',
+  'Base currency:': 'العملة الأساسية:', 'maintain rates for foreign-currency reporting': 'احتفظ بأسعار الصرف للتقارير بالعملات الأجنبية',
+  'users on this device': 'مستخدم على هذا الجهاز', 'Team & Roles': 'الفريق والأدوار',
+
+  // ── StatCard sub-captions / empty states ──
+  'production recipes': 'وصفات الإنتاج', 'in production': 'قيد الإنتاج', 'total cost': 'التكلفة الإجمالية',
+  'recognized as expense': 'معترف به كمصروف', 'prepaid items': 'بنود مدفوعة مقدماً',
+  'current obligations': 'الالتزامات الحالية', 'total monthly rent': 'إجمالي الإيجار الشهري', 'all time payments': 'مدفوعات كل الأوقات',
+  'all time': 'كل الأوقات',
+  'Add some invoices and purchases to see charts and insights here.': 'أضف بعض الفواتير والمشتريات لرؤية الرسوم البيانية والتحليلات هنا.',
+  'No foreign currencies yet. Add one above, or click a suggestion.': 'لا توجد عملات أجنبية بعد. أضف واحدة أعلاه، أو انقر على اقتراح.',
+  'Transactions — tick each one that appears on your bank statement': 'المعاملات — ضع علامة على كل معاملة تظهر في كشف حسابك البنكي',
 }
 
 export const useI18n = create(

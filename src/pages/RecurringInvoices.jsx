@@ -84,7 +84,7 @@ export default function RecurringInvoices() {
     <div>
       <PageHeader
         title="Recurring & Subscription Invoices"
-        subtitle={`${activeCount} active · ${fmtMoney(mrr, sym)} monthly recurring`}
+        subtitle={`${activeCount} ${t('active')} · ${fmtMoney(mrr, sym)} ${t('monthly recurring')}`}
         action={
           <div className="flex gap-2">
             <Btn variant="secondary" onClick={runNow}><RefreshCw size={15} /> {t('Generate Due')}</Btn>

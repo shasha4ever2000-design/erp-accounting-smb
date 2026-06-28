@@ -41,7 +41,7 @@ export default function Invoices() {
     <div>
       <PageHeader
         title={t('Sales Invoices')}
-        subtitle={`${invoices.length} invoice${invoices.length !== 1 ? 's' : ''} total`}
+        subtitle={`${invoices.length} ${t('invoices')} ${t('total')}`}
         action={
           <Btn onClick={() => navigate('/invoices/new')}>
             <Plus size={15} /> {t('New Invoice')}

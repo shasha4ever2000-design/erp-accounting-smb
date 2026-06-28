@@ -36,7 +36,7 @@ export default function Team() {
 
   return (
     <div>
-      <PageHeader title="Team & Roles" subtitle={`${users.length} user${users.length !== 1 ? 's' : ''} on this device`} />
+      <PageHeader title="Team & Roles" subtitle={`${users.length} ${t('users on this device')}`} />
 
       <Card className="overflow-hidden mb-5">
         <table className="w-full text-sm">

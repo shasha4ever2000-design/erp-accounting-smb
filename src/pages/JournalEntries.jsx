@@ -67,7 +67,7 @@ export default function JournalEntries() {
     <div>
       <PageHeader
         title="Journal Entries"
-        subtitle={`${journalEntries.length} entries`}
+        subtitle={`${journalEntries.length} ${t('entries')}`}
         action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('Manual Entry')}</Btn>}
       />
 

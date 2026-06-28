@@ -71,7 +71,7 @@ export default function Analytics() {
 
       {!hasData ? (
         <Card className="p-12 text-center text-gray-400 dark:text-slate-500">
-          Add some invoices and purchases to see charts and insights here.
+          {t('Add some invoices and purchases to see charts and insights here.')}
         </Card>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">

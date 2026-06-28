@@ -57,7 +57,7 @@ export default function Employees() {
     <div>
       <PageHeader
         title="Employees"
-        subtitle={`${activeCount} active · Monthly payroll: ${fmtMoney(totalSalary, sym)}`}
+        subtitle={`${activeCount} ${t('active')} · ${t('Monthly payroll:')} ${fmtMoney(totalSalary, sym)}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Employee')}</Btn>}
       />
 

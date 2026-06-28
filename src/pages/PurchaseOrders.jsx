@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
@@ -14,6 +15,7 @@ const STATUS_COLORS = {
 }
 
 export default function PurchaseOrders() {
+  const t = useT()
   const navigate = useNavigate()
   const { purchaseOrders, settings, deletePurchaseOrder, updatePurchaseOrder, convertPOToPurchase } = useStore()
   const sym = settings.company.currencySymbol
@@ -41,7 +43,7 @@ export default function PurchaseOrders() {
     <div>
       <PageHeader
         title="Purchase Orders"
-        subtitle={`${purchaseOrders.length} total purchase orders`}
+        subtitle={`${purchaseOrders.length} ${t('total purchase orders')}`}
         action={<Btn onClick={() => navigate('/purchase-orders/new')}><Plus size={15} /> New PO</Btn>}
       />
 

@@ -93,7 +93,7 @@ export default function Projects() {
     <div>
       <PageHeader
         title="Projects & Job Costing"
-        subtitle={`${projects.filter(p => p.status === 'active').length} active · Net ${fmtMoney(totals.income - totals.cost, sym)}`}
+        subtitle={`${projects.filter(p => p.status === 'active').length} ${t('active')} · ${t('Net')} ${fmtMoney(totals.income - totals.cost, sym)}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Project')}</Btn>}
       />
 

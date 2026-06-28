@@ -35,7 +35,7 @@ export default function Departments() {
     <div>
       <PageHeader
         title="Departments"
-        subtitle={`${departments.length} department${departments.length !== 1 ? 's' : ''}`}
+        subtitle={`${departments.length} ${t('departments')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Department')}</Btn>}
       />
 

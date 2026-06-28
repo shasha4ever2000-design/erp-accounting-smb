@@ -48,7 +48,7 @@ export default function Customers() {
     <div>
       <PageHeader
         title={t('Customers')}
-        subtitle={`${customers.length} customer${customers.length !== 1 ? 's' : ''}`}
+        subtitle={`${customers.length} ${t('customers')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Customer')}</Btn>}
       />
 

@@ -77,7 +77,7 @@ export default function Payroll() {
     <div>
       <PageHeader
         title="Payroll"
-        subtitle={`${activeEmps.length} active employees · ${fmtMoney(totalGross, sym)} monthly payroll`}
+        subtitle={`${activeEmps.length} ${t('active employees')} · ${fmtMoney(totalGross, sym)} ${t('monthly payroll')}`}
         action={<Btn onClick={() => setNewModal(true)}><Plus size={15} /> {t('Run Payroll')}</Btn>}
       />
 

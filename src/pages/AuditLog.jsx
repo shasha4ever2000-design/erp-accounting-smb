@@ -28,7 +28,7 @@ export default function AuditLog() {
     <div>
       <PageHeader
         title="Audit Log"
-        subtitle={`${(auditLog || []).length} recorded activities · who did what, and when`}
+        subtitle={`${(auditLog || []).length} ${t('recorded activities · who did what, and when')}`}
         action={(auditLog || []).length > 0 && (
           <Btn variant="secondary" onClick={() => { if (confirm('Clear the activity log for this company? This cannot be undone.')) clearAuditLog() }}>
             <Trash2 size={14} /> {t('Clear log')}

@@ -59,7 +59,7 @@ export default function Warehouses() {
     <div>
       <PageHeader
         title="Warehouses & Stock Locations"
-        subtitle={`${warehouses.length} location${warehouses.length !== 1 ? 's' : ''} · ${inventoryItems.length} items tracked`}
+        subtitle={`${warehouses.length} ${t('locations')} · ${inventoryItems.length} ${t('items tracked')}`}
         action={
           <div className="flex gap-2">
             <Btn variant="secondary" onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer Stock')}</Btn>
