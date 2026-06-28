@@ -37,7 +37,7 @@ export default function AuthScreen() {
       <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 text-white p-12 flex-col justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-10 h-10 bg-white/15 rounded-xl flex items-center justify-center"><TrendingUp size={20} /></div>
-          <span className="text-lg font-bold">ERP Accounting</span>
+          <span className="text-lg font-bold">{t('ERP Accounting')}</span>
         </div>
         <div>
           <h1 className="text-4xl font-black leading-tight mb-4">{t('Run your whole business in one place.')}</h1>
@@ -56,7 +56,7 @@ export default function AuthScreen() {
         <div className="w-full max-w-sm">
           <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
             <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white"><TrendingUp size={20} /></div>
-            <span className="text-lg font-bold text-gray-800">ERP Accounting</span>
+            <span className="text-lg font-bold text-gray-800">{t('ERP Accounting')}</span>
           </div>
 
           <h2 className="text-2xl font-bold text-gray-900 mb-1">{mode === 'signup' ? t('Create your account') : t('Welcome back')}</h2>

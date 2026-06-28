@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
@@ -14,6 +15,7 @@ const STATUS_COLORS = {
 }
 
 export default function Quotations() {
+  const t = useT()
   const navigate = useNavigate()
   const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice } = useStore()
   const sym = settings.company.currencySymbol
@@ -42,7 +44,7 @@ export default function Quotations() {
       <PageHeader
         title="Quotations / Estimates"
         subtitle={`${quotations.length} total quotations`}
-        action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> New Quotation</Btn>}
+        action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> {t('New Quotation')}</Btn>}
       />
 
       {/* Status tabs */}
@@ -58,7 +60,7 @@ export default function Quotations() {
       <Card>
         {quotations.length === 0 ? (
           <EmptyState icon="📋" title="No quotations yet" desc="Create quotations and estimates for your customers. Convert them to invoices with one click."
-            action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> New Quotation</Btn>} />
+            action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> {t('New Quotation')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">No quotations with status "{filter}"</div>
         ) : (

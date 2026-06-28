@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -10,6 +11,7 @@ const emptyForm = () => ({
 })
 
 export default function CreditNotes() {
+  const t = useT()
   const { creditNotes, customers, invoices, settings, addCreditNote, deleteCreditNote } = useStore()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
@@ -43,13 +45,13 @@ export default function CreditNotes() {
       <PageHeader
         title="Credit Notes"
         subtitle="Sales returns and credit adjustments to customers"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> New Credit Note</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Credit Note')}</Btn>}
       />
 
       <Card>
         {creditNotes.length === 0 ? (
           <EmptyState icon="📄" title="No credit notes" desc="Issue credit notes for sales returns, overpayments, or price adjustments."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> Issue Credit Note</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Issue Credit Note')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Customer', 'Date', 'Invoice Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((cn) => (
@@ -102,8 +104,8 @@ export default function CreditNotes() {
             Journal Entry: Dr Sales Returns ({fmtMoney(subtotal, sym)}){taxEnabled ? ` + Dr Tax Payable (${fmtMoney(taxAmt, sym)})` : ''} → Cr Accounts Receivable ({fmtMoney(total, sym)})
           </p>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={handleSave}>Issue Credit Note</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleSave}>{t('Issue Credit Note')}</Btn>
           </div>
         </div>
       </Modal>

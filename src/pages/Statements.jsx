@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input } from '../components/UI'
@@ -6,6 +7,7 @@ import { format } from 'date-fns'
 import { Printer, FileText } from 'lucide-react'
 
 export default function Statements() {
+  const t = useT()
   const { customers, suppliers, invoices, purchases, creditNotes, debitNotes, settings } = useStore()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -59,8 +61,8 @@ export default function Statements() {
       <Card className="p-5 mb-6 no-print">
         <div className="flex flex-wrap gap-4 items-end">
           <Select label="Type" value={type} onChange={(e) => { setType(e.target.value); setEntityId('') }} className="w-40">
-            <option value="customer">Customer</option>
-            <option value="supplier">Supplier</option>
+            <option value="customer">{t('Customer')}</option>
+            <option value="supplier">{t('Supplier')}</option>
           </Select>
           <Select label={type === 'customer' ? 'Customer' : 'Supplier'} value={entityId} onChange={(e) => setEntityId(e.target.value)} className="w-64">
             <option value="">— Select —</option>
@@ -105,12 +107,12 @@ export default function Statements() {
                 <th className="text-left py-2">Ref</th>
                 <th className="text-right py-2">Debit</th>
                 <th className="text-right py-2">Credit</th>
-                <th className="text-right py-2">Balance</th>
+                <th className="text-right py-2">{t('Balance')}</th>
               </tr>
             </thead>
             <tbody>
               <tr className="border-b border-gray-100 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/60">
-                <td className="py-2 text-gray-500 dark:text-slate-400" colSpan={5}>Opening Balance</td>
+                <td className="py-2 text-gray-500 dark:text-slate-400" colSpan={5}>{t('Opening Balance')}</td>
                 <td className="py-2 text-right font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(opening, sym)}</td>
               </tr>
               {rows.map((r, i) => (
@@ -124,7 +126,7 @@ export default function Statements() {
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-center text-gray-400 dark:text-slate-500">No transactions in this period</td></tr>
+                <tr><td colSpan={6} className="py-6 text-center text-gray-400 dark:text-slate-500">{t('No transactions in this period')}</td></tr>
               )}
             </tbody>
           </table>
@@ -132,7 +134,7 @@ export default function Statements() {
           <div className="flex justify-end mt-6">
             <div className="w-64 bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4">
               <div className="flex justify-between font-bold text-base">
-                <span className="text-gray-800 dark:text-slate-100">Closing Balance</span>
+                <span className="text-gray-800 dark:text-slate-100">{t('Closing Balance')}</span>
                 <span className={closing >= 0 ? 'text-gray-900 dark:text-slate-100' : 'text-green-600'}>{fmtMoney(Math.abs(closing), sym)}</span>
               </div>
               <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 text-right">{closing >= 0 ? label : 'in credit'}</p>

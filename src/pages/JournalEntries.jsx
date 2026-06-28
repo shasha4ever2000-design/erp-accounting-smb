@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
@@ -8,6 +9,7 @@ import { v4 as uuid } from 'uuid'
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
 
 export default function JournalEntries() {
+  const t = useT()
   const { journalEntries, accounts, addJournalEntry, deleteJournalEntry, settings } = useStore()
   const sym = settings.company.currencySymbol
   const [modal, setModal] = useState(false)
@@ -66,7 +68,7 @@ export default function JournalEntries() {
       <PageHeader
         title="Journal Entries"
         subtitle={`${journalEntries.length} entries`}
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> Manual Entry</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('Manual Entry')}</Btn>}
       />
 
       <div className="relative mb-4 max-w-sm">
@@ -172,10 +174,10 @@ export default function JournalEntries() {
           {!balanced && totalDr > 0 && (
             <p className="text-xs text-red-600">Debits and credits must be equal. Difference: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
           )}
-          <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> Add Line</Btn>
+          <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add Line')}</Btn>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn disabled={!balanced} onClick={handleSave}>Post Entry</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn disabled={!balanced} onClick={handleSave}>{t('Post Entry')}</Btn>
           </div>
         </div>
       </Modal>
@@ -186,8 +188,8 @@ export default function JournalEntries() {
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div><p className="text-gray-400">Date</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
-              <div><p className="text-gray-400">Reference</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
-              <div className="col-span-2"><p className="text-gray-400">Description</p><p className="font-medium">{viewEntry.description}</p></div>
+              <div><p className="text-gray-400">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
+              <div className="col-span-2"><p className="text-gray-400">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>
             </div>
             <table className="w-full text-sm border rounded-lg overflow-hidden">
               <thead className="bg-gray-50">

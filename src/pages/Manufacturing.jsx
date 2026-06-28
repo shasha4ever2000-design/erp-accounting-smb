@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import { Plus, Trash2, Play, CheckCircle, Factory, ListOrdered, Edit3 } from 'lucide-react'
 
 export default function Manufacturing() {
+  const t = useT()
   const { billsOfMaterials, workOrders, inventoryItems, accounts, settings,
           addBOM, updateBOM, deleteBOM, addWorkOrder, startWorkOrder, completeWorkOrder, deleteWorkOrder } = useStore()
   const sym = settings.company.currencySymbol
@@ -99,7 +101,7 @@ export default function Manufacturing() {
         action={
           tab === 'bom'
             ? <Btn onClick={() => { setEditBOM(null); setBomForm({ name: '', description: '', outputItemId: '', outputQuantity: 1, components: [] }); setBomModal(true) }}><Plus size={15} /> New BOM</Btn>
-            : <Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={15} /> New Work Order</Btn>
+            : <Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={15} /> {t('New Work Order')}</Btn>
         }
       />
 
@@ -165,7 +167,7 @@ export default function Manufacturing() {
         <Card>
           {workOrders.length === 0 ? (
             <EmptyState icon="🏭" title="No Work Orders" desc="Create work orders to produce goods. On completion, raw material costs are transferred to Finished Goods automatically."
-              action={<Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={14} /> New Work Order</Btn>} />
+              action={<Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={14} /> {t('New Work Order')}</Btn>} />
           ) : (
             <Table headers={['Number', 'Product', 'Qty', 'Scheduled', { label: 'Material Cost', right: true }, 'Status', { label: 'Actions', right: true }]}>
               {woSorted.map((wo) => (
@@ -229,7 +231,7 @@ export default function Manufacturing() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-gray-700">Components / Raw Materials</label>
-              <Btn size="sm" variant="secondary" onClick={addComp}><Plus size={13} /> Add Component</Btn>
+              <Btn size="sm" variant="secondary" onClick={addComp}><Plus size={13} /> {t('Add Component')}</Btn>
             </div>
             {bomForm.components.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded-lg">No components yet — click Add Component</p>
@@ -274,7 +276,7 @@ export default function Manufacturing() {
           </div>
 
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setBomModal(false)}>Cancel</Btn>
+            <Btn variant="secondary" onClick={() => setBomModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleSaveBOM}>{editBOM ? 'Update BOM' : 'Save BOM'}</Btn>
           </div>
         </div>
@@ -313,7 +315,7 @@ export default function Manufacturing() {
                 </div>
               ))}
               <div className="border-t border-gray-200 mt-1.5 pt-1.5 flex justify-between font-semibold text-gray-800">
-                <span>Est. Total Cost</span>
+                <span>{t('Est. Total Cost')}</span>
                 <span>{fmtMoney(woForm.components.reduce((s, c) => s + (c.quantity || 0) * (c.unitCost || 0), 0) * woForm.targetQuantity, sym)}</span>
               </div>
             </div>
@@ -324,8 +326,8 @@ export default function Manufacturing() {
             On complete: Dr WIP ← Cr Raw Materials → Dr Finished Goods ← Cr WIP
           </div>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setWoModal(false)}>Cancel</Btn>
-            <Btn onClick={handleSaveWO}>Create Work Order</Btn>
+            <Btn variant="secondary" onClick={() => setWoModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleSaveWO}>{t('Create Work Order')}</Btn>
           </div>
         </div>
       </Modal>
@@ -347,8 +349,8 @@ export default function Manufacturing() {
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setCompleteModal(null)}>Cancel</Btn>
-            <Btn onClick={() => { completeWorkOrder(completeModal.id, completeDate); setCompleteModal(null) }}>Complete & Post JE</Btn>
+            <Btn variant="secondary" onClick={() => setCompleteModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={() => { completeWorkOrder(completeModal.id, completeDate); setCompleteModal(null) }}>{t('Complete & Post JE')}</Btn>
           </div>
         </div>
       </Modal>

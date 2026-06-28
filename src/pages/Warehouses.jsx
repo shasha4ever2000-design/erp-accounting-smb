@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState } from '../components/UI'
@@ -8,6 +9,7 @@ const emptyWh = { name: '', location: '' }
 const emptyTransfer = { itemId: '', fromWarehouseId: '', toWarehouseId: '', quantity: '', date: today(), notes: '' }
 
 export default function Warehouses() {
+  const t = useT()
   const {
     warehouses, inventoryItems, stockTransfers, getItemStock,
     addWarehouse, updateWarehouse, deleteWarehouse, addStockTransfer, deleteStockTransfer,
@@ -60,8 +62,8 @@ export default function Warehouses() {
         subtitle={`${warehouses.length} location${warehouses.length !== 1 ? 's' : ''} · ${inventoryItems.length} items tracked`}
         action={
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={openTransfer}><ArrowLeftRight size={15} /> Transfer Stock</Btn>
-            <Btn onClick={openNewWh}><Plus size={15} /> New Warehouse</Btn>
+            <Btn variant="secondary" onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer Stock')}</Btn>
+            <Btn onClick={openNewWh}><Plus size={15} /> {t('New Warehouse')}</Btn>
           </div>
         }
       />
@@ -93,7 +95,7 @@ export default function Warehouses() {
               </div>
               <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
                 <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Items</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{itemsHere}</p></div>
-                <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Stock Value</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value.toLocaleString()}</p></div>
+                <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Stock Value')}</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value.toLocaleString()}</p></div>
               </div>
             </Card>
           )
@@ -103,7 +105,7 @@ export default function Warehouses() {
       {/* Stock matrix */}
       <Card className="overflow-hidden mb-6">
         <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700">
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">Stock by Location</h3>
+          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Stock by Location')}</h3>
         </div>
         {inventoryItems.length === 0 ? (
           <EmptyState icon="📦" title="No inventory items" desc="Add items in the Inventory module to track them across warehouses." />
@@ -141,7 +143,7 @@ export default function Warehouses() {
       {stockTransfers.length > 0 && (
         <Card className="overflow-hidden">
           <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700">
-            <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">Recent Transfers</h3>
+            <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Recent Transfers')}</h3>
           </div>
           <div className="divide-y divide-gray-50 dark:divide-slate-700/50">
             {stockTransfers.slice().reverse().slice(0, 15).map((tr) => (
@@ -164,7 +166,7 @@ export default function Warehouses() {
           <Input label="Warehouse Name *" value={whForm.name} onChange={(e) => setW('name', e.target.value)} placeholder="e.g. North Depot" />
           <Input label="Location / Address" value={whForm.location} onChange={(e) => setW('location', e.target.value)} />
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={() => setWhModal(false)}>Cancel</Btn>
+            <Btn variant="secondary" onClick={() => setWhModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveWh}>{editing ? 'Save Changes' : 'Add Warehouse'}</Btn>
           </div>
         </div>
@@ -195,8 +197,8 @@ export default function Warehouses() {
           </div>
           <Input label="Notes" value={trForm.notes} onChange={(e) => setT('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={() => setTrModal(false)}>Cancel</Btn>
-            <Btn onClick={saveTransfer}>Transfer</Btn>
+            <Btn variant="secondary" onClick={() => setTrModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={saveTransfer}>{t('Transfer')}</Btn>
           </div>
         </div>
       </Modal>

@@ -68,7 +68,7 @@ export default function Inventory() {
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 flex items-start gap-3">
           <Package size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="font-medium text-amber-800 text-sm">Low Stock Alert</p>
+            <p className="font-medium text-amber-800 text-sm">{t('Low Stock Alert')}</p>
             <p className="text-amber-700 text-sm">{lowStock.map((i) => i.name).join(', ')} {lowStock.length === 1 ? 'is' : 'are'} at or below reorder level.</p>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function Inventory() {
             </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>
           </div>
         </div>

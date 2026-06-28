@@ -1,4 +1,5 @@
 import { useAuth } from '../auth'
+import { useT } from '../i18n'
 import { PageHeader, Card, Select, Badge } from '../components/UI'
 import { Users, ShieldAlert, Trash2, Crown } from 'lucide-react'
 
@@ -16,6 +17,7 @@ const ROLE_CLR = {
 }
 
 export default function Team() {
+  const t = useT()
   const { users, currentUserId, isManager, setUserRole, removeUser } = useAuth()
   const manager = isManager()
 
@@ -25,8 +27,8 @@ export default function Team() {
         <PageHeader title="Team & Roles" />
         <Card className="p-10 text-center">
           <ShieldAlert size={32} className="mx-auto mb-3 text-amber-500" />
-          <p className="text-gray-600 dark:text-slate-300 font-medium">Only Owners and Admins can manage the team.</p>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">Ask an administrator if you need different access.</p>
+          <p className="text-gray-600 dark:text-slate-300 font-medium">{t('Only Owners and Admins can manage the team.')}</p>
+          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">{t('Ask an administrator if you need different access.')}</p>
         </Card>
       </div>
     )
@@ -43,7 +45,7 @@ export default function Team() {
               <th className="text-left px-5 py-2.5">User</th>
               <th className="text-left px-4 py-2.5">Email</th>
               <th className="text-left px-4 py-2.5 w-44">Role</th>
-              <th className="text-right px-5 py-2.5">Actions</th>
+              <th className="text-right px-5 py-2.5">{t('Actions')}</th>
             </tr>
           </thead>
           <tbody>
@@ -80,7 +82,7 @@ export default function Team() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">Role permissions</h3>
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">{t('Role permissions')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {ROLES.map((r) => (
             <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50">

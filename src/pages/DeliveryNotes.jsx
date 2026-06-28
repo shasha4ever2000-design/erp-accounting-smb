@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -13,6 +14,7 @@ const STATUS = {
 }
 
 export default function DeliveryNotes() {
+  const t = useT()
   const { deliveryNotes, customers, settings, addDeliveryNote, updateDeliveryNote, deleteDeliveryNote } = useStore()
   const company = settings.company
 
@@ -48,7 +50,7 @@ export default function DeliveryNotes() {
         <div className="flex items-center justify-between mb-6">
           <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400"><ArrowLeft size={15} /> Back</button>
           <div className="flex gap-2">
-            {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> Mark Delivered</Btn>}
+            {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> {t('Mark Delivered')}</Btn>}
             <Btn size="sm" variant="secondary" onClick={() => window.print()}><Printer size={14} /> Print</Btn>
           </div>
         </div>
@@ -63,20 +65,20 @@ export default function DeliveryNotes() {
                 </div>
               </div>
               <div className="text-right">
-                <p className="text-2xl font-black" style={{ color: company.accentColor || '#2563eb' }}>DELIVERY NOTE</p>
+                <p className="text-2xl font-black" style={{ color: company.accentColor || '#2563eb' }}>{t('DELIVERY NOTE')}</p>
                 <p className="text-sm font-semibold text-gray-600 dark:text-slate-300" dir="rtl">سند تسليم</p>
                 <p className="text-lg font-bold text-gray-800 dark:text-slate-100 mt-1">{dn.number}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-8 mb-8">
               <div>
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Deliver To</p>
+                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{t('Deliver To')}</p>
                 <p className="font-semibold text-gray-800 dark:text-slate-100">{dn.customerName}</p>
                 {dn.address && <p className="text-sm text-gray-500 dark:text-slate-400 whitespace-pre-line">{dn.address}</p>}
               </div>
               <div className="text-right space-y-1">
                 <p className="text-xs text-gray-400">Date</p><p className="font-medium text-gray-800 dark:text-slate-100">{fmtDate(dn.date)}</p>
-                {dn.reference && <><p className="text-xs text-gray-400 mt-2">Reference</p><p className="font-medium text-gray-800 dark:text-slate-100">{dn.reference}</p></>}
+                {dn.reference && <><p className="text-xs text-gray-400 mt-2">{t('Reference')}</p><p className="font-medium text-gray-800 dark:text-slate-100">{dn.reference}</p></>}
               </div>
             </div>
             <table className="w-full text-sm mb-6">
@@ -109,12 +111,12 @@ export default function DeliveryNotes() {
       <PageHeader
         title="Delivery Notes"
         subtitle="Bilingual delivery / dispatch notes (سند تسليم)"
-        action={<Btn onClick={openNew}><Plus size={15} /> New Delivery Note</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Delivery Note')}</Btn>}
       />
       <Card>
         {deliveryNotes.length === 0 ? (
           <EmptyState icon="🚚" title="No delivery notes" desc="Create a delivery note to accompany goods you dispatch to customers."
-            action={<Btn onClick={openNew}><Plus size={14} /> New Delivery Note</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('New Delivery Note')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Customer', 'Date', 'Items', 'Reference', 'Status', { label: 'Actions', right: true }]}>
             {deliveryNotes.slice().reverse().map((dn) => (
@@ -158,12 +160,12 @@ export default function DeliveryNotes() {
                 </div>
               ))}
             </div>
-            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> Add item</button>
+            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add item')}</button>
           </div>
           <Textarea label="Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={save}><Truck size={15} /> Create</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={save}><Truck size={15} /> {t('Create')}</Btn>
           </div>
         </div>
       </Modal>

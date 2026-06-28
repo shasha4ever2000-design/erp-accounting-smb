@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -9,6 +10,7 @@ const FREQ = { weekly: 'Weekly', biweekly: 'Bi-weekly', monthly: 'Monthly', quar
 const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, price: '', accountId: '' })
 
 export default function RecurringInvoices() {
+  const t = useT()
   const {
     recurringInvoices, customers, accounts, settings,
     addRecurringInvoice, updateRecurringInvoice, deleteRecurringInvoice, generateDueRecurring,
@@ -85,8 +87,8 @@ export default function RecurringInvoices() {
         subtitle={`${activeCount} active · ${fmtMoney(mrr, sym)} monthly recurring`}
         action={
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={runNow}><RefreshCw size={15} /> Generate Due</Btn>
-            <Btn onClick={openNew}><Plus size={15} /> New Subscription</Btn>
+            <Btn variant="secondary" onClick={runNow}><RefreshCw size={15} /> {t('Generate Due')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New Subscription')}</Btn>
           </div>
         }
       />
@@ -95,7 +97,7 @@ export default function RecurringInvoices() {
         {recurringInvoices.length === 0 ? (
           <EmptyState icon="🔁" title="No subscriptions yet"
             desc="Set up a schedule once and invoices are generated automatically each cycle — perfect for retainers, memberships and rent."
-            action={<Btn onClick={openNew}><Plus size={14} /> Create Subscription</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Create Subscription')}</Btn>} />
         ) : (
           <Table headers={['Ref', 'Customer', 'Amount', 'Frequency', 'Next Invoice', 'Generated', 'Status', { label: 'Actions', right: true }]}>
             {recurringInvoices.map((r) => (
@@ -144,7 +146,7 @@ export default function RecurringInvoices() {
 
           {/* Line items */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Line Items</label>
+            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Line Items')}</label>
             <div className="space-y-2">
               {form.lines.map((l) => (
                 <div key={l.id} className="flex gap-2 items-start">
@@ -163,7 +165,7 @@ export default function RecurringInvoices() {
                 </div>
               ))}
             </div>
-            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> Add line</button>
+            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add line')}</button>
           </div>
 
           <Input label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} />
@@ -171,12 +173,12 @@ export default function RecurringInvoices() {
           <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-3 text-sm space-y-1">
             <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{fmtMoney(preview.subtotal, sym)}</span></div>
             {settings.tax.enabled && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax.name} ({settings.tax.rate}%)</span><span>{fmtMoney(preview.taxAmount, sym)}</span></div>}
-            <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 pt-1 border-t border-gray-200 dark:border-slate-600"><span>Total per invoice</span><span>{fmtMoney(preview.total, sym)}</span></div>
+            <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 pt-1 border-t border-gray-200 dark:border-slate-600"><span>{t('Total per invoice')}</span><span>{fmtMoney(preview.total, sym)}</span></div>
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={save}><Repeat size={15} /> Create Subscription</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={save}><Repeat size={15} /> {t('Create Subscription')}</Btn>
           </div>
         </div>
       </Modal>

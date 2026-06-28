@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
@@ -6,6 +7,7 @@ import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
 const emptyForm = { name: '', description: '', costCenter: '' }
 
 export default function Departments() {
+  const t = useT()
   const { departments, employees, addDepartment, updateDepartment, deleteDepartment } = useStore()
   const [modal, setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
@@ -34,13 +36,13 @@ export default function Departments() {
       <PageHeader
         title="Departments"
         subtitle={`${departments.length} department${departments.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Department</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Department')}</Btn>}
       />
 
       <Card>
         {departments.length === 0 ? (
           <EmptyState icon="🏢" title="No departments" desc="Create departments to organize your employees and track payroll by department."
-            action={<Btn onClick={openNew}><Plus size={14} /> Add Department</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Department')}</Btn>} />
         ) : (
           <Table headers={['Department Name', 'Description', 'Cost Center', 'Employees', { label: 'Actions', right: true }]}>
             {departments.map((d) => {
@@ -81,7 +83,7 @@ export default function Departments() {
           <Textarea label="Description" value={form.description} onChange={(e) => setField('description', e.target.value)} rows={2} placeholder="Department purpose or scope" />
           <Input label="Cost Center Code" value={form.costCenter} onChange={(e) => setField('costCenter', e.target.value)} placeholder="e.g. CC-001" />
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Department'}</Btn>
           </div>
         </div>

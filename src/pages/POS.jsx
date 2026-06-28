@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, today } from '../utils/formatters'
@@ -6,6 +7,7 @@ import { PageHeader, Card, Btn, Select } from '../components/UI'
 import { Plus, Minus, Trash2, ShoppingCart, Search, CheckCircle2, Package } from 'lucide-react'
 
 export default function POS() {
+  const t = useT()
   const navigate = useNavigate()
   const {
     inventoryItems, customers, bankAccounts, warehouses, settings,
@@ -95,7 +97,7 @@ export default function POS() {
           {inventoryItems.length === 0 ? (
             <Card className="p-12 text-center text-gray-400 dark:text-slate-500">
               <Package size={30} className="mx-auto mb-3 opacity-40" />
-              Add products in the Inventory module to sell them here.
+              {t('Add products in the Inventory module to sell them here.')}
             </Card>
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -120,7 +122,7 @@ export default function POS() {
         <Card className="p-4 h-fit lg:sticky lg:top-4">
           <div className="flex items-center gap-2 mb-3">
             <ShoppingCart size={17} className="text-gray-500 dark:text-slate-400" />
-            <h2 className="font-semibold text-gray-800 dark:text-slate-100">Current Sale</h2>
+            <h2 className="font-semibold text-gray-800 dark:text-slate-100">{t('Current Sale')}</h2>
             {cart.length > 0 && <span className="ml-auto text-xs text-gray-400">{cart.length} item(s)</span>}
           </div>
 
@@ -135,7 +137,7 @@ export default function POS() {
           )}
 
           {cart.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-8">Tap products to add them.</p>
+            <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-8">{t('Tap products to add them.')}</p>
           ) : (
             <div className="space-y-2 mb-3 max-h-72 overflow-y-auto">
               {cart.map((c) => (
@@ -164,7 +166,7 @@ export default function POS() {
 
           <div className="grid grid-cols-2 gap-2 mt-3">
             <Select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-              <option value="">Walk-in Customer</option>
+              <option value="">{t('Walk-in Customer')}</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
             <Select value={payAcc} onChange={(e) => setPayAcc(e.target.value)}>

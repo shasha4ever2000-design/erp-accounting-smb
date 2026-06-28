@@ -1,10 +1,12 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import { Plus, Trash2, CreditCard, Home, XCircle } from 'lucide-react'
 
 export default function Leases() {
+  const t = useT()
   const { leases, bankAccounts, settings, addLease, recordLeasePayment, terminateLease, deleteLease } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -71,7 +73,7 @@ export default function Leases() {
       <PageHeader
         title="Leases & Rent"
         subtitle="Track operating leases, office rent, and other recurring rental obligations"
-        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> Add Lease</Btn>}
+        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Lease')}</Btn>}
       />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -92,7 +94,7 @@ export default function Leases() {
       <Card>
         {leases.length === 0 ? (
           <EmptyState icon="🏢" title="No leases recorded" desc="Add office space, equipment, or vehicle leases. Each rent payment automatically posts a journal entry (Dr Rent Expense / Cr Bank)."
-            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> Add Lease</Btn>} />
+            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Lease')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">No {filter} leases</div>
         ) : (
@@ -149,8 +151,8 @@ export default function Leases() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Select label="Lease Type" value={form.leaseType} onChange={(e) => setField('leaseType', e.target.value)}>
-              <option value="operating">Operating Lease</option>
-              <option value="finance">Finance Lease</option>
+              <option value="operating">{t('Operating Lease')}</option>
+              <option value="finance">{t('Finance Lease')}</option>
             </Select>
             <Input label="Start Date *" type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} />
             <Input label="End Date" type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} />
@@ -163,8 +165,8 @@ export default function Leases() {
           </div>
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Property address, lease reference, contact details..." />
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setAddModal(false)}>Cancel</Btn>
-            <Btn onClick={handleAdd}>Save Lease</Btn>
+            <Btn variant="secondary" onClick={() => setAddModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleAdd}>{t('Save Lease')}</Btn>
           </div>
         </div>
       </Modal>
@@ -185,8 +187,8 @@ export default function Leases() {
             {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </Select>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn>
-            <Btn onClick={handlePay}>Record Payment</Btn>
+            <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={handlePay}>{t('Record Payment')}</Btn>
           </div>
         </div>
       </Modal>

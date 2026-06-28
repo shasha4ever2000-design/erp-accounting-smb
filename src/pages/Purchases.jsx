@@ -148,7 +148,7 @@ export default function Purchases() {
               <>
                 <Input label={`${whtCfg.name} withheld (${sym})`} type="number" min="0" step="0.01" value={payForm.wht} onChange={(e) => setPayForm((f) => ({ ...f, wht: e.target.value }))} />
                 <div className="bg-gray-50 rounded-lg p-2.5 text-sm text-gray-600 flex justify-between">
-                  <span>Net cash to supplier</span>
+                  <span>{t('Net cash to supplier')}</span>
                   <strong>{fmtMoney((parseFloat(payForm.amount) || 0) - (parseFloat(payForm.wht) || 0), sym)}</strong>
                 </div>
               </>
@@ -158,8 +158,8 @@ export default function Purchases() {
             </Select>
             <Input label="Reference / Notes" value={payForm.notes} onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Cheque #, transfer ref..." />
             <div className="flex justify-end gap-2 pt-1">
-              <Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn>
-              <Btn onClick={handleRecord}>Record Payment</Btn>
+              <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
+              <Btn onClick={handleRecord}>{t('Record Payment')}</Btn>
             </div>
           </div>
         )}

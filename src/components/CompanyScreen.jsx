@@ -28,7 +28,7 @@ export default function CompanyScreen() {
       <header className="h-16 bg-white border-b border-gray-100 flex items-center justify-between px-6">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center text-white"><TrendingUp size={18} /></div>
-          <span className="font-bold text-gray-800">ERP Accounting</span>
+          <span className="font-bold text-gray-800">{t('ERP Accounting')}</span>
         </div>
         <div className="flex items-center gap-3">
           {user && <span className="text-sm text-gray-500">{user.name}</span>}

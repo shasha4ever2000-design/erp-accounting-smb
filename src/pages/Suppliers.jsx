@@ -124,14 +124,14 @@ export default function Suppliers() {
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} />
           {customDefs.length > 0 && (
             <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-700">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">Custom Fields</p>
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">{t('Custom Fields')}</p>
               {customDefs.map((label) => (
                 <Input key={label} label={label} value={form.customFields?.[label] || ''} onChange={(e) => setCustom(label, e.target.value)} />
               ))}
             </div>
           )}
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Supplier'}</Btn>
           </div>
         </div>

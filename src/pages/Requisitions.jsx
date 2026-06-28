@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
@@ -17,6 +18,7 @@ const STATUS = {
 const TABS = ['all', 'pending', 'approved', 'ordered', 'rejected']
 
 export default function Requisitions() {
+  const t = useT()
   const { requisitions, addRequisition, approveRequisition, rejectRequisition, deleteRequisition, convertRequisitionToPO, settings } = useStore()
   const { currentUser, isManager } = useAuth()
   const manager = isManager()
@@ -54,7 +56,7 @@ export default function Requisitions() {
       <PageHeader
         title="Purchase Requisitions"
         subtitle={`${pendingCount} awaiting approval${manager ? '' : ' · approvals need an Admin/Owner'}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Requisition</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Requisition')}</Btn>}
       />
 
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -68,7 +70,7 @@ export default function Requisitions() {
       <Card>
         {filtered.length === 0 ? (
           <EmptyState icon="📝" title="No requisitions" desc="Staff request items they need; an Admin or Owner approves, then it becomes a Purchase Order."
-            action={<Btn onClick={openNew}><Plus size={14} /> New Requisition</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('New Requisition')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Requested By', 'Dept', 'Needed By', { label: 'Est. Total', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {filtered.map((r) => (
@@ -120,12 +122,12 @@ export default function Requisitions() {
                 </div>
               ))}
             </div>
-            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> Add item</button>
+            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add item')}</button>
           </div>
           <Textarea label="Justification / Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={save}><ClipboardList size={15} /> Submit Requisition</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={save}><ClipboardList size={15} /> {t('Submit Requisition')}</Btn>
           </div>
         </div>
       </Modal>

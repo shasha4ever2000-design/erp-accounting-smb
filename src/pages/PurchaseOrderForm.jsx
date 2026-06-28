@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays } from '../utils/formatters'
@@ -8,6 +9,7 @@ import { Plus, Trash2 } from 'lucide-react'
 const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, subtotal: 0, taxRate: 0, accountId: 'acc-admin' })
 
 export default function PurchaseOrderForm() {
+  const t = useT()
   const navigate = useNavigate()
   const { suppliers, accounts, inventoryItems, settings, addPurchaseOrder } = useStore()
   const sym = settings.company.currencySymbol
@@ -80,7 +82,7 @@ export default function PurchaseOrderForm() {
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Supplier</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Supplier')}</h3>
             <Select label="Select Supplier" value={form.supplierId} onChange={(e) => handleSupplier(e.target.value)}>
               <option value="">— Enter manually below —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -94,15 +96,15 @@ export default function PurchaseOrderForm() {
 
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Line Items</h3>
-              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> Add Line</Btn>
+              <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
+              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add Line')}</Btn>
             </div>
             {lines.map((line) => (
               <div key={line.id} className="border border-gray-100 rounded-xl p-3 space-y-2 bg-gray-50">
                 <div className="grid grid-cols-4 gap-2">
                   <div className="col-span-2">
                     <Select label="Product (optional)" value="" onChange={(e) => pickItem(line.id, e.target.value)}>
-                      <option value="">Pick from inventory...</option>
+                      <option value="">{t('Pick from inventory...')}</option>
                       {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                     </Select>
                   </div>
@@ -136,7 +138,7 @@ export default function PurchaseOrderForm() {
 
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Order Details</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Order Details')}</h3>
             <Input label="Order Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Expected Delivery" type="date" value={form.deliveryDate} onChange={(e) => setField('deliveryDate', e.target.value)} />
           </Card>
@@ -148,8 +150,8 @@ export default function PurchaseOrderForm() {
             <div className="border-t pt-2 flex justify-between font-bold text-gray-900"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
           </Card>
 
-          <Btn className="w-full justify-center" onClick={handleSave}>Save Purchase Order</Btn>
-          <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/purchase-orders')}>Cancel</Btn>
+          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Order')}</Btn>
+          <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/purchase-orders')}>{t('Cancel')}</Btn>
         </div>
       </div>
     </div>

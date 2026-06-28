@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, StatCard } from '../components/UI'
@@ -12,6 +13,7 @@ import { format, subMonths } from 'date-fns'
 const PIE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '#ca8a04', '#dc2626', '#475569']
 
 export default function Analytics() {
+  const t = useT()
   const { invoices, purchases, accounts, customers, bankAccounts, getAllBalances, settings } = useStore()
   const sym = settings.company.currencySymbol
   const balances = useMemo(() => getAllBalances(), [getAllBalances])
@@ -92,8 +94,8 @@ export default function Analytics() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Expense Breakdown</h2>
-            {expenseBreakdown.length === 0 ? <p className="text-sm text-gray-400 py-12 text-center">No expenses yet</p> : (
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Expense Breakdown')}</h2>
+            {expenseBreakdown.length === 0 ? <p className="text-sm text-gray-400 py-12 text-center">{t('No expenses yet')}</p> : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie data={expenseBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45}>
@@ -107,8 +109,8 @@ export default function Analytics() {
           </Card>
 
           <Card className="xl:col-span-3 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Top Customers by Revenue</h2>
-            {topCustomers.length === 0 ? <p className="text-sm text-gray-400 py-8 text-center">No customer invoices yet</p> : (
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Top Customers by Revenue')}</h2>
+            {topCustomers.length === 0 ? <p className="text-sm text-gray-400 py-8 text-center">{t('No customer invoices yet')}</p> : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={topCustomers} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.4} vertical={false} />

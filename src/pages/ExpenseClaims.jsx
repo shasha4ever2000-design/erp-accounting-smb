@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -10,6 +11,7 @@ const EXPENSE_CATEGORIES = [
 ]
 
 export default function ExpenseClaims() {
+  const t = useT()
   const { expenseClaims, employees, accounts, bankAccounts, settings,
           addExpenseClaim, approveExpenseClaim, payExpenseClaim, deleteExpenseClaim } = useStore()
   const sym = settings.company.currencySymbol
@@ -65,7 +67,7 @@ export default function ExpenseClaims() {
       <PageHeader
         title="Expense Claims"
         subtitle="Employee expense reimbursements — submit, approve, and pay"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> New Claim</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Claim')}</Btn>}
       />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -86,7 +88,7 @@ export default function ExpenseClaims() {
       <Card>
         {expenseClaims.length === 0 ? (
           <EmptyState icon="🧾" title="No expense claims" desc="Employees can submit travel, meals, office supplies and other business expense claims for reimbursement."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> New Claim</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('New Claim')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">No {filter} claims</div>
         ) : (
@@ -112,7 +114,7 @@ export default function ExpenseClaims() {
                     {claim.status === 'pending' && (
                       <Btn size="sm" variant="secondary"
                         onClick={() => { if (confirm(`Approve claim ${claim.number} for ${claim.employeeName}?`)) approveExpenseClaim(claim.id) }}>
-                        <CheckCircle size={12} /> Approve
+                        <CheckCircle size={12} /> {t('Approve')}
                       </Btn>
                     )}
                     {claim.status === 'approved' && (
@@ -168,8 +170,8 @@ export default function ExpenseClaims() {
             On approval: Dr {expAccounts.find(a => a.id === form.expenseAccountId)?.name || 'Expense'} → Cr Employee Expense Claims
           </div>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={handleAdd}>Submit Claim</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleAdd}>{t('Submit Claim')}</Btn>
           </div>
         </div>
       </Modal>
@@ -189,8 +191,8 @@ export default function ExpenseClaims() {
             </Select>
           </div>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn>
-            <Btn onClick={() => { payExpenseClaim(payModal.id, payBankAccId, payDate); setPayModal(null) }}>Confirm Payment</Btn>
+            <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={() => { payExpenseClaim(payModal.id, payBankAccId, payDate); setPayModal(null) }}>{t('Confirm Payment')}</Btn>
           </div>
         </div>
       </Modal>

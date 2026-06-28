@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
@@ -10,6 +11,7 @@ const TYPE_ICONS  = { bank: Landmark, cash: Wallet, credit_card: CreditCard }
 const emptyForm = { name: '', type: 'bank', bankName: '', accountNumber: '', code: '' }
 
 export default function BankAccounts() {
+  const t = useT()
   const { bankAccounts, accounts, bankTransactions, invoices, purchases, getAllBalances, settings,
           addBankAccount, updateBankAccount, deleteBankAccount } = useStore()
   const sym = settings.company.currencySymbol
@@ -68,7 +70,7 @@ export default function BankAccounts() {
       <PageHeader
         title="Cash & Cash Equivalents"
         subtitle={`Total balance: ${fmtMoney(totalCash, sym)} across ${bankAccounts.length} account${bankAccounts.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Account</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Account')}</Btn>}
       />
 
       {/* Account cards */}
@@ -106,7 +108,7 @@ export default function BankAccounts() {
         })}
         {bankAccounts.length === 0 && (
           <div className="col-span-3">
-            <EmptyState icon="🏦" title="No bank accounts" desc="Add your bank and cash accounts to track balances." action={<Btn onClick={openNew}><Plus size={14} /> Add Account</Btn>} />
+            <EmptyState icon="🏦" title="No bank accounts" desc="Add your bank and cash accounts to track balances." action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Account')}</Btn>} />
           </div>
         )}
       </div>
@@ -119,7 +121,7 @@ export default function BankAccounts() {
             <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
           </div>
           {filteredTxns.length === 0 ? (
-            <div className="py-10 text-center text-gray-400 text-sm">No transactions yet for this account.</div>
+            <div className="py-10 text-center text-gray-400 text-sm">{t('No transactions yet for this account.')}</div>
           ) : (
             <Table headers={['Date', 'Description', 'Type', { label: 'Amount', right: true }]}>
               {filteredTxns.map((tx, i) => (
@@ -149,9 +151,9 @@ export default function BankAccounts() {
         <div className="space-y-4">
           <Input label="Account Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Operating Account, Petty Cash" />
           <Select label="Account Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
-            <option value="bank">Bank Account</option>
-            <option value="cash">Cash Account</option>
-            <option value="credit_card">Credit Card</option>
+            <option value="bank">{t('Bank Account')}</option>
+            <option value="cash">{t('Cash Account')}</option>
+            <option value="credit_card">{t('Credit Card')}</option>
           </Select>
           <div className="grid grid-cols-2 gap-3">
             <Input label="Bank Name" value={form.bankName} onChange={(e) => setField('bankName', e.target.value)} placeholder="e.g. HSBC" />
@@ -161,7 +163,7 @@ export default function BankAccounts() {
             <Input label="GL Account Code (optional)" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="Auto-assigned if blank" />
           )}
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Account'}</Btn>
           </div>
         </div>

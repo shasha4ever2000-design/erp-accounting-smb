@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select } from '../components/UI'
@@ -15,6 +16,7 @@ const COMMON = [
 const emptyForm = { code: '', name: '', rate: '' }
 
 export default function Currencies() {
+  const t = useT()
   const { currencies, addCurrency, updateCurrency, deleteCurrency, settings } = useStore()
   const base = settings.company.currency
 
@@ -57,14 +59,14 @@ export default function Currencies() {
       <PageHeader
         title="Currencies & Exchange Rates"
         subtitle={`Base currency: ${base} · maintain rates for foreign-currency reporting`}
-        action={<Btn onClick={openNew}><Plus size={15} /> Add Currency</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('Add Currency')}</Btn>}
       />
 
       {/* Converter */}
       <Card className="p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
           <ArrowRightLeft size={16} className="text-gray-400" />
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">Quick Converter</h3>
+          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Quick Converter')}</h3>
         </div>
         <div className="flex flex-wrap items-end gap-3">
           <Input label="Amount" type="number" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-32" />
@@ -106,7 +108,7 @@ export default function Currencies() {
                 <th className="text-left px-4 py-2">Name</th>
                 <th className="text-right px-4 py-2">Rate (per 1 {base})</th>
                 <th className="text-left px-4 py-2">Updated</th>
-                <th className="text-right px-5 py-2">Actions</th>
+                <th className="text-right px-5 py-2">{t('Actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -138,7 +140,7 @@ export default function Currencies() {
           <Input label="Name" value={form.name} onChange={(e) => setF('name', e.target.value)} placeholder="US Dollar" />
           <p className="text-xs text-gray-400 dark:text-slate-500">Example: if 1 {base} = 3.75 SAR, set the SAR rate to 3.75.</p>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={save}>{editing ? 'Save' : 'Add'}</Btn>
           </div>
         </div>

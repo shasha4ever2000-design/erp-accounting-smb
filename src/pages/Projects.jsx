@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -16,6 +17,7 @@ const STATUS_CLR = {
 }
 
 export default function Projects() {
+  const t = useT()
   const {
     projects, bankTransactions, timeEntries, accounts, bankAccounts, settings,
     addProject, updateProject, deleteProject, recordProjectTransaction, addTimeEntry, deleteTimeEntry,
@@ -92,14 +94,14 @@ export default function Projects() {
       <PageHeader
         title="Projects & Job Costing"
         subtitle={`${projects.filter(p => p.status === 'active').length} active · Net ${fmtMoney(totals.income - totals.cost, sym)}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Project</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Project')}</Btn>}
       />
 
       <Card>
         {projects.length === 0 ? (
           <EmptyState icon="📁" title="No projects yet"
             desc="Track income, costs and billable time per project or job, and see profitability instantly."
-            action={<Btn onClick={openNew}><Plus size={14} /> Create Project</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Create Project')}</Btn>} />
         ) : (
           <div className="divide-y divide-gray-100 dark:divide-slate-700">
             {projects.map((p) => {
@@ -121,7 +123,7 @@ export default function Projects() {
                       <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">{p.number}{p.client ? ` · ${p.client}` : ''}</p>
                     </div>
                     <div className="hidden md:flex items-center gap-6 text-right">
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Income</p><p className="text-sm font-semibold text-green-600 dark:text-green-400">{fmtMoney(s.income, sym)}</p></div>
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Income')}</p><p className="text-sm font-semibold text-green-600 dark:text-green-400">{fmtMoney(s.income, sym)}</p></div>
                       <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Cost</p><p className="text-sm font-semibold text-red-500 dark:text-red-400">{fmtMoney(s.cost, sym)}</p></div>
                       <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Profit</p><p className={`text-sm font-bold ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(s.profit, sym)}</p></div>
                     </div>
@@ -144,7 +146,7 @@ export default function Projects() {
                       {p.budget > 0 && (
                         <div className="mb-4">
                           <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
-                            <span>Budget used</span><span>{fmtMoney(s.cost, sym)} / {fmtMoney(p.budget, sym)}</span>
+                            <span>{t('Budget used')}</span><span>{fmtMoney(s.cost, sym)} / {fmtMoney(p.budget, sym)}</span>
                           </div>
                           <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
                             <div className={`h-full ${budgetUsed >= 100 ? 'bg-red-500' : budgetUsed > 80 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${budgetUsed}%` }} />
@@ -153,9 +155,9 @@ export default function Projects() {
                       )}
 
                       <div className="flex gap-2 mb-4">
-                        <Btn size="sm" onClick={() => openTx(p.id, 'money_in')}><TrendingUp size={13} /> Add Income</Btn>
-                        <Btn size="sm" variant="secondary" onClick={() => openTx(p.id, 'money_out')}><TrendingDown size={13} /> Add Cost</Btn>
-                        <Btn size="sm" variant="secondary" onClick={() => { setTForm(emptyTime); setTimeModal(p.id) }}><Clock size={13} /> Log Time</Btn>
+                        <Btn size="sm" onClick={() => openTx(p.id, 'money_in')}><TrendingUp size={13} /> {t('Add Income')}</Btn>
+                        <Btn size="sm" variant="secondary" onClick={() => openTx(p.id, 'money_out')}><TrendingDown size={13} /> {t('Add Cost')}</Btn>
+                        <Btn size="sm" variant="secondary" onClick={() => { setTForm(emptyTime); setTimeModal(p.id) }}><Clock size={13} /> {t('Log Time')}</Btn>
                       </div>
 
                       {/* Transactions */}
@@ -181,7 +183,7 @@ export default function Projects() {
                       {/* Time entries */}
                       {timeEntries.filter((t) => t.projectId === p.id).length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1">Time Log</p>
+                          <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1">{t('Time Log')}</p>
                           <div className="rounded-lg border border-gray-100 dark:border-slate-700 overflow-hidden">
                             {timeEntries.filter((t) => t.projectId === p.id).slice().reverse().map((t) => (
                               <div key={t.id} className="flex items-center justify-between px-3 py-2 text-sm border-b last:border-0 border-gray-50 dark:border-slate-700/50 bg-white dark:bg-slate-800">
@@ -219,7 +221,7 @@ export default function Projects() {
           <div className="grid grid-cols-2 gap-3">
             <Input label="Start Date" type="date" value={pForm.startDate} onChange={(e) => setP('startDate', e.target.value)} />
             <Select label="Status" value={pForm.status} onChange={(e) => setP('status', e.target.value)}>
-              <option value="active">Active</option>
+              <option value="active">{t('Active')}</option>
               <option value="on_hold">On Hold</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
@@ -227,7 +229,7 @@ export default function Projects() {
           </div>
           <Textarea label="Notes" rows={2} value={pForm.notes} onChange={(e) => setP('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={() => setProjModal(false)}>Cancel</Btn>
+            <Btn variant="secondary" onClick={() => setProjModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveProject}>{editing ? 'Save Changes' : 'Create Project'}</Btn>
           </div>
         </div>
@@ -250,8 +252,8 @@ export default function Projects() {
           </Select>
           <Input label="Description" value={txForm.description} onChange={(e) => setT('description', e.target.value)} />
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={() => setTxModal(null)}>Cancel</Btn>
-            <Btn onClick={saveTx}>Record</Btn>
+            <Btn variant="secondary" onClick={() => setTxModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={saveTx}>{t('Record')}</Btn>
           </div>
         </div>
       </Modal>
@@ -273,8 +275,8 @@ export default function Projects() {
             Billable
           </label>
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={() => setTimeModal(null)}>Cancel</Btn>
-            <Btn onClick={saveTime}>Log Time</Btn>
+            <Btn variant="secondary" onClick={() => setTimeModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={saveTime}>{t('Log Time')}</Btn>
           </div>
         </div>
       </Modal>

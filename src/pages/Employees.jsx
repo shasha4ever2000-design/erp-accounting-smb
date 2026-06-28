@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -15,6 +16,7 @@ const PAY_FREQ   = { monthly: 'Monthly', bi_weekly: 'Bi-weekly', weekly: 'Weekly
 const STATUS_CLR = { active: 'bg-green-100 text-green-700', inactive: 'bg-gray-100 text-gray-500' }
 
 export default function Employees() {
+  const t = useT()
   const { employees, departments, settings, addEmployee, updateEmployee, deleteEmployee } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -56,7 +58,7 @@ export default function Employees() {
       <PageHeader
         title="Employees"
         subtitle={`${activeCount} active · Monthly payroll: ${fmtMoney(totalSalary, sym)}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Employee</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Employee')}</Btn>}
       />
 
       <div className="relative mb-4 max-w-sm">
@@ -68,9 +70,9 @@ export default function Employees() {
       <Card>
         {employees.length === 0 ? (
           <EmptyState icon="👥" title="No employees" desc="Add employees to manage payroll, departments, and HR records."
-            action={<Btn onClick={openNew}><Plus size={14} /> Add Employee</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Employee')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No employees match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No employees match your search')}</div>
         ) : (
           <Table headers={['Employee', 'Department', 'Position', 'Type', 'Pay Frequency', { label: 'Salary', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {filtered.map((emp) => (
@@ -139,11 +141,11 @@ export default function Employees() {
             <Input label="Tax Code" value={form.taxCode} onChange={(e) => setField('taxCode', e.target.value)} placeholder="e.g. 1257L" />
           </div>
           <Select label="Status" value={form.status} onChange={(e) => setField('status', e.target.value)}>
-            <option value="active">Active</option>
+            <option value="active">{t('Active')}</option>
             <option value="inactive">Inactive / Terminated</option>
           </Select>
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Employee'}</Btn>
           </div>
         </div>

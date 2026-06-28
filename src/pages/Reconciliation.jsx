@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Select, Input } from '../components/UI'
 import { CheckCircle2, Circle, Landmark } from 'lucide-react'
 
 export default function Reconciliation() {
+  const t = useT()
   const { bankAccounts, journalEntries, reconciliations, toggleReconciled, getAccountBalance, settings } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -63,13 +65,13 @@ export default function Reconciliation() {
             <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
               <th className="px-4 py-2 text-left w-12">Clear</th>
               <th className="px-4 py-2 text-left">Date</th>
-              <th className="px-4 py-2 text-left">Description</th>
+              <th className="px-4 py-2 text-left">{t('Description')}</th>
               <th className="px-4 py-2 text-left">Ref</th>
-              <th className="px-4 py-2 text-right">Amount</th>
+              <th className="px-4 py-2 text-right">{t('Amount')}</th>
             </tr>
           </thead>
           <tbody>
-            {movements.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-slate-500">No transactions for this account</td></tr>}
+            {movements.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-slate-500">{t('No transactions for this account')}</td></tr>}
             {movements.map((m) => {
               const rec = isRec(m.id)
               return (

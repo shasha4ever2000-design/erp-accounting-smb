@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
@@ -6,6 +7,7 @@ import { format } from 'date-fns'
 import { Target, Save } from 'lucide-react'
 
 export default function Budgets() {
+  const t = useT()
   const { accounts, budgets, setBudget, getAccountBalance, settings } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -61,7 +63,7 @@ export default function Budgets() {
         <thead className="bg-gray-50 dark:bg-slate-800/60">
           <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
             <th className="text-left px-5 py-2 font-medium">Account</th>
-            <th className="text-right px-3 py-2 font-medium w-36">Annual Budget</th>
+            <th className="text-right px-3 py-2 font-medium w-36">{t('Annual Budget')}</th>
             <th className="text-right px-3 py-2 font-medium">Actual</th>
             <th className="text-right px-3 py-2 font-medium">Variance</th>
             <th className="text-left px-5 py-2 font-medium w-40">Used</th>
@@ -92,7 +94,7 @@ export default function Budgets() {
               </td>
             </tr>
           ))}
-          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 text-sm">No accounts</td></tr>}
+          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 text-sm">{t('No accounts')}</td></tr>}
         </tbody>
       </table>
     </Card>

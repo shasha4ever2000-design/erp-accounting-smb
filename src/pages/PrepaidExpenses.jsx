@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -7,6 +8,7 @@ import { Plus, Trash2, RefreshCw, Clock, CheckCircle } from 'lucide-react'
 const CATEGORIES = ['Prepaid Insurance', 'Prepaid Rent', 'Prepaid Subscription', 'Prepaid Maintenance', 'Other Prepaid']
 
 export default function PrepaidExpenses() {
+  const t = useT()
   const { prepaidExpenses, accounts, bankAccounts, settings,
           addPrepaidExpense, amortizePrepaid, deletePrepaidExpense } = useStore()
   const sym = settings.company.currencySymbol
@@ -64,7 +66,7 @@ export default function PrepaidExpenses() {
       <PageHeader
         title="Prepaid Expenses"
         subtitle="Track insurance, rent, subscriptions and other prepaid costs"
-        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> Add Prepaid</Btn>}
+        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Prepaid')}</Btn>}
       />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -76,7 +78,7 @@ export default function PrepaidExpenses() {
       <Card>
         {prepaidExpenses.length === 0 ? (
           <EmptyState icon="📋" title="No prepaid expenses" desc="Record insurance premiums, advance rent, or subscriptions paid upfront. Monthly amortization reduces the prepaid balance and recognizes the expense."
-            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> Add Prepaid</Btn>} />
+            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Prepaid')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Name', 'Category', 'Start', 'End', { label: 'Total Paid', right: true }, { label: 'Amortized', right: true }, { label: 'Remaining', right: true }, 'Status', { label: '', right: true }]}>
             {sorted.map((pre) => {
@@ -96,7 +98,7 @@ export default function PrepaidExpenses() {
                   <Td right className="font-semibold text-blue-700">{fmtMoney(pre.remaining, sym)}</Td>
                   <Td>
                     {pre.remaining <= 0
-                      ? <Badge className="bg-gray-100 text-gray-500">Fully Amortized</Badge>
+                      ? <Badge className="bg-gray-100 text-gray-500">{t('Fully Amortized')}</Badge>
                       : <Badge className="bg-blue-100 text-blue-700">{pct.toFixed(0)}% Used</Badge>
                     }
                   </Td>
@@ -147,8 +149,8 @@ export default function PrepaidExpenses() {
             Posts: Dr Prepaid Expenses → Cr {bankOpts.find(b => b.id === form.bankAccountId)?.name || 'Bank'}
           </div>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setAddModal(false)}>Cancel</Btn>
-            <Btn onClick={handleAdd}>Save Prepaid</Btn>
+            <Btn variant="secondary" onClick={() => setAddModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleAdd}>{t('Save Prepaid')}</Btn>
           </div>
         </div>
       </Modal>
@@ -171,8 +173,8 @@ export default function PrepaidExpenses() {
             Posts: Dr {accounts.find(a => a.id === amortModal?.expenseAccountId)?.name || 'Expense Account'} → Cr Prepaid Expenses
           </p>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setAmortModal(null)}>Cancel</Btn>
-            <Btn onClick={handleAmortize}>Record Amortization</Btn>
+            <Btn variant="secondary" onClick={() => setAmortModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleAmortize}>{t('Record Amortization')}</Btn>
           </div>
         </div>
       </Modal>

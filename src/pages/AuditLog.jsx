@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { PageHeader, Card, Btn, EmptyState } from '../components/UI'
 import { Search, ShieldCheck, Trash2 } from 'lucide-react'
@@ -8,6 +9,7 @@ function fmtTs(ts) {
 }
 
 export default function AuditLog() {
+  const t = useT()
   const { auditLog, clearAuditLog } = useStore()
   const [search, setSearch] = useState('')
 
@@ -29,7 +31,7 @@ export default function AuditLog() {
         subtitle={`${(auditLog || []).length} recorded activities · who did what, and when`}
         action={(auditLog || []).length > 0 && (
           <Btn variant="secondary" onClick={() => { if (confirm('Clear the activity log for this company? This cannot be undone.')) clearAuditLog() }}>
-            <Trash2 size={14} /> Clear log
+            <Trash2 size={14} /> {t('Clear log')}
           </Btn>
         )}
       />
@@ -69,7 +71,7 @@ export default function AuditLog() {
                     <td className="px-5 py-2.5 text-gray-500 dark:text-slate-400">{e.detail}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">No matching activity</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">{t('No matching activity')}</td></tr>}
               </tbody>
             </table>
           </Card>

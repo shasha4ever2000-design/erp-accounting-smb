@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Btn, Modal, Input, Select, Textarea } from '../components/UI'
@@ -15,6 +16,7 @@ const ORDER = STAGES.map((s) => s.id)
 const empty = { name: '', company: '', email: '', phone: '', value: '', source: '', stage: 'new', expectedClose: today(), notes: '' }
 
 export default function Pipeline() {
+  const t = useT()
   const { leads, addLead, updateLead, deleteLead, convertLeadToCustomer, settings } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -55,7 +57,7 @@ export default function Pipeline() {
       <PageHeader
         title="Sales Pipeline · CRM"
         subtitle={`${leads.filter((l) => !['won','lost'].includes(l.stage)).length} open · ${fmtMoney(openValue, sym)} weighted · ${fmtMoney(wonValue, sym)} won`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Lead</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Lead')}</Btn>}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -124,7 +126,7 @@ export default function Pipeline() {
           <Input label="Expected Close" type="date" value={form.expectedClose} onChange={(e) => setF('expectedClose', e.target.value)} />
           <Textarea label="Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={save}>{editing ? 'Save Changes' : 'Add Lead'}</Btn>
           </div>
         </div>

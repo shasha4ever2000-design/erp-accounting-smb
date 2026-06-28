@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
+import { useT } from '../i18n'
 import { Download, X } from 'lucide-react'
 
 export default function InstallButton() {
+  const t = useT()
   const [deferred, setDeferred] = useState(null)
   const [installed, setInstalled] = useState(false)
   const [showHelp, setShowHelp] = useState(false)
@@ -41,7 +43,7 @@ export default function InstallButton() {
         className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-white bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg px-3 py-1.5 transition-colors"
         title="Install ERP as a desktop app"
       >
-        <Download size={15} /> Install app
+        <Download size={15} /> {t('Install app')}
       </button>
 
       {showHelp && (
@@ -53,21 +55,21 @@ export default function InstallButton() {
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Download size={18} className="text-white" />
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">Install the desktop app</h2>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{t('Install the desktop app')}</h2>
             </div>
             <p className="text-sm text-gray-600 dark:text-slate-300 mb-4">Install ERP Accounting so it opens in its own window with a desktop icon — and works offline.</p>
             <div className="space-y-3 text-sm text-gray-600 dark:text-slate-300">
               <div>
                 <p className="font-semibold text-gray-800 dark:text-slate-100">Chrome / Edge (Windows, Mac, Linux)</p>
-                <p>Click the <strong>install icon</strong> (a monitor with a ↓) at the right of the address bar — or open the ⋮ menu → <strong>Install ERP Accounting…</strong></p>
+                <p>{t('Click the')}<strong>install icon</strong> (a monitor with a ↓) at the right of the address bar — or open the ⋮ menu → <strong>Install ERP Accounting…</strong></p>
               </div>
               <div>
                 <p className="font-semibold text-gray-800 dark:text-slate-100">Safari (Mac)</p>
-                <p>Open the <strong>Share</strong> menu → <strong>Add to Dock</strong>.</p>
+                <p>{t('Open the')}<strong>Share</strong> menu → <strong>{t('Add to Dock')}</strong>.</p>
               </div>
               <div>
                 <p className="font-semibold text-gray-800 dark:text-slate-100">iPhone / iPad</p>
-                <p>Tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.</p>
+                <p>Tap <strong>Share</strong> → <strong>{t('Add to Home Screen')}</strong>.</p>
               </div>
             </div>
           </div>

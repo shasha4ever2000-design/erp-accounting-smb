@@ -109,7 +109,7 @@ export default function Layout({ children }) {
             </div>
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm leading-tight truncate">{company.name}</p>
-              <p className="text-slate-400 text-xs">Accounting ERP</p>
+              <p className="text-slate-400 text-xs">{t('Accounting ERP')}</p>
             </div>
           </div>
         </div>

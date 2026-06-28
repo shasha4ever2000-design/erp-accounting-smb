@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -10,6 +11,7 @@ const STATUS_CLR = {
 }
 
 export default function Payroll() {
+  const t = useT()
   const { employees, payrollRuns, bankAccounts, accounts, settings,
           addPayrollRun, processPayrollRun, payPayrollRun, deletePayrollRun } = useStore()
   const sym = settings.company.currencySymbol
@@ -76,7 +78,7 @@ export default function Payroll() {
       <PageHeader
         title="Payroll"
         subtitle={`${activeEmps.length} active employees · ${fmtMoney(totalGross, sym)} monthly payroll`}
-        action={<Btn onClick={() => setNewModal(true)}><Plus size={15} /> Run Payroll</Btn>}
+        action={<Btn onClick={() => setNewModal(true)}><Plus size={15} /> {t('Run Payroll')}</Btn>}
       />
 
       <div className="grid grid-cols-4 gap-4 mb-6">
@@ -89,7 +91,7 @@ export default function Payroll() {
       <Card>
         {payrollRuns.length === 0 ? (
           <EmptyState icon="💰" title="No payroll runs" desc="Run payroll to automatically generate journal entries for salary, tax, and social security."
-            action={<Btn onClick={() => setNewModal(true)}><Plus size={14} /> Run Payroll</Btn>} />
+            action={<Btn onClick={() => setNewModal(true)}><Plus size={14} /> {t('Run Payroll')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Period', 'Pay Date', 'Employees', { label: 'Gross', right: true }, { label: 'Net Pay', right: true }, 'Status', 'Paid', { label: 'Actions', right: true }]}>
             {sorted.map((run) => (
@@ -139,18 +141,18 @@ export default function Payroll() {
           </div>
 
           {activeEmps.length === 0 ? (
-            <div className="text-center py-6 text-gray-400">No active employees. Add employees in the HR section first.</div>
+            <div className="text-center py-6 text-gray-400">{t('No active employees. Add employees in the HR section first.')}</div>
           ) : (
             <>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-gray-100 text-xs text-gray-500 uppercase">
-                      <th className="text-left py-2 px-2">Employee</th>
+                      <th className="text-left py-2 px-2">{t('Employee')}</th>
                       <th className="text-right py-2 px-2">Gross</th>
                       <th className="text-right py-2 px-2">Tax ({taxRate}%)</th>
                       <th className="text-right py-2 px-2">SS (5%)</th>
-                      <th className="text-right py-2 px-2">Net Pay</th>
+                      <th className="text-right py-2 px-2">{t('Net Pay')}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -182,8 +184,8 @@ export default function Payroll() {
           )}
 
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setNewModal(false)}>Cancel</Btn>
-            <Btn onClick={handleCreateRun} disabled={activeEmps.length === 0}>Create Payroll Run</Btn>
+            <Btn variant="secondary" onClick={() => setNewModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleCreateRun} disabled={activeEmps.length === 0}>{t('Create Payroll Run')}</Btn>
           </div>
         </div>
       </Modal>
@@ -203,8 +205,8 @@ export default function Payroll() {
             Posts: Dr Salaries Payable → Cr Bank Account
           </p>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn>
-            <Btn variant="success" onClick={handlePay}>Confirm Payment</Btn>
+            <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
+            <Btn variant="success" onClick={handlePay}>{t('Confirm Payment')}</Btn>
           </div>
         </div>
       </Modal>

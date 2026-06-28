@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today } from '../utils/formatters'
@@ -7,6 +8,7 @@ import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI
 const CATEGORIES = ['Building', 'Land', 'Machinery & Equipment', 'Motor Vehicles', 'Furniture & Fixtures', 'Computer Equipment', 'Leasehold Improvements', 'Other']
 
 export default function FixedAssetForm() {
+  const t = useT()
   const navigate = useNavigate()
   const { bankAccounts, settings, addFixedAsset } = useStore()
   const sym = settings.company.currencySymbol
@@ -46,7 +48,7 @@ export default function FixedAssetForm() {
       <div className="grid grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Asset Information</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Asset Information')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <Input label="Asset Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Delivery Truck, MacBook Pro" />
               <Select label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)}>
@@ -57,7 +59,7 @@ export default function FixedAssetForm() {
           </Card>
 
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Purchase Details</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Purchase Details')}</h3>
             <div className="grid grid-cols-2 gap-3">
               <Input label="Purchase Date *" type="date" value={form.purchaseDate} onChange={(e) => setField('purchaseDate', e.target.value)} />
               <Input label={`Purchase Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(e) => setField('purchaseCost', e.target.value)} />
@@ -97,7 +99,7 @@ export default function FixedAssetForm() {
 
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Journal Entry Preview</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Journal Entry Preview')}</h3>
             {purchaseCost > 0 ? (
               <div className="text-sm space-y-1">
                 <div className="flex justify-between text-gray-600">
@@ -110,12 +112,12 @@ export default function FixedAssetForm() {
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-gray-400">Enter purchase cost to preview</p>
+              <p className="text-xs text-gray-400">{t('Enter purchase cost to preview')}</p>
             )}
           </Card>
 
-          <Btn className="w-full justify-center" onClick={handleSave}>Save Asset</Btn>
-          <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/fixed-assets')}>Cancel</Btn>
+          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Asset')}</Btn>
+          <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/fixed-assets')}>{t('Cancel')}</Btn>
         </div>
       </div>
     </div>

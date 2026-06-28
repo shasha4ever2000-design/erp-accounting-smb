@@ -266,17 +266,17 @@ export default function Dashboard() {
           </button>
         </div>
         {recentInvoices.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">No invoices yet</div>
+          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No invoices yet')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="text-left text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide border-b border-gray-50 dark:border-slate-700">
                 <th className="px-6 py-3">Invoice #</th>
-                <th className="px-4 py-3">Customer</th>
+                <th className="px-4 py-3">{t('Customer')}</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Due</th>
                 <th className="px-4 py-3 text-right">Total</th>
-                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">{t('Status')}</th>
               </tr>
             </thead>
             <tbody>

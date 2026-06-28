@@ -121,7 +121,7 @@ export default function CommandPalette() {
           <kbd className="hidden sm:inline-block text-[10px] text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto py-2">
-          {results.length === 0 && <p className="px-4 py-6 text-center text-sm text-gray-400">No matches</p>}
+          {results.length === 0 && <p className="px-4 py-6 text-center text-sm text-gray-400">{t('No matches')}</p>}
           {results.map((cmd, i) => {
             const showGroup = cmd.group !== lastGroup
             lastGroup = cmd.group

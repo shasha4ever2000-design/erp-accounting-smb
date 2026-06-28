@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -9,6 +10,7 @@ const emptyForm = () => ({
 })
 
 export default function StockAdjustments() {
+  const t = useT()
   const { stockAdjustments, inventoryItems, settings, addStockAdjustment, deleteStockAdjustment } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -45,7 +47,7 @@ export default function StockAdjustments() {
       <PageHeader
         title="Stock Adjustments"
         subtitle="Record inventory increases, decreases, and write-offs"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> New Adjustment</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Adjustment')}</Btn>}
       />
 
       <div className="grid grid-cols-2 gap-4 mb-6">
@@ -56,7 +58,7 @@ export default function StockAdjustments() {
       <Card>
         {stockAdjustments.length === 0 ? (
           <EmptyState icon="📊" title="No stock adjustments" desc="Record stock counts, damaged goods write-offs, or inventory corrections. Each adjustment posts a journal entry."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> New Adjustment</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('New Adjustment')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Date', 'Item', 'Type', { label: 'Qty', right: true }, { label: 'Unit Cost', right: true }, { label: 'Total', right: true }, 'Reason', { label: '', right: true }]}>
             {sorted.map((adj) => (
@@ -113,7 +115,7 @@ export default function StockAdjustments() {
             <Input label="Quantity *" type="number" min="0" step="any" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label={`Unit Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.unitCost} onChange={(e) => setField('unitCost', e.target.value)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Total Amount</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Total Amount')}</label>
               <p className="py-2 px-3 text-sm font-semibold text-gray-800 border border-gray-200 rounded-lg bg-gray-50">{sym}{totalAmount.toFixed(2)}</p>
             </div>
           </div>
@@ -128,8 +130,8 @@ export default function StockAdjustments() {
           </div>
 
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={handleSave}>Save Adjustment</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleSave}>{t('Save Adjustment')}</Btn>
           </div>
         </div>
       </Modal>

@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
@@ -8,6 +9,7 @@ import { Plus, Calculator, Trash2, TrendingDown, Package } from 'lucide-react'
 const STATUS_CLR = { active: 'bg-green-100 text-green-700', disposed: 'bg-gray-100 text-gray-500' }
 
 export default function FixedAssets() {
+  const t = useT()
   const navigate = useNavigate()
   const { fixedAssets, assetDepreciations, bankAccounts, settings,
           recordDepreciation, disposeAsset, deleteFixedAsset } = useStore()
@@ -60,7 +62,7 @@ export default function FixedAssets() {
       <PageHeader
         title="Fixed Assets"
         subtitle="Asset register — properties, equipment, vehicles, and more"
-        action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={15} /> Add Asset</Btn>}
+        action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={15} /> {t('Add Asset')}</Btn>}
       />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -81,7 +83,7 @@ export default function FixedAssets() {
       <Card>
         {fixedAssets.length === 0 ? (
           <EmptyState icon="🏗️" title="No fixed assets" desc="Add equipment, vehicles, buildings, and other long-term assets. Depreciation is tracked automatically."
-            action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={14} /> Add Asset</Btn>} />
+            action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={14} /> {t('Add Asset')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">No {filter} assets</div>
         ) : (
@@ -142,8 +144,8 @@ export default function FixedAssets() {
             Posts: Dr Depreciation Expense → Cr Accumulated Depreciation
           </p>
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setDeprModal(null)}>Cancel</Btn>
-            <Btn onClick={handleDepr}>Record Depreciation</Btn>
+            <Btn variant="secondary" onClick={() => setDeprModal(null)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleDepr}>{t('Record Depreciation')}</Btn>
           </div>
         </div>
       </Modal>
@@ -175,8 +177,8 @@ export default function FixedAssets() {
             </div>
           )}
           <div className="flex justify-end gap-2">
-            <Btn variant="secondary" onClick={() => setDispModal(null)}>Cancel</Btn>
-            <Btn variant="danger" onClick={handleDispose}>Dispose Asset</Btn>
+            <Btn variant="secondary" onClick={() => setDispModal(null)}>{t('Cancel')}</Btn>
+            <Btn variant="danger" onClick={handleDispose}>{t('Dispose Asset')}</Btn>
           </div>
         </div>
       </Modal>
