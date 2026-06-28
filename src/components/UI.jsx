@@ -1,4 +1,5 @@
 // Shared UI primitives (light + dark mode aware)
+import { useT } from '../i18n'
 
 export function Card({ children, className = '' }) {
   return (
@@ -9,11 +10,12 @@ export function Card({ children, className = '' }) {
 }
 
 export function PageHeader({ title, subtitle, action }) {
+  const t = useT()
   return (
     <div className="flex items-start justify-between mb-6 gap-4">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{title}</h1>
-        {subtitle && <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{typeof title === 'string' ? t(title) : title}</h1>
+        {subtitle && <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">{typeof subtitle === 'string' ? t(subtitle) : subtitle}</p>}
       </div>
       {action && <div className="flex-shrink-0">{action}</div>}
     </div>
@@ -93,13 +95,14 @@ export function Textarea({ label, error, className = '', ...props }) {
 }
 
 export function Modal({ open, onClose, title, children, width = 'max-w-lg' }) {
+  const t = useT()
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
       <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{title}</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{typeof title === 'string' ? t(title) : title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-2xl leading-none">&times;</button>
         </div>
         <div className="overflow-y-auto p-6 flex-1">{children}</div>
@@ -109,11 +112,12 @@ export function Modal({ open, onClose, title, children, width = 'max-w-lg' }) {
 }
 
 export function EmptyState({ icon, title, desc, action }) {
+  const t = useT()
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <div className="text-5xl mb-4">{icon}</div>
-      <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-200 mb-1">{title}</h3>
-      <p className="text-sm text-gray-500 dark:text-slate-400 max-w-sm mb-4">{desc}</p>
+      <h3 className="text-lg font-semibold text-gray-700 dark:text-slate-200 mb-1">{typeof title === 'string' ? t(title) : title}</h3>
+      <p className="text-sm text-gray-500 dark:text-slate-400 max-w-sm mb-4">{typeof desc === 'string' ? t(desc) : desc}</p>
       {action}
     </div>
   )
