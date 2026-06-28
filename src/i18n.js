@@ -575,6 +575,13 @@ const AR = {
   'Total Outstanding': 'إجمالي المستحق', 'Total Payable': 'إجمالي الدائن', 'Total per invoice': 'الإجمالي لكل فاتورة',
   'Try again': 'حاول مرة أخرى', 'Unit Cost': 'تكلفة الوحدة', 'Unit Price': 'سعر الوحدة', 'Upload Logo': 'رفع الشعار',
   'Walk-in Customer': 'عميل مباشر', 'ZATCA Compliant E-Invoice': 'فاتورة إلكترونية متوافقة مع هيئة الزكاة',
+
+  // ── Dashboard quick actions / chart / status ──
+  'New Sales Invoice': 'فاتورة مبيعات جديدة', 'New Purchase Invoice': 'فاتورة شراء جديدة',
+  'New Project': 'مشروع جديد', 'Budgets vs Actuals': 'الموازنات مقابل الفعلي',
+  'Record Bank Transaction': 'تسجيل معاملة بنكية', 'View Reports': 'عرض التقارير',
+  'Revenue vs Expenses — Last 6 Months': 'الإيرادات مقابل المصروفات — آخر 6 أشهر',
+  'Require attention': 'تتطلب انتباهاً', 'All clear': 'كل شيء على ما يرام',
 }
 
 export const useI18n = create(

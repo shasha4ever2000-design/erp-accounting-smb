@@ -160,7 +160,7 @@ export default function Dashboard() {
         <StatCard
           label={t('Overdue Invoices')}
           value={overdueInvoices.length}
-          sub={overdueInvoices.length ? 'Require attention' : 'All clear'}
+          sub={overdueInvoices.length ? t('Require attention') : t('All clear')}
           color={overdueInvoices.length ? 'red' : 'green'}
           icon={<AlertCircle size={18} />}
         />
@@ -209,7 +209,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue vs Expenses chart */}
         <Card className="xl:col-span-2 p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Revenue vs Expenses — Last 6 Months</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Revenue vs Expenses — Last 6 Months')}</h2>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
               <defs>
@@ -249,7 +249,7 @@ export default function Dashboard() {
                 onClick={() => navigate(q.path)}
                 className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
               >
-                <span className={`font-medium ${q.color}`}>{q.label}</span>
+                <span className={`font-medium ${q.color}`}>{t(q.label)}</span>
                 <ArrowRight size={14} className="text-gray-400" />
               </button>
             ))}
