@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, RefreshCw, Clock, CheckCircle } from 'lucide-react'
 
 const CATEGORIES = ['Prepaid Insurance', 'Prepaid Rent', 'Prepaid Subscription', 'Prepaid Maintenance', 'Other Prepaid']
@@ -104,6 +105,7 @@ export default function PrepaidExpenses() {
                   </Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="prepaid" entityId={pre.id} />
                       {pre.remaining > 0 && (
                         <Btn size="sm" variant="secondary"
                           onClick={() => { setAmortModal(pre); setAmortForm({ date: today(), amount: monthlyAmt(pre)?.toFixed(2) || '', period: '' }) }}>

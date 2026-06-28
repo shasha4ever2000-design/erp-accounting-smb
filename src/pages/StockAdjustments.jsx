@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, TrendingUp, TrendingDown } from 'lucide-react'
 
 const emptyForm = () => ({
@@ -81,6 +82,7 @@ export default function StockAdjustments() {
                 </Td>
                 <Td className="text-gray-500 text-sm max-w-[150px] truncate">{adj.reason || '—'}</Td>
                 <Td right>
+                  <AttachmentButton entityType="stockadj" entityId={adj.id} />
                   <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete adjustment ${adj.number}? This will reverse the quantity change.`)) deleteStockAdjustment(adj.id) }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>

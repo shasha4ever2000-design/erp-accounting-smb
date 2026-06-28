@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Search, User } from 'lucide-react'
 
 const emptyForm = {
@@ -96,6 +97,7 @@ export default function Employees() {
                 <Td><Badge className={STATUS_CLR[emp.status] || 'bg-gray-100 text-gray-600'}>{emp.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="employee" entityId={emp.id} />
                     <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)}><Pencil size={13} /></Btn>
                     <Btn size="sm" variant="ghost" onClick={() => handleDelete(emp)}><Trash2 size={13} className="text-red-400" /></Btn>
                   </div>

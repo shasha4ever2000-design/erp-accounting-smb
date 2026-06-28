@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import ExportMenu from '../components/ExportMenu'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { ArrowLeftRight, ArrowRight, Trash2, Landmark, Download, TrendingUp, TrendingDown, Wallet, CalendarClock, Play, Pause, CreditCard } from 'lucide-react'
 
 const FREQ_LABELS = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
@@ -177,7 +178,7 @@ export default function CashFlow() {
                 <Td right className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(tf.amount, sym)}</Td>
                 <Td right className="text-gray-400">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
                 <Td className="text-gray-400 text-xs font-mono">{tf.reference || '—'}</Td>
-                <Td right><Btn size="sm" variant="ghost" onClick={() => handleDelete(tf)}><Trash2 size={13} className="text-red-400" /></Btn></Td>
+                <Td right><div className="flex items-center justify-end gap-1"><AttachmentButton entityType="transfer" entityId={tf.id} /><Btn size="sm" variant="ghost" onClick={() => handleDelete(tf)}><Trash2 size={13} className="text-red-400" /></Btn></div></Td>
               </Tr>
             ))}
           </Table>

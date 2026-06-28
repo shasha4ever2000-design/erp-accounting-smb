@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
@@ -125,6 +126,7 @@ export default function Inventory() {
                   <Td right className="text-gray-600">{fmtMoney(stockValue, sym)}</Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="inventory" entityId={item.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(item)}><Pencil size={13} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(item)}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>

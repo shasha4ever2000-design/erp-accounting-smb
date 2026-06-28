@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, FileText, ArrowRight } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -93,6 +94,7 @@ export default function Quotations() {
                   </Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="quotation" entityId={q.id} />
                       {q.status !== 'invoiced' && q.status !== 'rejected' && (
                         <>
                           <Btn size="sm" variant="ghost" title="Mark Accepted" onClick={() => updateQuotation(q.id, { status: 'accepted' })}>

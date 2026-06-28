@@ -3,6 +3,7 @@ import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Briefcase, TrendingUp, TrendingDown, Clock, ChevronDown, ChevronRight } from 'lucide-react'
 
 const emptyProject = { name: '', client: '', budget: '', startDate: today(), status: 'active', notes: '' }
@@ -128,6 +129,7 @@ export default function Projects() {
                       <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Profit</p><p className={`text-sm font-bold ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(s.profit, sym)}</p></div>
                     </div>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+                      <AttachmentButton entityType="project" entityId={p.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil size={13} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete project "${p.name}"? Ledger entries are kept.`)) deleteProject(p.id) }}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>

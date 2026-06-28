@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Play, DollarSign, Trash2, Users } from 'lucide-react'
 
 const STATUS_CLR = {
@@ -111,6 +112,7 @@ export default function Payroll() {
                 </Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="payroll" entityId={run.id} />
                     {run.status === 'draft' && (
                       <Btn size="sm" variant="secondary" onClick={() => handleProcess(run)}>
                         <Play size={12} /> Process

@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, Play, CheckCircle, Factory, ListOrdered, Edit3 } from 'lucide-react'
 
 export default function Manufacturing() {
@@ -150,6 +151,7 @@ export default function Manufacturing() {
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <Btn size="sm" variant="ghost" onClick={() => openBomEdit(bom)}><Edit3 size={13} /></Btn>
+                      <AttachmentButton entityType="bom" entityId={bom.id} />
                       <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete BOM "${bom.name}"?`)) deleteBOM(bom.id) }}>
                         <Trash2 size={13} className="text-red-400" />
                       </Btn>
@@ -188,6 +190,7 @@ export default function Manufacturing() {
                   <Td><Badge className={STATUS_CLR[wo.status] || 'bg-gray-100 text-gray-500'}>{wo.status.replace('_', ' ')}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="workorder" entityId={wo.id} />
                       {wo.status === 'draft' && (
                         <Btn size="sm" variant="secondary" onClick={() => startWorkOrder(wo.id)}>
                           <Play size={12} /> Start

@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, Truck, Printer, X, ArrowLeft, Check } from 'lucide-react'
 
 const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1 })
@@ -49,7 +50,8 @@ export default function DeliveryNotes() {
       <div>
         <div className="flex items-center justify-between mb-6 no-print">
           <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400"><ArrowLeft size={15} /> {t('Back')}</button>
-          <div className="flex gap-2">
+          <div className="flex items-center gap-2">
+            <AttachmentButton entityType="deliverynote" entityId={dn.id} />
             {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> {t('Mark Delivered')}</Btn>}
             <Btn size="sm" variant="secondary" onClick={() => window.print()}><Printer size={14} /> {t('Download PDF')}</Btn>
           </div>

@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2 } from 'lucide-react'
 
 const emptyForm = () => ({
@@ -65,6 +66,7 @@ export default function CreditNotes() {
                   <span className="font-semibold text-red-600">({fmtMoney(cn.total, sym)})</span>
                 </Td>
                 <Td right>
+                  <AttachmentButton entityType="creditnote" entityId={cn.id} />
                   <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete ${cn.number}?`)) deleteCreditNote(cn.id) }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>

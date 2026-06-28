@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, ArrowRight } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -81,6 +82,7 @@ export default function PurchaseOrders() {
                 <Td right><span className="font-semibold text-gray-800">{fmtMoney(po.total, sym)}</span></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="purchaseorder" entityId={po.id} />
                     {po.status !== 'invoiced' && po.status !== 'cancelled' && (
                       <>
                         <Btn size="sm" variant="ghost" title="Mark Received" onClick={() => updatePurchaseOrder(po.id, { status: 'received' })}>

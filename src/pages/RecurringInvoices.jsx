@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, RefreshCw, Pause, Play, Repeat, X } from 'lucide-react'
 
 const FREQ = { weekly: 'Weekly', biweekly: 'Bi-weekly', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
@@ -117,6 +118,7 @@ export default function RecurringInvoices() {
                 </Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="recurringinvoice" entityId={r.id} />
                     {r.status === 'active' && <Btn size="sm" variant="ghost" onClick={() => updateRecurringInvoice(r.id, { status: 'paused' })} title="Pause"><Pause size={13} /></Btn>}
                     {r.status === 'paused' && <Btn size="sm" variant="ghost" onClick={() => updateRecurringInvoice(r.id, { status: 'active' })} title="Resume"><Play size={13} /></Btn>}
                     <Btn size="sm" variant="ghost" onClick={() => { if (confirm('Delete this subscription? Already-generated invoices are kept.')) deleteRecurringInvoice(r.id) }}><Trash2 size={13} className="text-red-400" /></Btn>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Calculator, Trash2, TrendingDown, Package } from 'lucide-react'
 
 const STATUS_CLR = { active: 'bg-green-100 text-green-700', disposed: 'bg-gray-100 text-gray-500' }
@@ -104,6 +105,7 @@ export default function FixedAssets() {
                 <Td><Badge className={STATUS_CLR[asset.status] || 'bg-gray-100 text-gray-600'}>{asset.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="fixedasset" entityId={asset.id} />
                     {asset.status === 'active' && (
                       <>
                         <Btn size="sm" variant="secondary" onClick={() => openDepr(asset)} title="Record Depreciation">

@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Btn, Modal, Input, Select, Textarea } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, UserPlus, ChevronLeft, ChevronRight, Phone, Mail } from 'lucide-react'
 
 const STAGES = [
@@ -91,7 +92,8 @@ export default function Pipeline() {
                         <button onClick={() => move(l, -1)} disabled={l.stage === 'new'} className="text-gray-400 hover:text-blue-600 disabled:opacity-30"><ChevronLeft size={14} /></button>
                         <button onClick={() => move(l, 1)} disabled={l.stage === 'lost'} className="text-gray-400 hover:text-blue-600 disabled:opacity-30"><ChevronRight size={14} /></button>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex gap-1 items-center">
+                        <AttachmentButton entityType="lead" entityId={l.id} />
                         {l.stage !== 'won' && <button onClick={() => convert(l)} title="Convert to customer" className="text-gray-400 hover:text-green-600"><UserPlus size={13} /></button>}
                         <button onClick={() => openEdit(l)} className="text-gray-400 hover:text-blue-600"><Pencil size={12} /></button>
                         <button onClick={() => { if (confirm('Delete this lead?')) deleteLead(l.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>

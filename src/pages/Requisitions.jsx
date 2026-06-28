@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Check, X, Trash2, ShoppingCart, ClipboardList } from 'lucide-react'
 
 const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, estPrice: '' })
@@ -83,6 +84,7 @@ export default function Requisitions() {
                 <Td><Badge className={STATUS[r.status]}>{r.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="requisition" entityId={r.id} />
                     {r.status === 'pending' && manager && (
                       <>
                         <Btn size="sm" variant="success" onClick={() => approveRequisition(r.id, me?.name)}><Check size={13} /></Btn>

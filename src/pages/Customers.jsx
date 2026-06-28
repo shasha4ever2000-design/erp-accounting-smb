@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
@@ -117,6 +118,7 @@ export default function Customers() {
                   </Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
+                      <AttachmentButton entityType="customer" entityId={c.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}><Pencil size={13} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(c)}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>

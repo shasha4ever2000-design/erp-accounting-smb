@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle } from 'lucide-react'
 
 const EXPENSE_CATEGORIES = [
@@ -111,6 +112,7 @@ export default function ExpenseClaims() {
                 </Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="expenseclaim" entityId={claim.id} />
                     {claim.status === 'pending' && (
                       <Btn size="sm" variant="secondary"
                         onClick={() => { if (confirm(`Approve claim ${claim.number} for ${claim.employeeName}?`)) approveExpenseClaim(claim.id) }}>

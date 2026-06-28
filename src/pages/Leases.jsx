@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CreditCard, Home, XCircle } from 'lucide-react'
 
 export default function Leases() {
@@ -119,6 +120,7 @@ export default function Leases() {
                   <Td><Badge className={STATUS_CLR[status] || 'bg-gray-100 text-gray-500'}>{status}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="lease" entityId={lease.id} />
                       {status === 'active' && (
                         <>
                           <Btn size="sm" variant="secondary" onClick={() => openPay(lease)}>
