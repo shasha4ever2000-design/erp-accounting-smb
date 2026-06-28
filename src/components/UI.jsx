@@ -146,6 +146,9 @@ export function EmptyState({ icon, title, desc, action }) {
 }
 
 export function StatCard({ label, value, sub, color = 'blue', icon }) {
+  const t = useT()
+  if (typeof label === 'string') label = t(label)
+  if (typeof sub === 'string') sub = t(sub)
   const colors = {
     blue:   'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300',
     green:  'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300',
@@ -219,10 +222,11 @@ export function Td({ children, right = false, className = '' }) {
 }
 
 export function SectionDivider({ title }) {
+  const t = useT()
   return (
     <div className="flex items-center gap-3 my-6">
       <div className="flex-1 border-t border-gray-200 dark:border-slate-700" />
-      <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{title}</span>
+      <span className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wider">{typeof title === 'string' ? t(title) : title}</span>
       <div className="flex-1 border-t border-gray-200 dark:border-slate-700" />
     </div>
   )
