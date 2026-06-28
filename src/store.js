@@ -42,6 +42,7 @@ const DEFAULT_ACCOUNTS = [
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-paye',   code: '2201', name: 'PAYE Tax Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-sspay',  code: '2202', name: 'Social Security Payable',    type: 'liability', subtype: 'current',     isSystem: false },
@@ -85,6 +86,7 @@ const DEFAULT_SETTINGS = {
   company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
   tax:           { enabled: false, rate: 15, name: 'VAT' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
+  wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
   customFields:  { customer: [], supplier: [] },
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30 },
   purchase:      { prefix: 'PUR-',  next: 1 },
@@ -145,6 +147,9 @@ export const useStore = create(
 
       updateCustomFields: (patch) =>
         set((s) => ({ settings: { ...s.settings, customFields: { ...(s.settings.customFields || { customer: [], supplier: [] }), ...patch } } })),
+
+      updateWht: (patch) =>
+        set((s) => ({ settings: { ...s.settings, wht: { ...(s.settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }), ...patch } } })),
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
       accounts: DEFAULT_ACCOUNTS,
@@ -477,14 +482,17 @@ export const useStore = create(
         const number = nextNum(prefix, next)
         const newAmountPaid = purchase.amountPaid + payment.amount
         const status = newAmountPaid >= purchase.total ? 'paid' : 'partial'
+        const wht = Math.max(0, Math.min(payment.amount, Number(payment.wht) || 0))
+        const netCash = payment.amount - wht
+        const lines = [
+          { accountId: 'acc-ap', debit: payment.amount, credit: 0, description: `Payment for ${purchase.number}` },
+          { accountId: payment.bankAccountId, debit: 0, credit: netCash, description: `Payment for ${purchase.number}` },
+        ]
+        if (wht > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: wht, description: `Withholding tax – ${purchase.number}` })
         const je = get().addJournalEntry({
           date: payment.date,
           description: `Payment ${number} for ${purchase.number}`,
-          reference: number, type: 'payment_out',
-          lines: [
-            { accountId: 'acc-ap', debit: payment.amount, credit: 0, description: `Payment for ${purchase.number}` },
-            { accountId: payment.bankAccountId, debit: 0, credit: payment.amount, description: `Payment for ${purchase.number}` },
-          ],
+          reference: number, type: 'payment_out', lines,
         })
         set((st) => ({
           purchases: st.purchases.map((p) =>
@@ -1435,7 +1443,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 12,
+      version: 13,
       storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {
        try {
@@ -1526,6 +1534,15 @@ export const useStore = create(
           persisted.settings = {
             ...persisted.settings,
             customFields: persisted.settings?.customFields || { customer: [], supplier: [] },
+          }
+        }
+        if (version < 13) {
+          persisted.settings = {
+            ...persisted.settings,
+            wht: persisted.settings?.wht || { enabled: false, rate: 5, name: 'Withholding Tax' },
+          }
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-wht')) {
+            persisted.accounts.push({ id: 'acc-wht', code: '2110', name: 'Withholding Tax Payable', type: 'liability', subtype: 'current', isSystem: false })
           }
         }
         return persisted

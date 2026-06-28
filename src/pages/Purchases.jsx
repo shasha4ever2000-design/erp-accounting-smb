@@ -10,11 +10,12 @@ export default function Purchases() {
   const { purchases, suppliers, accounts, deletePurchase, recordPurchasePayment, settings } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
+  const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [payModal, setPayModal] = useState(null) // holds the purchase
-  const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
+  const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '', wht: '' })
 
   const bankAccounts = accounts.filter((a) => ['acc-cash', 'acc-bank1'].includes(a.id))
 
@@ -33,7 +34,8 @@ export default function Purchases() {
 
   const openPay = (p) => {
     setPayModal(p)
-    setPayForm({ date: today(), amount: String(p.total - p.amountPaid), bankAccountId: 'acc-cash', notes: '' })
+    const amt = p.total - p.amountPaid
+    setPayForm({ date: today(), amount: String(amt), bankAccountId: 'acc-cash', notes: '', wht: whtCfg.enabled ? (amt * whtCfg.rate / 100).toFixed(2) : '' })
   }
 
   const handleRecord = () => {
@@ -41,7 +43,9 @@ export default function Purchases() {
     if (!amount || amount <= 0) return
     const due = payModal.total - payModal.amountPaid
     if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, sym)})`)
-    recordPurchasePayment(payModal.id, { ...payForm, amount })
+    const wht = parseFloat(payForm.wht) || 0
+    if (wht > amount) return alert('Withholding tax cannot exceed the payment amount.')
+    recordPurchasePayment(payModal.id, { ...payForm, amount, wht })
     setPayModal(null)
   }
 
@@ -138,6 +142,15 @@ export default function Purchases() {
             </div>
             <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
+            {whtCfg.enabled && (
+              <>
+                <Input label={`${whtCfg.name} withheld (${sym})`} type="number" min="0" step="0.01" value={payForm.wht} onChange={(e) => setPayForm((f) => ({ ...f, wht: e.target.value }))} />
+                <div className="bg-gray-50 rounded-lg p-2.5 text-sm text-gray-600 flex justify-between">
+                  <span>Net cash to supplier</span>
+                  <strong>{fmtMoney((parseFloat(payForm.amount) || 0) - (parseFloat(payForm.wht) || 0), sym)}</strong>
+                </div>
+              </>
+            )}
             <Select label="Pay From" value={payForm.bankAccountId} onChange={(e) => setPayForm((f) => ({ ...f, bankAccountId: e.target.value }))}>
               {bankAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
             </Select>

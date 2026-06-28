@@ -91,6 +91,28 @@ const AR = {
   'Net Loss': 'صافي الخسارة',
   'Amount owed to you': 'المبالغ المستحقة لك',
   'Amount you owe': 'المبالغ المستحقة عليك',
+
+  // Auth & company screens
+  'Run your whole business in one place.': 'أدر أعمالك بالكامل من مكان واحد.',
+  'Welcome back': 'مرحباً بعودتك',
+  'Create your account': 'أنشئ حسابك',
+  'Sign in to continue.': 'سجّل الدخول للمتابعة.',
+  'Sign up to start managing your companies.': 'سجّل لبدء إدارة شركاتك.',
+  'Full name': 'الاسم الكامل',
+  'Email': 'البريد الإلكتروني',
+  'Password': 'كلمة المرور',
+  'Create account': 'إنشاء حساب',
+  'Sign in': 'تسجيل الدخول',
+  'Already have an account?': 'لديك حساب بالفعل؟',
+  'New here?': 'مستخدم جديد؟',
+  'Create an account': 'إنشاء حساب',
+  'Your Companies': 'شركاتك',
+  'New Company': 'شركة جديدة',
+  'Company name': 'اسم الشركة',
+  'Create': 'إنشاء',
+  'Cancel': 'إلغاء',
+  'Open': 'فتح',
+  'Pick a company to work on, or create a new one. Each company keeps its own books.': 'اختر شركة للعمل عليها أو أنشئ شركة جديدة. لكل شركة دفاترها الخاصة.',
 }
 
 export const useI18n = create(

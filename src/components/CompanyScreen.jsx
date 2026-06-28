@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { useAuth } from '../auth'
+import { useT } from '../i18n'
 import { Building2, Plus, LogOut, Pencil, Trash2, ArrowRight, TrendingUp } from 'lucide-react'
 
 export default function CompanyScreen() {
   const { companies, createCompany, switchCompany, renameCompany, deleteCompany, logout, currentUser, isManager } = useAuth()
   const user = currentUser()
   const manager = isManager()
+  const t = useT()
   const [creating, setCreating] = useState(companies.length === 0)
   const [name, setName] = useState('')
   const [editing, setEditing] = useState(null)
@@ -30,7 +32,7 @@ export default function CompanyScreen() {
         </div>
         <div className="flex items-center gap-3">
           {user && <span className="text-sm text-gray-500">{user.name}</span>}
-          <button onClick={logout} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800"><LogOut size={15} /> Log out</button>
+          <button onClick={logout} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800"><LogOut size={15} /> {t('Log out')}</button>
         </div>
       </header>
 
@@ -38,20 +40,20 @@ export default function CompanyScreen() {
         <div className="w-full max-w-2xl mt-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Your Companies</h1>
-              <p className="text-gray-500 text-sm">Pick a company to work on, or create a new one. Each company keeps its own books.</p>
+              <h1 className="text-2xl font-bold text-gray-900">{t('Your Companies')}</h1>
+              <p className="text-gray-500 text-sm">{t('Pick a company to work on, or create a new one. Each company keeps its own books.')}</p>
             </div>
-            {!creating && <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium"><Plus size={16} /> New Company</button>}
+            {!creating && <button onClick={() => setCreating(true)} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium"><Plus size={16} /> {t('New Company')}</button>}
           </div>
 
           {creating && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-5">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company name</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Company name')}</label>
               <div className="flex gap-2">
                 <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && create()}
                   placeholder="e.g. Al-Noor Trading Est." className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button onClick={create} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">Create</button>
-                {companies.length > 0 && <button onClick={() => setCreating(false)} className="text-gray-500 px-3 text-sm">Cancel</button>}
+                <button onClick={create} className="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-4 py-2 text-sm font-medium">{t('Create')}</button>
+                {companies.length > 0 && <button onClick={() => setCreating(false)} className="text-gray-500 px-3 text-sm">{t('Cancel')}</button>}
               </div>
               <p className="text-xs text-gray-400 mt-2">A fresh chart of accounts and settings are created automatically. You can change everything later in Settings.</p>
             </div>
@@ -79,7 +81,7 @@ export default function CompanyScreen() {
                   </>
                 )}
                 <button onClick={() => switchCompany(c.id)} className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-gray-50 hover:bg-blue-50 hover:text-blue-700 text-gray-700 rounded-lg px-4 py-2 text-sm font-medium transition-colors">
-                  Open <ArrowRight size={15} />
+                  {t('Open')} <ArrowRight size={15} />
                 </button>
               </div>
             ))}

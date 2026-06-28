@@ -19,13 +19,15 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, exportData, importData } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, exportData, importData } = useStore()
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
   const [invoice, setInvoice] = useState({ ...settings.invoice })
   const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
   const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
+  const [wht, setWht] = useState({ enabled: false, rate: 5, name: 'Withholding Tax', ...(settings.wht || {}) })
+  const setWhtField = (k, v) => setWht((w) => ({ ...w, [k]: v }))
   const [customFields, setCustomFields] = useState({ customer: [...(settings.customFields?.customer || [])], supplier: [...(settings.customFields?.supplier || [])] })
   const [newCf, setNewCf] = useState({ customer: '', supplier: '' })
   const addCf = (entity) => {
@@ -110,6 +112,7 @@ export default function Settings() {
     updateInvoiceSettings(invoice)
     updateAiSettings(ai)
     updateZatca(zatca)
+    updateWht(wht)
     updateCustomFields(customFields)
     // keep the company-picker label in sync with the company name
     try {
@@ -327,6 +330,24 @@ export default function Settings() {
                   <p>Set currency to SAR and VAT to 15% using “Apply Saudi preset”, then Save.</p>
                 </div>
               </>
+            )}
+          </div>
+        </Card>
+
+        {/* Withholding Tax */}
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">Withholding Tax (WHT)</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Deduct withholding tax on supplier payments (e.g. KSA WHT on payments to non-residents). The withheld amount is posted to a “Withholding Tax Payable” account to remit later.</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="whtEnabled" checked={wht.enabled} onChange={(e) => setWhtField('enabled', e.target.checked)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+              <label htmlFor="whtEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">Enable withholding tax on payments</label>
+            </div>
+            {wht.enabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="WHT Name" value={wht.name} onChange={(e) => setWhtField('name', e.target.value)} placeholder="Withholding Tax" />
+                <Input label="Default Rate (%)" type="number" min="0" max="100" step="0.5" value={wht.rate} onChange={(e) => setWhtField('rate', parseFloat(e.target.value) || 0)} />
+              </div>
             )}
           </div>
         </Card>
