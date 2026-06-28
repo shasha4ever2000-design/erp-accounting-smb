@@ -317,6 +317,18 @@ const AR = {
   'Mark Accepted': 'تحديد كمقبولة', 'Generate Due': 'إنشاء المستحقة', 'Apply Saudi preset': 'تطبيق الإعداد السعودي',
   'Clear log': 'مسح السجل', 'Reset Data': 'إعادة تعيين البيانات', 'Add': 'إضافة',
   'Income': 'إيراد', 'Cost': 'تكلفة', 'Add Income': 'إضافة إيراد', 'Add Cost': 'إضافة تكلفة', 'Create Invoice ': 'إنشاء فاتورة',
+
+  // ── Status badges (auto-translated via Badge) ──
+  'sent': 'مُرسلة', 'partial': 'جزئية', 'paid': 'مدفوعة', 'overdue': 'متأخرة',
+  'draft': 'مسودة', 'received': 'مُستلمة', 'cancelled': 'ملغاة',
+  'accepted': 'مقبول', 'invoiced': 'مُفوتر', 'expired': 'منتهي', 'rejected': 'مرفوض',
+  'issued': 'صادر', 'active': 'نشط', 'inactive': 'غير نشط',
+  'on_hold': 'معلّق', 'on hold': 'معلّق', 'completed': 'مكتمل',
+  'pending': 'قيد الانتظار', 'approved': 'معتمد', 'ordered': 'تم الطلب',
+  'processed': 'تمت المعالجة', 'terminated': 'منتهي', 'paused': 'متوقف مؤقتاً',
+  'delivered': 'تم التسليم', 'in_progress': 'قيد التنفيذ', 'in progress': 'قيد التنفيذ',
+  'disposed': 'تم الاستبعاد', 'won': 'مكسوب', 'lost': 'خاسر',
+  'billable': 'قابل للفوترة', 'default': 'افتراضي',
 }
 
 export const useI18n = create(

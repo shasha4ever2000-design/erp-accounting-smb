@@ -56,9 +56,10 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', type 
 }
 
 export function Badge({ children, className = '' }) {
+  const t = useT()
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
-      {children}
+      {translateChildren(children, t)}
     </span>
   )
 }
