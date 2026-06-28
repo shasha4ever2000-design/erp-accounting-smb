@@ -1,0 +1,24 @@
+{
+  "name": "ERP Accounting System",
+  "short_name": "ERP Accounting",
+  "description": "Professional double-entry ERP & accounting for small and medium businesses — sales, purchases, inventory, projects, payroll, reports and more.",
+  "start_url": "/erp-accounting-smb/",
+  "scope": "/erp-accounting-smb/",
+  "id": "/erp-accounting-smb/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#2563eb",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    { "src": "/erp-accounting-smb/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/erp-accounting-smb/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/erp-accounting-smb/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Dashboard", "url": "/erp-accounting-smb/" },
+    { "name": "New Invoice", "url": "/erp-accounting-smb/invoices/new" },
+    { "name": "Reports", "url": "/erp-accounting-smb/reports" }
+  ]
+}
