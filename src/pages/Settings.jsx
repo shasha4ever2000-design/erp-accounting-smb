@@ -2,7 +2,7 @@ import { useState, useRef } from 'react'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
-import { useT } from '../i18n'
+import { useT, useI18n } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database } from 'lucide-react'
 
 const CURRENCIES = [
@@ -22,6 +22,8 @@ const CURRENCIES = [
 export default function Settings() {
   const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, exportData, importData } = useStore()
   const t = useT()
+  const numerals = useI18n((s) => s.numerals)
+  const setNumerals = useI18n((s) => s.setNumerals)
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
@@ -182,6 +184,10 @@ export default function Settings() {
                   const labels = ['January','February','March','April','May','June','July','August','September','October','November','December']
                   return <option key={m} value={m}>{labels[i]}</option>
                 })}
+              </Select>
+              <Select label="Number Format" value={numerals} onChange={(e) => setNumerals(e.target.value)}>
+                <option value="latin">{t('Western digits (0 1 2 3)')}</option>
+                <option value="arabic">{t('Arabic-Indic digits (٠ ١ ٢ ٣)')}</option>
               </Select>
             </div>
           </Card>

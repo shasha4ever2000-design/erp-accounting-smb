@@ -640,21 +640,44 @@ const AR = {
   // ── CSV export ──
   'Export CSV': 'تصدير CSV', 'Export': 'تصدير',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
+
+  // ── Number format ──
+  'Number Format': 'تنسيق الأرقام',
+  'Western digits (0 1 2 3)': 'الأرقام الغربية (0 1 2 3)',
+  'Arabic-Indic digits (٠ ١ ٢ ٣)': 'الأرقام العربية (٠ ١ ٢ ٣)',
 }
 
 export const useI18n = create(
   persist(
     (set) => ({
       lang: 'en',
+      numerals: 'latin', // 'latin' (0-9) or 'arabic' (٠-٩)
       setLang: (lang) => set({ lang }),
       toggle: () => set((s) => ({ lang: s.lang === 'ar' ? 'en' : 'ar' })),
+      setNumerals: (numerals) => set({ numerals }),
     }),
     { name: 'erp-lang', version: 1 }
   )
 )
 
+const ARABIC_DIGITS = ['٠', '١', '٢', '٣', '٤', '٥', '٦', '٧', '٨', '٩']
+
+// Convert digits in a string to the active numeral system (display only —
+// never used for CSV/data export, which stay Latin for spreadsheet compatibility).
+export function localizeDigits(str) {
+  if (str == null) return str
+  const s = String(str)
+  const system = useI18n.getState().numerals
+  if (system === 'arabic') return s.replace(/[0-9]/g, (d) => ARABIC_DIGITS[+d])
+  // Default / latin: normalize any Arabic-Indic digits back to Latin.
+  return s.replace(/[٠-٩]/g, (d) => String(ARABIC_DIGITS.indexOf(d)))
+}
+
 export function useT() {
   const lang = useI18n((s) => s.lang)
+  // Subscribe to numerals too so changing the numeral system re-renders
+  // components (which call fmtMoney/fmtDate during render).
+  useI18n((s) => s.numerals)
   return (s) => (lang === 'ar' && AR[s]) ? AR[s] : s
 }
 
