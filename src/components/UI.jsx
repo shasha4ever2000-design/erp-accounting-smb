@@ -66,6 +66,7 @@ export function Badge({ children, className = '' }) {
 
 export function Input({ label, error, className = '', ...props }) {
   const t = useT()
+  if (typeof props.placeholder === 'string') props.placeholder = t(props.placeholder)
   return (
     <div className={className}>
       {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{typeof label === 'string' ? t(label) : label}</label>}
@@ -100,6 +101,7 @@ export function Select({ label, error, children, className = '', ...props }) {
 
 export function Textarea({ label, error, className = '', ...props }) {
   const t = useT()
+  if (typeof props.placeholder === 'string') props.placeholder = t(props.placeholder)
   return (
     <div className={className}>
       {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{typeof label === 'string' ? t(label) : label}</label>}
