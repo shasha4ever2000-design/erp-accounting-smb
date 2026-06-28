@@ -88,7 +88,7 @@ const DEFAULT_SETTINGS = {
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
   customFields:  { customer: [], supplier: [] },
-  invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30 },
+  invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30, bankDetails: '' },
   purchase:      { prefix: 'PUR-',  next: 1 },
   journal:       { prefix: 'JE-',   next: 1 },
   receipt:       { prefix: 'REC-',  next: 1 },

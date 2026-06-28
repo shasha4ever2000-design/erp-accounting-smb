@@ -217,13 +217,23 @@ export default function Settings() {
             </div>
             <Input label="Default Payment Terms (days)" type="number" min="0" value={invoice.dueDays} onChange={(e) => setInvoiceField('dueDays', parseInt(e.target.value) || 30)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default Invoice Notes</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Default Invoice Notes</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 value={invoice.notes}
                 onChange={(e) => setInvoiceField('notes', e.target.value)}
                 placeholder="e.g. Thank you for your business! Payment due within 30 days."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Bank Details / Payment Instructions</label>
+              <textarea
+                rows={3}
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                value={invoice.bankDetails || ''}
+                onChange={(e) => setInvoiceField('bankDetails', e.target.value)}
+                placeholder="Bank name, IBAN, account number, SWIFT… — shown at the bottom of every invoice."
               />
             </div>
           </div>

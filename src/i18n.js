@@ -113,6 +113,29 @@ const AR = {
   'Cancel': 'إلغاء',
   'Open': 'فتح',
   'Pick a company to work on, or create a new one. Each company keeps its own books.': 'اختر شركة للعمل عليها أو أنشئ شركة جديدة. لكل شركة دفاترها الخاصة.',
+
+  // Common list/table terms
+  'New Customer': 'عميل جديد',
+  'Search customers...': 'ابحث عن العملاء...',
+  'Contact': 'جهة الاتصال',
+  'Tax ID': 'الرقم الضريبي',
+  'Balance Due': 'الرصيد المستحق',
+  'Actions': 'الإجراءات',
+  'No customers yet': 'لا يوجد عملاء بعد',
+  'Add your first customer to start creating invoices.': 'أضف أول عميل لبدء إنشاء الفواتير.',
+  'Add Customer': 'إضافة عميل',
+  'No customers match your search': 'لا يوجد عملاء مطابقون لبحثك',
+  'Customer': 'العميل',
+  'Supplier': 'المورّد',
+  'Status': 'الحالة',
+  'Date': 'التاريخ',
+  'All': 'الكل',
+  'Paid': 'مدفوعة',
+  'Overdue': 'متأخرة',
+  'Save': 'حفظ',
+  'Cancel': 'إلغاء',
+  'Edit': 'تعديل',
+  'Delete': 'حذف',
 }
 
 export const useI18n = create(

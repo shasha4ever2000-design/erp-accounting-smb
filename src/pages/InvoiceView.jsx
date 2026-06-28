@@ -220,6 +220,14 @@ export default function InvoiceView() {
             </div>
           )}
 
+          {/* Bank details / payment instructions */}
+          {settings.invoice?.bankDetails && (
+            <div className="mt-6 pt-6 border-t border-gray-100">
+              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Payment Details</p>
+              <p className="text-sm text-gray-600 whitespace-pre-line">{settings.invoice.bankDetails}</p>
+            </div>
+          )}
+
           {/* Payment history */}
           {invoice.payments?.length > 0 && (
             <div className="mt-6 pt-6 border-t border-gray-100">

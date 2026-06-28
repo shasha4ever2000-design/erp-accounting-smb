@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
@@ -10,6 +11,7 @@ export default function Customers() {
   const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings } = useStore()
   const sym = settings.company.currencySymbol
   const customDefs = settings.customFields?.customer || []
+  const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -45,9 +47,9 @@ export default function Customers() {
   return (
     <div>
       <PageHeader
-        title="Customers"
+        title={t('Customers')}
         subtitle={`${customers.length} customer${customers.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Customer</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Customer')}</Btn>}
       />
 
       {/* Search */}
@@ -55,7 +57,7 @@ export default function Customers() {
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input
           className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search customers..."
+          placeholder={t('Search customers...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -65,14 +67,14 @@ export default function Customers() {
         {filtered.length === 0 && customers.length === 0 ? (
           <EmptyState
             icon="👥"
-            title="No customers yet"
-            desc="Add your first customer to start creating invoices."
-            action={<Btn onClick={openNew}><Plus size={14} /> Add Customer</Btn>}
+            title={t('No customers yet')}
+            desc={t('Add your first customer to start creating invoices.')}
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Customer')}</Btn>}
           />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No customers match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No customers match your search')}</div>
         ) : (
-          <Table headers={['Customer', 'Contact', 'Tax ID', { label: 'Balance Due', right: true }, { label: 'Actions', right: true }]}>
+          <Table headers={[t('Customer'), t('Contact'), t('Tax ID'), { label: t('Balance Due'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((c) => {
               const balance = getBalance(c.id)
               return (
