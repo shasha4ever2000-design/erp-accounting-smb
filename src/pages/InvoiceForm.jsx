@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 
@@ -11,6 +12,7 @@ const emptyLine = () => ({ id: uuid(), description: '', quantity: 1, unitPrice: 
 export default function InvoiceForm() {
   const navigate = useNavigate()
   const { customers, accounts, settings, addInvoice } = useStore()
+  const t = useT()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
   const defaultTaxRate = settings.tax.rate
@@ -72,9 +74,9 @@ export default function InvoiceForm() {
     <div>
       <div className="mb-6">
         <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
-          <ArrowLeft size={15} /> Back to Invoices
+          <ArrowLeft size={15} /> {t('Back to Invoices')}
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">New Sales Invoice</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{t('New Sales Invoice')}</h1>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -82,7 +84,7 @@ export default function InvoiceForm() {
         <div className="xl:col-span-2 space-y-5">
           {/* Header */}
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Invoice Details</h2>
+            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Invoice Details')}</h2>
             <div className="grid grid-cols-2 gap-4">
               <Select label="Customer *" value={form.customerId} onChange={(e) => setCustomer(e.target.value)}>
                 <option value="">Select customer…</option>
@@ -96,15 +98,15 @@ export default function InvoiceForm() {
 
           {/* Line Items */}
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">Line Items</h2>
+            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
               {/* Headers */}
               <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_80px_100px_80px_80px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
-                <span>Description</span>
+                <span>{t('Description')}</span>
                 <span>Qty</span>
-                <span>Unit Price</span>
+                <span>{t('Unit Price')}</span>
                 {taxEnabled && <span>Tax %</span>}
-                <span className="text-right">Amount</span>
+                <span className="text-right">{t('Amount')}</span>
                 <span />
               </div>
 
@@ -156,7 +158,7 @@ export default function InvoiceForm() {
               ))}
 
               <Btn variant="ghost" onClick={addLine} size="sm">
-                <Plus size={14} /> Add Line
+                <Plus size={14} /> {t('Add Line')}
               </Btn>
             </div>
 
@@ -207,17 +209,17 @@ export default function InvoiceForm() {
             </div>
             <div className="mt-5 space-y-2">
               <Btn className="w-full justify-center" onClick={handleSave}>
-                Save Invoice
+                {t('Save Invoice')}
               </Btn>
               <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/invoices')}>
-                Cancel
+                {t('Cancel')}
               </Btn>
             </div>
           </Card>
 
           {form.customerId && (
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">Customer</h2>
+              <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('Customer')}</h2>
               {(() => {
                 const c = customers.find((c) => c.id === form.customerId)
                 if (!c) return null

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
+import { useT } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database } from 'lucide-react'
 
 const CURRENCIES = [
@@ -20,6 +21,7 @@ const CURRENCIES = [
 
 export default function Settings() {
   const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, exportData, importData } = useStore()
+  const t = useT()
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
@@ -145,14 +147,14 @@ export default function Settings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Company Info */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Company Information</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Company Information')}</h2>
           <div className="space-y-4">
             <Input label="Company Name *" value={company.name} onChange={(e) => setCompanyField('name', e.target.value)} />
             <Input label="Company Name (Arabic) · الاسم بالعربية" value={company.arabicName || ''} onChange={(e) => setCompanyField('arabicName', e.target.value)} dir="rtl" placeholder="اسم الشركة" />
             <Input label="Email" type="email" value={company.email} onChange={(e) => setCompanyField('email', e.target.value)} />
             <Input label="Phone" value={company.phone} onChange={(e) => setCompanyField('phone', e.target.value)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Address')}</label>
               <textarea
                 rows={3}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -168,7 +170,7 @@ export default function Settings() {
         {/* Currency & Fiscal Year */}
         <div className="space-y-5">
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">Currency & Fiscal Year</h2>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Currency & Fiscal Year')}</h2>
             <div className="space-y-4">
               <Select label="Currency" value={company.currency} onChange={(e) => setCompanyField('currency', e.target.value)}>
                 {CURRENCIES.map((c) => (
@@ -185,7 +187,7 @@ export default function Settings() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">Tax Settings</h2>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Tax Settings')}</h2>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <input
@@ -209,7 +211,7 @@ export default function Settings() {
 
         {/* Invoice Settings */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Invoice Settings</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Invoice Settings')}</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Invoice Prefix" value={invoice.prefix} onChange={(e) => setInvoiceField('prefix', e.target.value)} placeholder="INV-" />
@@ -217,7 +219,7 @@ export default function Settings() {
             </div>
             <Input label="Default Payment Terms (days)" type="number" min="0" value={invoice.dueDays} onChange={(e) => setInvoiceField('dueDays', parseInt(e.target.value) || 30)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Default Invoice Notes</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Default Invoice Notes')}</label>
               <textarea
                 rows={3}
                 className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -245,11 +247,11 @@ export default function Settings() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
               <Sparkles size={14} className="text-white" />
             </div>
-            <h2 className="text-base font-semibold text-gray-800">AI Assistant</h2>
+            <h2 className="text-base font-semibold text-gray-800">{t('AI Assistant')}</h2>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Claude API Key</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Claude API Key')}</label>
               <div className="relative">
                 <input
                   type={showKey ? 'text' : 'password'}
@@ -281,16 +283,16 @@ export default function Settings() {
 
         {/* Invoice Branding */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Invoice Branding</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Invoice Branding')}</h2>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Company Logo</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Company Logo')}</label>
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50">
                   {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No logo</span>}
                 </div>
                 <div className="space-y-2">
-                  <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>Upload Logo</Btn>
+                  <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>{t('Upload Logo')}</Btn>
                   {company.logo && <Btn size="sm" variant="ghost" onClick={() => setCompanyField('logo', '')}>Remove</Btn>}
                   <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogo} className="hidden" />
                   <p className="text-xs text-gray-400 dark:text-slate-500">PNG/JPG/SVG, under 500 KB. Appears on invoices &amp; delivery notes.</p>
@@ -298,7 +300,7 @@ export default function Settings() {
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Accent Color</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Accent Color')}</label>
               <div className="flex items-center gap-3">
                 <input type="color" value={company.accentColor || '#2563eb'} onChange={(e) => setCompanyField('accentColor', e.target.value)} className="w-12 h-9 rounded border border-gray-200 dark:border-slate-600 cursor-pointer" />
                 <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{company.accentColor || '#2563eb'}</span>
@@ -314,7 +316,7 @@ export default function Settings() {
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-white text-xs font-bold">KSA</div>
               <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Saudi Arabia · ZATCA E-Invoicing</h2>
             </div>
-            <Btn size="sm" variant="secondary" onClick={applySaudiPreset}>Apply Saudi preset</Btn>
+            <Btn size="sm" variant="secondary" onClick={applySaudiPreset}>{t('Apply Saudi preset')}</Btn>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
             Generate ZATCA (Fatoorah) compliant simplified tax invoices with a scannable QR code, bilingual Arabic/English layout, and 15% VAT.
@@ -322,7 +324,7 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <input type="checkbox" id="zatcaEnabled" checked={zatca.enabled} onChange={(e) => setZatcaField('enabled', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
-              <label htmlFor="zatcaEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">Enable ZATCA e-invoicing</label>
+              <label htmlFor="zatcaEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable ZATCA e-invoicing')}</label>
             </div>
             {zatca.enabled && (
               <>
@@ -332,7 +334,7 @@ export default function Settings() {
                 </div>
                 <div className="flex items-center gap-3">
                   <input type="checkbox" id="zatcaQr" checked={zatca.showQr} onChange={(e) => setZatcaField('showQr', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
-                  <label htmlFor="zatcaQr" className="text-sm font-medium text-gray-700 dark:text-slate-300">Show ZATCA QR code on invoices</label>
+                  <label htmlFor="zatcaQr" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Show ZATCA QR code on invoices')}</label>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-xs text-green-700 dark:text-green-300 space-y-1">
                   <p className="font-medium">The QR code encodes (per ZATCA Phase 1):</p>
@@ -351,7 +353,7 @@ export default function Settings() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <input type="checkbox" id="whtEnabled" checked={wht.enabled} onChange={(e) => setWhtField('enabled', e.target.checked)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
-              <label htmlFor="whtEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">Enable withholding tax on payments</label>
+              <label htmlFor="whtEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable withholding tax on payments')}</label>
             </div>
             {wht.enabled && (
               <div className="grid grid-cols-2 gap-3">
@@ -364,13 +366,13 @@ export default function Settings() {
 
         {/* Custom Fields */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">Custom Fields</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">{t('Custom Fields')}</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Add your own fields to customer and supplier records (e.g. “Account Manager”, “Credit Limit”, “Region”).</p>
           {['customer', 'supplier'].map((entity) => (
             <div key={entity} className="mb-4 last:mb-0">
               <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2 capitalize">{entity} fields</p>
               <div className="flex flex-wrap gap-2 mb-2">
-                {customFields[entity].length === 0 && <span className="text-xs text-gray-300 dark:text-slate-600">None yet</span>}
+                {customFields[entity].length === 0 && <span className="text-xs text-gray-300 dark:text-slate-600">{t('None yet')}</span>}
                 {customFields[entity].map((label) => (
                   <span key={label} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-full pl-3 pr-1.5 py-1 text-sm">
                     {label}
@@ -385,7 +387,7 @@ export default function Settings() {
               </div>
             </div>
           ))}
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Remember to click <strong>Save Settings</strong> to apply.</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{t('Remember to click')}<strong>{t('Save Settings')}</strong> to apply.</p>
         </Card>
 
         {/* Backup & Restore */}
@@ -400,15 +402,15 @@ export default function Settings() {
             Your data lives in this browser. Download a backup regularly so you never lose it — and restore it on any device or browser.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Btn variant="success" onClick={handleExport}><Download size={15} /> Download Backup</Btn>
-            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> Restore from File</Btn>
+            <Btn variant="success" onClick={handleExport}><Download size={15} /> {t('Download Backup')}</Btn>
+            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Restore from File')}</Btn>
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
           </div>
           <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Backup files contain all invoices, transactions, customers, settings and more in one portable file.</p>
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
             <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
-              <span>Browser storage used</span>
+              <span>{t('Browser storage used')}</span>
               <span>~{storageKB} KB of ~5,120 KB</span>
             </div>
             <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
@@ -423,17 +425,17 @@ export default function Settings() {
           <div className="flex items-start gap-3 mb-4">
             <AlertTriangle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
             <div>
-              <h2 className="text-base font-semibold text-red-700">Danger Zone</h2>
-              <p className="text-sm text-gray-500 mt-1">These actions are irreversible. Please proceed with caution.</p>
+              <h2 className="text-base font-semibold text-red-700">{t('Danger Zone')}</h2>
+              <p className="text-sm text-gray-500 mt-1">{t('These actions are irreversible. Please proceed with caution.')}</p>
             </div>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <div>
-                <p className="text-sm font-medium text-gray-800">Reset All Data</p>
+                <p className="text-sm font-medium text-gray-800">{t('Reset All Data')}</p>
                 <p className="text-xs text-gray-500">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
               </div>
-              {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>Reset Data</Btn> : <span className="text-xs text-gray-400 dark:text-slate-500">Owners / Admins only</span>}
+              {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>{t('Reset Data')}</Btn> : <span className="text-xs text-gray-400 dark:text-slate-500">Owners / Admins only</span>}
             </div>
           </div>
         </Card>

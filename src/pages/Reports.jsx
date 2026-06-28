@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 
@@ -18,6 +19,7 @@ const REPORTS = [
 
 export default function Reports() {
   const { accounts, journalEntries, invoices, purchases, bankAccounts, getAllBalances, settings } = useStore()
+  const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
 
@@ -49,8 +51,8 @@ export default function Reports() {
       <div className="space-y-6">
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-green-50 rounded-xl p-4"><p className="text-sm text-green-600">Total Revenue</p><p className="text-2xl font-bold text-green-700">{fmtMoney(totalRevenue, sym)}</p></div>
-          <div className="bg-red-50 rounded-xl p-4"><p className="text-sm text-red-600">Total Expenses</p><p className="text-2xl font-bold text-red-700">{fmtMoney(totalExpenses, sym)}</p></div>
+          <div className="bg-green-50 rounded-xl p-4"><p className="text-sm text-green-600">{t('Total Revenue')}</p><p className="text-2xl font-bold text-green-700">{fmtMoney(totalRevenue, sym)}</p></div>
+          <div className="bg-red-50 rounded-xl p-4"><p className="text-sm text-red-600">{t('Total Expenses')}</p><p className="text-2xl font-bold text-red-700">{fmtMoney(totalExpenses, sym)}</p></div>
           <div className={`${netProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50'} rounded-xl p-4`}>
             <p className={`text-sm ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>Net {netProfit >= 0 ? 'Profit' : 'Loss'}</p>
             <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmtMoney(Math.abs(netProfit), sym)}</p>
@@ -64,8 +66,8 @@ export default function Reports() {
           </div>
           <div className="p-6">
             {/* Revenue */}
-            <h4 className="font-bold text-green-700 text-sm uppercase tracking-wide mb-3">Revenue</h4>
-            {revenueAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">No revenue for this period</p> : (
+            <h4 className="font-bold text-green-700 text-sm uppercase tracking-wide mb-3">{t('Revenue')}</h4>
+            {revenueAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">{t('No revenue for this period')}</p> : (
               <table className="w-full text-sm mb-4">
                 <tbody>
                   {revenueAccs.map((a) => (
@@ -75,7 +77,7 @@ export default function Reports() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-green-200 bg-green-50/50">
-                    <td className="py-2 font-bold text-green-800">Total Revenue</td>
+                    <td className="py-2 font-bold text-green-800">{t('Total Revenue')}</td>
                     <td className="py-2 text-right font-bold text-green-800">{fmtMoney(totalRevenue, sym)}</td>
                   </tr>
                 </tbody>
@@ -83,8 +85,8 @@ export default function Reports() {
             )}
 
             {/* Expenses */}
-            <h4 className="font-bold text-red-700 text-sm uppercase tracking-wide mb-3 mt-6">Expenses</h4>
-            {expenseAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">No expenses for this period</p> : (
+            <h4 className="font-bold text-red-700 text-sm uppercase tracking-wide mb-3 mt-6">{t('Expenses')}</h4>
+            {expenseAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">{t('No expenses for this period')}</p> : (
               <table className="w-full text-sm mb-4">
                 <tbody>
                   {expenseAccs.map((a) => (
@@ -94,7 +96,7 @@ export default function Reports() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-red-200 bg-red-50/50">
-                    <td className="py-2 font-bold text-red-800">Total Expenses</td>
+                    <td className="py-2 font-bold text-red-800">{t('Total Expenses')}</td>
                     <td className="py-2 text-right font-bold text-red-800">{fmtMoney(totalExpenses, sym)}</td>
                   </tr>
                 </tbody>
@@ -271,15 +273,15 @@ export default function Reports() {
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Description</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('Description')}</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ref</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Debit</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Credit</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Balance</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('Balance')}</th>
             </tr>
           </thead>
           <tbody>
-            {lines.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 text-sm">No transactions for this account in the selected period</td></tr>}
+            {lines.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 text-sm">{t('No transactions for this account in the selected period')}</td></tr>}
             {lines.map((l, i) => (
               <tr key={i} className="border-b border-gray-50">
                 <td className="px-6 py-2 text-gray-500">{fmtDate(l.date)}</td>
@@ -370,7 +372,7 @@ export default function Reports() {
               <BucketSection label="61–90 Days Overdue" items={buckets.days90} color="text-red-600" />
               <BucketSection label="90+ Days Overdue" items={buckets.over90} color="text-red-800" />
               <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 pt-3 mt-4">
-                <span>Total Outstanding</span>
+                <span>{t('Total Outstanding')}</span>
                 <span className="text-gray-900">{fmtMoney(grandTotal, sym)}</span>
               </div>
             </>
@@ -406,10 +408,10 @@ export default function Reports() {
                 <thead>
                   <tr className="text-xs font-semibold text-gray-400 uppercase border-b border-gray-100">
                     <th className="text-left pb-2">Purchase #</th>
-                    <th className="text-left pb-2">Supplier</th>
-                    <th className="text-left pb-2">Due Date</th>
-                    <th className="text-right pb-2">Days Overdue</th>
-                    <th className="text-right pb-2">Balance</th>
+                    <th className="text-left pb-2">{t('Supplier')}</th>
+                    <th className="text-left pb-2">{t('Due Date')}</th>
+                    <th className="text-right pb-2">{t('Days Overdue')}</th>
+                    <th className="text-right pb-2">{t('Balance')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -429,7 +431,7 @@ export default function Reports() {
                 </tbody>
               </table>
               <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 pt-3 mt-4">
-                <span>Total Payable</span>
+                <span>{t('Total Payable')}</span>
                 <span className="text-gray-900">{fmtMoney(total, sym)}</span>
               </div>
             </>
@@ -465,7 +467,7 @@ export default function Reports() {
         <h4 className={`font-bold text-sm uppercase tracking-wide mb-2 ${color}`}>{title}</h4>
         <table className="w-full text-sm">
           <tbody>
-            {items.length === 0 && <tr><td className="py-1.5 pl-3 text-gray-400 text-sm">No activity</td></tr>}
+            {items.length === 0 && <tr><td className="py-1.5 pl-3 text-gray-400 text-sm">{t('No activity')}</td></tr>}
             {items.map((x, i) => (
               <tr key={i} className="border-b border-gray-50 dark:border-slate-700/50">
                 <td className="py-1.5 pl-3 text-gray-500 dark:text-slate-400 text-xs w-24">{fmtDate(x.date)}</td>
@@ -497,7 +499,7 @@ export default function Reports() {
           <Group title="Investing Activities" items={cats.investing} total={catTotal('investing')} color="text-purple-700 dark:text-purple-400" />
           <Group title="Financing Activities" items={cats.financing} total={catTotal('financing')} color="text-orange-700 dark:text-orange-400" />
           <div className="flex justify-between text-base border-t-2 border-gray-300 dark:border-slate-600 pt-3 mt-2">
-            <span className="font-bold text-gray-900 dark:text-slate-100">Net Change in Cash</span>
+            <span className="font-bold text-gray-900 dark:text-slate-100">{t('Net Change in Cash')}</span>
             <span className={`font-bold ${net >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>{fmtMoney(net, sym)}</span>
           </div>
           <div className="flex justify-between text-base border-t-4 border-gray-800 dark:border-slate-400 pt-3 mt-3">
@@ -545,7 +547,7 @@ export default function Reports() {
           <thead className="bg-gray-50 dark:bg-slate-800/60">
             <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
               <th className="px-4 py-2 text-left">#</th>
-              <th className="px-2 py-2 text-left">Description</th>
+              <th className="px-2 py-2 text-left">{t('Description')}</th>
               <th className="px-4 py-2 text-right">Amount ({sym})</th>
             </tr>
           </thead>
