@@ -744,10 +744,35 @@ export const useStore = create(
       // ─── STOCK ADJUSTMENTS ─────────────────────────────────────────
       stockAdjustments: [],
 
+      // ─── STOCK MOVEMENT LEDGER ─────────────────────────────────────
+      // Append-only audit trail of every on-hand quantity change, powering
+      // per-item stock cards. type: 'sale'|'adjustment'|'production'|'consumption'.
+      stockMovements: [],
+      logStockMovement: (mv) =>
+        set((s) => ({ stockMovements: [...s.stockMovements, { id: uuid(), createdAt: new Date().toISOString(), ...mv }] })),
+
+      // Segregation of duties: an adjustment is created as PENDING — it does not
+      // touch the ledger or on-hand quantity until a *different* manager approves it.
       addStockAdjustment: (adj) => {
         const s = get()
         const { prefix, next } = s.settings.stockAdj
         const number = nextNum(prefix, next)
+        const rec = {
+          ...adj, id: uuid(), number, status: 'pending',
+          createdBy: adj.createdBy || null, createdByName: adj.createdByName || '',
+          approvedBy: null, approvedByName: '', approvedAt: null, journalEntryId: null,
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({
+          stockAdjustments: [...st.stockAdjustments, rec],
+          settings: { ...st.settings, stockAdj: { ...st.settings.stockAdj, next: next + 1 } },
+        }))
+        return rec
+      },
+
+      approveStockAdjustment: (id, approver) => {
+        const adj = get().stockAdjustments.find((a) => a.id === id)
+        if (!adj || adj.status === 'approved') return
         const invAccId = adj.inventoryAccountId || 'acc-inv'
         const lines = adj.type === 'increase'
           ? [
@@ -760,26 +785,38 @@ export const useStore = create(
             ]
         const je = get().addJournalEntry({
           date: adj.date,
-          description: `Stock Adj ${number} – ${adj.itemName || ''}`,
-          reference: number, type: 'stock_adj', lines,
+          description: `Stock Adj ${adj.number} – ${adj.itemName || ''}`,
+          reference: adj.number, type: 'stock_adj', lines,
         })
         const qtyChange = adj.type === 'increase' ? adj.quantity : -adj.quantity
+        get().logStockMovement({ itemId: adj.itemId, itemName: adj.itemName, date: adj.date, type: 'adjustment', qtyChange, ref: adj.number, note: adj.reason || '' })
         set((st) => ({
-          stockAdjustments: [...st.stockAdjustments, { ...adj, id: uuid(), number, journalEntryId: je.id, createdAt: new Date().toISOString() }],
+          stockAdjustments: st.stockAdjustments.map((a) =>
+            a.id === id ? { ...a, status: 'approved', approvedBy: approver?.id || null, approvedByName: approver?.name || '', approvedAt: new Date().toISOString(), journalEntryId: je.id } : a
+          ),
           inventoryItems: st.inventoryItems.map((i) =>
             i.id === adj.itemId ? { ...i, quantity: (i.quantity || 0) + qtyChange } : i
           ),
-          settings: { ...st.settings, stockAdj: { ...st.settings.stockAdj, next: next + 1 } },
         }))
       },
+
+      rejectStockAdjustment: (id, approver, reason) =>
+        set((s) => ({
+          stockAdjustments: s.stockAdjustments.map((a) =>
+            a.id === id ? { ...a, status: 'rejected', approvedBy: approver?.id || null, approvedByName: approver?.name || '', approvedAt: new Date().toISOString(), rejectionReason: reason || '' } : a
+          ),
+        })),
 
       deleteStockAdjustment: (id) =>
         set((s) => {
           const adj = s.stockAdjustments.find((a) => a.id === id)
-          const qtyChange = adj ? (adj.type === 'increase' ? -adj.quantity : adj.quantity) : 0
+          // Only reverse quantity/JE if the adjustment was actually posted (approved or legacy).
+          const wasPosted = adj && (adj.status === 'approved' || adj.status === undefined)
+          const qtyChange = wasPosted ? (adj.type === 'increase' ? -adj.quantity : adj.quantity) : 0
           return {
             stockAdjustments: s.stockAdjustments.filter((a) => a.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== adj?.journalEntryId),
+            stockMovements: s.stockMovements.filter((m) => m.ref !== adj?.number),
             inventoryItems: s.inventoryItems.map((i) =>
               i.id === adj?.itemId ? { ...i, quantity: (i.quantity || 0) + qtyChange } : i
             ),
@@ -1028,6 +1065,7 @@ export const useStore = create(
         })
 
         const outputQty = (wo.outputQuantity || 1) * qty
+        get().logStockMovement({ itemId: wo.outputItemId, itemName: wo.outputName, date: completionDate || new Date().toISOString().slice(0, 10), type: 'production', qtyChange: outputQty, ref: wo.number, note: 'Work order output' })
         set((st) => ({
           workOrders: st.workOrders.map((w) =>
             w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
@@ -1468,6 +1506,7 @@ export const useStore = create(
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
+          'stockMovements', 'bankTransfers', 'scheduledTransfers',
         ]
         const out = { _app: 'erp-accounting-smb', _version: 11, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })

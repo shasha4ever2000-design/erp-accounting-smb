@@ -48,6 +48,7 @@ const NAV = [
 
   { divider: 'Inventory & Production' },
   { label: 'Inventory Items',    path: '/inventory',        icon: Package },
+  { label: 'Inventory Control',  path: '/inventory-control',icon: BarChart3 },
   { label: 'Warehouses',         path: '/warehouses',       icon: Warehouse },
   { label: 'Stock Adjustments',  path: '/stock-adjustments',icon: Sliders },
   { label: 'Manufacturing',      path: '/manufacturing',    icon: Factory },

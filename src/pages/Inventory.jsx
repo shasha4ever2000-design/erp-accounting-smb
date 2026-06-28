@@ -8,8 +8,8 @@ import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
 
 const emptyForm = {
-  name: '', code: '', description: '', unit: 'pcs',
-  costPrice: '', salePrice: '', quantity: '', reorderLevel: '',
+  name: '', code: '', description: '', unit: 'pcs', category: '', barcode: '',
+  costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
   taxRate: 0,
 }
@@ -36,6 +36,7 @@ export default function Inventory() {
       salePrice: parseFloat(form.salePrice) || 0,
       quantity: parseFloat(form.quantity) || 0,
       reorderLevel: parseFloat(form.reorderLevel) || 0,
+      maxLevel: parseFloat(form.maxLevel) || 0,
       taxRate: parseFloat(form.taxRate) || 0,
     }
     if (editing) updateInventoryItem(editing.id, data)
@@ -53,6 +54,7 @@ export default function Inventory() {
 
   const filtered = inventoryItems.filter((i) =>
     !search || i.name.toLowerCase().includes(search.toLowerCase()) || (i.code || '').toLowerCase().includes(search.toLowerCase())
+    || (i.barcode || '').toLowerCase().includes(search.toLowerCase()) || (i.category || '').toLowerCase().includes(search.toLowerCase())
   )
 
   const totalValue = inventoryItems.reduce((s, i) => s + (i.quantity || 0) * (i.costPrice || 0), 0)
@@ -145,14 +147,19 @@ export default function Inventory() {
             <Input label="Item Code / SKU" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="e.g. SKU-001" />
           </div>
           <Textarea label="Description" value={form.description} onChange={(e) => setField('description', e.target.value)} rows={2} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)} placeholder="e.g. Raw Materials, Finished Goods" />
+            <Input label="Barcode" value={form.barcode} onChange={(e) => setField('barcode', e.target.value)} placeholder="EAN / UPC / scan" />
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <Input label="Unit" value={form.unit} onChange={(e) => setField('unit', e.target.value)} placeholder="pcs, kg, hr..." />
             <Input label="Cost Price" type="number" min="0" step="0.01" value={form.costPrice} onChange={(e) => setField('costPrice', e.target.value)} />
             <Input label="Sale Price" type="number" min="0" step="0.01" value={form.salePrice} onChange={(e) => setField('salePrice', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Input label="Qty on Hand" type="number" min="0" step="0.01" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label="Reorder Level" type="number" min="0" step="0.01" value={form.reorderLevel} onChange={(e) => setField('reorderLevel', e.target.value)} />
+            <Input label="Max Level" type="number" min="0" step="0.01" value={form.maxLevel} onChange={(e) => setField('maxLevel', e.target.value)} placeholder="optional" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Select label="Inventory Account" value={form.inventoryAccountId} onChange={(e) => setField('inventoryAccountId', e.target.value)}>

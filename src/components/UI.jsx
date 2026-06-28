@@ -37,7 +37,7 @@ export function PageHeader({ title, subtitle, action }) {
   )
 }
 
-export function Btn({ children, onClick, variant = 'primary', size = 'md', type = 'button', disabled = false, className = '' }) {
+export function Btn({ children, onClick, variant = 'primary', size = 'md', type = 'button', disabled = false, className = '', title }) {
   const t = useT()
   const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
@@ -49,7 +49,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', type 
     success:   'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
   }
   return (
-    <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
+    <button type={type} onClick={onClick} disabled={disabled} title={typeof title === 'string' ? t(title) : title} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
       {translateChildren(children, t)}
     </button>
   )
@@ -213,9 +213,9 @@ export function Tr({ children, onClick, className = '' }) {
   )
 }
 
-export function Td({ children, right = false, className = '' }) {
+export function Td({ children, right = false, className = '', colSpan }) {
   return (
-    <td className={`px-4 py-3 text-gray-700 dark:text-slate-300 ${right ? 'text-right' : ''} ${className}`}>
+    <td colSpan={colSpan} className={`px-4 py-3 text-gray-700 dark:text-slate-300 ${right ? 'text-right' : ''} ${className}`}>
       {children}
     </td>
   )

@@ -11,7 +11,7 @@ export default function POS() {
   const navigate = useNavigate()
   const {
     inventoryItems, customers, bankAccounts, warehouses, settings,
-    addInvoice, recordInvoicePayment, addJournalEntry, updateInventoryItem,
+    addInvoice, recordInvoicePayment, addJournalEntry, updateInventoryItem, logStockMovement,
   } = useStore()
   const sym = settings.company.currencySymbol
   const taxOn = settings.tax.enabled
@@ -67,6 +67,7 @@ export default function POS() {
         patch.stockByWarehouse = map
       }
       updateInventoryItem(it.id, patch)
+      logStockMovement({ itemId: it.id, itemName: it.name, date: today(), type: 'sale', qtyChange: -c.qty, ref: inv.number, note: 'POS sale' })
     })
     if (cogs > 0) {
       addJournalEntry({

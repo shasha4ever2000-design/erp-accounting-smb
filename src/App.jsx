@@ -22,6 +22,7 @@ import BankAccounts from './pages/BankAccounts'
 import Banking from './pages/Banking'
 import CashFlow from './pages/CashFlow'
 import Inventory from './pages/Inventory'
+import InventoryControl from './pages/InventoryControl'
 import StockAdjustments from './pages/StockAdjustments'
 import PrepaidExpenses from './pages/PrepaidExpenses'
 import Leases from './pages/Leases'
@@ -122,6 +123,7 @@ export default function App() {
 
         {/* Inventory */}
         <Route path="/inventory" element={<Inventory />} />
+        <Route path="/inventory-control" element={<InventoryControl />} />
         <Route path="/warehouses" element={<Warehouses />} />
         <Route path="/stock-adjustments" element={<StockAdjustments />} />
         <Route path="/manufacturing" element={<Manufacturing />} />

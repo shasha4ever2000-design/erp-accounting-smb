@@ -653,6 +653,33 @@ const AR = {
   'Could not save the file.': 'تعذّر حفظ الملف.',
   'Remove this attachment?': 'إزالة هذا المرفق؟',
   'Download': 'تنزيل', 'Remove': 'إزالة', 'Done': 'تم', 'Attachments': 'المرفقات',
+
+  // ── Inventory control & segregation of duties ──
+  'Inventory Control': 'مراقبة المخزون',
+  'Valuation, stock health, reorder planning and movement history': 'التقييم وصحة المخزون وتخطيط إعادة الطلب وسجل الحركة',
+  'Inventory Value': 'قيمة المخزون', 'Low Stock': 'مخزون منخفض', 'Out of Stock': 'نفد المخزون',
+  'Pending Adjustments': 'تسويات معلّقة', 'at/below reorder': 'عند/تحت حد إعادة الطلب', 'need replenishment': 'تحتاج إعادة تعبئة',
+  'awaiting approval': 'بانتظار الموافقة', 'awaiting a second manager': 'بانتظار مدير ثانٍ', 'approved only': 'المعتمدة فقط',
+  'Stock Status': 'حالة المخزون', 'Reorder Suggestions': 'اقتراحات إعادة الطلب', 'ABC Analysis': 'تحليل ABC', 'Item Stock Card': 'بطاقة صنف المخزون',
+  'Out of stock': 'نفد المخزون', 'Low': 'منخفض', 'Overstock': 'فائض مخزون', 'OK': 'جيد',
+  'On Hand': 'المتوفر', 'Reorder': 'إعادة الطلب', 'Max': 'الحد الأقصى', 'Category': 'الفئة',
+  'Reorder Level': 'حد إعادة الطلب', 'Max Level': 'الحد الأقصى للمخزون',
+  'items need reordering': 'صنف يحتاج إعادة طلب', 'est. cost': 'التكلفة التقديرية',
+  'All items are above their reorder level.': 'جميع الأصناف فوق حد إعادة الطلب.',
+  'Suggested Order': 'الكمية المقترحة', 'Est. Cost': 'التكلفة التقديرية',
+  'Class A': 'الفئة أ', 'Class B': 'الفئة ب', 'Class C': 'الفئة ج', 'Class': 'الفئة',
+  'top ~80% of value': 'أعلى ~80% من القيمة', 'next ~15%': 'التالي ~15%', 'remaining ~5%': 'المتبقي ~5%',
+  'Cumulative %': 'النسبة التراكمية', 'No valued inventory yet.': 'لا يوجد مخزون مُقيَّم بعد.',
+  'Select item': 'اختر صنفاً', 'On hand': 'المتوفر', 'Stock Card': 'بطاقة الصنف',
+  'Select an item to view its movement history.': 'اختر صنفاً لعرض سجل حركته.',
+  'Opening balance': 'الرصيد الافتتاحي', 'Change': 'التغيير', 'Note': 'ملاحظة',
+  'No recorded movements yet for this item.': 'لا توجد حركات مسجّلة بعد لهذا الصنف.',
+  'Sale': 'بيع', 'Adjustment': 'تسوية', 'Production': 'إنتاج', 'Consumption': 'استهلاك', 'Transfer': 'تحويل',
+  // SoD stock adjustment
+  'by': 'بواسطة', 'Approve': 'اعتماد', 'Reject': 'رفض', 'Approved': 'معتمد', 'Pending': 'قيد الانتظار', 'Rejected': 'مرفوض',
+  'A different manager must approve (segregation of duties)': 'يجب أن يعتمدها مدير مختلف (الفصل بين المهام)',
+  'Saved as Pending. Stock and the ledger only change once a different manager approves it.': 'يُحفظ كـ«قيد الانتظار». لا يتغيّر المخزون ولا القيود إلا بعد اعتماد مدير مختلف له.',
+  'Submit for Approval': 'إرسال للاعتماد',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 
   // ── Print / PDF ──
