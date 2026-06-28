@@ -6,6 +6,7 @@ import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
 import { numberToWords } from '../utils/numberToWords'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import { ArrowLeft, DollarSign, Printer, Trash2 } from 'lucide-react'
 
@@ -72,6 +73,7 @@ export default function InvoiceView() {
           <ArrowLeft size={15} /> {t('Back to Invoices')}
         </button>
         <div className="flex items-center gap-2">
+          <AttachmentButton entityType="invoice" entityId={invoice.id} label="Attachments" />
           <Btn variant="secondary" size="sm" onClick={() => window.print()}>
             <Printer size={14} /> {t('Download PDF')}
           </Btn>

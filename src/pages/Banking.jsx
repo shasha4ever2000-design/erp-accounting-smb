@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, ArrowUpRight, ArrowDownLeft, Landmark } from 'lucide-react'
 
 const BANK_IDS = ['acc-cash', 'acc-bank1']
@@ -121,9 +122,12 @@ export default function Banking() {
                   </span>
                 </Td>
                 <Td right>
-                  <Btn size="sm" variant="ghost" onClick={() => handleDelete(tx)}>
-                    <Trash2 size={13} className="text-red-400" />
-                  </Btn>
+                  <div className="flex items-center justify-end gap-1">
+                    <AttachmentButton entityType="banktx" entityId={tx.id} />
+                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(tx)}>
+                      <Trash2 size={13} className="text-red-400" />
+                    </Btn>
+                  </div>
                 </Td>
               </Tr>
             ))}

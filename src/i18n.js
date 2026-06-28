@@ -643,6 +643,16 @@ const AR = {
   // ── CSV export ──
   'Export CSV': 'تصدير CSV', 'Export': 'تصدير',
   'CSV (.csv)': 'CSV (.csv)', 'Excel (.xlsx)': 'إكسل (.xlsx)', 'PDF (.pdf)': 'PDF (.pdf)',
+
+  // ── Attachments / supporting documents ──
+  'Supporting documents': 'المستندات الداعمة', 'Supporting Documents': 'المستندات الداعمة',
+  'Click to upload files': 'انقر لرفع الملفات',
+  'Receipts, contracts, scans — up to 10 MB each': 'الإيصالات والعقود والمسوحات — حتى 10 ميجابايت لكل ملف',
+  'No documents attached yet.': 'لا توجد مستندات مرفقة بعد.',
+  'File is too large (max 10 MB).': 'الملف كبير جداً (الحد الأقصى 10 ميجابايت).',
+  'Could not save the file.': 'تعذّر حفظ الملف.',
+  'Remove this attachment?': 'إزالة هذا المرفق؟',
+  'Download': 'تنزيل', 'Remove': 'إزالة', 'Done': 'تم', 'Attachments': 'المرفقات',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 
   // ── Print / PDF ──

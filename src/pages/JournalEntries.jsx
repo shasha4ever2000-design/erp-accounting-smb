@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, Eye, Search } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 
@@ -95,7 +96,8 @@ export default function JournalEntries() {
                   <Td right className="font-mono text-gray-700">{fmtMoney(dr, sym)}</Td>
                   <Td right className="font-mono text-gray-700">{fmtMoney(cr, sym)}</Td>
                   <Td right>
-                    <div className="flex justify-end gap-1">
+                    <div className="flex justify-end items-center gap-1">
+                      <AttachmentButton entityType="journal" entityId={je.id} />
                       <Btn size="sm" variant="ghost" onClick={() => setViewEntry(je)}><Eye size={13} /></Btn>
                       {je.type === 'manual' && (
                         <Btn size="sm" variant="ghost" onClick={() => handleDelete(je)}><Trash2 size={13} className="text-red-400" /></Btn>

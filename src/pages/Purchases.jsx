@@ -5,6 +5,7 @@ import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
 import { today } from '../utils/formatters'
 
@@ -136,6 +137,7 @@ export default function Purchases() {
                   <Td><Badge className={statusColor(status)}>{status}</Badge></Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
+                      <AttachmentButton entityType="purchase" entityId={p.id} />
                       {p.status !== 'paid' && (
                         <Btn size="sm" variant="ghost" onClick={() => openPay(p)} title="Record Payment">
                           <DollarSign size={13} className="text-green-600" />
