@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
@@ -10,6 +11,7 @@ export default function Suppliers() {
   const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings } = useStore()
   const sym = settings.company.currencySymbol
   const customDefs = settings.customFields?.supplier || []
+  const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -45,16 +47,16 @@ export default function Suppliers() {
   return (
     <div>
       <PageHeader
-        title="Suppliers"
+        title={t('Suppliers')}
         subtitle={`${suppliers.length} supplier${suppliers.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Supplier</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Supplier')}</Btn>}
       />
 
       <div className="relative mb-5 max-w-sm">
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input
           className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search suppliers..."
+          placeholder={t('Search suppliers...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -64,14 +66,14 @@ export default function Suppliers() {
         {filtered.length === 0 && suppliers.length === 0 ? (
           <EmptyState
             icon="🏭"
-            title="No suppliers yet"
-            desc="Add your first supplier to start creating purchase invoices."
-            action={<Btn onClick={openNew}><Plus size={14} /> Add Supplier</Btn>}
+            title={t('No suppliers yet')}
+            desc={t('Add your first supplier to start creating purchase invoices.')}
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Supplier')}</Btn>}
           />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No suppliers match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No suppliers match your search')}</div>
         ) : (
-          <Table headers={['Supplier', 'Contact', 'Tax ID', { label: 'Amount Owed', right: true }, { label: 'Actions', right: true }]}>
+          <Table headers={[t('Supplier'), t('Contact'), t('Tax ID'), { label: t('Amount Owed'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((s) => {
               const balance = getBalance(s.id)
               return (

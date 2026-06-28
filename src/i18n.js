@@ -136,6 +136,30 @@ const AR = {
   'Cancel': 'إلغاء',
   'Edit': 'تعديل',
   'Delete': 'حذف',
+
+  // Suppliers
+  'New Supplier': 'مورّد جديد',
+  'Search suppliers...': 'ابحث عن الموردين...',
+  'Amount Owed': 'المبلغ المستحق',
+  'No suppliers yet': 'لا يوجد موردون بعد',
+  'Add your first supplier to start creating purchase invoices.': 'أضف أول مورّد لبدء إنشاء فواتير المشتريات.',
+  'Add Supplier': 'إضافة مورّد',
+  'No suppliers match your search': 'لا يوجد موردون مطابقون لبحثك',
+
+  // Invoices list
+  'Sales Invoices': 'فواتير المبيعات',
+  'New Invoice': 'فاتورة جديدة',
+  'Search invoices...': 'ابحث عن الفواتير...',
+  'Invoice #': 'رقم الفاتورة',
+  'Due': 'الاستحقاق',
+  'Balance': 'الرصيد',
+  'No invoices yet': 'لا توجد فواتير بعد',
+  'Create your first sales invoice to start tracking receivables.': 'أنشئ أول فاتورة مبيعات لتتبع الذمم المدينة.',
+  'Create Invoice': 'إنشاء فاتورة',
+  'No invoices match your filter': 'لا توجد فواتير مطابقة',
+  'Draft': 'مسودة',
+  'Sent': 'مُرسلة',
+  'Partial': 'جزئية',
 }
 
 export const useI18n = create(

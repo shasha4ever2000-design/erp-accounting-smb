@@ -3,12 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
 import { Plus, Search, FileText } from 'lucide-react'
 
 export default function Invoices() {
   const { invoices, settings } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
+  const t = useT()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
@@ -38,11 +40,11 @@ export default function Invoices() {
   return (
     <div>
       <PageHeader
-        title="Sales Invoices"
+        title={t('Sales Invoices')}
         subtitle={`${invoices.length} invoice${invoices.length !== 1 ? 's' : ''} total`}
         action={
           <Btn onClick={() => navigate('/invoices/new')}>
-            <Plus size={15} /> New Invoice
+            <Plus size={15} /> {t('New Invoice')}
           </Btn>
         }
       />
@@ -65,7 +67,7 @@ export default function Invoices() {
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'
             }`}
           >
-            {s.label}
+            {t(s.label)}
             {totals[s.key] > 0 && (
               <span className={`text-xs ${statusFilter === s.key ? 'opacity-75' : 'text-gray-400'}`}>
                 {totals[s.key]}
@@ -80,7 +82,7 @@ export default function Invoices() {
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input
           className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search invoices..."
+          placeholder={t('Search invoices...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -90,22 +92,22 @@ export default function Invoices() {
         {invoices.length === 0 ? (
           <EmptyState
             icon="📄"
-            title="No invoices yet"
-            desc="Create your first sales invoice to start tracking receivables."
-            action={<Btn onClick={() => navigate('/invoices/new')}><Plus size={14} /> Create Invoice</Btn>}
+            title={t('No invoices yet')}
+            desc={t('Create your first sales invoice to start tracking receivables.')}
+            action={<Btn onClick={() => navigate('/invoices/new')}><Plus size={14} /> {t('Create Invoice')}</Btn>}
           />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No invoices match your filter</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No invoices match your filter')}</div>
         ) : (
           <Table headers={[
-            { label: 'Invoice #' },
-            { label: 'Customer' },
-            { label: 'Date' },
-            { label: 'Due' },
-            { label: 'Total', right: true },
-            { label: 'Paid', right: true },
-            { label: 'Balance', right: true },
-            { label: 'Status' },
+            { label: t('Invoice #') },
+            { label: t('Customer') },
+            { label: t('Date') },
+            { label: t('Due') },
+            { label: t('Total'), right: true },
+            { label: t('Paid'), right: true },
+            { label: t('Balance'), right: true },
+            { label: t('Status') },
           ]}>
             {sorted.map((inv) => {
               const status = inv.isOverdue && inv.status !== 'paid' ? 'overdue' : inv.status
