@@ -197,7 +197,7 @@ export default function Settings() {
                   onChange={(e) => setTaxField('enabled', e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700">Enable Tax (VAT / GST)</label>
+                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700">{t('Enable Tax (VAT / GST)')}</label>
               </div>
               {tax.enabled && (
                 <>
@@ -229,7 +229,7 @@ export default function Settings() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Bank Details / Payment Instructions</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Bank Details / Payment Instructions')}</label>
               <textarea
                 rows={3}
                 className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -267,16 +267,16 @@ export default function Settings() {
               <p className="text-xs text-gray-400 mt-1">Your key is stored locally in the browser only. Get a key at console.anthropic.com.</p>
             </div>
             <Select label="Model" value={ai.model} onChange={(e) => setAiField('model', e.target.value)}>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 – Fast &amp; Economical (Recommended)</option>
-              <option value="claude-sonnet-4-6">Claude Sonnet 4.6 – Balanced</option>
-              <option value="claude-opus-4-8">Claude Opus 4.8 – Most Capable</option>
+              <option value="claude-haiku-4-5-20251001">{t('Claude Haiku 4.5 – Fast & Economical (Recommended)')}</option>
+              <option value="claude-sonnet-4-6">{t('Claude Sonnet 4.6 – Balanced')}</option>
+              <option value="claude-opus-4-8">{t('Claude Opus 4.8 – Most Capable')}</option>
             </Select>
             <div className="bg-violet-50 rounded-lg p-3 text-xs text-violet-700 space-y-1">
-              <p className="font-medium">What the AI assistant can do:</p>
+              <p className="font-medium">{t('What the AI assistant can do:')}</p>
               <p>• Answer questions about your live financial data (AR, AP, balances, invoices)</p>
-              <p>• Explain accounting concepts and double-entry bookkeeping</p>
-              <p>• Guide you through ERP modules and workflows</p>
-              <p>• Help with VAT calculations, payroll deductions, and more</p>
+              <p>{t('• Explain accounting concepts and double-entry bookkeeping')}</p>
+              <p>{t('• Guide you through ERP modules and workflows')}</p>
+              <p>{t('• Help with VAT calculations, payroll deductions, and more')}</p>
             </div>
           </div>
         </Card>
@@ -289,13 +289,13 @@ export default function Settings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Company Logo')}</label>
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50">
-                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">No logo</span>}
+                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">{t('No logo')}</span>}
                 </div>
                 <div className="space-y-2">
                   <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>{t('Upload Logo')}</Btn>
                   {company.logo && <Btn size="sm" variant="ghost" onClick={() => setCompanyField('logo', '')}>Remove</Btn>}
                   <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogo} className="hidden" />
-                  <p className="text-xs text-gray-400 dark:text-slate-500">PNG/JPG/SVG, under 500 KB. Appears on invoices &amp; delivery notes.</p>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">{t('PNG/JPG/SVG, under 500 KB. Appears on invoices & delivery notes.')}</p>
                 </div>
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function Settings() {
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-white text-xs font-bold">KSA</div>
-              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Saudi Arabia · ZATCA E-Invoicing</h2>
+              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Saudi Arabia · ZATCA E-Invoicing')}</h2>
             </div>
             <Btn size="sm" variant="secondary" onClick={applySaudiPreset}>{t('Apply Saudi preset')}</Btn>
           </div>
@@ -348,7 +348,7 @@ export default function Settings() {
 
         {/* Withholding Tax */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">Withholding Tax (WHT)</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">{t('Withholding Tax (WHT)')}</h2>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Deduct withholding tax on supplier payments (e.g. KSA WHT on payments to non-residents). The withheld amount is posted to a “Withholding Tax Payable” account to remit later.</p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">

@@ -581,7 +581,39 @@ const AR = {
   'New Project': 'مشروع جديد', 'Budgets vs Actuals': 'الموازنات مقابل الفعلي',
   'Record Bank Transaction': 'تسجيل معاملة بنكية', 'View Reports': 'عرض التقارير',
   'Revenue vs Expenses — Last 6 Months': 'الإيرادات مقابل المصروفات — آخر 6 أشهر',
-  'Require attention': 'تتطلب انتباهاً', 'All clear': 'كل شيء على ما يرام',
+  'Require attention': 'تتطلب انتباهاً', 'All clear': 'كل شيء على ما يرام', 'None': 'لا شيء',
+
+  // ── Reports tabs ──
+  'Income Statement (P&L)': 'قائمة الدخل (الأرباح والخسائر)', 'Balance Sheet': 'الميزانية العمومية',
+  'Cash Flow Statement': 'قائمة التدفقات النقدية', 'VAT Return (ZATCA)': 'الإقرار الضريبي (هيئة الزكاة)',
+  'Trial Balance': 'ميزان المراجعة', 'General Ledger': 'دفتر الأستاذ العام',
+  'Accounts Receivable Aging': 'أعمار الذمم المدينة', 'Accounts Payable Aging': 'أعمار الذمم الدائنة', 'Report': 'التقرير',
+
+  // ── Settings (raw labels, AI section, presets) ──
+  'Configure your company and accounting preferences': 'اضبط شركتك وتفضيلات المحاسبة',
+  'Save Settings': 'حفظ الإعدادات', 'Saved!': 'تم الحفظ!',
+  'Address': 'العنوان', 'Tax Registration Number': 'الرقم الضريبي', 'Company Name *': 'اسم الشركة *',
+  'Email': 'البريد الإلكتروني', 'Phone': 'الهاتف', 'Currency': 'العملة', 'Fiscal Year Start Month': 'شهر بداية السنة المالية',
+  'Tax Name': 'اسم الضريبة', 'Enable Tax (VAT / GST)': 'تفعيل الضريبة (القيمة المضافة)',
+  'Bank Details / Payment Instructions': 'تفاصيل البنك / تعليمات الدفع',
+  'What the AI assistant can do:': 'ما الذي يمكن للمساعد الذكي فعله:',
+  '• Explain accounting concepts and double-entry bookkeeping': '• شرح المفاهيم المحاسبية ومسك الدفاتر بالقيد المزدوج',
+  '• Guide you through ERP modules and workflows': '• إرشادك عبر وحدات النظام وسير العمل',
+  '• Help with VAT calculations, payroll deductions, and more': '• المساعدة في حسابات الضريبة واستقطاعات الرواتب والمزيد',
+  'No logo': 'لا يوجد شعار', 'PNG/JPG/SVG, under 500 KB. Appears on invoices & delivery notes.': 'PNG/JPG/SVG، أقل من 500 كيلوبايت. يظهر على الفواتير ومذكرات التسليم.',
+  'Saudi Arabia · ZATCA E-Invoicing': 'المملكة العربية السعودية · الفوترة الإلكترونية (هيئة الزكاة)',
+  'Withholding Tax (WHT)': 'ضريبة الاستقطاع', 'Show ZATCA QR code on invoices': 'إظهار رمز QR (هيئة الزكاة) على الفواتير',
+  'Claude Haiku 4.5 – Fast & Economical (Recommended)': 'Claude Haiku 4.5 – سريع واقتصادي (موصى به)',
+  'Claude Sonnet 4.6 – Balanced': 'Claude Sonnet 4.6 – متوازن',
+  'Claude Opus 4.8 – Most Capable': 'Claude Opus 4.8 – الأكثر قدرة',
+
+  // ── Team roles & Pipeline stages ──
+  'Owner': 'المالك', 'Admin': 'مسؤول', 'Accountant': 'محاسب', 'Viewer': 'مشاهد',
+  'Full control, incl. companies & team': 'تحكم كامل، يشمل الشركات والفريق',
+  'Manage settings, team & all data': 'إدارة الإعدادات والفريق وجميع البيانات',
+  'Day-to-day bookkeeping': 'مسك الدفاتر اليومي', 'Read-only access': 'صلاحية القراءة فقط',
+  'New Lead': 'عميل محتمل جديد', 'Contacted': 'تم التواصل', 'Proposal': 'عرض مقدّم',
+  'Edit Lead': 'تعديل العميل المحتمل',
 }
 
 export const useI18n = create(

@@ -575,10 +575,10 @@ export default function Reports() {
       <Card className="p-5 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Report</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t('Report')}</label>
             <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               value={report} onChange={(e) => setReport(e.target.value)}>
-              {REPORTS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              {REPORTS.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
             </select>
           </div>
           <Input label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />

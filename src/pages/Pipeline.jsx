@@ -67,7 +67,7 @@ export default function Pipeline() {
           return (
             <div key={stage.id} className={`bg-gray-50 dark:bg-slate-800/50 rounded-xl border-t-4 ${stage.color} p-3`}>
               <div className="flex items-center justify-between mb-3 px-1">
-                <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">{stage.label}</p>
+                <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t(stage.label)}</p>
                 <span className="text-xs text-gray-400 dark:text-slate-500">{items.length}</span>
               </div>
               <p className="text-xs text-gray-400 dark:text-slate-500 px-1 mb-2">{fmtMoney(total, sym)}</p>
@@ -120,7 +120,7 @@ export default function Pipeline() {
             <Input label={`Deal Value (${sym})`} type="number" min="0" value={form.value} onChange={(e) => setF('value', e.target.value)} />
             <Input label="Source" value={form.source} onChange={(e) => setF('source', e.target.value)} placeholder="Referral, web…" />
             <Select label="Stage" value={form.stage} onChange={(e) => setF('stage', e.target.value)}>
-              {STAGES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              {STAGES.map((s) => <option key={s.id} value={s.id}>{t(s.label)}</option>)}
             </Select>
           </div>
           <Input label="Expected Close" type="date" value={form.expectedClose} onChange={(e) => setF('expectedClose', e.target.value)} />

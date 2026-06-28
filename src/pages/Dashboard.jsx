@@ -310,7 +310,7 @@ function BSPLSection({ title, rows, total, sym, color }) {
     <div className="mb-4">
       <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{t(title)}</p>
       {rows.length === 0 ? (
-        <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">None</p>
+        <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">{t('None')}</p>
       ) : rows.map((a) => (
         <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
           <span className="truncate pr-2">{a.name}</span>

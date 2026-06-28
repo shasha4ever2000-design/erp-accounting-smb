@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useT } from '../i18n'
+import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
@@ -140,7 +140,7 @@ function SummaryCard({ label, value, icon, tone }) {
   }
   return (
     <div className={`rounded-xl p-4 ${tones[tone]}`}>
-      <div className="flex items-center gap-2 mb-1">{icon}<p className="text-sm opacity-80">{label}</p></div>
+      <div className="flex items-center gap-2 mb-1">{icon}<p className="text-sm opacity-80">{typeof label === 'string' ? tr(label) : label}</p></div>
       <p className="text-2xl font-bold">{value}</p>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useT } from '../i18n'
+import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -287,9 +287,9 @@ export default function Projects() {
 function Kpi({ label, value, sub, color }) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
-      <p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">{label}</p>
+      <p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">{typeof label === 'string' ? tr(label) : label}</p>
       <p className={`text-lg font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-[11px] text-gray-400 dark:text-slate-500">{sub}</p>}
+      {sub && <p className="text-[11px] text-gray-400 dark:text-slate-500">{typeof sub === 'string' ? tr(sub) : sub}</p>}
     </div>
   )
 }

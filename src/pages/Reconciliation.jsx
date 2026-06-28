@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useT } from '../i18n'
+import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Select, Input } from '../components/UI'
@@ -97,7 +97,7 @@ export default function Reconciliation() {
 function Kpi({ label, value }) {
   return (
     <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700">
-      <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{label}</p>
+      <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{typeof label === 'string' ? tr(label) : label}</p>
       <p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value}</p>
     </div>
   )

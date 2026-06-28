@@ -67,7 +67,7 @@ export default function Team() {
                 <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{u.email}</td>
                 <td className="px-4 py-3">
                   <Select value={u.role || 'viewer'} onChange={(e) => setUserRole(u.id, e.target.value)}>
-                    {ROLES.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+                    {ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
                   </Select>
                 </td>
                 <td className="px-5 py-3 text-right">
@@ -87,7 +87,7 @@ export default function Team() {
           {ROLES.map((r) => (
             <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50">
               <Badge className={ROLE_CLR[r.id]}>{r.label}</Badge>
-              <span className="text-sm text-gray-600 dark:text-slate-300">{r.desc}</span>
+              <span className="text-sm text-gray-600 dark:text-slate-300">{t(r.desc)}</span>
             </div>
           ))}
         </div>
