@@ -20,6 +20,7 @@ import PurchaseOrderForm from './pages/PurchaseOrderForm'
 import DebitNotes from './pages/DebitNotes'
 import BankAccounts from './pages/BankAccounts'
 import Banking from './pages/Banking'
+import CashFlow from './pages/CashFlow'
 import Inventory from './pages/Inventory'
 import StockAdjustments from './pages/StockAdjustments'
 import PrepaidExpenses from './pages/PrepaidExpenses'
@@ -92,6 +93,7 @@ export default function App() {
 
         {/* Cash & Banking */}
         <Route path="/bank-accounts" element={<BankAccounts />} />
+        <Route path="/cash-flow" element={<CashFlow />} />
         <Route path="/banking" element={<Banking />} />
         <Route path="/reconciliation" element={<Reconciliation />} />
         <Route path="/journals" element={<JournalEntries />} />

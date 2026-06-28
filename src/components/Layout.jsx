@@ -15,7 +15,7 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
-  PieChart, History, ClipboardCheck, UsersRound, Globe,
+  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight,
 } from 'lucide-react'
 
 const NAV = [
@@ -24,6 +24,7 @@ const NAV = [
 
   { divider: 'Cash & Banking' },
   { label: 'Cash & Bank Accounts', path: '/bank-accounts', icon: Wallet },
+  { label: 'Cash Flow',            path: '/cash-flow',      icon: ArrowLeftRight },
   { label: 'Bank Transactions',    path: '/banking',        icon: Landmark },
   { label: 'Bank Reconciliation',  path: '/reconciliation', icon: CheckSquare },
   { label: 'Journal Entries',      path: '/journals',       icon: ClipboardList },

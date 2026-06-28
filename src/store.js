@@ -73,6 +73,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-misc',   code: '5009', name: 'Miscellaneous Expense',      type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-invadj', code: '5010', name: 'Inventory Adjustments',      type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-lossdis',code: '5011', name: 'Loss on Asset Disposal',     type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-bankchg',code: '5012', name: 'Bank Charges',               type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-purret', code: '5012', name: 'Purchase Returns',           type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-mfgcost',code: '5013', name: 'Manufacturing Costs',        type: 'expense',   subtype: 'expense',     isSystem: false },
 ]
@@ -1076,6 +1077,43 @@ export const useStore = create(
           return {
             bankTransactions: s.bankTransactions.filter((t) => t.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== tx?.journalEntryId),
+          }
+        }),
+
+      // ─── INTRA-BANK / INTERNAL TRANSFERS ───────────────────────────
+      // Move funds between two of the company's own bank/cash accounts.
+      // Posts: Dr destination, Cr source (amount + fee), Dr bank charges (fee).
+      // No revenue/expense impact except the optional bank fee.
+      bankTransfers: [],
+
+      addBankTransfer: (tf) => {
+        const amount = Number(tf.amount) || 0
+        const fee = Number(tf.fee) || 0
+        if (amount <= 0 || !tf.fromAccountId || !tf.toAccountId || tf.fromAccountId === tf.toAccountId) return null
+        const accs = get().accounts
+        const fromName = accs.find((a) => a.id === tf.fromAccountId)?.name || tf.fromAccountId
+        const toName = accs.find((a) => a.id === tf.toAccountId)?.name || tf.toAccountId
+        const feeAccId = (fee > 0 && accs.some((a) => a.id === tf.feeAccountId)) ? tf.feeAccountId : 'acc-bankchg'
+        const lines = [
+          { accountId: tf.toAccountId,   debit: amount,        credit: 0,            description: `Transfer from ${fromName}` },
+          { accountId: tf.fromAccountId, debit: 0,             credit: amount + fee, description: `Transfer to ${toName}` },
+        ]
+        if (fee > 0) lines.push({ accountId: feeAccId, debit: fee, credit: 0, description: `Transfer fee (${fromName})` })
+        const je = get().addJournalEntry({
+          date: tf.date, description: tf.notes || `Transfer: ${fromName} → ${toName}`,
+          reference: tf.reference || '', type: 'transfer', lines,
+        })
+        const rec = { id: uuid(), date: tf.date, fromAccountId: tf.fromAccountId, toAccountId: tf.toAccountId, amount, fee, feeAccountId: fee > 0 ? feeAccId : null, reference: tf.reference || '', notes: tf.notes || '', journalEntryId: je.id, createdAt: new Date().toISOString() }
+        set((s) => ({ bankTransfers: [...s.bankTransfers, rec] }))
+        return rec
+      },
+
+      deleteBankTransfer: (id) =>
+        set((s) => {
+          const tf = s.bankTransfers.find((t) => t.id === id)
+          return {
+            bankTransfers: s.bankTransfers.filter((t) => t.id !== id),
+            journalEntries: s.journalEntries.filter((j) => j.id !== tf?.journalEntryId),
           }
         }),
 

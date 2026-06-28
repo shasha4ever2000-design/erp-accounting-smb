@@ -647,6 +647,23 @@ const AR = {
   // ── Print / PDF ──
   'Download PDF': 'تنزيل PDF', 'Back': 'رجوع',
 
+  // ── Cash Flow module / internal transfers ──
+  'Cash Flow': 'التدفق النقدي',
+  'Cash position, internal transfers and money movements': 'المركز النقدي والتحويلات الداخلية وحركة الأموال',
+  'Transfer Funds': 'تحويل الأموال', 'Total Cash': 'إجمالي النقد',
+  'Cash In': 'النقد الوارد', 'Cash Out': 'النقد الصادر', 'Net Movement': 'صافي الحركة',
+  'Internal Transfers': 'التحويلات الداخلية', 'New Transfer': 'تحويل جديد',
+  'No transfers yet': 'لا توجد تحويلات بعد',
+  'Move money between your own bank and cash accounts.': 'انقل الأموال بين حساباتك البنكية والنقدية.',
+  'Cash Movements': 'حركة النقد', 'No cash movements in this period': 'لا توجد حركة نقدية في هذه الفترة',
+  'Transfer Between Accounts': 'التحويل بين الحسابات',
+  'From Account': 'من حساب', 'To Account': 'إلى حساب',
+  'Available in source': 'المتاح في المصدر', 'Bank Fee': 'رسوم بنكية', 'Fee Account': 'حساب الرسوم',
+  'Fee': 'الرسوم', 'fee': 'رسوم', 'From': 'من', 'To': 'إلى',
+  'Transfer ref, cheque #...': 'مرجع التحويل، رقم الشيك...',
+  'Optional note for this transfer': 'ملاحظة اختيارية لهذا التحويل',
+  'Notes': 'ملاحظات', 'Bank Charges': 'رسوم بنكية',
+
   // ── Bank statement import ──
   'Import Statement (CSV)': 'استيراد كشف حساب (CSV)',
   'Import Bank Statement': 'استيراد كشف الحساب البنكي',

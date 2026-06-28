@@ -180,7 +180,7 @@ export function Table({ headers, children, empty }) {
         <thead>
           <tr className="border-b border-gray-100 dark:border-slate-700">
             {headers.map((h, i) => {
-              const raw = h.label || h
+              const raw = (h && typeof h === 'object') ? h.label : h
               return (
               <th
                 key={i}
