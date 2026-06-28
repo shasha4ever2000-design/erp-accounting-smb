@@ -1,5 +1,20 @@
 // Shared UI primitives (light + dark mode aware)
+import { Fragment } from 'react'
 import { useT } from '../i18n'
+
+// Translate string children of buttons while preserving icons/layout.
+function translateChildren(children, t) {
+  const one = (c) => {
+    if (typeof c !== 'string') return c
+    const trimmed = c.trim()
+    if (!trimmed) return c
+    const out = t(trimmed)
+    return out === trimmed ? c : c.replace(trimmed, out)
+  }
+  if (typeof children === 'string') return one(children)
+  if (Array.isArray(children)) return children.map((c, i) => <Fragment key={i}>{one(c)}</Fragment>)
+  return children
+}
 
 export function Card({ children, className = '' }) {
   return (
@@ -23,6 +38,7 @@ export function PageHeader({ title, subtitle, action }) {
 }
 
 export function Btn({ children, onClick, variant = 'primary', size = 'md', type = 'button', disabled = false, className = '' }) {
+  const t = useT()
   const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed'
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
   const variants = {
@@ -34,7 +50,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', type 
   }
   return (
     <button type={type} onClick={onClick} disabled={disabled} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
-      {children}
+      {translateChildren(children, t)}
     </button>
   )
 }

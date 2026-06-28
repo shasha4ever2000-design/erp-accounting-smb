@@ -296,6 +296,27 @@ const AR = {
 
   // ── Common table headers ──
   'Item Name': 'اسم الصنف',
+
+  // ── Action buttons (auto-translated via Btn string children) ──
+  'New Quotation': 'عرض سعر جديد', 'New Department': 'قسم جديد', 'New Employee': 'موظف جديد',
+  'New Project': 'مشروع جديد', 'New Lead': 'عميل محتمل جديد', 'New Fixed Asset': 'أصل ثابت جديد',
+  'New Lease': 'عقد إيجار جديد', 'New Prepaid Expense': 'مصروف مدفوع مقدماً جديد', 'New Work Order': 'أمر تشغيل جديد',
+  'New Warehouse': 'مستودع جديد', 'New Currency': 'عملة جديدة', 'New Requisition': 'طلب شراء جديد',
+  'New Account': 'حساب جديد', 'New Lead ': 'عميل محتمل جديد',
+  'Add Department': 'إضافة قسم', 'Add Employee': 'إضافة موظف', 'Add Account': 'إضافة حساب',
+  'Add Warehouse': 'إضافة مستودع', 'Add Lead': 'إضافة عميل محتمل', 'Add Bank Account': 'إضافة حساب بنكي',
+  'Add Currency': 'إضافة عملة', 'Add Project': 'إضافة مشروع', 'Add line': 'إضافة سطر', 'Add item': 'إضافة بند',
+  'Add Lease': 'إضافة عقد إيجار', 'Add Prepaid Expense': 'إضافة مصروف مقدم', 'Add Warehouse ': 'إضافة مستودع',
+  'Save Changes': 'حفظ التغييرات', 'Save Settings': 'حفظ الإعدادات', 'Saved!': 'تم الحفظ!',
+  'Save Budget': 'حفظ الموازنة', 'Create Company': 'إنشاء شركة', 'Create Project': 'إنشاء مشروع',
+  'Create Subscription': 'إنشاء اشتراك', 'Record': 'تسجيل', 'Record Depreciation': 'تسجيل الإهلاك',
+  'Submit Requisition': 'تقديم الطلب', 'Log Time': 'تسجيل الوقت', 'Transfer': 'نقل',
+  'Approve': 'اعتماد', 'Reject': 'رفض', 'Print': 'طباعة', 'Print / Export': 'طباعة / تصدير',
+  'Print / PDF': 'طباعة / PDF', 'Download Backup': 'تنزيل نسخة احتياطية', 'Restore from File': 'استعادة من ملف',
+  'Convert to Invoice': 'تحويل إلى فاتورة', 'Mark Delivered': 'تحديد كمُسلّمة', 'Mark Received': 'تحديد كمُستلمة',
+  'Mark Accepted': 'تحديد كمقبولة', 'Generate Due': 'إنشاء المستحقة', 'Apply Saudi preset': 'تطبيق الإعداد السعودي',
+  'Clear log': 'مسح السجل', 'Reset Data': 'إعادة تعيين البيانات', 'Add': 'إضافة',
+  'Income': 'إيراد', 'Cost': 'تكلفة', 'Add Income': 'إضافة إيراد', 'Add Cost': 'إضافة تكلفة', 'Create Invoice ': 'إنشاء فاتورة',
 }
 
 export const useI18n = create(
