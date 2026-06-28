@@ -453,6 +453,78 @@ const AR = {
   'VAT, GST, Sales Tax...': 'ضريبة القيمة المضافة، ضريبة السلع، ضريبة المبيعات...',
   'e.g. Thank you for your business! Payment due within 30 days.': 'مثال: شكراً لتعاملك معنا! السداد مستحق خلال 30 يوماً.',
   'e.g. VAT / GST number': 'مثال: رقم ضريبة القيمة المضافة',
+
+  // ── Validation / confirmation messages (auto-translated via wrapped alert/confirm) ──
+  'Account name is required.': 'اسم الحساب مطلوب.',
+  'Add at least one component.': 'أضف مكوّناً واحداً على الأقل.',
+  'Add at least one item.': 'أضف صنفاً واحداً على الأقل.',
+  'Add at least one line item.': 'أضف بنداً واحداً على الأقل.',
+  'Add at least one line with an amount.': 'أضف بنداً واحداً على الأقل بمبلغ.',
+  'Add inventory items first.': 'أضف أصناف المخزون أولاً.',
+  'All line items must have a description.': 'يجب أن يكون لكل بند وصف.',
+  'Amount exceeds remaining prepaid balance.': 'المبلغ يتجاوز الرصيد المدفوع مقدماً المتبقي.',
+  'Asset name is required.': 'اسم الأصل مطلوب.',
+  'Auto-generated entries cannot be deleted here. Delete the source transaction instead.': 'لا يمكن حذف القيود المُنشأة تلقائياً من هنا. احذف المعاملة المصدر بدلاً من ذلك.',
+  'BOM name is required.': 'اسم قائمة المواد مطلوب.',
+  'Backup restored successfully! The page will reload.': 'تمت استعادة النسخة الاحتياطية بنجاح! ستُعاد تحميل الصفحة.',
+  'Clear the activity log for this company? This cannot be undone.': 'مسح سجل النشاط لهذه الشركة؟ لا يمكن التراجع عن ذلك.',
+  'Create at least two warehouses to transfer stock.': 'أنشئ مستودعين على الأقل لنقل المخزون.',
+  'Currency code is required.': 'رمز العملة مطلوب.',
+  'Customer is required.': 'العميل مطلوب.',
+  'Customer name is required.': 'اسم العميل مطلوب.',
+  'Debits must equal credits.': 'يجب أن يتساوى المدين مع الدائن.',
+  'Delete this delivery note?': 'حذف مذكرة التسليم هذه؟',
+  'Delete this invoice and its journal entries?': 'حذف هذه الفاتورة وقيود اليومية الخاصة بها؟',
+  'Delete this journal entry?': 'حذف قيد اليومية هذا؟',
+  'Delete this lead?': 'حذف هذا العميل المحتمل؟',
+  'Delete this requisition?': 'حذف طلب الشراء هذا؟',
+  'Delete this subscription? Already-generated invoices are kept.': 'حذف هذا الاشتراك؟ تُحفظ الفواتير المُنشأة بالفعل.',
+  'Delete this transaction?': 'حذف هذه المعاملة؟',
+  'Department name is required.': 'اسم القسم مطلوب.',
+  'Depreciation cannot exceed current book value.': 'لا يمكن أن يتجاوز الإهلاك القيمة الدفترية الحالية.',
+  'Description is required.': 'الوصف مطلوب.',
+  'Employee name is required.': 'اسم الموظف مطلوب.',
+  'Enter a description.': 'أدخل وصفاً.',
+  'Enter a quantity.': 'أدخل كمية.',
+  'Enter a valid amount.': 'أدخل مبلغاً صالحاً.',
+  'Enter a valid depreciation amount.': 'أدخل مبلغ إهلاك صالحاً.',
+  'Enter a valid monthly rent.': 'أدخل إيجاراً شهرياً صالحاً.',
+  'Enter a valid payment amount.': 'أدخل مبلغ دفع صالحاً.',
+  'Enter a valid production quantity.': 'أدخل كمية إنتاج صالحة.',
+  'Enter a valid quantity.': 'أدخل كمية صالحة.',
+  'Enter a valid subtotal amount.': 'أدخل مبلغ مجموع فرعي صالحاً.',
+  'Enter a valid unit cost.': 'أدخل تكلفة وحدة صالحة.',
+  'Enter hours worked.': 'أدخل ساعات العمل.',
+  'Enter the depreciation period.': 'أدخل فترة الإهلاك.',
+  'Enter the payroll period (e.g. "June 2026").': 'أدخل فترة الرواتب (مثال: "يونيو 2026").',
+  'Enter the period (e.g. June 2026).': 'أدخل الفترة (مثال: يونيو 2026).',
+  'Item name is required.': 'اسم الصنف مطلوب.',
+  'Lead converted to a customer (Sales → Customers).': 'تم تحويل العميل المحتمل إلى عميل (المبيعات → العملاء).',
+  'Lead name is required.': 'اسم العميل المحتمل مطلوب.',
+  'Lease name is required.': 'اسم عقد الإيجار مطلوب.',
+  'Name is required.': 'الاسم مطلوب.',
+  'No active employees. Add employees first.': 'لا يوجد موظفون نشطون. أضف موظفين أولاً.',
+  'Please select a customer.': 'يرجى اختيار عميل.',
+  'Please select a supplier.': 'يرجى اختيار مورد.',
+  'Please use a logo under 500 KB.': 'يرجى استخدام شعار أقل من 500 كيلوبايت.',
+  'Production item name is required.': 'اسم صنف الإنتاج مطلوب.',
+  'Project name is required.': 'اسم المشروع مطلوب.',
+  'Purchase cost must be greater than zero.': 'يجب أن تكون تكلفة الشراء أكبر من صفر.',
+  'Purchase date is required.': 'تاريخ الشراء مطلوب.',
+  'Restoring will REPLACE all current data with the backup. Continue?': 'ستؤدي الاستعادة إلى استبدال جميع البيانات الحالية بالنسخة الاحتياطية. هل تريد المتابعة؟',
+  'Select a bank account for proceeds.': 'اختر حساباً بنكياً للمتحصلات.',
+  'Select a bank account.': 'اختر حساباً بنكياً.',
+  'Select a customer.': 'اختر عميلاً.',
+  'Select accounts.': 'اختر حسابات.',
+  'Select or name an item.': 'اختر صنفاً أو سمِّه.',
+  'Source and destination must differ.': 'يجب أن يختلف المصدر عن الوجهة.',
+  'Start date is required.': 'تاريخ البدء مطلوب.',
+  'Supplier is required.': 'المورد مطلوب.',
+  'Supplier name is required.': 'اسم المورد مطلوب.',
+  'System accounts cannot be deleted.': 'لا يمكن حذف حسابات النظام.',
+  'This will permanently erase ALL data (invoices, customers, transactions, etc.). Are you absolutely sure?': 'سيؤدي هذا إلى محو جميع البيانات نهائياً (الفواتير والعملاء والمعاملات وغيرها). هل أنت متأكد تماماً؟',
+  'Warehouse name is required.': 'اسم المستودع مطلوب.',
+  'Withholding tax cannot exceed the payment amount.': 'لا يمكن أن تتجاوز ضريبة الاستقطاع مبلغ الدفع.',
 }
 
 export const useI18n = create(
@@ -469,4 +541,23 @@ export const useI18n = create(
 export function useT() {
   const lang = useI18n((s) => s.lang)
   return (s) => (lang === 'ar' && AR[s]) ? AR[s] : s
+}
+
+// Non-hook translator — usable outside React (e.g. wrapped alert/confirm).
+export function tr(s) {
+  if (typeof s !== 'string') return s
+  const lang = useI18n.getState().lang
+  return (lang === 'ar' && AR[s]) ? AR[s] : s
+}
+
+// Globally translate native alert/confirm messages through the dictionary so
+// validation/confirmation prompts respect the chosen language without touching
+// every call site. Exact-match only — interpolated strings pass through as-is.
+export function installDialogTranslation() {
+  if (typeof window === 'undefined' || window.__erpDialogI18n) return
+  window.__erpDialogI18n = true
+  const _alert = window.alert.bind(window)
+  const _confirm = window.confirm.bind(window)
+  window.alert = (msg) => _alert(tr(msg))
+  window.confirm = (msg) => _confirm(tr(msg))
 }
