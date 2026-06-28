@@ -48,9 +48,10 @@ export function Badge({ children, className = '' }) {
 }
 
 export function Input({ label, error, className = '', ...props }) {
+  const t = useT()
   return (
     <div className={className}>
-      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{typeof label === 'string' ? t(label) : label}</label>}
       <input
         className={`w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
           error ? 'border-red-400 bg-red-50 dark:bg-red-900/20' : 'border-gray-300 dark:border-slate-600'
@@ -63,9 +64,10 @@ export function Input({ label, error, className = '', ...props }) {
 }
 
 export function Select({ label, error, children, className = '', ...props }) {
+  const t = useT()
   return (
     <div className={className}>
-      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{typeof label === 'string' ? t(label) : label}</label>}
       <select
         className={`w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-700 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
           error ? 'border-red-400' : 'border-gray-300 dark:border-slate-600'
@@ -80,9 +82,10 @@ export function Select({ label, error, children, className = '', ...props }) {
 }
 
 export function Textarea({ label, error, className = '', ...props }) {
+  const t = useT()
   return (
     <div className={className}>
-      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{label}</label>}
+      {label && <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{typeof label === 'string' ? t(label) : label}</label>}
       <textarea
         className={`w-full border rounded-lg px-3 py-2 text-sm dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
           error ? 'border-red-400' : 'border-gray-300 dark:border-slate-600'
@@ -148,21 +151,24 @@ export function StatCard({ label, value, sub, color = 'blue', icon }) {
 }
 
 export function Table({ headers, children, empty }) {
+  const t = useT()
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-gray-100 dark:border-slate-700">
-            {headers.map((h, i) => (
+            {headers.map((h, i) => {
+              const raw = h.label || h
+              return (
               <th
                 key={i}
                 className={`px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide ${
                   h.right ? 'text-right' : 'text-left'
                 }`}
               >
-                {h.label || h}
+                {typeof raw === 'string' ? t(raw) : raw}
               </th>
-            ))}
+            )})}
           </tr>
         </thead>
         <tbody>

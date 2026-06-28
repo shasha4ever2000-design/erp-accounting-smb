@@ -263,6 +263,39 @@ const AR = {
   'Record Payment': 'تسجيل دفعة',
   'Record Payment to Supplier': 'تسجيل دفعة لمورّد',
   'Transfer Stock': 'نقل مخزون',
+
+  // ── Form field labels (auto-translated via Input/Select/Textarea) ──
+  'Name': 'الاسم', 'Name *': 'الاسم *', 'Full Name *': 'الاسم الكامل *',
+  'Phone': 'الهاتف', 'Address': 'العنوان',
+  'Date *': 'التاريخ *', 'Amount': 'المبلغ', 'Amount *': 'المبلغ *',
+  'Description': 'الوصف', 'Description *': 'الوصف *', 'Description (optional)': 'الوصف (اختياري)',
+  'Notes': 'ملاحظات', 'Notes / Terms': 'ملاحظات / شروط', 'Notes / Instructions': 'ملاحظات / تعليمات',
+  'Type': 'النوع', 'Reference': 'المرجع', 'Reference / Notes': 'المرجع / ملاحظات',
+  'Quantity': 'الكمية', 'Quantity *': 'الكمية *', 'Qty': 'الكمية',
+  'Customer *': 'العميل *', 'Customer Name *': 'اسم العميل *', 'Customer Email': 'بريد العميل', 'Customer Address': 'عنوان العميل', 'Select Customer': 'اختر العميل',
+  'Supplier *': 'المورّد *', 'Supplier Name *': 'اسم المورّد *', 'Supplier Email': 'بريد المورّد', 'Supplier Address': 'عنوان المورّد', 'Select Supplier': 'اختر المورّد', 'Preferred Supplier': 'المورّد المفضل', 'Supplier Invoice Ref': 'مرجع فاتورة المورّد',
+  'Due Date': 'تاريخ الاستحقاق', 'Invoice Date': 'تاريخ الفاتورة',
+  'Start Date': 'تاريخ البدء', 'Start Date *': 'تاريخ البدء *', 'End Date': 'تاريخ الانتهاء', 'End Date (optional)': 'تاريخ الانتهاء (اختياري)',
+  'Reorder Level': 'حد إعادة الطلب', 'Item Name *': 'اسم الصنف *', 'Item Code / SKU': 'رمز الصنف', 'Item': 'الصنف', 'Inventory Item': 'صنف المخزون',
+  'Tax / VAT ID': 'الرقم الضريبي', 'Tax Name': 'اسم الضريبة', 'Tax %': 'الضريبة %', 'Tax Code': 'الرمز الضريبي', 'Tax Registration Number': 'رقم التسجيل الضريبي', 'VAT Registration Number': 'رقم التسجيل الضريبي', 'Commercial Registration (CR)': 'السجل التجاري',
+  'Payment Date': 'تاريخ الدفع', 'Payment Method': 'طريقة الدفع', 'Pay Date': 'تاريخ الدفع', 'Pay From': 'الدفع من', 'Pay From Bank Account': 'الدفع من الحساب البنكي', 'Paid From': 'مدفوع من', 'Deposit To': 'إيداع في', 'Bank / Cash Account': 'حساب البنك / النقد',
+  'Account Name *': 'اسم الحساب *', 'Account Code': 'رمز الحساب', 'Account Type': 'نوع الحساب', 'Account Number': 'رقم الحساب', 'Subtype': 'النوع الفرعي',
+  'Department': 'القسم', 'Department Name *': 'اسم القسم *', 'Cost Center Code': 'رمز مركز التكلفة',
+  'Employee': 'الموظف', 'Employee Name *': 'اسم الموظف *', 'Position / Job Title': 'المسمى الوظيفي', 'Employment Type': 'نوع التوظيف', 'Pay Frequency': 'دورية الدفع', 'Gross Salary': 'الراتب الإجمالي', 'Employee / Staff': 'الموظف',
+  'Project Name *': 'اسم المشروع *', 'Budget': 'الميزانية', 'Client / Customer': 'العميل', 'Source': 'المصدر', 'Stage': 'المرحلة', 'Expected Close': 'تاريخ الإغلاق المتوقع', 'Contact Name *': 'اسم جهة الاتصال *',
+  'Frequency': 'الدورية', 'Bank Name': 'اسم البنك', 'Bank Account Number': 'رقم الحساب البنكي',
+  'Currency': 'العملة', 'Fiscal Year Start Month': 'شهر بداية السنة المالية', 'Company': 'الشركة', 'Company Name *': 'اسم الشركة *',
+  'Category': 'الفئة', 'Reason': 'السبب', 'Reason / Notes': 'السبب / ملاحظات', 'Justification / Notes': 'المبرر / ملاحظات',
+  'Total Cost': 'التكلفة الإجمالية', 'Income': 'الإيراد', 'Cost': 'التكلفة', 'Margin': 'الهامش', 'Method': 'الطريقة', 'Model': 'النموذج',
+  'From': 'من', 'To': 'إلى', 'Hours *': 'الساعات *', 'Rate / hour': 'السعر/ساعة',
+  'Requested By': 'مقدّم الطلب', 'Needed By': 'مطلوب بحلول', 'Period *': 'الفترة *', 'Pay Period *': 'فترة الدفع *', 'Scheduled Date': 'التاريخ المجدول',
+  'Purchase Date *': 'تاريخ الشراء *', 'Useful Life (years)': 'العمر الإنتاجي (سنوات)', 'Disposal Date': 'تاريخ الاستبعاد',
+  'Warehouse Name *': 'اسم المستودع *', 'Location / Address': 'الموقع / العنوان', 'Expiry Date': 'تاريخ الانتهاء', 'Order Date': 'تاريخ الطلب', 'Expected Delivery': 'التسليم المتوقع', 'Delivery Address': 'عنوان التسليم',
+  'Inventory Account': 'حساب المخزون', 'COGS Account': 'حساب تكلفة المبيعات', 'Revenue Account': 'حساب الإيراد', 'Expense Account': 'حساب المصروف', 'Expense / Asset Account': 'حساب المصروف / الأصل',
+  'Statement Ending Balance': 'الرصيد الختامي للكشف', 'WHT Name': 'اسم ضريبة الاستقطاع', 'Default Rate (%)': 'النسبة الافتراضية (%)', 'Tax Name ': 'اسم الضريبة',
+
+  // ── Common table headers ──
+  'Item Name': 'اسم الصنف',
 }
 
 export const useI18n = create(
