@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
 import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
 import { today } from '../utils/formatters'
 
@@ -11,6 +12,7 @@ export default function Purchases() {
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
   const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
+  const t = useT()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -63,9 +65,9 @@ export default function Purchases() {
   return (
     <div>
       <PageHeader
-        title="Purchase Invoices"
+        title={t('Purchase Invoices')}
         subtitle={`${purchases.length} purchase invoice${purchases.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> New Purchase</Btn>}
+        action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>}
       />
 
       <div className="flex gap-2 mb-5 flex-wrap">
@@ -83,7 +85,7 @@ export default function Purchases() {
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'
             }`}
           >
-            {s.label} {totals[s.key] > 0 && <span className="text-xs opacity-60 ml-1">{totals[s.key]}</span>}
+            {t(s.label)} {totals[s.key] > 0 && <span className="text-xs opacity-60 ml-1">{totals[s.key]}</span>}
           </button>
         ))}
       </div>
@@ -91,17 +93,17 @@ export default function Purchases() {
       <div className="relative mb-4 max-w-sm">
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search purchases..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          placeholder={t('Search purchases...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
         {purchases.length === 0 ? (
-          <EmptyState icon="🛒" title="No purchase invoices yet" desc="Record your first purchase to track payables."
-            action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> New Purchase</Btn>} />
+          <EmptyState icon="🛒" title={t('No purchase invoices yet')} desc={t('Record your first purchase to track payables.')}
+            action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> {t('New Purchase')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No purchases match your filter</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No purchases match your filter')}</div>
         ) : (
-          <Table headers={['Invoice #', 'Supplier', 'Ref', 'Date', 'Due', { label: 'Total', right: true }, { label: 'Balance', right: true }, 'Status', { label: 'Actions', right: true }]}>
+          <Table headers={[t('Invoice #'), t('Supplier'), t('Ref'), t('Date'), t('Due'), { label: t('Total'), right: true }, { label: t('Balance'), right: true }, t('Status'), { label: t('Actions'), right: true }]}>
             {sorted.map((p) => {
               const status = p.isOverdue && p.status !== 'paid' ? 'overdue' : p.status
               const balance = p.total - p.amountPaid

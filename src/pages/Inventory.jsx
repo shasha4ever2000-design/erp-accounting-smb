@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
 
 const emptyForm = {
@@ -14,6 +15,7 @@ const emptyForm = {
 export default function Inventory() {
   const { inventoryItems, accounts, addInventoryItem, updateInventoryItem, deleteInventoryItem, settings } = useStore()
   const sym = settings.company.currencySymbol
+  const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -57,9 +59,9 @@ export default function Inventory() {
   return (
     <div>
       <PageHeader
-        title="Inventory Items"
+        title={t('Inventory Items')}
         subtitle={`${inventoryItems.length} items • ${fmtMoney(totalValue, sym)} total value`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Item</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Item')}</Btn>}
       />
 
       {lowStock.length > 0 && (
@@ -75,16 +77,16 @@ export default function Inventory() {
       <div className="relative mb-4 max-w-sm">
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search items..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          placeholder={t('Search items...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
         {inventoryItems.length === 0 ? (
-          <EmptyState icon="📦" title="No inventory items" desc="Add products or services to your inventory." action={<Btn onClick={openNew}><Plus size={14} /> Add Item</Btn>} />
+          <EmptyState icon="📦" title={t('No inventory items')} desc={t('Add products or services to your inventory.')} action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Item')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No items match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No items match your search')}</div>
         ) : (
-          <Table headers={['Code', 'Item Name', 'Unit', { label: 'Cost Price', right: true }, { label: 'Sale Price', right: true }, { label: 'Qty on Hand', right: true }, { label: 'Stock Value', right: true }, { label: 'Actions', right: true }]}>
+          <Table headers={[t('Code'), t('Item Name'), t('Unit'), { label: t('Cost Price'), right: true }, { label: t('Sale Price'), right: true }, { label: t('Qty on Hand'), right: true }, { label: t('Stock Value'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((item) => {
               const stockValue = (item.quantity || 0) * (item.costPrice || 0)
               const isLow = (item.reorderLevel || 0) > 0 && (item.quantity || 0) <= (item.reorderLevel || 0)

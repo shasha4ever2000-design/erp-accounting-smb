@@ -160,6 +160,32 @@ const AR = {
   'Draft': 'مسودة',
   'Sent': 'مُرسلة',
   'Partial': 'جزئية',
+
+  // Purchases
+  'Purchase Invoices': 'فواتير المشتريات',
+  'New Purchase': 'مشترى جديد',
+  'Received': 'مُستلمة',
+  'Search purchases...': 'ابحث عن المشتريات...',
+  'No purchase invoices yet': 'لا توجد فواتير مشتريات بعد',
+  'Record your first purchase to track payables.': 'سجّل أول عملية شراء لتتبع الذمم الدائنة.',
+  'No purchases match your filter': 'لا توجد مشتريات مطابقة',
+  'Ref': 'المرجع',
+
+  // Inventory
+  'Inventory Items': 'أصناف المخزون',
+  'New Item': 'صنف جديد',
+  'Search items...': 'ابحث عن الأصناف...',
+  'No inventory items': 'لا توجد أصناف مخزون',
+  'Add products or services to your inventory.': 'أضف منتجات أو خدمات إلى مخزونك.',
+  'Add Item': 'إضافة صنف',
+  'No items match your search': 'لا توجد أصناف مطابقة لبحثك',
+  'Code': 'الرمز',
+  'Item Name': 'اسم الصنف',
+  'Unit': 'الوحدة',
+  'Cost Price': 'سعر التكلفة',
+  'Sale Price': 'سعر البيع',
+  'Qty on Hand': 'الكمية المتوفرة',
+  'Stock Value': 'قيمة المخزون',
 }
 
 export const useI18n = create(
