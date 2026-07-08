@@ -622,6 +622,7 @@ const AR = {
   'This entry is in a closed period (locked through {d}) and cannot be deleted.': 'هذا القيد في فترة مقفلة (مقفلة حتى {d}) ولا يمكن حذفه.',
   'This entry is in a closed period and cannot be deleted.': 'هذا القيد في فترة مقفلة ولا يمكن حذفه.',
   'Owners / Admins only': 'المالك / المشرفون فقط',
+  'IndexedDB': 'قاعدة بيانات المتصفح',
 
   // ── Settings (raw labels, AI section, presets) ──
   'Configure your company and accounting preferences': 'اضبط شركتك وتفضيلات المحاسبة',

@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
@@ -59,13 +59,25 @@ export default function Settings() {
 
   const isManager = useAuth((s) => s.isManager())
 
-  const storageKB = (() => {
-    try {
-      const v = localStorage.getItem('erp-v1') || ''
-      return Math.round(v.length / 1024)
-    } catch { return 0 }
-  })()
-  const storagePct = Math.min(100, Math.round((storageKB / 5120) * 100))
+  // Data now lives in IndexedDB (no ~5 MB cap). Report real usage/quota when the
+  // Storage API is available; otherwise fall back to a localStorage estimate.
+  const [storage, setStorage] = useState({ usedKB: 0, quotaKB: 0 })
+  useEffect(() => {
+    let alive = true
+    if (navigator?.storage?.estimate) {
+      navigator.storage.estimate().then((est) => {
+        if (alive) setStorage({ usedKB: Math.round((est.usage || 0) / 1024), quotaKB: Math.round((est.quota || 0) / 1024) })
+      }).catch(() => {})
+    } else {
+      let total = 0
+      try { for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); total += (localStorage.getItem(k) || '').length } } catch { /* ignore */ }
+      setStorage({ usedKB: Math.round(total / 1024), quotaKB: 5120 })
+    }
+    return () => { alive = false }
+  }, [])
+  const storageKB = storage.usedKB
+  const quotaKB = storage.quotaKB || 5120
+  const storagePct = Math.min(100, Math.round((storageKB / quotaKB) * 100))
 
   const setZatcaField = (k, v) => setZatca((z) => ({ ...z, [k]: v }))
 
@@ -455,8 +467,8 @@ export default function Settings() {
 
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
             <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
-              <span>{t('Browser storage used')}</span>
-              <span>~{storageKB} KB of ~5,120 KB</span>
+              <span>{t('Browser storage used')} <span className="text-gray-400 dark:text-slate-500">({t('IndexedDB')})</span></span>
+              <span>~{storageKB.toLocaleString()} KB {quotaKB ? `of ~${quotaKB.toLocaleString()} KB` : ''}</span>
             </div>
             <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
               <div className={`h-full ${storagePct > 85 ? 'bg-red-500' : storagePct > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${storagePct}%` }} />

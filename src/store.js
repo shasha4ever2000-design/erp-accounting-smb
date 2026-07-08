@@ -3,6 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
+import { idbKvStorage } from './utils/idbKvStorage'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -1725,7 +1726,9 @@ export const useStore = create(
     {
       name: currentCompanyKey(),
       version: 13,
-      storage: createJSONStorage(() => safeStorage),
+      // IndexedDB primary (no 5 MB cap), transparently migrating any existing
+      // localStorage snapshot; safeStorage remains the graceful fallback inside.
+      storage: createJSONStorage(() => idbKvStorage),
       migrate: (persisted, version) => {
        try {
         if (version < 4) {

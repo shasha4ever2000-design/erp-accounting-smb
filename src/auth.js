@@ -85,7 +85,9 @@ export const useAuth = create(
         set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, name: (name || '').trim() || c.name } : c)) })),
 
       deleteCompany: (id) => {
+        // purge the company's persisted data from both localStorage and IndexedDB
         try { localStorage.removeItem(`erp-co-${id}`) } catch { /* ignore */ }
+        import('./utils/idbKvStorage').then((m) => m.removeCompanyData(id)).catch(() => {})
         set((s) => ({
           companies: s.companies.filter((c) => c.id !== id),
           currentCompanyId: s.currentCompanyId === id ? null : s.currentCompanyId,
