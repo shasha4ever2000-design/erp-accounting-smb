@@ -74,7 +74,14 @@ export default function InvoiceForm() {
     if (form.items.length === 0) return alert('Add at least one line item.')
     if (form.items.some((l) => !l.description)) return alert('All line items must have a description.')
 
-    addInvoice({ ...form, subtotal, taxAmount: taxTotal, total })
+    const lock = settings?.accounting?.lockDate
+    if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+    try {
+      addInvoice({ ...form, subtotal, taxAmount: taxTotal, total })
+    } catch (e) {
+      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+      throw e
+    }
     navigate('/invoices')
   }
 

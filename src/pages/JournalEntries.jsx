@@ -32,20 +32,33 @@ export default function JournalEntries() {
   const totalCr = form.lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)
   const balanced = Math.abs(totalDr - totalCr) < 0.001 && totalDr > 0
 
+  const lockDate = settings?.accounting?.lockDate
+  const dateLocked = !!(lockDate && form.date && String(form.date) <= String(lockDate))
+
   const handleSave = () => {
     if (!form.description.trim()) return alert('Enter a description.')
     if (!balanced) return alert('Debits must equal credits.')
+    if (dateLocked) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate))
     const lines = form.lines
       .filter((l) => l.accountId && (parseFloat(l.debit) || parseFloat(l.credit)))
       .map((l) => ({ ...l, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
-    addJournalEntry({ ...form, lines, type: 'manual' })
+    try {
+      addJournalEntry({ ...form, lines, type: 'manual' })
+    } catch (e) {
+      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate))
+      throw e
+    }
     setModal(false)
     setForm({ date: today(), description: '', reference: '', lines: [emptyLine(), emptyLine()] })
   }
 
   const handleDelete = (je) => {
     if (je.type !== 'manual') return alert('Auto-generated entries cannot be deleted here. Delete the source transaction instead.')
-    if (confirm('Delete this journal entry?')) deleteJournalEntry(je.id)
+    if (lockDate && je.date && String(je.date) <= String(lockDate)) return alert(t('This entry is in a closed period (locked through {d}) and cannot be deleted.').replace('{d}', lockDate))
+    if (confirm('Delete this journal entry?')) {
+      try { deleteJournalEntry(je.id) }
+      catch (e) { if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This entry is in a closed period and cannot be deleted.')); throw e }
+    }
   }
 
   const typeColors = {
@@ -118,6 +131,12 @@ export default function JournalEntries() {
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Reference" value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder="e.g. ADJ-001" />
           </div>
+          {dateLocked && (
+            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+              <span>🔒</span>
+              <span>{t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate)}</span>
+            </div>
+          )}
           <Input label="Description *" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Purpose of this entry..." />
 
           <div className="border rounded-lg overflow-hidden">

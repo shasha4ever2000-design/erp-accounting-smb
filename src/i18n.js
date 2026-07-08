@@ -607,6 +607,21 @@ const AR = {
   'Inventory Items': 'أصناف المخزون', 'Chart of Accounts': 'دليل الحسابات',
   'Item': 'الصنف', 'Qty on Hand': 'الكمية المتاحة', 'Unit Cost': 'تكلفة الوحدة', 'Sale Price': 'سعر البيع',
   'Stock Value': 'قيمة المخزون', 'Reorder Level': 'حد إعادة الطلب', 'Lines': 'البنود', 'Reference': 'المرجع',
+  // ── Period close / lock ──
+  'Period Close / Lock': 'إقفال / قفل الفترة',
+  'Lock closed periods so no journal entry can be posted, edited or deleted on or before the lock date. Protects reported figures after a period is finalized.': 'اقفل الفترات المنتهية بحيث لا يمكن ترحيل أو تعديل أو حذف أي قيد بتاريخ يسبق أو يساوي تاريخ القفل. يحمي الأرقام المعتمدة بعد إقفال الفترة.',
+  'Books are locked through': 'الدفاتر مقفلة حتى',
+  'Locked by': 'تم القفل بواسطة',
+  'No period is currently locked — all dates are open for posting.': 'لا توجد فترة مقفلة حاليًا — جميع التواريخ متاحة للترحيل.',
+  'Lock date (inclusive)': 'تاريخ القفل (شامل)',
+  'Lock Period': 'قفل الفترة', 'Unlock': 'إلغاء القفل',
+  'Choose a lock date first.': 'اختر تاريخ القفل أولًا.',
+  'Lock all periods through {d}? Entries on or before this date will be read-only.': 'قفل جميع الفترات حتى {d}؟ ستصبح القيود في هذا التاريخ أو قبله للقراءة فقط.',
+  'Unlock all periods? Closed entries will become editable again.': 'إلغاء قفل جميع الفترات؟ ستصبح القيود المقفلة قابلة للتعديل مرة أخرى.',
+  'This date falls in a closed accounting period (locked through {d}). Choose a later date.': 'يقع هذا التاريخ في فترة محاسبية مقفلة (مقفلة حتى {d}). اختر تاريخًا لاحقًا.',
+  'This entry is in a closed period (locked through {d}) and cannot be deleted.': 'هذا القيد في فترة مقفلة (مقفلة حتى {d}) ولا يمكن حذفه.',
+  'This entry is in a closed period and cannot be deleted.': 'هذا القيد في فترة مقفلة ولا يمكن حذفه.',
+  'Owners / Admins only': 'المالك / المشرفون فقط',
 
   // ── Settings (raw labels, AI section, presets) ──
   'Configure your company and accounting preferences': 'اضبط شركتك وتفضيلات المحاسبة',

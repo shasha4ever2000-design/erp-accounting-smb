@@ -101,6 +101,7 @@ const DEFAULT_SETTINGS = {
   creditNote:    { prefix: 'CN-',   next: 1 },
   debitNote:     { prefix: 'DN-',   next: 1 },
   ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
+  accounting:    { lockDate: '', lockedBy: '', lockedAt: '' }, // period close: no postings on/before lockDate
   payroll:       { prefix: 'PR-',    next: 1 },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
@@ -153,6 +154,21 @@ export const useStore = create(
 
       updateWht: (patch) =>
         set((s) => ({ settings: { ...s.settings, wht: { ...(s.settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }), ...patch } } })),
+
+      // ─── PERIOD CLOSE / POSTING-DATE LOCK ──────────────────────────
+      // A locked period bars any journal posting dated on or before lockDate,
+      // preserving the integrity of already-reported/closed periods.
+      setPeriodLock: ({ lockDate, lockedBy }) =>
+        set((s) => ({ settings: { ...s.settings, accounting: {
+          ...(s.settings.accounting || {}), lockDate: lockDate || '',
+          lockedBy: lockDate ? (lockedBy || '') : '', lockedAt: lockDate ? new Date().toISOString() : '',
+        } } })),
+
+      // true when `date` (YYYY-MM-DD) falls in a closed period
+      isDateLocked: (date) => {
+        const lock = get().settings?.accounting?.lockDate
+        return !!(lock && date && String(date) <= String(lock))
+      },
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
       accounts: DEFAULT_ACCOUNTS,
@@ -246,6 +262,9 @@ export const useStore = create(
 
       addJournalEntry: (entry) => {
         const s = get()
+        const lock = s.settings?.accounting?.lockDate
+        if (lock && entry?.date && String(entry.date) <= String(lock))
+          throw new Error(`PERIOD_LOCKED:${lock}`)
         const { prefix, next } = s.settings.journal
         const number = nextNum(prefix, next)
         const newJE = { ...entry, id: uuid(), number, type: entry.type || 'manual', createdAt: new Date().toISOString() }
@@ -258,10 +277,23 @@ export const useStore = create(
       },
 
       updateJournalEntry: (id, patch) =>
-        set((s) => ({ journalEntries: s.journalEntries.map((j) => (j.id === id ? { ...j, ...patch } : j)) })),
+        set((s) => {
+          const lock = s.settings?.accounting?.lockDate
+          const je = s.journalEntries.find((j) => j.id === id)
+          // block editing an entry in a closed period, or moving one into it
+          if (lock && ((je?.date && String(je.date) <= String(lock)) || (patch?.date && String(patch.date) <= String(lock))))
+            throw new Error(`PERIOD_LOCKED:${lock}`)
+          return { journalEntries: s.journalEntries.map((j) => (j.id === id ? { ...j, ...patch } : j)) }
+        }),
 
       deleteJournalEntry: (id) =>
-        set((s) => ({ journalEntries: s.journalEntries.filter((j) => j.id !== id) })),
+        set((s) => {
+          const lock = s.settings?.accounting?.lockDate
+          const je = s.journalEntries.find((j) => j.id === id)
+          if (lock && je?.date && String(je.date) <= String(lock))
+            throw new Error(`PERIOD_LOCKED:${lock}`)
+          return { journalEntries: s.journalEntries.filter((j) => j.id !== id) }
+        }),
 
       // ─── SALES INVOICES ────────────────────────────────────────────
       invoices: [],
@@ -1704,8 +1736,9 @@ export const useStore = create(
           persisted.settings = {
             ...DEFAULT_SETTINGS,
             ...persisted.settings,
-            company: { ...DEFAULT_SETTINGS.company, ...(persisted.settings?.company || {}) },
-            tax:     { ...DEFAULT_SETTINGS.tax,     ...(persisted.settings?.tax     || {}) },
+            company:    { ...DEFAULT_SETTINGS.company,    ...(persisted.settings?.company    || {}) },
+            tax:        { ...DEFAULT_SETTINGS.tax,        ...(persisted.settings?.tax        || {}) },
+            accounting: { ...DEFAULT_SETTINGS.accounting, ...(persisted.settings?.accounting || {}) },
           }
 
           if (!persisted.bankAccounts)       persisted.bankAccounts       = DEFAULT_BANK_ACCOUNTS

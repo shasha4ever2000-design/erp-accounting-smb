@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
-import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database } from 'lucide-react'
+import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock } from 'lucide-react'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -20,7 +20,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, exportData, importData } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, exportData, importData } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -42,6 +42,7 @@ export default function Settings() {
   }
   const removeCf = (entity, label) => setCustomFields((c) => ({ ...c, [entity]: c[entity].filter((l) => l !== label) }))
   const [showKey, setShowKey] = useState(false)
+  const [lockInput, setLockInput] = useState(settings.accounting?.lockDate || '')
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
   const logoRef = useRef(null)
@@ -397,6 +398,44 @@ export default function Settings() {
         </Card>
 
         {/* Backup & Restore */}
+        {/* Period Close / Lock */}
+        <Card className="p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center">
+              {settings.accounting?.lockDate ? <Lock size={14} className="text-white" /> : <Unlock size={14} className="text-white" />}
+            </div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Period Close / Lock')}</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            {t('Lock closed periods so no journal entry can be posted, edited or deleted on or before the lock date. Protects reported figures after a period is finalized.')}
+          </p>
+          {settings.accounting?.lockDate ? (
+            <div className="rounded-lg bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 px-4 py-3 mb-4 text-sm">
+              <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200 font-medium">
+                <Lock size={13} /> {t('Books are locked through')} {settings.accounting.lockDate}
+              </div>
+              {settings.accounting.lockedBy && <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{t('Locked by')} {settings.accounting.lockedBy}</p>}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-slate-500 mb-4">{t('No period is currently locked — all dates are open for posting.')}</p>
+          )}
+          {isManager ? (
+            <div className="flex flex-wrap items-end gap-3">
+              <Input label={t('Lock date (inclusive)')} type="date" value={lockInput} onChange={(e) => setLockInput(e.target.value)} className="w-48" />
+              <Btn onClick={() => { if (!lockInput) return alert(t('Choose a lock date first.')); if (confirm(t('Lock all periods through {d}? Entries on or before this date will be read-only.').replace('{d}', lockInput))) { setPeriodLock({ lockDate: lockInput, lockedBy: useAuth.getState().currentUser()?.name || '' }); setSaved(true); setTimeout(() => setSaved(false), 1500) } }}>
+                <Lock size={14} /> {t('Lock Period')}
+              </Btn>
+              {settings.accounting?.lockDate && (
+                <Btn variant="secondary" onClick={() => { if (confirm(t('Unlock all periods? Closed entries will become editable again.'))) { setPeriodLock({ lockDate: '' }); setLockInput('') } }}>
+                  <Unlock size={14} /> {t('Unlock')}
+                </Btn>
+              )}
+            </div>
+          ) : (
+            <span className="text-xs text-gray-400 dark:text-slate-500">{t('Owners / Admins only')}</span>
+          )}
+        </Card>
+
         <Card className="p-6">
           <div className="flex items-center gap-2.5 mb-4">
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
