@@ -1,20 +1,30 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Search, User } from 'lucide-react'
 
 const emptyForm = {
   name: '', email: '', phone: '', departmentId: '', position: '',
-  employmentType: 'full_time', startDate: '', salary: '', payFrequency: 'monthly',
-  bankAccountNumber: '', taxCode: '', status: 'active',
+  employmentType: 'full_time', startDate: '', payFrequency: 'monthly',
+  bankAccountNumber: '', taxCode: '', nationalId: '', status: 'active',
+  // Salary structure (from contract) — no tax by default
+  basicSalary: '', housingAllowance: '', transportAllowance: '', otherAllowance: '',
+  gosiApplicable: false, gosiEmployeeRate: 9, gosiEmployerRate: 11,
+  taxApplicable: false, taxRate: 0,
+  salary: '',
 }
+
+const numf = (v) => parseFloat(v) || 0
 
 const EMP_TYPES  = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract' }
 const PAY_FREQ   = { monthly: 'Monthly', bi_weekly: 'Bi-weekly', weekly: 'Weekly' }
 const STATUS_CLR = { active: 'bg-green-100 text-green-700', inactive: 'bg-gray-100 text-gray-500' }
 
 export default function Employees() {
+  const t = useT()
   const { employees, departments, settings, addEmployee, updateEmployee, deleteEmployee } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -25,12 +35,27 @@ export default function Employees() {
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   const openNew  = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (e) => { setEditing(e); setForm({ ...emptyForm, ...e }); setModal(true) }
+  const openEdit = (e) => {
+    // Back-compat: seed Basic Salary from a legacy single `salary` if no breakdown exists.
+    const hasBreakdown = (e.basicSalary || e.housingAllowance || e.transportAllowance || e.otherAllowance)
+    setEditing(e)
+    setForm({ ...emptyForm, ...e, basicSalary: hasBreakdown ? (e.basicSalary || '') : (e.salary || '') })
+    setModal(true)
+  }
   const close    = () => setModal(false)
+
+  const gross = numf(form.basicSalary) + numf(form.housingAllowance) + numf(form.transportAllowance) + numf(form.otherAllowance)
 
   const handleSave = () => {
     if (!form.name.trim())  return alert('Employee name is required.')
-    const data = { ...form, salary: parseFloat(form.salary) || 0 }
+    const data = {
+      ...form,
+      basicSalary: numf(form.basicSalary), housingAllowance: numf(form.housingAllowance),
+      transportAllowance: numf(form.transportAllowance), otherAllowance: numf(form.otherAllowance),
+      gosiEmployeeRate: numf(form.gosiEmployeeRate), gosiEmployerRate: numf(form.gosiEmployerRate),
+      taxRate: numf(form.taxRate),
+      salary: gross || (parseFloat(form.salary) || 0), // gross monthly (backward compatible)
+    }
     if (editing) updateEmployee(editing.id, data)
     else addEmployee(data)
     close()
@@ -55,8 +80,8 @@ export default function Employees() {
     <div>
       <PageHeader
         title="Employees"
-        subtitle={`${activeCount} active · Monthly payroll: ${fmtMoney(totalSalary, sym)}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Employee</Btn>}
+        subtitle={`${activeCount} ${t('active')} · ${t('Monthly payroll:')} ${fmtMoney(totalSalary, sym)}`}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Employee')}</Btn>}
       />
 
       <div className="relative mb-4 max-w-sm">
@@ -68,9 +93,9 @@ export default function Employees() {
       <Card>
         {employees.length === 0 ? (
           <EmptyState icon="👥" title="No employees" desc="Add employees to manage payroll, departments, and HR records."
-            action={<Btn onClick={openNew}><Plus size={14} /> Add Employee</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Employee')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No employees match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No employees match your search')}</div>
         ) : (
           <Table headers={['Employee', 'Department', 'Position', 'Type', 'Pay Frequency', { label: 'Salary', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {filtered.map((emp) => (
@@ -94,6 +119,7 @@ export default function Employees() {
                 <Td><Badge className={STATUS_CLR[emp.status] || 'bg-gray-100 text-gray-600'}>{emp.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="employee" entityId={emp.id} />
                     <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)}><Pencil size={13} /></Btn>
                     <Btn size="sm" variant="ghost" onClick={() => handleDelete(emp)}><Trash2 size={13} className="text-red-400" /></Btn>
                   </div>
@@ -127,23 +153,67 @@ export default function Employees() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Input label="Start Date" type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} />
-            <Input label="Gross Salary" type="number" min="0" step="0.01" value={form.salary} onChange={(e) => setField('salary', e.target.value)} />
             <Select label="Pay Frequency" value={form.payFrequency} onChange={(e) => setField('payFrequency', e.target.value)}>
               <option value="monthly">Monthly</option>
               <option value="bi_weekly">Bi-weekly</option>
               <option value="weekly">Weekly</option>
             </Select>
+            <Input label="National ID / Iqama" value={form.nationalId} onChange={(e) => setField('nationalId', e.target.value)} />
           </div>
+
+          {/* Compensation (from contract) */}
+          <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t('Salary Structure (from contract)')}</h3>
+              {editing && <AttachmentButton entityType="employee-contract" entityId={editing.id} label="Contract" />}
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <Input label="Basic Salary" type="number" min="0" step="0.01" value={form.basicSalary} onChange={(e) => setField('basicSalary', e.target.value)} />
+              <Input label="Housing Allowance" type="number" min="0" step="0.01" value={form.housingAllowance} onChange={(e) => setField('housingAllowance', e.target.value)} />
+              <Input label="Transport Allowance" type="number" min="0" step="0.01" value={form.transportAllowance} onChange={(e) => setField('transportAllowance', e.target.value)} />
+              <Input label="Other Benefits" type="number" min="0" step="0.01" value={form.otherAllowance} onChange={(e) => setField('otherAllowance', e.target.value)} />
+            </div>
+            <div className="flex justify-between text-sm bg-gray-50 dark:bg-slate-700/40 rounded-lg px-3 py-2">
+              <span className="text-gray-500 dark:text-slate-400">{t('Gross Monthly Salary')}</span>
+              <span className="font-bold text-gray-800 dark:text-slate-100">{fmtMoney(gross, sym)}</span>
+            </div>
+            {!editing && <p className="text-[11px] text-gray-400">{t('Save the employee first, then re-open to attach the contract file.')}</p>}
+          </div>
+
+          {/* Statutory: GOSI & tax (off by default) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
+                <input type="checkbox" checked={form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+                {t('GOSI / Social Insurance')}
+              </label>
+              {form.gosiApplicable && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Input label="Employee %" type="number" min="0" step="0.01" value={form.gosiEmployeeRate} onChange={(e) => setField('gosiEmployeeRate', e.target.value)} />
+                  <Input label="Employer %" type="number" min="0" step="0.01" value={form.gosiEmployerRate} onChange={(e) => setField('gosiEmployerRate', e.target.value)} />
+                </div>
+              )}
+            </div>
+            <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
+                <input type="checkbox" checked={form.taxApplicable} onChange={(e) => setField('taxApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+                {t('Income Tax on salary')}
+              </label>
+              {form.taxApplicable
+                ? <Input label="Tax Rate %" type="number" min="0" step="0.01" value={form.taxRate} onChange={(e) => setField('taxRate', e.target.value)} />
+                : <p className="text-[11px] text-gray-400">{t('No salary tax (default). Enable only where your country taxes salaries.')}</p>}
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Input label="Bank Account Number" value={form.bankAccountNumber} onChange={(e) => setField('bankAccountNumber', e.target.value)} placeholder="For payroll transfer" />
-            <Input label="Tax Code" value={form.taxCode} onChange={(e) => setField('taxCode', e.target.value)} placeholder="e.g. 1257L" />
+            <Select label="Status" value={form.status} onChange={(e) => setField('status', e.target.value)}>
+              <option value="active">{t('Active')}</option>
+              <option value="inactive">Inactive / Terminated</option>
+            </Select>
           </div>
-          <Select label="Status" value={form.status} onChange={(e) => setField('status', e.target.value)}>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive / Terminated</option>
-          </Select>
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Employee'}</Btn>
           </div>
         </div>

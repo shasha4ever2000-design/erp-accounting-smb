@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2 } from 'lucide-react'
 
 const emptyForm = () => ({
@@ -10,6 +12,7 @@ const emptyForm = () => ({
 })
 
 export default function DebitNotes() {
+  const t = useT()
   const { debitNotes, suppliers, settings, addDebitNote, deleteDebitNote } = useStore()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
@@ -43,13 +46,13 @@ export default function DebitNotes() {
       <PageHeader
         title="Debit Notes"
         subtitle="Purchase returns and debit adjustments to suppliers"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> New Debit Note</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Debit Note')}</Btn>}
       />
 
       <Card>
         {debitNotes.length === 0 ? (
           <EmptyState icon="📑" title="No debit notes" desc="Issue debit notes when returning goods to suppliers or claiming credit for overcharges."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> Issue Debit Note</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Issue Debit Note')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Supplier', 'Date', 'Purchase Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((dn) => (
@@ -63,6 +66,7 @@ export default function DebitNotes() {
                   <span className="font-semibold text-green-600">{fmtMoney(dn.total, sym)}</span>
                 </Td>
                 <Td right>
+                  <AttachmentButton entityType="debitnote" entityId={dn.id} />
                   <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete ${dn.number}?`)) deleteDebitNote(dn.id) }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>
@@ -102,8 +106,8 @@ export default function DebitNotes() {
             Journal Entry: Dr Accounts Payable ({fmtMoney(total, sym)}) → Cr Purchase Returns ({fmtMoney(subtotal, sym)}){taxEnabled ? ` + Cr Input Tax (${fmtMoney(taxAmt, sym)})` : ''}
           </p>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={handleSave}>Issue Debit Note</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleSave}>{t('Issue Debit Note')}</Btn>
           </div>
         </div>
       </Modal>

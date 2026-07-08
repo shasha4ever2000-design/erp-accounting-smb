@@ -2,22 +2,28 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
+import { useT } from '../i18n'
+import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '' }
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
 
 export default function Customers() {
   const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings } = useStore()
   const sym = settings.company.currencySymbol
+  const customDefs = settings.customFields?.customer || []
+  const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', notes: c.notes || '' }); setModal(true) }
+  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', notes: c.notes || '', customFields: c.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+  const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
@@ -40,12 +46,26 @@ export default function Customers() {
     !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase())
   )
 
+  const exportCols = [
+    { key: 'name', label: t('Name') },
+    { key: 'email', label: t('Email') },
+    { key: 'phone', label: t('Phone') },
+    { key: 'taxId', label: t('Tax / VAT ID') },
+    { key: 'address', label: t('Address') },
+    { key: 'balance', label: t('Balance'), right: true, map: (_, c) => getBalance(c.id).toFixed(2) },
+  ]
+
   return (
     <div>
       <PageHeader
-        title="Customers"
-        subtitle={`${customers.length} customer${customers.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Customer</Btn>}
+        title={t('Customers')}
+        subtitle={`${customers.length} ${t('customers')}`}
+        action={
+          <div className="flex items-center gap-2">
+            {customers.length > 0 && <ExportMenu filename="customers" title={t('Customers')} rows={customers} columns={exportCols} />}
+            <Btn onClick={openNew}><Plus size={15} /> {t('New Customer')}</Btn>
+          </div>
+        }
       />
 
       {/* Search */}
@@ -53,7 +73,7 @@ export default function Customers() {
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input
           className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search customers..."
+          placeholder={t('Search customers...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
@@ -63,14 +83,14 @@ export default function Customers() {
         {filtered.length === 0 && customers.length === 0 ? (
           <EmptyState
             icon="👥"
-            title="No customers yet"
-            desc="Add your first customer to start creating invoices."
-            action={<Btn onClick={openNew}><Plus size={14} /> Add Customer</Btn>}
+            title={t('No customers yet')}
+            desc={t('Add your first customer to start creating invoices.')}
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Customer')}</Btn>}
           />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No customers match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No customers match your search')}</div>
         ) : (
-          <Table headers={['Customer', 'Contact', 'Tax ID', { label: 'Balance Due', right: true }, { label: 'Actions', right: true }]}>
+          <Table headers={[t('Customer'), t('Contact'), t('Tax ID'), { label: t('Balance Due'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((c) => {
               const balance = getBalance(c.id)
               return (
@@ -98,6 +118,7 @@ export default function Customers() {
                   </Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
+                      <AttachmentButton entityType="customer" entityId={c.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}><Pencil size={13} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(c)}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>
@@ -119,8 +140,16 @@ export default function Customers() {
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} placeholder="Tax registration number" />
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} placeholder="Street, City, Country" />
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Internal notes..." />
+          {customDefs.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-700">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">{t('Custom Fields')}</p>
+              {customDefs.map((label) => (
+                <Input key={label} label={label} value={form.customFields?.[label] || ''} onChange={(e) => setCustom(label, e.target.value)} />
+              ))}
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Customer'}</Btn>
           </div>
         </div>

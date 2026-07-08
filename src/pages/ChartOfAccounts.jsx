@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { accountTypeLabel, accountTypeColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -16,6 +17,7 @@ const SUBTYPES = {
 const emptyForm = { code: '', name: '', type: 'asset', subtype: 'current', description: '' }
 
 export default function ChartOfAccounts() {
+  const t = useT()
   const { accounts, addAccount, updateAccount, deleteAccount } = useStore()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -56,7 +58,7 @@ export default function ChartOfAccounts() {
         subtitle="Manage your accounting structure"
         action={
           <Btn onClick={openNew}>
-            <Plus size={15} /> New Account
+            <Plus size={15} /> {t('New Account')}
           </Btn>
         }
       />
@@ -78,7 +80,7 @@ export default function ChartOfAccounts() {
 
       {/* Account Groups */}
       {grouped.length === 0 && (
-        <EmptyState icon="📒" title="No accounts" desc="Add your first account to get started." action={<Btn onClick={openNew}><Plus size={14}/>Add Account</Btn>} />
+        <EmptyState icon="📒" title="No accounts" desc="Add your first account to get started." action={<Btn onClick={openNew}><Plus size={14}/>{t('Add Account')}</Btn>} />
       )}
 
       <div className="space-y-4">
@@ -141,7 +143,7 @@ export default function ChartOfAccounts() {
           </Select>
           <Input label="Description (optional)" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Brief description" />
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Create Account'}</Btn>
           </div>
         </div>

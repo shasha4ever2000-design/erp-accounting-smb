@@ -1,6 +1,28 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { persist, createJSONStorage } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
+import { currentCompanyKey } from './boot'
+import { useAuth } from './auth'
+
+// Quota-safe storage: never let a full localStorage throw and crash the app.
+const safeStorage = {
+  getItem: (name) => {
+    try { return localStorage.getItem(name) } catch { return null }
+  },
+  setItem: (name, value) => {
+    try {
+      localStorage.setItem(name, value)
+    } catch (e) {
+      console.warn('ERP: could not save to local storage (it may be full).', e)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('erp-storage-error'))
+      }
+    }
+  },
+  removeItem: (name) => {
+    try { localStorage.removeItem(name) } catch { /* ignore */ }
+  },
+}
 
 const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
@@ -20,12 +42,14 @@ const DEFAULT_ACCOUNTS = [
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-paye',   code: '2201', name: 'PAYE Tax Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-sspay',  code: '2202', name: 'Social Security Payable',    type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-expclaim',code:'2210', name: 'Employee Expense Claims',    type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-accrued',code: '2300', name: 'Accrued Expenses',           type: 'liability', subtype: 'current',     isSystem: false },
   // LIABILITIES – Non-Current
+  { id: 'acc-creditcard',code:'2410', name: 'Credit Card',             type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-loan',   code: '2400', name: 'Bank Loan',                  type: 'liability', subtype: 'non_current', isSystem: false },
   { id: 'acc-leasepay',code:'2500', name: 'Lease Liability',            type: 'liability', subtype: 'non_current', isSystem: false },
   // EQUITY
@@ -50,6 +74,8 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-misc',   code: '5009', name: 'Miscellaneous Expense',      type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-invadj', code: '5010', name: 'Inventory Adjustments',      type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-lossdis',code: '5011', name: 'Loss on Asset Disposal',     type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-bankchg',code: '5014', name: 'Bank Charges',               type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-gosiemp',code: '5015', name: 'Employer Social Insurance (GOSI)', type: 'expense', subtype: 'expense', isSystem: false },
   { id: 'acc-purret', code: '5012', name: 'Purchase Returns',           type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-mfgcost',code: '5013', name: 'Manufacturing Costs',        type: 'expense',   subtype: 'expense',     isSystem: false },
 ]
@@ -60,9 +86,12 @@ const DEFAULT_BANK_ACCOUNTS = [
 ]
 
 const DEFAULT_SETTINGS = {
-  company: { name: 'My Company', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01' },
+  company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
   tax:           { enabled: false, rate: 15, name: 'VAT' },
-  invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30 },
+  zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
+  wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
+  customFields:  { customer: [], supplier: [] },
+  invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30, bankDetails: '' },
   purchase:      { prefix: 'PUR-',  next: 1 },
   journal:       { prefix: 'JE-',   next: 1 },
   receipt:       { prefix: 'REC-',  next: 1 },
@@ -79,7 +108,16 @@ const DEFAULT_SETTINGS = {
   prepaid:       { prefix: 'PRE-',   next: 1 },
   expenseClaim:  { prefix: 'EXP-',   next: 1 },
   workOrder:     { prefix: 'WO-',    next: 1 },
+  project:       { prefix: 'PRJ-',   next: 1 },
+  recurring:     { prefix: 'SUB-',   next: 1 },
+  delivery:      { prefix: 'DLV-',   next: 1 },
+  requisition:   { prefix: 'REQ-',   next: 1 },
+  theme:         'light',
 }
+
+const DEFAULT_WAREHOUSES = [
+  { id: 'wh-main', name: 'Main Warehouse', location: '', isDefault: true },
+]
 
 function nextNum(prefix, n) {
   return `${prefix}${String(n).padStart(4, '0')}`
@@ -106,6 +144,15 @@ export const useStore = create(
 
       updateAiSettings: (patch) =>
         set((s) => ({ settings: { ...s.settings, ai: { ...(s.settings.ai || {}), ...patch } } })),
+
+      updateZatca: (patch) =>
+        set((s) => ({ settings: { ...s.settings, zatca: { ...(s.settings.zatca || {}), ...patch } } })),
+
+      updateCustomFields: (patch) =>
+        set((s) => ({ settings: { ...s.settings, customFields: { ...(s.settings.customFields || { customer: [], supplier: [] }), ...patch } } })),
+
+      updateWht: (patch) =>
+        set((s) => ({ settings: { ...s.settings, wht: { ...(s.settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }), ...patch } } })),
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
       accounts: DEFAULT_ACCOUNTS,
@@ -146,8 +193,11 @@ export const useStore = create(
       // ─── CUSTOMERS ─────────────────────────────────────────────────
       customers: [],
 
-      addCustomer: (c) =>
-        set((s) => ({ customers: [...s.customers, { ...c, id: uuid(), createdAt: new Date().toISOString() }] })),
+      addCustomer: (c) => {
+        const newC = { ...c, id: uuid(), createdAt: new Date().toISOString() }
+        set((s) => ({ customers: [...s.customers, newC] }))
+        return newC
+      },
 
       updateCustomer: (id, patch) =>
         set((s) => ({ customers: s.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
@@ -179,6 +229,18 @@ export const useStore = create(
       deleteInventoryItem: (id) =>
         set((s) => ({ inventoryItems: s.inventoryItems.filter((i) => i.id !== id) })),
 
+      // ─── AUDIT / ACTIVITY LOG ──────────────────────────────────────
+      auditLog: [],
+
+      logActivity: (action, detail) => {
+        let user = 'System'
+        try { user = useAuth.getState().users.find((u) => u.id === useAuth.getState().currentUserId)?.name || 'System' } catch { /* ignore */ }
+        const entry = { id: uuid(), ts: new Date().toISOString(), user, action, detail: detail || '' }
+        set((st) => ({ auditLog: [...(st.auditLog || []).slice(-999), entry] }))
+      },
+
+      clearAuditLog: () => set({ auditLog: [] }),
+
       // ─── JOURNAL ENTRIES ───────────────────────────────────────────
       journalEntries: [],
 
@@ -191,6 +253,7 @@ export const useStore = create(
           journalEntries: [...st.journalEntries, newJE],
           settings: { ...st.settings, journal: { ...st.settings.journal, next: st.settings.journal.next + 1 } },
         }))
+        get().logActivity('Posted ' + String(newJE.type || 'entry').replace(/_/g, ' '), `${number} · ${entry.description || ''}`.trim())
         return newJE
       },
 
@@ -226,14 +289,61 @@ export const useStore = create(
           reference: number, type: 'invoice', lines,
         })
 
+        // Perpetual issue: reduce stock + post COGS at weighted-average cost for tracked lines.
+        // COGS/inventory relief respect each item's own COGS and inventory accounts.
+        const issue = {} // itemId -> qty
+        const cogsByAcc = {}, invByAcc = {}
+        let cogs = 0
+        invoice.items.forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q <= 0) return
+          const it = get().inventoryItems.find((i) => i.id === line.itemId)
+          if (!it) return
+          issue[line.itemId] = (issue[line.itemId] || 0) + q
+          const amt = q * (it.costPrice || 0)
+          cogs += amt
+          const cAcc = it.cogsAccountId || 'acc-cogs'
+          const iAcc = it.inventoryAccountId || 'acc-inv'
+          cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
+          invByAcc[iAcc] = (invByAcc[iAcc] || 0) + amt
+        })
+        let cogsJeId = null
+        if (cogs > 0) {
+          const cje = get().addJournalEntry({
+            date: invoice.date, description: `Cost of Sales – ${number}`, reference: number, type: 'cogs',
+            lines: [
+              ...Object.entries(cogsByAcc).map(([a, amt]) => ({ accountId: a, debit: amt, credit: 0, description: 'Cost of goods sold' })),
+              ...Object.entries(invByAcc).map(([a, amt]) => ({ accountId: a, debit: 0, credit: amt, description: 'Inventory reduction' })),
+            ],
+          })
+          cogsJeId = cje.id
+        }
+
         const newInvoice = {
           ...invoice, id: uuid(), number, status: 'sent', amountPaid: 0, payments: [],
-          journalEntryId: je.id, createdAt: new Date().toISOString(),
+          journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
         }
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
           invoices: [...st.invoices, newInvoice],
+          inventoryItems: st.inventoryItems.map((it) => {
+            const q = issue[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) - q }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) - q
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
           settings: { ...st.settings, invoice: { ...st.settings.invoice, next: next + 1 } },
         }))
+        Object.entries(issue).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: invoice.date, type: 'sale', qtyChange: -q, ref: number, note: `Sold to ${invoice.customerName || 'customer'}` })
+        })
         return newInvoice
       },
 
@@ -267,14 +377,34 @@ export const useStore = create(
       updateInvoice: (id, patch) =>
         set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
 
-      deleteInvoice: (id) =>
-        set((s) => {
-          const inv = s.invoices.find((i) => i.id === id)
-          return {
-            invoices: s.invoices.filter((i) => i.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId),
-          }
-        }),
+      deleteInvoice: (id) => {
+        const inv = get().invoices.find((i) => i.id === id)
+        get().logActivity('Deleted invoice', inv?.number || id)
+        // Restore any stock issued by this invoice's tracked lines.
+        const restore = {}
+        ;(inv?.items || []).forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q > 0) restore[line.itemId] = (restore[line.itemId] || 0) + q
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((s) => ({
+          invoices: s.invoices.filter((i) => i.id !== id),
+          journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId && j.id !== inv?.cogsJournalEntryId),
+          stockMovements: s.stockMovements.filter((m) => m.ref !== inv?.number),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = restore[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) + q }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) + q
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
+        }))
+      },
 
       // ─── QUOTATIONS / ESTIMATES ────────────────────────────────────
       quotations: [],
@@ -407,10 +537,41 @@ export const useStore = create(
           ...purchase, id: uuid(), number, status: 'received', amountPaid: 0, payments: [],
           journalEntryId: je.id, createdAt: new Date().toISOString(),
         }
+
+        // Perpetual inventory: receive tracked lines into stock at weighted-average cost.
+        const recv = {} // itemId -> { qty, cost }
+        purchase.items.forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q <= 0) return
+          recv[line.itemId] = recv[line.itemId] || { qty: 0, cost: 0 }
+          recv[line.itemId].qty += q
+          recv[line.itemId].cost += line.subtotal || 0
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
           purchases: [...st.purchases, newPurchase],
+          inventoryItems: st.inventoryItems.map((it) => {
+            const u = recv[it.id]
+            if (!u) return it
+            const oldQty = it.quantity || 0
+            const newQty = oldQty + u.qty
+            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
+            const patch = { quantity: newQty, costPrice: newCost }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) + u.qty
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
           settings: { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } },
         }))
+        // Movement ledger entries for each received item.
+        Object.entries(recv).forEach(([itemId, u]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: purchase.date, type: 'purchase', qtyChange: u.qty, ref: number, note: `Received from ${purchase.supplierName || 'supplier'}` })
+        })
         return newPurchase
       },
 
@@ -422,14 +583,17 @@ export const useStore = create(
         const number = nextNum(prefix, next)
         const newAmountPaid = purchase.amountPaid + payment.amount
         const status = newAmountPaid >= purchase.total ? 'paid' : 'partial'
+        const wht = Math.max(0, Math.min(payment.amount, Number(payment.wht) || 0))
+        const netCash = payment.amount - wht
+        const lines = [
+          { accountId: 'acc-ap', debit: payment.amount, credit: 0, description: `Payment for ${purchase.number}` },
+          { accountId: payment.bankAccountId, debit: 0, credit: netCash, description: `Payment for ${purchase.number}` },
+        ]
+        if (wht > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: wht, description: `Withholding tax – ${purchase.number}` })
         const je = get().addJournalEntry({
           date: payment.date,
           description: `Payment ${number} for ${purchase.number}`,
-          reference: number, type: 'payment_out',
-          lines: [
-            { accountId: 'acc-ap', debit: payment.amount, credit: 0, description: `Payment for ${purchase.number}` },
-            { accountId: payment.bankAccountId, debit: 0, credit: payment.amount, description: `Payment for ${purchase.number}` },
-          ],
+          reference: number, type: 'payment_out', lines,
         })
         set((st) => ({
           purchases: st.purchases.map((p) =>
@@ -444,14 +608,34 @@ export const useStore = create(
       updatePurchase: (id, patch) =>
         set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
 
-      deletePurchase: (id) =>
-        set((s) => {
-          const pur = s.purchases.find((p) => p.id === id)
-          return {
-            purchases: s.purchases.filter((p) => p.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== pur?.journalEntryId),
-          }
-        }),
+      deletePurchase: (id) => {
+        const pur = get().purchases.find((p) => p.id === id)
+        get().logActivity('Deleted purchase', pur?.number || id)
+        // Reverse any perpetual stock received by this purchase.
+        const recv = {}
+        ;(pur?.items || []).forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q > 0) recv[line.itemId] = (recv[line.itemId] || 0) + q
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((s) => ({
+          purchases: s.purchases.filter((p) => p.id !== id),
+          journalEntries: s.journalEntries.filter((j) => j.id !== pur?.journalEntryId),
+          stockMovements: s.stockMovements.filter((m) => m.ref !== pur?.number),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = recv[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) - q }
+            if (it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              map[defWh] = (map[defWh] || 0) - q
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
+        }))
+      },
 
       // ─── DEBIT NOTES (Purchase Returns) ────────────────────────────
       debitNotes: [],
@@ -530,17 +714,32 @@ export const useStore = create(
       processPayrollRun: (runId) => {
         const run = get().payrollRuns.find((r) => r.id === runId)
         if (!run || run.status === 'processed') return
-        const totalGross = run.lines.reduce((a, l) => a + (l.gross || 0), 0)
-        const totalTax   = run.lines.reduce((a, l) => a + (l.tax   || 0), 0)
-        const totalSS    = run.lines.reduce((a, l) => a + (l.socialSecurity || 0), 0)
-        const totalNet   = run.lines.reduce((a, l) => a + (l.net   || 0), 0)
+        const n = (l, f) => Number(l[f]) || 0
+        // Earnings breakdown (basic + allowances) → gross; fall back to legacy `gross`.
+        const grossOf = (l) => n(l, 'gross') || (n(l, 'basic') + n(l, 'housing') + n(l, 'transport') + n(l, 'other'))
+        const otherDedOf = (l) => n(l, 'late') + n(l, 'absent') + n(l, 'penalty')
+        const gosiEmpOf = (l) => n(l, 'gosi') || n(l, 'socialSecurity') // employee GOSI (legacy: socialSecurity)
+        const totalGross     = run.lines.reduce((a, l) => a + grossOf(l), 0)
+        const totalTax       = run.lines.reduce((a, l) => a + n(l, 'tax'), 0)
+        const totalGosiEmp   = run.lines.reduce((a, l) => a + gosiEmpOf(l), 0)
+        const totalGosiEmployer = run.lines.reduce((a, l) => a + n(l, 'gosiEmployer'), 0)
+        const totalOtherDed  = run.lines.reduce((a, l) => a + otherDedOf(l), 0)
+        const totalNet       = run.lines.reduce((a, l) => a + n(l, 'net'), 0)
+        // Salary cost = earnings not withheld from unpaid deductions (late/absent/penalty
+        // reduce the expense; tax & GOSI become payroll liabilities).
+        const salaryExpense = totalGross - totalOtherDed
         const lines = [
-          { accountId: 'acc-salary', debit: totalGross, credit: 0,        description: `Payroll ${run.number} – Gross` },
-          { accountId: 'acc-salpay', debit: 0,          credit: totalNet, description: `Payroll ${run.number} – Net Pay` },
-          { accountId: 'acc-paye',   debit: 0,          credit: totalTax, description: `Payroll ${run.number} – PAYE` },
+          { accountId: 'acc-salary', debit: salaryExpense, credit: 0,        description: `Payroll ${run.number} – Salaries` },
+          { accountId: 'acc-salpay', debit: 0,             credit: totalNet, description: `Payroll ${run.number} – Net Pay` },
         ]
-        if (totalSS > 0)
-          lines.push({ accountId: 'acc-sspay', debit: 0, credit: totalSS, description: `Payroll ${run.number} – SS` })
+        if (totalTax > 0)
+          lines.push({ accountId: 'acc-paye',  debit: 0, credit: totalTax,     description: `Payroll ${run.number} – Income Tax` })
+        if (totalGosiEmp > 0)
+          lines.push({ accountId: 'acc-sspay', debit: 0, credit: totalGosiEmp, description: `Payroll ${run.number} – GOSI (employee)` })
+        if (totalGosiEmployer > 0) {
+          lines.push({ accountId: 'acc-gosiemp', debit: totalGosiEmployer, credit: 0,                   description: `Payroll ${run.number} – GOSI (employer)` })
+          lines.push({ accountId: 'acc-sspay',   debit: 0,                  credit: totalGosiEmployer, description: `Payroll ${run.number} – GOSI (employer)` })
+        }
         const je = get().addJournalEntry({
           date: run.payDate,
           description: `Payroll Run ${run.number} – ${run.period}`,
@@ -679,10 +878,35 @@ export const useStore = create(
       // ─── STOCK ADJUSTMENTS ─────────────────────────────────────────
       stockAdjustments: [],
 
+      // ─── STOCK MOVEMENT LEDGER ─────────────────────────────────────
+      // Append-only audit trail of every on-hand quantity change, powering
+      // per-item stock cards. type: 'sale'|'adjustment'|'production'|'consumption'.
+      stockMovements: [],
+      logStockMovement: (mv) =>
+        set((s) => ({ stockMovements: [...s.stockMovements, { id: uuid(), createdAt: new Date().toISOString(), ...mv }] })),
+
+      // Segregation of duties: an adjustment is created as PENDING — it does not
+      // touch the ledger or on-hand quantity until a *different* manager approves it.
       addStockAdjustment: (adj) => {
         const s = get()
         const { prefix, next } = s.settings.stockAdj
         const number = nextNum(prefix, next)
+        const rec = {
+          ...adj, id: uuid(), number, status: 'pending',
+          createdBy: adj.createdBy || null, createdByName: adj.createdByName || '',
+          approvedBy: null, approvedByName: '', approvedAt: null, journalEntryId: null,
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({
+          stockAdjustments: [...st.stockAdjustments, rec],
+          settings: { ...st.settings, stockAdj: { ...st.settings.stockAdj, next: next + 1 } },
+        }))
+        return rec
+      },
+
+      approveStockAdjustment: (id, approver) => {
+        const adj = get().stockAdjustments.find((a) => a.id === id)
+        if (!adj || adj.status === 'approved') return
         const invAccId = adj.inventoryAccountId || 'acc-inv'
         const lines = adj.type === 'increase'
           ? [
@@ -695,26 +919,38 @@ export const useStore = create(
             ]
         const je = get().addJournalEntry({
           date: adj.date,
-          description: `Stock Adj ${number} – ${adj.itemName || ''}`,
-          reference: number, type: 'stock_adj', lines,
+          description: `Stock Adj ${adj.number} – ${adj.itemName || ''}`,
+          reference: adj.number, type: 'stock_adj', lines,
         })
         const qtyChange = adj.type === 'increase' ? adj.quantity : -adj.quantity
+        get().logStockMovement({ itemId: adj.itemId, itemName: adj.itemName, date: adj.date, type: 'adjustment', qtyChange, ref: adj.number, note: adj.reason || '' })
         set((st) => ({
-          stockAdjustments: [...st.stockAdjustments, { ...adj, id: uuid(), number, journalEntryId: je.id, createdAt: new Date().toISOString() }],
+          stockAdjustments: st.stockAdjustments.map((a) =>
+            a.id === id ? { ...a, status: 'approved', approvedBy: approver?.id || null, approvedByName: approver?.name || '', approvedAt: new Date().toISOString(), journalEntryId: je.id } : a
+          ),
           inventoryItems: st.inventoryItems.map((i) =>
             i.id === adj.itemId ? { ...i, quantity: (i.quantity || 0) + qtyChange } : i
           ),
-          settings: { ...st.settings, stockAdj: { ...st.settings.stockAdj, next: next + 1 } },
         }))
       },
+
+      rejectStockAdjustment: (id, approver, reason) =>
+        set((s) => ({
+          stockAdjustments: s.stockAdjustments.map((a) =>
+            a.id === id ? { ...a, status: 'rejected', approvedBy: approver?.id || null, approvedByName: approver?.name || '', approvedAt: new Date().toISOString(), rejectionReason: reason || '' } : a
+          ),
+        })),
 
       deleteStockAdjustment: (id) =>
         set((s) => {
           const adj = s.stockAdjustments.find((a) => a.id === id)
-          const qtyChange = adj ? (adj.type === 'increase' ? -adj.quantity : adj.quantity) : 0
+          // Only reverse quantity/JE if the adjustment was actually posted (approved or legacy).
+          const wasPosted = adj && (adj.status === 'approved' || adj.status === undefined)
+          const qtyChange = wasPosted ? (adj.type === 'increase' ? -adj.quantity : adj.quantity) : 0
           return {
             stockAdjustments: s.stockAdjustments.filter((a) => a.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== adj?.journalEntryId),
+            stockMovements: s.stockMovements.filter((m) => m.ref !== adj?.number),
             inventoryItems: s.inventoryItems.map((i) =>
               i.id === adj?.itemId ? { ...i, quantity: (i.quantity || 0) + qtyChange } : i
             ),
@@ -963,6 +1199,7 @@ export const useStore = create(
         })
 
         const outputQty = (wo.outputQuantity || 1) * qty
+        get().logStockMovement({ itemId: wo.outputItemId, itemName: wo.outputName, date: completionDate || new Date().toISOString().slice(0, 10), type: 'production', qtyChange: outputQty, ref: wo.number, note: 'Work order output' })
         set((st) => ({
           workOrders: st.workOrders.map((w) =>
             w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
@@ -999,7 +1236,8 @@ export const useStore = create(
                 { accountId: tx.bankAccountId,  debit: 0,         credit: tx.amount, description: tx.description },
               ]
         const je = get().addJournalEntry({
-          date: tx.date, description: tx.description, reference: tx.reference || '', type: tx.type, lines,
+          date: tx.date, description: tx.description, reference: tx.reference || '', type: tx.type,
+          projectId: tx.projectId || null, lines,
         })
         set((s) => ({
           bankTransactions: [...s.bankTransactions, { ...tx, id: uuid(), journalEntryId: je.id, createdAt: new Date().toISOString() }],
@@ -1014,6 +1252,411 @@ export const useStore = create(
             journalEntries: s.journalEntries.filter((j) => j.id !== tx?.journalEntryId),
           }
         }),
+
+      // ─── INTRA-BANK / INTERNAL TRANSFERS ───────────────────────────
+      // Move funds between two of the company's own bank/cash accounts.
+      // Posts: Dr destination, Cr source (amount + fee), Dr bank charges (fee).
+      // No revenue/expense impact except the optional bank fee.
+      bankTransfers: [],
+
+      addBankTransfer: (tf) => {
+        const amount = Number(tf.amount) || 0
+        const fee = Number(tf.fee) || 0
+        if (amount <= 0 || !tf.fromAccountId || !tf.toAccountId || tf.fromAccountId === tf.toAccountId) return null
+        const accs = get().accounts
+        const fromName = accs.find((a) => a.id === tf.fromAccountId)?.name || tf.fromAccountId
+        const toName = accs.find((a) => a.id === tf.toAccountId)?.name || tf.toAccountId
+        const feeAccId = (fee > 0 && accs.some((a) => a.id === tf.feeAccountId)) ? tf.feeAccountId : 'acc-bankchg'
+        const lines = [
+          { accountId: tf.toAccountId,   debit: amount,        credit: 0,            description: `Transfer from ${fromName}` },
+          { accountId: tf.fromAccountId, debit: 0,             credit: amount + fee, description: `Transfer to ${toName}` },
+        ]
+        if (fee > 0) lines.push({ accountId: feeAccId, debit: fee, credit: 0, description: `Transfer fee (${fromName})` })
+        const je = get().addJournalEntry({
+          date: tf.date, description: tf.notes || `Transfer: ${fromName} → ${toName}`,
+          reference: tf.reference || '', type: 'transfer', lines,
+        })
+        const rec = { id: uuid(), date: tf.date, fromAccountId: tf.fromAccountId, toAccountId: tf.toAccountId, amount, fee, feeAccountId: fee > 0 ? feeAccId : null, reference: tf.reference || '', notes: tf.notes || '', journalEntryId: je.id, createdAt: new Date().toISOString() }
+        set((s) => ({ bankTransfers: [...s.bankTransfers, rec] }))
+        return rec
+      },
+
+      deleteBankTransfer: (id) =>
+        set((s) => {
+          const tf = s.bankTransfers.find((t) => t.id === id)
+          return {
+            bankTransfers: s.bankTransfers.filter((t) => t.id !== id),
+            journalEntries: s.journalEntries.filter((j) => j.id !== tf?.journalEntryId),
+          }
+        }),
+
+      // ─── SCHEDULED (RECURRING) TRANSFERS ───────────────────────────
+      // Define a transfer once; post it (and advance its next date) when due.
+      scheduledTransfers: [],
+
+      addScheduledTransfer: (sc) =>
+        set((s) => ({
+          scheduledTransfers: [...s.scheduledTransfers, {
+            ...sc, id: uuid(), active: true, lastPosted: null, postedCount: 0, createdAt: new Date().toISOString(),
+          }],
+        })),
+
+      updateScheduledTransfer: (id, patch) =>
+        set((s) => ({ scheduledTransfers: s.scheduledTransfers.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+
+      deleteScheduledTransfer: (id) =>
+        set((s) => ({ scheduledTransfers: s.scheduledTransfers.filter((x) => x.id !== id) })),
+
+      // Post a scheduled transfer now (on its scheduled date) and roll the next date forward.
+      postScheduledTransfer: (id) => {
+        const sc = get().scheduledTransfers.find((x) => x.id === id)
+        if (!sc) return null
+        const onDate = sc.nextDate || new Date().toISOString().slice(0, 10)
+        const rec = get().addBankTransfer({
+          date: onDate, fromAccountId: sc.fromAccountId, toAccountId: sc.toAccountId,
+          amount: sc.amount, fee: sc.fee || 0, feeAccountId: sc.feeAccountId,
+          reference: sc.reference || '', notes: (sc.notes ? sc.notes + ' ' : '') + '(Scheduled)',
+        })
+        if (rec) {
+          const nextDate = get().advanceDate(onDate, sc.frequency)
+          set((s) => ({
+            scheduledTransfers: s.scheduledTransfers.map((x) =>
+              x.id === id ? { ...x, nextDate, lastPosted: onDate, postedCount: (x.postedCount || 0) + 1 } : x),
+          }))
+        }
+        return rec
+      },
+
+      // ─── WAREHOUSES & STOCK TRANSFERS ──────────────────────────────
+      warehouses: DEFAULT_WAREHOUSES,
+      stockTransfers: [],
+
+      addWarehouse: (wh) =>
+        set((s) => ({ warehouses: [...s.warehouses, { ...wh, id: uuid(), isDefault: false }] })),
+
+      updateWarehouse: (id, patch) =>
+        set((s) => ({ warehouses: s.warehouses.map((w) => (w.id === id ? { ...w, ...patch } : w)) })),
+
+      deleteWarehouse: (id) =>
+        set((s) => {
+          const wh = s.warehouses.find((w) => w.id === id)
+          if (wh?.isDefault) return s
+          return { warehouses: s.warehouses.filter((w) => w.id !== id) }
+        }),
+
+      // returns stock of an item in a warehouse (lazily defaults all stock to the default warehouse)
+      getItemStock: (item, warehouseId) => {
+        if (!item) return 0
+        const defWh = get().warehouses.find((w) => w.isDefault)?.id || 'wh-main'
+        const map = item.stockByWarehouse
+        if (!map) return warehouseId === defWh ? (item.quantity || 0) : 0
+        return map[warehouseId] || 0
+      },
+
+      addStockTransfer: ({ itemId, fromWarehouseId, toWarehouseId, quantity, date, notes }) => {
+        const qty = Number(quantity) || 0
+        if (qty <= 0 || fromWarehouseId === toWarehouseId) return
+        set((s) => {
+          const defWh = s.warehouses.find((w) => w.isDefault)?.id || 'wh-main'
+          return {
+            inventoryItems: s.inventoryItems.map((it) => {
+              if (it.id !== itemId) return it
+              const map = it.stockByWarehouse ? { ...it.stockByWarehouse } : { [defWh]: it.quantity || 0 }
+              map[fromWarehouseId] = (map[fromWarehouseId] || 0) - qty
+              map[toWarehouseId]   = (map[toWarehouseId]   || 0) + qty
+              return { ...it, stockByWarehouse: map }
+            }),
+            stockTransfers: [...s.stockTransfers, { id: uuid(), itemId, fromWarehouseId, toWarehouseId, quantity: qty, date, notes: notes || '', createdAt: new Date().toISOString() }],
+          }
+        })
+      },
+
+      deleteStockTransfer: (id) =>
+        set((s) => {
+          const tr = s.stockTransfers.find((t) => t.id === id)
+          if (!tr) return s
+          return {
+            stockTransfers: s.stockTransfers.filter((t) => t.id !== id),
+            inventoryItems: s.inventoryItems.map((it) => {
+              if (it.id !== tr.itemId || !it.stockByWarehouse) return it
+              const map = { ...it.stockByWarehouse }
+              map[tr.fromWarehouseId] = (map[tr.fromWarehouseId] || 0) + tr.quantity
+              map[tr.toWarehouseId]   = (map[tr.toWarehouseId]   || 0) - tr.quantity
+              return { ...it, stockByWarehouse: map }
+            }),
+          }
+        }),
+
+      // ─── RECURRING / SUBSCRIPTION INVOICES ─────────────────────────
+      recurringInvoices: [],
+
+      addRecurringInvoice: (rec) => {
+        const s = get()
+        const { prefix, next } = s.settings.recurring
+        const number = nextNum(prefix, next)
+        const newRec = { ...rec, id: uuid(), number, status: 'active', generatedCount: 0, lastGenerated: null, createdAt: new Date().toISOString() }
+        set((st) => ({
+          recurringInvoices: [...st.recurringInvoices, newRec],
+          settings: { ...st.settings, recurring: { ...st.settings.recurring, next: next + 1 } },
+        }))
+        return newRec
+      },
+
+      updateRecurringInvoice: (id, patch) =>
+        set((s) => ({ recurringInvoices: s.recurringInvoices.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
+
+      deleteRecurringInvoice: (id) =>
+        set((s) => ({ recurringInvoices: s.recurringInvoices.filter((r) => r.id !== id) })),
+
+      advanceDate: (dateStr, frequency) => {
+        const d = new Date(dateStr)
+        if (frequency === 'weekly')      d.setDate(d.getDate() + 7)
+        else if (frequency === 'biweekly') d.setDate(d.getDate() + 14)
+        else if (frequency === 'monthly')  d.setMonth(d.getMonth() + 1)
+        else if (frequency === 'quarterly')d.setMonth(d.getMonth() + 3)
+        else if (frequency === 'yearly')   d.setFullYear(d.getFullYear() + 1)
+        return d.toISOString().slice(0, 10)
+      },
+
+      // Generate real invoices for every active schedule whose nextDate has arrived
+      generateDueRecurring: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        const due = get().recurringInvoices.filter((r) => r.status === 'active' && r.nextDate <= today)
+        let created = 0
+        due.forEach((r) => {
+          let nextDate = r.nextDate
+          let count = r.generatedCount || 0
+          // catch up on any missed cycles, up to a sane cap
+          let guard = 0
+          while (nextDate <= today && r.status === 'active' && guard < 60) {
+            if (r.endDate && nextDate > r.endDate) break
+            const due30 = get().advanceDate(nextDate, 'monthly')
+            get().addInvoice({
+              customerId: r.customerId, customerName: r.customerName,
+              date: nextDate, dueDate: due30,
+              items: r.items, subtotal: r.subtotal, taxAmount: r.taxAmount, total: r.total,
+              notes: (r.notes ? r.notes + ' ' : '') + `(Recurring ${r.number})`,
+            })
+            created++
+            count++
+            nextDate = get().advanceDate(nextDate, r.frequency)
+            guard++
+          }
+          const ended = r.endDate && nextDate > r.endDate
+          get().updateRecurringInvoice(r.id, { nextDate, generatedCount: count, lastGenerated: today, status: ended ? 'completed' : 'active' })
+        })
+        return created
+      },
+
+      // ─── PURCHASE REQUISITIONS & APPROVALS ─────────────────────────
+      requisitions: [],
+
+      addRequisition: (req) => {
+        const s = get()
+        const { prefix, next } = s.settings.requisition
+        const number = nextNum(prefix, next)
+        const newReq = { ...req, id: uuid(), number, status: 'pending', createdAt: new Date().toISOString() }
+        set((st) => ({
+          requisitions: [...st.requisitions, newReq],
+          settings: { ...st.settings, requisition: { ...st.settings.requisition, next: next + 1 } },
+        }))
+        get().logActivity('Created requisition', `${number} · ${req.requestedBy || ''}`.trim())
+        return newReq
+      },
+
+      approveRequisition: (id, approver) => {
+        const req = get().requisitions.find((r) => r.id === id)
+        if (!req || req.status !== 'pending') return
+        set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'approved', approvedBy: approver, approvedAt: new Date().toISOString() } : r)) }))
+        get().logActivity('Approved requisition', req.number)
+      },
+
+      rejectRequisition: (id, approver, reason) => {
+        const req = get().requisitions.find((r) => r.id === id)
+        if (!req || req.status !== 'pending') return
+        set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'rejected', approvedBy: approver, rejectedReason: reason || '', approvedAt: new Date().toISOString() } : r)) }))
+        get().logActivity('Rejected requisition', req.number)
+      },
+
+      deleteRequisition: (id) =>
+        set((s) => ({ requisitions: s.requisitions.filter((r) => r.id !== id) })),
+
+      convertRequisitionToPO: (id) => {
+        const req = get().requisitions.find((r) => r.id === id)
+        if (!req || req.status !== 'approved') return null
+        const items = (req.items || []).map((i) => ({
+          description: i.description, quantity: i.quantity || 0, unitPrice: i.estPrice || 0,
+          taxRate: 0, subtotal: (i.quantity || 0) * (i.estPrice || 0), accountId: 'acc-admin',
+        }))
+        const subtotal = items.reduce((s, i) => s + i.subtotal, 0)
+        const po = get().addPurchaseOrder({
+          supplierId: req.supplierId || null, supplierName: req.supplierName || 'Supplier',
+          date: new Date().toISOString().slice(0, 10), deliveryDate: req.neededBy || '',
+          items, subtotal, taxAmount: 0, total: subtotal, notes: `From requisition ${req.number}`,
+        })
+        set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'ordered', purchaseOrderId: po.id } : r)) }))
+        get().logActivity('Requisition → PO', `${req.number} → ${po.number}`)
+        return po
+      },
+
+      // ─── DELIVERY NOTES ────────────────────────────────────────────
+      deliveryNotes: [],
+
+      addDeliveryNote: (dn) => {
+        const s = get()
+        const { prefix, next } = s.settings.delivery
+        const number = nextNum(prefix, next)
+        const newDN = { ...dn, id: uuid(), number, status: dn.status || 'pending', createdAt: new Date().toISOString() }
+        set((st) => ({
+          deliveryNotes: [...st.deliveryNotes, newDN],
+          settings: { ...st.settings, delivery: { ...st.settings.delivery, next: next + 1 } },
+        }))
+        return newDN
+      },
+
+      updateDeliveryNote: (id, patch) =>
+        set((s) => ({ deliveryNotes: s.deliveryNotes.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
+
+      deleteDeliveryNote: (id) =>
+        set((s) => ({ deliveryNotes: s.deliveryNotes.filter((d) => d.id !== id) })),
+
+      // ─── CURRENCIES & EXCHANGE RATES ───────────────────────────────
+      // rate = units of this currency per 1 unit of the base (company) currency
+      currencies: [],
+
+      addCurrency: (c) =>
+        set((s) => {
+          if (s.currencies.some((x) => x.code === c.code)) return s
+          return { currencies: [...s.currencies, { ...c, id: uuid(), rate: Number(c.rate) || 1, updatedAt: new Date().toISOString() }] }
+        }),
+
+      updateCurrency: (id, patch) =>
+        set((s) => ({ currencies: s.currencies.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c)) })),
+
+      deleteCurrency: (id) =>
+        set((s) => ({ currencies: s.currencies.filter((c) => c.id !== id) })),
+
+      // ─── CRM · SALES PIPELINE ──────────────────────────────────────
+      leads: [],
+
+      addLead: (lead) =>
+        set((s) => ({ leads: [...s.leads, { ...lead, id: uuid(), stage: lead.stage || 'new', createdAt: new Date().toISOString() }] })),
+
+      updateLead: (id, patch) =>
+        set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
+
+      deleteLead: (id) =>
+        set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
+
+      convertLeadToCustomer: (id) => {
+        const lead = get().leads.find((l) => l.id === id)
+        if (!lead) return null
+        const cust = get().addCustomer({
+          name: lead.company || lead.name, email: lead.email || '', phone: lead.phone || '',
+          address: lead.address || '', taxId: '', contactPerson: lead.name || '',
+        })
+        get().updateLead(id, { stage: 'won', convertedCustomerId: cust?.id })
+        return cust
+      },
+
+      // ─── PROJECTS & JOB COSTING ────────────────────────────────────
+      projects: [],
+
+      addProject: (proj) => {
+        const s = get()
+        const { prefix, next } = s.settings.project
+        const number = nextNum(prefix, next)
+        const newProj = { ...proj, id: uuid(), number, status: proj.status || 'active', createdAt: new Date().toISOString() }
+        set((st) => ({
+          projects: [...st.projects, newProj],
+          settings: { ...st.settings, project: { ...st.settings.project, next: next + 1 } },
+        }))
+        return newProj
+      },
+
+      updateProject: (id, patch) =>
+        set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+
+      deleteProject: (id) =>
+        set((s) => ({
+          projects: s.projects.filter((p) => p.id !== id),
+          timeEntries: s.timeEntries.filter((t) => t.projectId !== id),
+        })),
+
+      // Record project income or cost — posts to the ledger AND tags the project
+      recordProjectTransaction: (projectId, tx) => {
+        get().addBankTransaction({ ...tx, projectId })
+      },
+
+      // ─── TIME TRACKING (billable) ──────────────────────────────────
+      timeEntries: [],
+
+      addTimeEntry: (entry) =>
+        set((s) => ({ timeEntries: [...s.timeEntries, { ...entry, id: uuid(), createdAt: new Date().toISOString() }] })),
+
+      updateTimeEntry: (id, patch) =>
+        set((s) => ({ timeEntries: s.timeEntries.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
+
+      deleteTimeEntry: (id) =>
+        set((s) => ({ timeEntries: s.timeEntries.filter((t) => t.id !== id) })),
+
+      // ─── BUDGETS (annual, per account) ─────────────────────────────
+      budgets: [],
+
+      setBudget: (accountId, year, amount) =>
+        set((s) => {
+          const existing = s.budgets.find((b) => b.accountId === accountId && b.year === year)
+          if (existing)
+            return { budgets: s.budgets.map((b) => (b.id === existing.id ? { ...b, amount } : b)) }
+          return { budgets: [...s.budgets, { id: uuid(), accountId, year, amount }] }
+        }),
+
+      deleteBudget: (id) =>
+        set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+
+      // ─── BANK RECONCILIATION ───────────────────────────────────────
+      // marks individual JE lines (by je id + account) as reconciled per statement
+      reconciliations: [],
+
+      toggleReconciled: (bankAccountId, journalEntryId) =>
+        set((s) => {
+          const key = `${bankAccountId}::${journalEntryId}`
+          const has = s.reconciliations.includes(key)
+          return { reconciliations: has ? s.reconciliations.filter((k) => k !== key) : [...s.reconciliations, key] }
+        }),
+
+      // ─── THEME ─────────────────────────────────────────────────────
+      setTheme: (theme) =>
+        set((s) => ({ settings: { ...s.settings, theme } })),
+
+      // ─── BACKUP / RESTORE ──────────────────────────────────────────
+      exportData: () => {
+        const s = get()
+        const slices = [
+          'settings', 'accounts', 'bankAccounts', 'customers', 'suppliers', 'inventoryItems',
+          'journalEntries', 'invoices', 'quotations', 'creditNotes', 'purchaseOrders', 'purchases',
+          'debitNotes', 'departments', 'employees', 'payrollRuns', 'fixedAssets', 'assetDepreciations',
+          'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
+          'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
+          'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
+          'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
+          'stockMovements', 'bankTransfers', 'scheduledTransfers',
+        ]
+        const out = { _app: 'erp-accounting-smb', _version: 11, _exportedAt: new Date().toISOString() }
+        slices.forEach((k) => { out[k] = s[k] })
+        return out
+      },
+
+      importData: (data) => {
+        if (!data || data._app !== 'erp-accounting-smb') throw new Error('Invalid backup file')
+        const { _app, _version, _exportedAt, ...slices } = data
+        set((s) => ({ ...s, ...slices }))
+      },
+
+      resetAllData: () => {
+        try { if (typeof localStorage !== 'undefined') localStorage.removeItem(currentCompanyKey()) } catch { /* ignore */ }
+        if (typeof window !== 'undefined') window.location.reload()
+      },
 
       // ─── COMPUTED ──────────────────────────────────────────────────
       getAccountBalance: (accountId, startDate, endDate) => {
@@ -1048,9 +1691,11 @@ export const useStore = create(
       },
     }),
     {
-      name: 'erp-v1',
-      version: 4,
+      name: currentCompanyKey(),
+      version: 13,
+      storage: createJSONStorage(() => safeStorage),
       migrate: (persisted, version) => {
+       try {
         if (version < 4) {
           const existingIds = new Set((persisted.accounts || []).map((a) => a.id))
           const newAccounts = DEFAULT_ACCOUNTS.filter((a) => !existingIds.has(a.id))
@@ -1080,7 +1725,80 @@ export const useStore = create(
           if (!persisted.billsOfMaterials)   persisted.billsOfMaterials   = []
           if (!persisted.workOrders)         persisted.workOrders         = []
         }
+        if (version < 5) {
+          persisted.settings = {
+            ...persisted.settings,
+            project: persisted.settings?.project || { prefix: 'PRJ-', next: 1 },
+            theme:   persisted.settings?.theme   || 'light',
+          }
+          if (!persisted.projects)        persisted.projects        = []
+          if (!persisted.timeEntries)     persisted.timeEntries     = []
+          if (!persisted.budgets)         persisted.budgets         = []
+          if (!persisted.reconciliations) persisted.reconciliations = []
+        }
+        if (version < 6) {
+          persisted.settings = {
+            ...persisted.settings,
+            recurring: persisted.settings?.recurring || { prefix: 'SUB-', next: 1 },
+          }
+          if (!persisted.warehouses)        persisted.warehouses        = DEFAULT_WAREHOUSES
+          if (!persisted.stockTransfers)    persisted.stockTransfers    = []
+          if (!persisted.recurringInvoices) persisted.recurringInvoices = []
+        }
+        if (version < 7) {
+          persisted.settings = {
+            ...persisted.settings,
+            zatca: persisted.settings?.zatca || { enabled: false, vatNumber: '', crNumber: '', showQr: true },
+          }
+          if (persisted.settings.company && persisted.settings.company.arabicName === undefined) {
+            persisted.settings.company.arabicName = ''
+          }
+        }
+        if (version < 8) {
+          if (!persisted.leads) persisted.leads = []
+        }
+        if (version < 9) {
+          persisted.settings = {
+            ...persisted.settings,
+            delivery: persisted.settings?.delivery || { prefix: 'DLV-', next: 1 },
+          }
+          if (persisted.settings.company) {
+            if (persisted.settings.company.logo === undefined) persisted.settings.company.logo = ''
+            if (persisted.settings.company.accentColor === undefined) persisted.settings.company.accentColor = '#2563eb'
+          }
+          if (!persisted.deliveryNotes) persisted.deliveryNotes = []
+          if (!persisted.currencies) persisted.currencies = []
+        }
+        if (version < 10) {
+          if (!persisted.auditLog) persisted.auditLog = []
+        }
+        if (version < 11) {
+          persisted.settings = {
+            ...persisted.settings,
+            requisition: persisted.settings?.requisition || { prefix: 'REQ-', next: 1 },
+          }
+          if (!persisted.requisitions) persisted.requisitions = []
+        }
+        if (version < 12) {
+          persisted.settings = {
+            ...persisted.settings,
+            customFields: persisted.settings?.customFields || { customer: [], supplier: [] },
+          }
+        }
+        if (version < 13) {
+          persisted.settings = {
+            ...persisted.settings,
+            wht: persisted.settings?.wht || { enabled: false, rate: 5, name: 'Withholding Tax' },
+          }
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-wht')) {
+            persisted.accounts.push({ id: 'acc-wht', code: '2110', name: 'Withholding Tax Payable', type: 'liability', subtype: 'current', isSystem: false })
+          }
+        }
         return persisted
+       } catch (e) {
+        console.warn('ERP: data migration issue, continuing with existing data.', e)
+        return persisted
+       }
       },
     }
   )

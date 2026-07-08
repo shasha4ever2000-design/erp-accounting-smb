@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
+import ExportMenu from '../components/ExportMenu'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
 import { today } from '../utils/formatters'
 
@@ -10,11 +13,13 @@ export default function Purchases() {
   const { purchases, suppliers, accounts, deletePurchase, recordPurchasePayment, settings } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
+  const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
+  const t = useT()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [payModal, setPayModal] = useState(null) // holds the purchase
-  const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
+  const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '', wht: '' })
 
   const bankAccounts = accounts.filter((a) => ['acc-cash', 'acc-bank1'].includes(a.id))
 
@@ -33,7 +38,8 @@ export default function Purchases() {
 
   const openPay = (p) => {
     setPayModal(p)
-    setPayForm({ date: today(), amount: String(p.total - p.amountPaid), bankAccountId: 'acc-cash', notes: '' })
+    const amt = p.total - p.amountPaid
+    setPayForm({ date: today(), amount: String(amt), bankAccountId: 'acc-cash', notes: '', wht: whtCfg.enabled ? (amt * whtCfg.rate / 100).toFixed(2) : '' })
   }
 
   const handleRecord = () => {
@@ -41,7 +47,9 @@ export default function Purchases() {
     if (!amount || amount <= 0) return
     const due = payModal.total - payModal.amountPaid
     if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, sym)})`)
-    recordPurchasePayment(payModal.id, { ...payForm, amount })
+    const wht = parseFloat(payForm.wht) || 0
+    if (wht > amount) return alert('Withholding tax cannot exceed the payment amount.')
+    recordPurchasePayment(payModal.id, { ...payForm, amount, wht })
     setPayModal(null)
   }
 
@@ -56,12 +64,28 @@ export default function Purchases() {
     paid: purchases.filter((p) => p.status === 'paid').length,
   }
 
+  const exportCols = [
+    { key: 'number', label: t('Invoice #') },
+    { key: 'supplierName', label: t('Supplier') },
+    { key: 'supplierRef', label: t('Ref') },
+    { key: 'date', label: t('Date') },
+    { key: 'dueDate', label: t('Due') },
+    { key: 'total', label: t('Total'), right: true },
+    { key: 'balance', label: t('Balance'), right: true, map: (_, p) => (p.total - p.amountPaid).toFixed(2) },
+    { key: 'status', label: t('Status') },
+  ]
+
   return (
     <div>
       <PageHeader
-        title="Purchase Invoices"
-        subtitle={`${purchases.length} purchase invoice${purchases.length !== 1 ? 's' : ''}`}
-        action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> New Purchase</Btn>}
+        title={t('Purchase Invoices')}
+        subtitle={`${purchases.length} ${t('purchase invoices')}`}
+        action={
+          <div className="flex items-center gap-2">
+            {purchases.length > 0 && <ExportMenu filename="purchase-invoices" title={t('Purchase Invoices')} rows={sorted} columns={exportCols} />}
+            <Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>
+          </div>
+        }
       />
 
       <div className="flex gap-2 mb-5 flex-wrap">
@@ -79,7 +103,7 @@ export default function Purchases() {
                 : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300'
             }`}
           >
-            {s.label} {totals[s.key] > 0 && <span className="text-xs opacity-60 ml-1">{totals[s.key]}</span>}
+            {t(s.label)} {totals[s.key] > 0 && <span className="text-xs opacity-60 ml-1">{totals[s.key]}</span>}
           </button>
         ))}
       </div>
@@ -87,17 +111,17 @@ export default function Purchases() {
       <div className="relative mb-4 max-w-sm">
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search purchases..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          placeholder={t('Search purchases...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
         {purchases.length === 0 ? (
-          <EmptyState icon="🛒" title="No purchase invoices yet" desc="Record your first purchase to track payables."
-            action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> New Purchase</Btn>} />
+          <EmptyState icon="🛒" title={t('No purchase invoices yet')} desc={t('Record your first purchase to track payables.')}
+            action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> {t('New Purchase')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No purchases match your filter</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No purchases match your filter')}</div>
         ) : (
-          <Table headers={['Invoice #', 'Supplier', 'Ref', 'Date', 'Due', { label: 'Total', right: true }, { label: 'Balance', right: true }, 'Status', { label: 'Actions', right: true }]}>
+          <Table headers={[t('Invoice #'), t('Supplier'), t('Ref'), t('Date'), t('Due'), { label: t('Total'), right: true }, { label: t('Balance'), right: true }, t('Status'), { label: t('Actions'), right: true }]}>
             {sorted.map((p) => {
               const status = p.isOverdue && p.status !== 'paid' ? 'overdue' : p.status
               const balance = p.total - p.amountPaid
@@ -113,6 +137,7 @@ export default function Purchases() {
                   <Td><Badge className={statusColor(status)}>{status}</Badge></Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
+                      <AttachmentButton entityType="purchase" entityId={p.id} />
                       {p.status !== 'paid' && (
                         <Btn size="sm" variant="ghost" onClick={() => openPay(p)} title="Record Payment">
                           <DollarSign size={13} className="text-green-600" />
@@ -138,13 +163,22 @@ export default function Purchases() {
             </div>
             <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
+            {whtCfg.enabled && (
+              <>
+                <Input label={`${whtCfg.name} withheld (${sym})`} type="number" min="0" step="0.01" value={payForm.wht} onChange={(e) => setPayForm((f) => ({ ...f, wht: e.target.value }))} />
+                <div className="bg-gray-50 rounded-lg p-2.5 text-sm text-gray-600 flex justify-between">
+                  <span>{t('Net cash to supplier')}</span>
+                  <strong>{fmtMoney((parseFloat(payForm.amount) || 0) - (parseFloat(payForm.wht) || 0), sym)}</strong>
+                </div>
+              </>
+            )}
             <Select label="Pay From" value={payForm.bankAccountId} onChange={(e) => setPayForm((f) => ({ ...f, bankAccountId: e.target.value }))}>
               {bankAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
             </Select>
             <Input label="Reference / Notes" value={payForm.notes} onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Cheque #, transfer ref..." />
             <div className="flex justify-end gap-2 pt-1">
-              <Btn variant="secondary" onClick={() => setPayModal(null)}>Cancel</Btn>
-              <Btn onClick={handleRecord}>Record Payment</Btn>
+              <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
+              <Btn onClick={handleRecord}>{t('Record Payment')}</Btn>
             </div>
           </div>
         )}

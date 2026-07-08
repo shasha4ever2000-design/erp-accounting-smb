@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, ArrowRight } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -14,6 +16,7 @@ const STATUS_COLORS = {
 }
 
 export default function PurchaseOrders() {
+  const t = useT()
   const navigate = useNavigate()
   const { purchaseOrders, settings, deletePurchaseOrder, updatePurchaseOrder, convertPOToPurchase } = useStore()
   const sym = settings.company.currencySymbol
@@ -41,7 +44,7 @@ export default function PurchaseOrders() {
     <div>
       <PageHeader
         title="Purchase Orders"
-        subtitle={`${purchaseOrders.length} total purchase orders`}
+        subtitle={`${purchaseOrders.length} ${t('total purchase orders')}`}
         action={<Btn onClick={() => navigate('/purchase-orders/new')}><Plus size={15} /> New PO</Btn>}
       />
 
@@ -79,6 +82,7 @@ export default function PurchaseOrders() {
                 <Td right><span className="font-semibold text-gray-800">{fmtMoney(po.total, sym)}</span></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="purchaseorder" entityId={po.id} />
                     {po.status !== 'invoiced' && po.status !== 'cancelled' && (
                       <>
                         <Btn size="sm" variant="ghost" title="Mark Received" onClick={() => updatePurchaseOrder(po.id, { status: 'received' })}>

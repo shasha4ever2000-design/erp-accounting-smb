@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, ArrowUpRight, ArrowDownLeft, Landmark } from 'lucide-react'
 
 const BANK_IDS = ['acc-cash', 'acc-bank1']
@@ -17,6 +19,7 @@ const emptyForm = () => ({
 })
 
 export default function Banking() {
+  const t = useT()
   const { accounts, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -65,7 +68,7 @@ export default function Banking() {
       <PageHeader
         title="Bank & Cash"
         subtitle="Direct bank transactions and balances"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> New Transaction</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Transaction')}</Btn>}
       />
 
       {/* Bank balance cards */}
@@ -84,7 +87,7 @@ export default function Banking() {
       {/* Filter by account */}
       <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={() => setSelectedBank('all')} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedBank === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
-          All Accounts
+          {t('All Accounts')}
         </button>
         {bankAccounts.map((a) => (
           <button key={a.id} onClick={() => setSelectedBank(a.id)} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedBank === a.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
@@ -95,7 +98,7 @@ export default function Banking() {
 
       <Card>
         {sorted.length === 0 ? (
-          <EmptyState icon="🏦" title="No transactions yet" desc="Record direct bank/cash transactions here." action={<Btn onClick={() => setModal(true)}><Plus size={14} /> Add Transaction</Btn>} />
+          <EmptyState icon="🏦" title="No transactions yet" desc="Record direct bank/cash transactions here." action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Add Transaction')}</Btn>} />
         ) : (
           <Table headers={['Date', 'Description', 'Account', 'Bank Account', 'Type', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((tx) => (
@@ -109,8 +112,8 @@ export default function Banking() {
                 <Td className="text-gray-500 text-sm">{tx.bankName}</Td>
                 <Td>
                   {tx.type === 'money_in'
-                    ? <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium"><ArrowDownLeft size={12} /> Money In</span>
-                    : <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium"><ArrowUpRight size={12} /> Money Out</span>
+                    ? <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
+                    : <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
                   }
                 </Td>
                 <Td right>
@@ -119,9 +122,12 @@ export default function Banking() {
                   </span>
                 </Td>
                 <Td right>
-                  <Btn size="sm" variant="ghost" onClick={() => handleDelete(tx)}>
-                    <Trash2 size={13} className="text-red-400" />
-                  </Btn>
+                  <div className="flex items-center justify-end gap-1">
+                    <AttachmentButton entityType="banktx" entityId={tx.id} />
+                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(tx)}>
+                      <Trash2 size={13} className="text-red-400" />
+                    </Btn>
+                  </div>
                 </Td>
               </Tr>
             ))}
@@ -150,8 +156,8 @@ export default function Banking() {
             {nonBankAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
           </Select>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>Cancel</Btn>
-            <Btn onClick={handleSave}>Save Transaction</Btn>
+            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={handleSave}>{t('Save Transaction')}</Btn>
           </div>
         </div>
       </Modal>

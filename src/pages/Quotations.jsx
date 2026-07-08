@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, FileText, ArrowRight } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -14,6 +16,7 @@ const STATUS_COLORS = {
 }
 
 export default function Quotations() {
+  const t = useT()
   const navigate = useNavigate()
   const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice } = useStore()
   const sym = settings.company.currencySymbol
@@ -41,8 +44,8 @@ export default function Quotations() {
     <div>
       <PageHeader
         title="Quotations / Estimates"
-        subtitle={`${quotations.length} total quotations`}
-        action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> New Quotation</Btn>}
+        subtitle={`${quotations.length} ${t('total quotations')}`}
+        action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> {t('New Quotation')}</Btn>}
       />
 
       {/* Status tabs */}
@@ -58,7 +61,7 @@ export default function Quotations() {
       <Card>
         {quotations.length === 0 ? (
           <EmptyState icon="📋" title="No quotations yet" desc="Create quotations and estimates for your customers. Convert them to invoices with one click."
-            action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> New Quotation</Btn>} />
+            action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> {t('New Quotation')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-gray-400 text-sm">No quotations with status "{filter}"</div>
         ) : (
@@ -91,6 +94,7 @@ export default function Quotations() {
                   </Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="quotation" entityId={q.id} />
                       {q.status !== 'invoiced' && q.status !== 'rejected' && (
                         <>
                           <Btn size="sm" variant="ghost" title="Mark Accepted" onClick={() => updateQuotation(q.id, { status: 'accepted' })}>

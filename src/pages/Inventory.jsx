@@ -2,11 +2,14 @@ import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import AttachmentButton from '../components/Attachments'
+import { useT } from '../i18n'
+import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
 
 const emptyForm = {
-  name: '', code: '', description: '', unit: 'pcs',
-  costPrice: '', salePrice: '', quantity: '', reorderLevel: '',
+  name: '', code: '', description: '', unit: 'pcs', category: '', barcode: '',
+  costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
   taxRate: 0,
 }
@@ -14,6 +17,7 @@ const emptyForm = {
 export default function Inventory() {
   const { inventoryItems, accounts, addInventoryItem, updateInventoryItem, deleteInventoryItem, settings } = useStore()
   const sym = settings.company.currencySymbol
+  const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -32,6 +36,7 @@ export default function Inventory() {
       salePrice: parseFloat(form.salePrice) || 0,
       quantity: parseFloat(form.quantity) || 0,
       reorderLevel: parseFloat(form.reorderLevel) || 0,
+      maxLevel: parseFloat(form.maxLevel) || 0,
       taxRate: parseFloat(form.taxRate) || 0,
     }
     if (editing) updateInventoryItem(editing.id, data)
@@ -49,24 +54,40 @@ export default function Inventory() {
 
   const filtered = inventoryItems.filter((i) =>
     !search || i.name.toLowerCase().includes(search.toLowerCase()) || (i.code || '').toLowerCase().includes(search.toLowerCase())
+    || (i.barcode || '').toLowerCase().includes(search.toLowerCase()) || (i.category || '').toLowerCase().includes(search.toLowerCase())
   )
 
   const totalValue = inventoryItems.reduce((s, i) => s + (i.quantity || 0) * (i.costPrice || 0), 0)
   const lowStock = inventoryItems.filter((i) => (i.reorderLevel || 0) > 0 && (i.quantity || 0) <= (i.reorderLevel || 0))
 
+  const exportCols = [
+    { key: 'code', label: t('Code') },
+    { key: 'name', label: t('Item Name') },
+    { key: 'unit', label: t('Unit') },
+    { key: 'costPrice', label: t('Cost Price'), right: true },
+    { key: 'salePrice', label: t('Sale Price'), right: true },
+    { key: 'quantity', label: t('Qty on Hand'), right: true },
+    { key: 'stockValue', label: t('Stock Value'), right: true, map: (_, i) => ((i.quantity || 0) * (i.costPrice || 0)).toFixed(2) },
+  ]
+
   return (
     <div>
       <PageHeader
-        title="Inventory Items"
-        subtitle={`${inventoryItems.length} items • ${fmtMoney(totalValue, sym)} total value`}
-        action={<Btn onClick={openNew}><Plus size={15} /> New Item</Btn>}
+        title={t('Inventory Items')}
+        subtitle={`${inventoryItems.length} ${t('items')} • ${fmtMoney(totalValue, sym)} ${t('total value')}`}
+        action={
+          <div className="flex items-center gap-2">
+            {inventoryItems.length > 0 && <ExportMenu filename="inventory" title={t('Inventory Items')} rows={inventoryItems} columns={exportCols} />}
+            <Btn onClick={openNew}><Plus size={15} /> {t('New Item')}</Btn>
+          </div>
+        }
       />
 
       {lowStock.length > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 flex items-start gap-3">
           <Package size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
           <div>
-            <p className="font-medium text-amber-800 text-sm">Low Stock Alert</p>
+            <p className="font-medium text-amber-800 text-sm">{t('Low Stock Alert')}</p>
             <p className="text-amber-700 text-sm">{lowStock.map((i) => i.name).join(', ')} {lowStock.length === 1 ? 'is' : 'are'} at or below reorder level.</p>
           </div>
         </div>
@@ -75,16 +96,16 @@ export default function Inventory() {
       <div className="relative mb-4 max-w-sm">
         <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
         <input className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Search items..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          placeholder={t('Search items...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
         {inventoryItems.length === 0 ? (
-          <EmptyState icon="📦" title="No inventory items" desc="Add products or services to your inventory." action={<Btn onClick={openNew}><Plus size={14} /> Add Item</Btn>} />
+          <EmptyState icon="📦" title={t('No inventory items')} desc={t('Add products or services to your inventory.')} action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Item')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No items match your search</div>
+          <div className="py-10 text-center text-gray-400 text-sm">{t('No items match your search')}</div>
         ) : (
-          <Table headers={['Code', 'Item Name', 'Unit', { label: 'Cost Price', right: true }, { label: 'Sale Price', right: true }, { label: 'Qty on Hand', right: true }, { label: 'Stock Value', right: true }, { label: 'Actions', right: true }]}>
+          <Table headers={[t('Code'), t('Item Name'), t('Unit'), { label: t('Cost Price'), right: true }, { label: t('Sale Price'), right: true }, { label: t('Qty on Hand'), right: true }, { label: t('Stock Value'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((item) => {
               const stockValue = (item.quantity || 0) * (item.costPrice || 0)
               const isLow = (item.reorderLevel || 0) > 0 && (item.quantity || 0) <= (item.reorderLevel || 0)
@@ -107,6 +128,7 @@ export default function Inventory() {
                   <Td right className="text-gray-600">{fmtMoney(stockValue, sym)}</Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
+                      <AttachmentButton entityType="inventory" entityId={item.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(item)}><Pencil size={13} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(item)}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>
@@ -125,14 +147,19 @@ export default function Inventory() {
             <Input label="Item Code / SKU" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="e.g. SKU-001" />
           </div>
           <Textarea label="Description" value={form.description} onChange={(e) => setField('description', e.target.value)} rows={2} />
+          <div className="grid grid-cols-2 gap-3">
+            <Input label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)} placeholder="e.g. Raw Materials, Finished Goods" />
+            <Input label="Barcode" value={form.barcode} onChange={(e) => setField('barcode', e.target.value)} placeholder="EAN / UPC / scan" />
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <Input label="Unit" value={form.unit} onChange={(e) => setField('unit', e.target.value)} placeholder="pcs, kg, hr..." />
             <Input label="Cost Price" type="number" min="0" step="0.01" value={form.costPrice} onChange={(e) => setField('costPrice', e.target.value)} />
             <Input label="Sale Price" type="number" min="0" step="0.01" value={form.salePrice} onChange={(e) => setField('salePrice', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <Input label="Qty on Hand" type="number" min="0" step="0.01" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label="Reorder Level" type="number" min="0" step="0.01" value={form.reorderLevel} onChange={(e) => setField('reorderLevel', e.target.value)} />
+            <Input label="Max Level" type="number" min="0" step="0.01" value={form.maxLevel} onChange={(e) => setField('maxLevel', e.target.value)} placeholder="optional" />
           </div>
           <div className="grid grid-cols-3 gap-3">
             <Select label="Inventory Account" value={form.inventoryAccountId} onChange={(e) => setField('inventoryAccountId', e.target.value)}>
@@ -146,7 +173,7 @@ export default function Inventory() {
             </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Btn variant="secondary" onClick={close}>Cancel</Btn>
+            <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>
           </div>
         </div>

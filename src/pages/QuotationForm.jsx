@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays } from '../utils/formatters'
@@ -8,6 +9,7 @@ import { Plus, Trash2 } from 'lucide-react'
 const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, subtotal: 0, taxRate: 0, accountId: 'acc-sales' })
 
 export default function QuotationForm() {
+  const t = useT()
   const navigate = useNavigate()
   const { customers, accounts, inventoryItems, settings, addQuotation } = useStore()
   const sym = settings.company.currencySymbol
@@ -81,7 +83,7 @@ export default function QuotationForm() {
         {/* Left: Form */}
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Customer</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Customer')}</h3>
             <Select label="Select Customer" value={form.customerId} onChange={(e) => handleCustomer(e.target.value)}>
               <option value="">— Enter manually below —</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -95,8 +97,8 @@ export default function QuotationForm() {
 
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Line Items</h3>
-              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> Add Line</Btn>
+              <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
+              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add Line')}</Btn>
             </div>
             <div className="space-y-3">
               {lines.map((line) => (
@@ -104,7 +106,7 @@ export default function QuotationForm() {
                   <div className="grid grid-cols-4 gap-2">
                     <div className="col-span-2">
                       <Select label="Product (optional)" value="" onChange={(e) => pickItem(line.id, e.target.value)}>
-                        <option value="">Pick from inventory...</option>
+                        <option value="">{t('Pick from inventory...')}</option>
                         {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
                       </Select>
                     </div>
@@ -140,7 +142,7 @@ export default function QuotationForm() {
         {/* Right: Summary */}
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">Quotation Details</h3>
+            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Quotation Details')}</h3>
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Expiry Date" type="date" value={form.expiryDate} onChange={(e) => setField('expiryDate', e.target.value)} />
           </Card>
@@ -160,8 +162,8 @@ export default function QuotationForm() {
             </div>
           </Card>
 
-          <Btn className="w-full justify-center" onClick={handleSave}>Save Quotation</Btn>
-          <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/quotations')}>Cancel</Btn>
+          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Quotation')}</Btn>
+          <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/quotations')}>{t('Cancel')}</Btn>
         </div>
       </div>
     </div>

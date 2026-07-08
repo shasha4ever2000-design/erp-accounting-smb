@@ -2,20 +2,31 @@ import { useState, useMemo } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
+import { useT } from '../i18n'
+import ExportMenu from '../components/ExportMenu'
+import CustomReport from '../components/CustomReport'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 
 const REPORTS = [
-  { id: 'pl', label: 'Income Statement (P&L)' },
-  { id: 'bs', label: 'Balance Sheet' },
-  { id: 'tb', label: 'Trial Balance' },
-  { id: 'gl', label: 'General Ledger' },
-  { id: 'ar', label: 'Accounts Receivable Aging' },
-  { id: 'ap', label: 'Accounts Payable Aging' },
+  { id: 'pl', label: 'Income Statement (P&L)', group: 'Financial Statements' },
+  { id: 'bs', label: 'Balance Sheet', group: 'Financial Statements' },
+  { id: 'cf', label: 'Cash Flow Statement', group: 'Financial Statements' },
+  { id: 'vat', label: 'VAT Return (ZATCA)', group: 'Financial Statements' },
+  { id: 'tb', label: 'Trial Balance', group: 'Ledgers' },
+  { id: 'gl', label: 'General Ledger', group: 'Ledgers' },
+  { id: 'ar', label: 'Accounts Receivable Aging', group: 'Ledgers' },
+  { id: 'ap', label: 'Accounts Payable Aging', group: 'Ledgers' },
+  { id: 'sales-cust', label: 'Sales by Customer', group: 'Sales & Purchases' },
+  { id: 'sales-item', label: 'Sales by Item', group: 'Sales & Purchases' },
+  { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
+  { id: 'exp-cat', label: 'Expenses by Category', group: 'Sales & Purchases' },
+  { id: 'custom', label: 'Custom Report Builder', group: 'Advanced' },
 ]
 
 export default function Reports() {
-  const { accounts, journalEntries, invoices, purchases, getAllBalances, settings } = useStore()
+  const { accounts, journalEntries, invoices, purchases, bankAccounts, customers, suppliers, inventoryItems, getAllBalances, settings } = useStore()
+  const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
 
@@ -47,8 +58,8 @@ export default function Reports() {
       <div className="space-y-6">
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-green-50 rounded-xl p-4"><p className="text-sm text-green-600">Total Revenue</p><p className="text-2xl font-bold text-green-700">{fmtMoney(totalRevenue, sym)}</p></div>
-          <div className="bg-red-50 rounded-xl p-4"><p className="text-sm text-red-600">Total Expenses</p><p className="text-2xl font-bold text-red-700">{fmtMoney(totalExpenses, sym)}</p></div>
+          <div className="bg-green-50 rounded-xl p-4"><p className="text-sm text-green-600">{t('Total Revenue')}</p><p className="text-2xl font-bold text-green-700">{fmtMoney(totalRevenue, sym)}</p></div>
+          <div className="bg-red-50 rounded-xl p-4"><p className="text-sm text-red-600">{t('Total Expenses')}</p><p className="text-2xl font-bold text-red-700">{fmtMoney(totalExpenses, sym)}</p></div>
           <div className={`${netProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50'} rounded-xl p-4`}>
             <p className={`text-sm ${netProfit >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>Net {netProfit >= 0 ? 'Profit' : 'Loss'}</p>
             <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700' : 'text-orange-700'}`}>{fmtMoney(Math.abs(netProfit), sym)}</p>
@@ -62,8 +73,8 @@ export default function Reports() {
           </div>
           <div className="p-6">
             {/* Revenue */}
-            <h4 className="font-bold text-green-700 text-sm uppercase tracking-wide mb-3">Revenue</h4>
-            {revenueAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">No revenue for this period</p> : (
+            <h4 className="font-bold text-green-700 text-sm uppercase tracking-wide mb-3">{t('Revenue')}</h4>
+            {revenueAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">{t('No revenue for this period')}</p> : (
               <table className="w-full text-sm mb-4">
                 <tbody>
                   {revenueAccs.map((a) => (
@@ -73,7 +84,7 @@ export default function Reports() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-green-200 bg-green-50/50">
-                    <td className="py-2 font-bold text-green-800">Total Revenue</td>
+                    <td className="py-2 font-bold text-green-800">{t('Total Revenue')}</td>
                     <td className="py-2 text-right font-bold text-green-800">{fmtMoney(totalRevenue, sym)}</td>
                   </tr>
                 </tbody>
@@ -81,8 +92,8 @@ export default function Reports() {
             )}
 
             {/* Expenses */}
-            <h4 className="font-bold text-red-700 text-sm uppercase tracking-wide mb-3 mt-6">Expenses</h4>
-            {expenseAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">No expenses for this period</p> : (
+            <h4 className="font-bold text-red-700 text-sm uppercase tracking-wide mb-3 mt-6">{t('Expenses')}</h4>
+            {expenseAccs.length === 0 ? <p className="text-gray-400 text-sm mb-4">{t('No expenses for this period')}</p> : (
               <table className="w-full text-sm mb-4">
                 <tbody>
                   {expenseAccs.map((a) => (
@@ -92,7 +103,7 @@ export default function Reports() {
                     </tr>
                   ))}
                   <tr className="border-t-2 border-red-200 bg-red-50/50">
-                    <td className="py-2 font-bold text-red-800">Total Expenses</td>
+                    <td className="py-2 font-bold text-red-800">{t('Total Expenses')}</td>
                     <td className="py-2 text-right font-bold text-red-800">{fmtMoney(totalExpenses, sym)}</td>
                   </tr>
                 </tbody>
@@ -269,15 +280,15 @@ export default function Reports() {
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 uppercase">Date</th>
-              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Description</th>
+              <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('Description')}</th>
               <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Ref</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Debit</th>
               <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Credit</th>
-              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">Balance</th>
+              <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase">{t('Balance')}</th>
             </tr>
           </thead>
           <tbody>
-            {lines.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 text-sm">No transactions for this account in the selected period</td></tr>}
+            {lines.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 text-sm">{t('No transactions for this account in the selected period')}</td></tr>}
             {lines.map((l, i) => (
               <tr key={i} className="border-b border-gray-50">
                 <td className="px-6 py-2 text-gray-500">{fmtDate(l.date)}</td>
@@ -368,7 +379,7 @@ export default function Reports() {
               <BucketSection label="61–90 Days Overdue" items={buckets.days90} color="text-red-600" />
               <BucketSection label="90+ Days Overdue" items={buckets.over90} color="text-red-800" />
               <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 pt-3 mt-4">
-                <span>Total Outstanding</span>
+                <span>{t('Total Outstanding')}</span>
                 <span className="text-gray-900">{fmtMoney(grandTotal, sym)}</span>
               </div>
             </>
@@ -404,10 +415,10 @@ export default function Reports() {
                 <thead>
                   <tr className="text-xs font-semibold text-gray-400 uppercase border-b border-gray-100">
                     <th className="text-left pb-2">Purchase #</th>
-                    <th className="text-left pb-2">Supplier</th>
-                    <th className="text-left pb-2">Due Date</th>
-                    <th className="text-right pb-2">Days Overdue</th>
-                    <th className="text-right pb-2">Balance</th>
+                    <th className="text-left pb-2">{t('Supplier')}</th>
+                    <th className="text-left pb-2">{t('Due Date')}</th>
+                    <th className="text-right pb-2">{t('Days Overdue')}</th>
+                    <th className="text-right pb-2">{t('Balance')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -427,7 +438,7 @@ export default function Reports() {
                 </tbody>
               </table>
               <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 pt-3 mt-4">
-                <span>Total Payable</span>
+                <span>{t('Total Payable')}</span>
                 <span className="text-gray-900">{fmtMoney(total, sym)}</span>
               </div>
             </>
@@ -437,6 +448,356 @@ export default function Reports() {
     )
   }
 
+  // ─── Cash Flow Statement (direct, ledger-accurate) ────────────
+  const CFReport = () => {
+    const cashAccIds = new Set(bankAccounts.map((b) => b.accountId))
+    const typeCat = (t) => {
+      if (['fixed_asset', 'asset_disposal'].includes(t)) return 'investing'
+      if (['loan', 'capital', 'drawings', 'financing'].includes(t)) return 'financing'
+      return 'operating'
+    }
+    let opening = 0
+    const cats = { operating: [], investing: [], financing: [] }
+    journalEntries.forEach((je) => {
+      const delta = je.lines.filter((l) => cashAccIds.has(l.accountId)).reduce((s, l) => s + (l.debit || 0) - (l.credit || 0), 0)
+      if (delta === 0) return
+      if (je.date < startDate) { opening += delta; return }
+      if (je.date > endDate) return
+      cats[typeCat(je.type)].push({ date: je.date, desc: je.description, ref: je.number, amount: delta })
+    })
+    const catTotal = (c) => cats[c].reduce((s, x) => s + x.amount, 0)
+    const net = catTotal('operating') + catTotal('investing') + catTotal('financing')
+    const closing = opening + net
+
+    const Group = ({ title, items, total, color }) => (
+      <div className="mb-5">
+        <h4 className={`font-bold text-sm uppercase tracking-wide mb-2 ${color}`}>{title}</h4>
+        <table className="w-full text-sm">
+          <tbody>
+            {items.length === 0 && <tr><td className="py-1.5 pl-3 text-gray-400 text-sm">{t('No activity')}</td></tr>}
+            {items.map((x, i) => (
+              <tr key={i} className="border-b border-gray-50 dark:border-slate-700/50">
+                <td className="py-1.5 pl-3 text-gray-500 dark:text-slate-400 text-xs w-24">{fmtDate(x.date)}</td>
+                <td className="py-1.5 text-gray-600 dark:text-slate-300">{x.desc}</td>
+                <td className={`py-1.5 text-right font-medium ${x.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{fmtMoney(x.amount, sym)}</td>
+              </tr>
+            ))}
+            <tr className="border-t-2 border-gray-200 dark:border-slate-600">
+              <td colSpan={2} className="py-2 pl-3 font-bold text-gray-800 dark:text-slate-100">Net Cash from {title}</td>
+              <td className={`py-2 text-right font-bold ${total >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(total, sym)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    )
+
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">Cash Flow Statement for {fmtDate(startDate)} to {fmtDate(endDate)}</p>
+        </div>
+        <div className="p-6">
+          <div className="flex justify-between text-sm mb-4 pb-3 border-b border-gray-100 dark:border-slate-700">
+            <span className="font-semibold text-gray-700 dark:text-slate-200">Opening Cash &amp; Bank Balance</span>
+            <span className="font-bold text-gray-800 dark:text-slate-100">{fmtMoney(opening, sym)}</span>
+          </div>
+          <Group title="Operating Activities" items={cats.operating} total={catTotal('operating')} color="text-blue-700 dark:text-blue-400" />
+          <Group title="Investing Activities" items={cats.investing} total={catTotal('investing')} color="text-purple-700 dark:text-purple-400" />
+          <Group title="Financing Activities" items={cats.financing} total={catTotal('financing')} color="text-orange-700 dark:text-orange-400" />
+          <div className="flex justify-between text-base border-t-2 border-gray-300 dark:border-slate-600 pt-3 mt-2">
+            <span className="font-bold text-gray-900 dark:text-slate-100">{t('Net Change in Cash')}</span>
+            <span className={`font-bold ${net >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>{fmtMoney(net, sym)}</span>
+          </div>
+          <div className="flex justify-between text-base border-t-4 border-gray-800 dark:border-slate-400 pt-3 mt-3">
+            <span className="font-black text-gray-900 dark:text-slate-100">Closing Cash &amp; Bank Balance</span>
+            <span className="font-black text-gray-900 dark:text-slate-100">{fmtMoney(closing, sym)}</span>
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
+  // ─── VAT Return (ZATCA / KSA) ─────────────────────────────────
+  const VATReport = () => {
+    const inRange = (d) => d && d >= startDate && d <= endDate
+    const taxableSales = invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date) && (i.taxAmount || 0) > 0).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const zeroExemptSales = invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date) && !(i.taxAmount > 0)).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const outputVat = accountBalance('acc-vatout', balances)
+    const taxablePurch = purchases.filter((p) => p.status !== 'cancelled' && inRange(p.date) && (p.taxAmount || 0) > 0).reduce((s, p) => s + (p.subtotal || 0), 0)
+    const inputVat = accountBalance('acc-vatin', balances)
+    const netVat = outputVat - inputVat
+
+    const Row = ({ n, label, ar, amount, bold, strong }) => (
+      <tr className={`border-b border-gray-100 dark:border-slate-700/50 ${strong ? 'bg-gray-50 dark:bg-slate-800/60' : ''}`}>
+        <td className="px-4 py-2.5 text-gray-400 dark:text-slate-500 text-xs w-10">{n}</td>
+        <td className={`px-2 py-2.5 ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>
+          {label}<span className="block text-xs text-gray-400 dark:text-slate-500" dir="rtl">{ar}</span>
+        </td>
+        <td className={`px-4 py-2.5 text-right font-mono ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>{fmtMoney(amount, sym)}</td>
+      </tr>
+    )
+
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">VAT Return · إقرار ضريبة القيمة المضافة — {fmtDate(startDate)} to {fmtDate(endDate)}</p>
+          </div>
+          <div className="text-right text-xs text-gray-400 dark:text-slate-500">
+            {settings.zatca?.vatNumber && <p>VAT No: {settings.zatca.vatNumber}</p>}
+            <p>Rate: {settings.tax?.rate ?? 15}%</p>
+          </div>
+        </div>
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 dark:bg-slate-800/60">
+            <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+              <th className="px-4 py-2 text-left">#</th>
+              <th className="px-2 py-2 text-left">{t('Description')}</th>
+              <th className="px-4 py-2 text-right">Amount ({sym})</th>
+            </tr>
+          </thead>
+          <tbody>
+            <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" amount={taxableSales} />
+            <Row n="2" label="Output VAT" ar="ضريبة المخرجات" amount={outputVat} bold />
+            <Row n="3" label="Zero-rated / exempt sales" ar="مبيعات معفاة / صفرية" amount={zeroExemptSales} />
+            <Row n="4" label="Standard rated purchases" ar="المشتريات الخاضعة للضريبة" amount={taxablePurch} />
+            <Row n="5" label="Input VAT (recoverable)" ar="ضريبة المدخلات" amount={inputVat} bold />
+            <Row n="6" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة" amount={netVat} bold strong />
+          </tbody>
+        </table>
+        <div className={`p-5 flex items-center justify-between ${netVat >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+          <span className="font-bold text-gray-800 dark:text-slate-100">{netVat >= 0 ? 'VAT Payable to ZATCA' : 'VAT Reclaimable from ZATCA'}</span>
+          <span className={`text-xl font-black ${netVat >= 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>{fmtMoney(Math.abs(netVat), sym)}</span>
+        </div>
+      </Card>
+    )
+  }
+
+  // ─── Analytical reports (Sales/Purchases/Expenses) ───────────────
+  const inRange = (d) => (!startDate || d >= startDate) && (!endDate || d <= endDate)
+
+  const salesByCustomer = useMemo(() => {
+    const map = {}
+    invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date)).forEach((i) => {
+      const key = i.customerName || 'Walk-in Customer'
+      const m = map[key] || (map[key] = { customer: key, count: 0, subtotal: 0, tax: 0, total: 0, paid: 0, balance: 0 })
+      m.count += 1; m.subtotal += i.subtotal || 0; m.tax += i.taxAmount || 0
+      m.total += i.total || 0; m.paid += i.amountPaid || 0; m.balance += (i.total || 0) - (i.amountPaid || 0)
+    })
+    return Object.values(map).sort((a, b) => b.total - a.total)
+  }, [invoices, startDate, endDate])
+
+  const salesByItem = useMemo(() => {
+    const map = {}
+    invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date)).forEach((i) => {
+      (i.items || []).forEach((it) => {
+        const key = it.itemId || it.description || 'Item'
+        const name = it.description || (inventoryItems.find((x) => x.id === it.itemId)?.name) || 'Item'
+        const m = map[key] || (map[key] = { item: name, qty: 0, revenue: 0 })
+        m.qty += parseFloat(it.quantity) || 0
+        m.revenue += it.subtotal != null ? it.subtotal : (parseFloat(it.quantity) || 0) * (parseFloat(it.unitPrice) || 0)
+      })
+    })
+    return Object.values(map).sort((a, b) => b.revenue - a.revenue)
+  }, [invoices, inventoryItems, startDate, endDate])
+
+  const purchasesBySupplier = useMemo(() => {
+    const map = {}
+    purchases.filter((p) => p.status !== 'cancelled' && inRange(p.date)).forEach((p) => {
+      const key = p.supplierName || 'Unknown Supplier'
+      const m = map[key] || (map[key] = { supplier: key, count: 0, total: 0, paid: 0, balance: 0 })
+      m.count += 1; m.total += p.total || 0; m.paid += p.amountPaid || 0; m.balance += (p.total || 0) - (p.amountPaid || 0)
+    })
+    return Object.values(map).sort((a, b) => b.total - a.total)
+  }, [purchases, startDate, endDate])
+
+  const expenseByCategory = useMemo(() => {
+    const rows = accounts.filter((a) => a.type === 'expense')
+      .map((a) => ({ category: `${a.code} – ${a.name}`, amount: accountBalance(a.id, balances) }))
+      .filter((r) => Math.abs(r.amount) > 0.001)
+      .sort((a, b) => b.amount - a.amount)
+    const total = rows.reduce((s, r) => s + r.amount, 0)
+    return { rows, total }
+  }, [accounts, balances])
+
+  const AnalyticalReport = ({ title, headers, rows, totalsRow, chartData }) => (
+    <Card>
+      <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t(title)} · {fmtDate(startDate)} — {fmtDate(endDate)}</p>
+        </div>
+      </div>
+      {chartData && chartData.length > 0 && (
+        <div className="p-6 pb-0" style={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData.slice(0, 10)} margin={{ top: 4, right: 8, bottom: 4, left: 8 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={50} />
+              <YAxis tick={{ fontSize: 11 }} />
+              <Tooltip formatter={(v) => fmtMoney(v, sym)} />
+              <Bar dataKey="value" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <div className="p-6 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400">
+              {headers.map((h, i) => <th key={i} className={`py-2 ${i === 0 ? 'text-start' : 'text-end'} font-semibold`}>{t(h)}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 && <tr><td colSpan={headers.length} className="py-6 text-center text-gray-400">{t('No data for this period')}</td></tr>}
+            {rows.map((r, ri) => (
+              <tr key={ri} className="border-b border-gray-50 dark:border-slate-700/50">
+                {r.map((c, ci) => <td key={ci} className={`py-1.5 ${ci === 0 ? 'text-start text-gray-700 dark:text-slate-200' : 'text-end font-medium text-gray-800 dark:text-slate-100'}`}>{c}</td>)}
+              </tr>
+            ))}
+            {totalsRow && (
+              <tr className="border-t-2 border-gray-300 dark:border-slate-500 bg-gray-50/60 dark:bg-slate-700/40 font-bold">
+                {totalsRow.map((c, ci) => <td key={ci} className={`py-2 ${ci === 0 ? 'text-start' : 'text-end'} text-gray-900 dark:text-slate-100`}>{c}</td>)}
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </Card>
+  )
+
+  const SalesByCustomerReport = () => (
+    <AnalyticalReport title="Sales by Customer"
+      headers={['Customer', 'Invoices', 'Subtotal', 'Tax', 'Total', 'Paid', 'Outstanding']}
+      chartData={salesByCustomer.map((r) => ({ name: r.customer, value: r.total }))}
+      rows={salesByCustomer.map((r) => [r.customer, r.count, fmtMoney(r.subtotal, sym), fmtMoney(r.tax, sym), fmtMoney(r.total, sym), fmtMoney(r.paid, sym), fmtMoney(r.balance, sym)])}
+      totalsRow={['Total', salesByCustomer.reduce((s, r) => s + r.count, 0),
+        fmtMoney(salesByCustomer.reduce((s, r) => s + r.subtotal, 0), sym),
+        fmtMoney(salesByCustomer.reduce((s, r) => s + r.tax, 0), sym),
+        fmtMoney(salesByCustomer.reduce((s, r) => s + r.total, 0), sym),
+        fmtMoney(salesByCustomer.reduce((s, r) => s + r.paid, 0), sym),
+        fmtMoney(salesByCustomer.reduce((s, r) => s + r.balance, 0), sym)]} />
+  )
+
+  const SalesByItemReport = () => (
+    <AnalyticalReport title="Sales by Item"
+      headers={['Item', 'Qty Sold', 'Revenue']}
+      chartData={salesByItem.map((r) => ({ name: r.item, value: r.revenue }))}
+      rows={salesByItem.map((r) => [r.item, r.qty, fmtMoney(r.revenue, sym)])}
+      totalsRow={['Total', salesByItem.reduce((s, r) => s + r.qty, 0), fmtMoney(salesByItem.reduce((s, r) => s + r.revenue, 0), sym)]} />
+  )
+
+  const PurchasesBySupplierReport = () => (
+    <AnalyticalReport title="Purchases by Supplier"
+      headers={['Supplier', 'Bills', 'Total', 'Paid', 'Outstanding']}
+      chartData={purchasesBySupplier.map((r) => ({ name: r.supplier, value: r.total }))}
+      rows={purchasesBySupplier.map((r) => [r.supplier, r.count, fmtMoney(r.total, sym), fmtMoney(r.paid, sym), fmtMoney(r.balance, sym)])}
+      totalsRow={['Total', purchasesBySupplier.reduce((s, r) => s + r.count, 0),
+        fmtMoney(purchasesBySupplier.reduce((s, r) => s + r.total, 0), sym),
+        fmtMoney(purchasesBySupplier.reduce((s, r) => s + r.paid, 0), sym),
+        fmtMoney(purchasesBySupplier.reduce((s, r) => s + r.balance, 0), sym)]} />
+  )
+
+  const ExpenseByCategoryReport = () => (
+    <AnalyticalReport title="Expenses by Category"
+      headers={['Category', 'Amount', '% of Total']}
+      chartData={expenseByCategory.rows.map((r) => ({ name: r.category.split(' – ')[1] || r.category, value: r.amount }))}
+      rows={expenseByCategory.rows.map((r) => [r.category, fmtMoney(r.amount, sym), expenseByCategory.total ? `${(r.amount / expenseByCategory.total * 100).toFixed(1)}%` : '—'])}
+      totalsRow={['Total Expenses', fmtMoney(expenseByCategory.total, sym), '100%']} />
+  )
+
+  const CustomReportView = () => (
+    <CustomReport
+      startDate={startDate} endDate={endDate} sym={sym}
+      data={{ invoices, purchases, journalEntries, customers, suppliers, inventoryItems, accounts }} />
+  )
+
+  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat'].includes(report)
+
+  const reportTitle = REPORTS.find((r) => r.id === report)?.label || 'Report'
+  const buildReportExport = () => {
+    if (report === 'tb') {
+      const rows = accounts.map((a) => {
+        const b = allBalances[a.id] || { dr: 0, cr: 0 }
+        return { code: a.code, name: a.name, netDr: b.dr > b.cr ? b.dr - b.cr : 0, netCr: b.cr > b.dr ? b.cr - b.dr : 0 }
+      }).filter((r) => r.netDr || r.netCr)
+      return { filename: `trial-balance-${endDate}`, rows, columns: [
+        { key: 'code', label: t('Code') }, { key: 'name', label: t('Account') },
+        { key: 'netDr', label: t('Debit'), right: true, map: (v) => v ? Number(v).toFixed(2) : '' },
+        { key: 'netCr', label: t('Credit'), right: true, map: (v) => v ? Number(v).toFixed(2) : '' },
+      ] }
+    }
+    if (report === 'pl') {
+      const mk = (type, lbl) => accounts.filter((a) => a.type === type).map((a) => ({ type: lbl, name: a.name, balance: accountBalance(a.id, balances) })).filter((a) => a.balance)
+      const rows = [...mk('revenue', t('Revenue')), ...mk('expense', t('Expense'))]
+      return { filename: `income-statement-${startDate}_${endDate}`, rows, columns: [
+        { key: 'type', label: t('Type') }, { key: 'name', label: t('Account') },
+        { key: 'balance', label: t('Amount'), right: true, map: (v) => Number(v).toFixed(2) },
+      ] }
+    }
+    if (report === 'bs') {
+      const mk = (type, lbl) => accounts.filter((a) => a.type === type).map((a) => ({ section: lbl, name: a.name, balance: accountBalance(a.id, allBalances) })).filter((a) => a.balance)
+      const rows = [...mk('asset', t('Assets')), ...mk('liability', t('Liabilities')), ...mk('equity', t('Equity'))]
+      return { filename: `balance-sheet-${endDate}`, rows, columns: [
+        { key: 'section', label: t('Section') }, { key: 'name', label: t('Account') },
+        { key: 'balance', label: t('Amount'), right: true, map: (v) => Number(v).toFixed(2) },
+      ] }
+    }
+    if (report === 'sales-cust') {
+      return { filename: `sales-by-customer-${startDate}_${endDate}`, rows: salesByCustomer, columns: [
+        { key: 'customer', label: t('Customer') }, { key: 'count', label: t('Invoices'), right: true },
+        { key: 'subtotal', label: t('Subtotal'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'tax', label: t('Tax'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'total', label: t('Total'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'paid', label: t('Paid'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'balance', label: t('Outstanding'), right: true, map: (v) => Number(v).toFixed(2) },
+      ] }
+    }
+    if (report === 'sales-item') {
+      return { filename: `sales-by-item-${startDate}_${endDate}`, rows: salesByItem, columns: [
+        { key: 'item', label: t('Item') }, { key: 'qty', label: t('Qty Sold'), right: true },
+        { key: 'revenue', label: t('Revenue'), right: true, map: (v) => Number(v).toFixed(2) },
+      ] }
+    }
+    if (report === 'purch-supp') {
+      return { filename: `purchases-by-supplier-${startDate}_${endDate}`, rows: purchasesBySupplier, columns: [
+        { key: 'supplier', label: t('Supplier') }, { key: 'count', label: t('Bills'), right: true },
+        { key: 'total', label: t('Total'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'paid', label: t('Paid'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'balance', label: t('Outstanding'), right: true, map: (v) => Number(v).toFixed(2) },
+      ] }
+    }
+    if (report === 'exp-cat') {
+      return { filename: `expenses-by-category-${startDate}_${endDate}`, rows: expenseByCategory.rows.map((r) => ({
+        ...r, pct: expenseByCategory.total ? (r.amount / expenseByCategory.total * 100).toFixed(1) : '0',
+      })), columns: [
+        { key: 'category', label: t('Category') },
+        { key: 'amount', label: t('Amount'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'pct', label: t('% of Total'), right: true, map: (v) => `${v}%` },
+      ] }
+    }
+    // ar / ap aging
+    const src = report === 'ar'
+      ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
+      : purchases.filter((p) => p.status !== 'paid')
+    const todayStr = new Date().toISOString().slice(0, 10)
+    const rows = src.map((d) => {
+      const due = d.dueDate || d.date
+      const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
+      return { number: d.number, party: report === 'ar' ? d.customerName : d.supplierName, due, days: days > 0 ? days : 0, amt: d.total - d.amountPaid }
+    }).sort((a, b) => b.days - a.days)
+    return { filename: `${report}-aging-${todayStr}`, rows, columns: [
+      { key: 'number', label: t('Invoice #') },
+      { key: 'party', label: report === 'ar' ? t('Customer') : t('Supplier') },
+      { key: 'due', label: t('Due') },
+      { key: 'days', label: t('Days Overdue'), right: true },
+      { key: 'amt', label: t('Balance'), right: true, map: (v) => Number(v).toFixed(2) },
+    ] }
+  }
+  const rx = canExport ? buildReportExport() : null
+
   return (
     <div>
       <PageHeader title="Financial Reports" subtitle="Powered by double-entry bookkeeping" />
@@ -444,25 +805,39 @@ export default function Reports() {
       <Card className="p-5 mb-6">
         <div className="flex flex-wrap gap-4 items-end">
           <div>
-            <label className="block text-xs font-medium text-gray-500 mb-1">Report</label>
+            <label className="block text-xs font-medium text-gray-500 mb-1">{t('Report')}</label>
             <select className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               value={report} onChange={(e) => setReport(e.target.value)}>
-              {REPORTS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
+              {[...new Set(REPORTS.map((r) => r.group || 'Reports'))].map((g) => (
+                <optgroup key={g} label={t(g)}>
+                  {REPORTS.filter((r) => (r.group || 'Reports') === g).map((r) => (
+                    <option key={r.id} value={r.id}>{t(r.label)}</option>
+                  ))}
+                </optgroup>
+              ))}
             </select>
           </div>
           <Input label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
           <Input label="To" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
-          <Btn variant="secondary" onClick={() => window.print()}>Print / Export</Btn>
+          {rx && <ExportMenu filename={rx.filename} title={t(reportTitle)} subtitle={`${fmtDate(startDate)} — ${fmtDate(endDate)}`} rows={rx.rows} columns={rx.columns} />}
+          <Btn variant="secondary" onClick={() => window.print()}>{t('Print / Export')}</Btn>
         </div>
       </Card>
 
       <div className="print:pt-0">
         {report === 'pl' && <PLReport />}
         {report === 'bs' && <BSReport />}
+        {report === 'cf' && <CFReport />}
+        {report === 'vat' && <VATReport />}
         {report === 'tb' && <TBReport />}
         {report === 'gl' && <GLReport />}
         {report === 'ar' && <ARReport />}
         {report === 'ap' && <APReport />}
+        {report === 'sales-cust' && <SalesByCustomerReport />}
+        {report === 'sales-item' && <SalesByItemReport />}
+        {report === 'purch-supp' && <PurchasesBySupplierReport />}
+        {report === 'exp-cat' && <ExpenseByCategoryReport />}
+        {report === 'custom' && <CustomReportView />}
       </div>
     </div>
   )

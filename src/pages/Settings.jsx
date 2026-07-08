@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
-import { Save, AlertTriangle, Sparkles, Eye, EyeOff } from 'lucide-react'
+import { useT, useI18n } from '../i18n'
+import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database } from 'lucide-react'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -18,14 +20,89 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, exportData, importData } = useStore()
+  const t = useT()
+  const numerals = useI18n((s) => s.numerals)
+  const setNumerals = useI18n((s) => s.setNumerals)
 
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
   const [invoice, setInvoice] = useState({ ...settings.invoice })
   const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
+  const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
+  const [wht, setWht] = useState({ enabled: false, rate: 5, name: 'Withholding Tax', ...(settings.wht || {}) })
+  const setWhtField = (k, v) => setWht((w) => ({ ...w, [k]: v }))
+  const [customFields, setCustomFields] = useState({ customer: [...(settings.customFields?.customer || [])], supplier: [...(settings.customFields?.supplier || [])] })
+  const [newCf, setNewCf] = useState({ customer: '', supplier: '' })
+  const addCf = (entity) => {
+    const label = newCf[entity].trim()
+    if (!label || customFields[entity].includes(label)) return
+    setCustomFields((c) => ({ ...c, [entity]: [...c[entity], label] }))
+    setNewCf((n) => ({ ...n, [entity]: '' }))
+  }
+  const removeCf = (entity, label) => setCustomFields((c) => ({ ...c, [entity]: c[entity].filter((l) => l !== label) }))
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
+  const fileRef = useRef(null)
+  const logoRef = useRef(null)
+
+  const handleLogo = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 500 * 1024) return alert('Please use a logo under 500 KB.')
+    const reader = new FileReader()
+    reader.onload = (ev) => setCompany((c) => ({ ...c, logo: ev.target.result }))
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const isManager = useAuth((s) => s.isManager())
+
+  const storageKB = (() => {
+    try {
+      const v = localStorage.getItem('erp-v1') || ''
+      return Math.round(v.length / 1024)
+    } catch { return 0 }
+  })()
+  const storagePct = Math.min(100, Math.round((storageKB / 5120) * 100))
+
+  const setZatcaField = (k, v) => setZatca((z) => ({ ...z, [k]: v }))
+
+  const applySaudiPreset = () => {
+    setCompany((c) => ({ ...c, currency: 'SAR', currencySymbol: 'SAR' }))
+    setTax((t) => ({ ...t, enabled: true, name: 'VAT', rate: 15 }))
+    setZatca((z) => ({ ...z, enabled: true, showQr: true }))
+  }
+
+  const handleExport = () => {
+    const data = exportData()
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `erp-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const handleImportFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result)
+        if (!confirm('Restoring will REPLACE all current data with the backup. Continue?')) return
+        importData(data)
+        alert('Backup restored successfully! The page will reload.')
+        window.location.reload()
+      } catch (err) {
+        alert('Could not read this backup file: ' + err.message)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   const setCompanyField = (k, v) => setCompany((c) => ({ ...c, [k]: v }))
   const setTaxField = (k, v) => setTax((t) => ({ ...t, [k]: v }))
@@ -38,6 +115,14 @@ export default function Settings() {
     updateTax(tax)
     updateInvoiceSettings(invoice)
     updateAiSettings(ai)
+    updateZatca(zatca)
+    updateWht(wht)
+    updateCustomFields(customFields)
+    // keep the company-picker label in sync with the company name
+    try {
+      const auth = useAuth.getState()
+      if (auth.currentCompanyId && company.name) auth.renameCompany(auth.currentCompanyId, company.name)
+    } catch { /* ignore */ }
     setSaved(true)
     setTimeout(() => setSaved(false), 2500)
   }
@@ -64,13 +149,14 @@ export default function Settings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Company Info */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Company Information</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Company Information')}</h2>
           <div className="space-y-4">
             <Input label="Company Name *" value={company.name} onChange={(e) => setCompanyField('name', e.target.value)} />
+            <Input label="Company Name (Arabic) · الاسم بالعربية" value={company.arabicName || ''} onChange={(e) => setCompanyField('arabicName', e.target.value)} dir="rtl" placeholder="اسم الشركة" />
             <Input label="Email" type="email" value={company.email} onChange={(e) => setCompanyField('email', e.target.value)} />
             <Input label="Phone" value={company.phone} onChange={(e) => setCompanyField('phone', e.target.value)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Address</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Address')}</label>
               <textarea
                 rows={3}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
@@ -86,7 +172,7 @@ export default function Settings() {
         {/* Currency & Fiscal Year */}
         <div className="space-y-5">
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">Currency & Fiscal Year</h2>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Currency & Fiscal Year')}</h2>
             <div className="space-y-4">
               <Select label="Currency" value={company.currency} onChange={(e) => setCompanyField('currency', e.target.value)}>
                 {CURRENCIES.map((c) => (
@@ -99,11 +185,15 @@ export default function Settings() {
                   return <option key={m} value={m}>{labels[i]}</option>
                 })}
               </Select>
+              <Select label="Number Format" value={numerals} onChange={(e) => setNumerals(e.target.value)}>
+                <option value="latin">{t('Western digits (0 1 2 3)')}</option>
+                <option value="arabic">{t('Arabic-Indic digits (٠ ١ ٢ ٣)')}</option>
+              </Select>
             </div>
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">Tax Settings</h2>
+            <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Tax Settings')}</h2>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <input
@@ -113,7 +203,7 @@ export default function Settings() {
                   onChange={(e) => setTaxField('enabled', e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700">Enable Tax (VAT / GST)</label>
+                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700">{t('Enable Tax (VAT / GST)')}</label>
               </div>
               {tax.enabled && (
                 <>
@@ -127,7 +217,7 @@ export default function Settings() {
 
         {/* Invoice Settings */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">Invoice Settings</h2>
+          <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Invoice Settings')}</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Invoice Prefix" value={invoice.prefix} onChange={(e) => setInvoiceField('prefix', e.target.value)} placeholder="INV-" />
@@ -135,13 +225,23 @@ export default function Settings() {
             </div>
             <Input label="Default Payment Terms (days)" type="number" min="0" value={invoice.dueDays} onChange={(e) => setInvoiceField('dueDays', parseInt(e.target.value) || 30)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Default Invoice Notes</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Default Invoice Notes')}</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 value={invoice.notes}
                 onChange={(e) => setInvoiceField('notes', e.target.value)}
                 placeholder="e.g. Thank you for your business! Payment due within 30 days."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Bank Details / Payment Instructions')}</label>
+              <textarea
+                rows={3}
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                value={invoice.bankDetails || ''}
+                onChange={(e) => setInvoiceField('bankDetails', e.target.value)}
+                placeholder="Bank name, IBAN, account number, SWIFT… — shown at the bottom of every invoice."
               />
             </div>
           </div>
@@ -153,11 +253,11 @@ export default function Settings() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
               <Sparkles size={14} className="text-white" />
             </div>
-            <h2 className="text-base font-semibold text-gray-800">AI Assistant</h2>
+            <h2 className="text-base font-semibold text-gray-800">{t('AI Assistant')}</h2>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Claude API Key</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Claude API Key')}</label>
               <div className="relative">
                 <input
                   type={showKey ? 'text' : 'password'}
@@ -173,17 +273,156 @@ export default function Settings() {
               <p className="text-xs text-gray-400 mt-1">Your key is stored locally in the browser only. Get a key at console.anthropic.com.</p>
             </div>
             <Select label="Model" value={ai.model} onChange={(e) => setAiField('model', e.target.value)}>
-              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5 – Fast &amp; Economical (Recommended)</option>
-              <option value="claude-sonnet-4-6">Claude Sonnet 4.6 – Balanced</option>
-              <option value="claude-opus-4-8">Claude Opus 4.8 – Most Capable</option>
+              <option value="claude-haiku-4-5-20251001">{t('Claude Haiku 4.5 – Fast & Economical (Recommended)')}</option>
+              <option value="claude-sonnet-4-6">{t('Claude Sonnet 4.6 – Balanced')}</option>
+              <option value="claude-opus-4-8">{t('Claude Opus 4.8 – Most Capable')}</option>
             </Select>
             <div className="bg-violet-50 rounded-lg p-3 text-xs text-violet-700 space-y-1">
-              <p className="font-medium">What the AI assistant can do:</p>
+              <p className="font-medium">{t('What the AI assistant can do:')}</p>
               <p>• Answer questions about your live financial data (AR, AP, balances, invoices)</p>
-              <p>• Explain accounting concepts and double-entry bookkeeping</p>
-              <p>• Guide you through ERP modules and workflows</p>
-              <p>• Help with VAT calculations, payroll deductions, and more</p>
+              <p>{t('• Explain accounting concepts and double-entry bookkeeping')}</p>
+              <p>{t('• Guide you through ERP modules and workflows')}</p>
+              <p>{t('• Help with VAT calculations, payroll deductions, and more')}</p>
             </div>
+          </div>
+        </Card>
+
+        {/* Invoice Branding */}
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Invoice Branding')}</h2>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Company Logo')}</label>
+              <div className="flex items-center gap-4">
+                <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50">
+                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">{t('No logo')}</span>}
+                </div>
+                <div className="space-y-2">
+                  <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>{t('Upload Logo')}</Btn>
+                  {company.logo && <Btn size="sm" variant="ghost" onClick={() => setCompanyField('logo', '')}>Remove</Btn>}
+                  <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogo} className="hidden" />
+                  <p className="text-xs text-gray-400 dark:text-slate-500">{t('PNG/JPG/SVG, under 500 KB. Appears on invoices & delivery notes.')}</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Accent Color')}</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={company.accentColor || '#2563eb'} onChange={(e) => setCompanyField('accentColor', e.target.value)} className="w-12 h-9 rounded border border-gray-200 dark:border-slate-600 cursor-pointer" />
+                <span className="text-sm text-gray-500 dark:text-slate-400 font-mono">{company.accentColor || '#2563eb'}</span>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Saudi Arabia · ZATCA E-Invoicing */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-white text-xs font-bold">KSA</div>
+              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Saudi Arabia · ZATCA E-Invoicing')}</h2>
+            </div>
+            <Btn size="sm" variant="secondary" onClick={applySaudiPreset}>{t('Apply Saudi preset')}</Btn>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            Generate ZATCA (Fatoorah) compliant simplified tax invoices with a scannable QR code, bilingual Arabic/English layout, and 15% VAT.
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="zatcaEnabled" checked={zatca.enabled} onChange={(e) => setZatcaField('enabled', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
+              <label htmlFor="zatcaEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable ZATCA e-invoicing')}</label>
+            </div>
+            {zatca.enabled && (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <Input label="VAT Registration Number" value={zatca.vatNumber} onChange={(e) => setZatcaField('vatNumber', e.target.value)} placeholder="3xxxxxxxxxxxxx3" />
+                  <Input label="Commercial Registration (CR)" value={zatca.crNumber} onChange={(e) => setZatcaField('crNumber', e.target.value)} placeholder="10xxxxxxxx" />
+                </div>
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="zatcaQr" checked={zatca.showQr} onChange={(e) => setZatcaField('showQr', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
+                  <label htmlFor="zatcaQr" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Show ZATCA QR code on invoices')}</label>
+                </div>
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-xs text-green-700 dark:text-green-300 space-y-1">
+                  <p className="font-medium">The QR code encodes (per ZATCA Phase 1):</p>
+                  <p>• Seller name &amp; VAT number · Invoice timestamp · Total with VAT · VAT amount</p>
+                  <p>Set currency to SAR and VAT to 15% using “Apply Saudi preset”, then Save.</p>
+                </div>
+              </>
+            )}
+          </div>
+        </Card>
+
+        {/* Withholding Tax */}
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">{t('Withholding Tax (WHT)')}</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Deduct withholding tax on supplier payments (e.g. KSA WHT on payments to non-residents). The withheld amount is posted to a “Withholding Tax Payable” account to remit later.</p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="whtEnabled" checked={wht.enabled} onChange={(e) => setWhtField('enabled', e.target.checked)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+              <label htmlFor="whtEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable withholding tax on payments')}</label>
+            </div>
+            {wht.enabled && (
+              <div className="grid grid-cols-2 gap-3">
+                <Input label="WHT Name" value={wht.name} onChange={(e) => setWhtField('name', e.target.value)} placeholder="Withholding Tax" />
+                <Input label="Default Rate (%)" type="number" min="0" max="100" step="0.5" value={wht.rate} onChange={(e) => setWhtField('rate', parseFloat(e.target.value) || 0)} />
+              </div>
+            )}
+          </div>
+        </Card>
+
+        {/* Custom Fields */}
+        <Card className="p-6">
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">{t('Custom Fields')}</h2>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Add your own fields to customer and supplier records (e.g. “Account Manager”, “Credit Limit”, “Region”).</p>
+          {['customer', 'supplier'].map((entity) => (
+            <div key={entity} className="mb-4 last:mb-0">
+              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2 capitalize">{entity} fields</p>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {customFields[entity].length === 0 && <span className="text-xs text-gray-300 dark:text-slate-600">{t('None yet')}</span>}
+                {customFields[entity].map((label) => (
+                  <span key={label} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-full pl-3 pr-1.5 py-1 text-sm">
+                    {label}
+                    <button onClick={() => removeCf(entity, label)} className="w-4 h-4 rounded-full bg-gray-300 dark:bg-slate-600 text-white flex items-center justify-center text-xs hover:bg-red-400">×</button>
+                  </span>
+                ))}
+              </div>
+              <div className="flex gap-2">
+                <input value={newCf[entity]} onChange={(e) => setNewCf((n) => ({ ...n, [entity]: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && addCf(entity)}
+                  placeholder={`Add a ${entity} field…`} className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <Btn size="sm" variant="secondary" onClick={() => addCf(entity)}>Add</Btn>
+              </div>
+            </div>
+          ))}
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{t('Remember to click')}<strong>{t('Save Settings')}</strong> to apply.</p>
+        </Card>
+
+        {/* Backup & Restore */}
+        <Card className="p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Database size={14} className="text-white" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Backup &amp; Restore</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            Your data lives in this browser. Download a backup regularly so you never lose it — and restore it on any device or browser.
+          </p>
+          <div className="flex flex-wrap gap-3">
+            <Btn variant="success" onClick={handleExport}><Download size={15} /> {t('Download Backup')}</Btn>
+            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Restore from File')}</Btn>
+            <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
+          </div>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Backup files contain all invoices, transactions, customers, settings and more in one portable file.</p>
+
+          <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
+            <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
+              <span>{t('Browser storage used')}</span>
+              <span>~{storageKB} KB of ~5,120 KB</span>
+            </div>
+            <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
+              <div className={`h-full ${storagePct > 85 ? 'bg-red-500' : storagePct > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${storagePct}%` }} />
+            </div>
+            {storagePct > 85 && <p className="text-xs text-red-500 mt-1">Storage is nearly full — download a backup and consider removing your logo or old data.</p>}
           </div>
         </Card>
 
@@ -192,17 +431,17 @@ export default function Settings() {
           <div className="flex items-start gap-3 mb-4">
             <AlertTriangle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
             <div>
-              <h2 className="text-base font-semibold text-red-700">Danger Zone</h2>
-              <p className="text-sm text-gray-500 mt-1">These actions are irreversible. Please proceed with caution.</p>
+              <h2 className="text-base font-semibold text-red-700">{t('Danger Zone')}</h2>
+              <p className="text-sm text-gray-500 mt-1">{t('These actions are irreversible. Please proceed with caution.')}</p>
             </div>
           </div>
           <div className="space-y-3">
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <div>
-                <p className="text-sm font-medium text-gray-800">Reset All Data</p>
+                <p className="text-sm font-medium text-gray-800">{t('Reset All Data')}</p>
                 <p className="text-xs text-gray-500">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
               </div>
-              <Btn variant="danger" size="sm" onClick={handleReset}>Reset Data</Btn>
+              {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>{t('Reset Data')}</Btn> : <span className="text-xs text-gray-400 dark:text-slate-500">Owners / Admins only</span>}
             </div>
           </div>
         </Card>

@@ -1,15 +1,19 @@
 import { format, parseISO, isValid } from 'date-fns'
+import { ar } from 'date-fns/locale'
+import { useI18n, localizeDigits } from '../i18n'
 
 export function fmtMoney(amount, symbol = '$') {
   const n = Number(amount) || 0
-  return `${symbol}${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  return localizeDigits(`${symbol}${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
 }
 
 export function fmtDate(dateStr) {
   if (!dateStr) return '—'
   try {
     const d = parseISO(dateStr)
-    return isValid(d) ? format(d, 'dd MMM yyyy') : dateStr
+    if (!isValid(d)) return dateStr
+    const lang = useI18n.getState().lang
+    return localizeDigits(format(d, 'dd MMM yyyy', lang === 'ar' ? { locale: ar } : undefined))
   } catch {
     return dateStr
   }

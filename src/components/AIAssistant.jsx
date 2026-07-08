@@ -1,8 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
+import { useT } from '../i18n'
 import { useStore } from '../store'
 import { Bot, X, Send, Sparkles, Trash2, AlertCircle, Minimize2 } from 'lucide-react'
 
 export default function AIAssistant() {
+  const t = useT()
   const store     = useStore()
   const { settings, invoices, purchases, employees, journalEntries, expenseClaims, leases, getAccountBalance } = store
 
@@ -149,7 +151,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
       {/* Floating Button */}
       <button
         onClick={() => setOpen(o => !o)}
-        className={`fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 ${
+        className={`no-print fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-xl flex items-center justify-center transition-all duration-200 ${
           open
             ? 'bg-slate-700 hover:bg-slate-600'
             : 'bg-gradient-to-br from-violet-500 to-blue-600 hover:from-violet-600 hover:to-blue-700 hover:scale-105'
@@ -164,7 +166,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
 
       {/* Pulse ring when closed */}
       {!open && (
-        <span className="fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-violet-500 opacity-30 animate-ping pointer-events-none" />
+        <span className="no-print fixed bottom-6 right-6 z-40 w-14 h-14 rounded-full bg-violet-500 opacity-30 animate-ping pointer-events-none" />
       )}
 
       {/* Chat Panel */}
@@ -178,7 +180,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
               <Bot size={20} className="text-white" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white font-semibold text-sm leading-tight">AI Accounting Assistant</p>
+              <p className="text-white font-semibold text-sm leading-tight">{t('AI Accounting Assistant')}</p>
               <p className="text-violet-200 text-xs">Powered by Claude · {settings.company.name}</p>
             </div>
             <div className="flex items-center gap-1.5">
@@ -195,7 +197,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
           {!apiKey && (
             <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 flex items-center gap-1.5 flex-shrink-0">
               <AlertCircle size={12} className="flex-shrink-0" />
-              <span>Add your Claude API key in <strong>Settings → AI Assistant</strong> to enable chat.</span>
+              <span>{t('Add your Claude API key in')}<strong>Settings → AI Assistant</strong> to enable chat.</span>
             </div>
           )}
 
