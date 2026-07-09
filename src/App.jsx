@@ -37,6 +37,8 @@ const Departments = lazy(() => import('./pages/Departments'))
 const Employees = lazy(() => import('./pages/Employees'))
 const Payroll = lazy(() => import('./pages/Payroll'))
 const JournalEntries = lazy(() => import('./pages/JournalEntries'))
+const RecurringJournals = lazy(() => import('./pages/RecurringJournals'))
+const PaymentReminders = lazy(() => import('./pages/PaymentReminders'))
 const Reports = lazy(() => import('./pages/Reports'))
 const Settings = lazy(() => import('./pages/Settings'))
 const Projects = lazy(() => import('./pages/Projects'))
@@ -111,6 +113,7 @@ export default function App() {
         <Route path="/banking" element={<Banking />} />
         <Route path="/reconciliation" element={<Reconciliation />} />
         <Route path="/journals" element={<JournalEntries />} />
+        <Route path="/recurring-journals" element={<RecurringJournals />} />
 
         {/* Sales */}
         <Route path="/pipeline" element={<Pipeline />} />
@@ -122,6 +125,7 @@ export default function App() {
         <Route path="/invoices/new" element={<InvoiceForm />} />
         <Route path="/invoices/:id" element={<InvoiceView />} />
         <Route path="/recurring-invoices" element={<RecurringInvoices />} />
+        <Route path="/payment-reminders" element={<PaymentReminders />} />
         <Route path="/delivery-notes" element={<DeliveryNotes />} />
         <Route path="/credit-notes" element={<CreditNotes />} />
 

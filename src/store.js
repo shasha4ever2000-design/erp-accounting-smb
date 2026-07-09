@@ -872,6 +872,45 @@ export const useStore = create(
         }))
       },
 
+      // Batch straight-line depreciation for every active asset in one period.
+      // Skips assets already depreciated for that period or fully depreciated,
+      // and caps the charge at the remaining depreciable base.
+      runDepreciation: ({ period, date }) => {
+        const assets = get().fixedAssets.filter((a) => a.status === 'active')
+        let count = 0, total = 0
+        assets.forEach((a) => {
+          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
+          if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
+          const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
+          const months = (a.usefulLifeYears || 0) * 12
+          if (months <= 0) return
+          const remaining = (cost - salvage) - (a.accumulatedDepreciation || 0)
+          const amount = Math.round(Math.min((cost - salvage) / months, remaining) * 100) / 100
+          if (amount <= 0.005) return
+          get().recordDepreciation(a.id, { date, amount, period })
+          count += 1; total += amount
+        })
+        return { count, total: Math.round(total * 100) / 100 }
+      },
+
+      // preview only (no posting): how many assets are due for a period + total
+      previewDepreciation: (period) => {
+        const assets = get().fixedAssets.filter((a) => a.status === 'active')
+        let count = 0, total = 0
+        assets.forEach((a) => {
+          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
+          if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
+          const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
+          const months = (a.usefulLifeYears || 0) * 12
+          if (months <= 0) return
+          const remaining = (cost - salvage) - (a.accumulatedDepreciation || 0)
+          const amount = Math.round(Math.min((cost - salvage) / months, remaining) * 100) / 100
+          if (amount <= 0.005) return
+          count += 1; total += amount
+        })
+        return { count, total: Math.round(total * 100) / 100 }
+      },
+
       disposeAsset: (assetId, { date, proceeds, bankAccountId }) => {
         const asset = get().fixedAssets.find((a) => a.id === assetId)
         if (!asset || asset.status !== 'active') return
@@ -1462,6 +1501,47 @@ export const useStore = create(
         return d.toISOString().slice(0, 10)
       },
 
+      // ─── RECURRING JOURNAL ENTRIES ─────────────────────────────────
+      // Templated journal entries (e.g. monthly rent accrual, amortization)
+      // that post automatically on a schedule.
+      recurringJournals: [],
+      addRecurringJournal: (r) =>
+        set((s) => ({ recurringJournals: [...s.recurringJournals, {
+          id: uuid(), name: r.name || 'Recurring entry', frequency: r.frequency || 'monthly',
+          nextDate: r.nextDate, lines: r.lines || [], status: 'active', lastPosted: null,
+          postedCount: 0, createdAt: new Date().toISOString(),
+        }] })),
+      updateRecurringJournal: (id, patch) =>
+        set((s) => ({ recurringJournals: s.recurringJournals.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+      deleteRecurringJournal: (id) =>
+        set((s) => ({ recurringJournals: s.recurringJournals.filter((x) => x.id !== id) })),
+      postRecurringJournal: (id, { onDate } = {}) => {
+        const r = get().recurringJournals.find((x) => x.id === id)
+        if (!r) return null
+        const date = onDate || r.nextDate
+        const je = get().addJournalEntry({ date, description: r.name, reference: 'REC', type: 'recurring', lines: r.lines })
+        const nextDate = get().advanceDate(date, r.frequency)
+        set((s) => ({ recurringJournals: s.recurringJournals.map((x) =>
+          (x.id === id ? { ...x, nextDate, lastPosted: date, postedCount: (x.postedCount || 0) + 1 } : x)) }))
+        return je
+      },
+      // Post every active recurring journal whose nextDate has arrived (catches up
+      // multiple missed periods, bounded, and stops on a locked period).
+      generateDueRecurringJournals: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        let count = 0
+        get().recurringJournals.filter((r) => r.status === 'active' && r.nextDate <= today).forEach((r) => {
+          let guard = 0
+          while (guard++ < 60) {
+            const cur = get().recurringJournals.find((x) => x.id === r.id)
+            if (!cur || cur.status !== 'active' || cur.nextDate > today) break
+            try { get().postRecurringJournal(r.id, { onDate: cur.nextDate }); count += 1 }
+            catch { break }
+          }
+        })
+        return count
+      },
+
       // Generate real invoices for every active schedule whose nextDate has arrived
       generateDueRecurring: () => {
         const today = new Date().toISOString().slice(0, 10)
@@ -1721,6 +1801,7 @@ export const useStore = create(
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
+          'recurringJournals',
         ]
         const out = { _app: 'erp-accounting-smb', _version: 11, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
@@ -1772,7 +1853,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 14,
+      version: 15,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -1883,6 +1964,9 @@ export const useStore = create(
           }
           if (!persisted.matchRules) persisted.matchRules = []
           if (!persisted.fxRevaluations) persisted.fxRevaluations = []
+        }
+        if (version < 15) {
+          if (!persisted.recurringJournals) persisted.recurringJournals = []
         }
         return persisted
        } catch (e) {

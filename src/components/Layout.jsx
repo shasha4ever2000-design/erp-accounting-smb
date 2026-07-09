@@ -15,7 +15,7 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
-  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight,
+  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing,
 } from 'lucide-react'
 
 const NAV = [
@@ -28,6 +28,7 @@ const NAV = [
   { label: 'Bank Transactions',    path: '/banking',        icon: Landmark },
   { label: 'Bank Reconciliation',  path: '/reconciliation', icon: CheckSquare },
   { label: 'Journal Entries',      path: '/journals',       icon: ClipboardList },
+  { label: 'Recurring Journals',   path: '/recurring-journals', icon: Repeat },
 
   { divider: 'Sales' },
   { label: 'Sales Pipeline (CRM)',path: '/pipeline',        icon: Filter },
@@ -36,6 +37,7 @@ const NAV = [
   { label: 'Quotations',         path: '/quotations',       icon: FileCheck },
   { label: 'Sales Invoices',     path: '/invoices',         icon: FileText },
   { label: 'Recurring Invoices', path: '/recurring-invoices', icon: Repeat },
+  { label: 'Payment Reminders',  path: '/payment-reminders', icon: BellRing },
   { label: 'Delivery Notes',     path: '/delivery-notes',   icon: TruckIcon },
   { label: 'Credit Notes',       path: '/credit-notes',     icon: FileMinus },
 

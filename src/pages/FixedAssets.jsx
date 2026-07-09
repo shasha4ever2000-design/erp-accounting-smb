@@ -13,12 +13,18 @@ export default function FixedAssets() {
   const t = useT()
   const navigate = useNavigate()
   const { fixedAssets, assetDepreciations, bankAccounts, settings,
-          recordDepreciation, disposeAsset, deleteFixedAsset } = useStore()
+          recordDepreciation, runDepreciation, previewDepreciation, disposeAsset, deleteFixedAsset } = useStore()
   const sym = settings.company.currencySymbol
 
   const [deprModal, setDeprModal] = useState(null)   // asset to depreciate
   const [dispModal, setDispModal] = useState(null)   // asset to dispose
   const [filter, setFilter]       = useState('active')
+
+  // batch depreciation scheduler
+  const monthEnd = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10) })()
+  const monthLabel = new Date().toLocaleString('en', { month: 'short', year: 'numeric' })
+  const [schedModal, setSchedModal] = useState(false)
+  const [schedForm, setSchedForm] = useState({ period: monthLabel, date: monthEnd })
 
   const [deprForm, setDeprForm] = useState({ date: today(), amount: '', period: '' })
   const [dispForm, setDispForm] = useState({ date: today(), proceeds: '', bankAccountId: '' })
@@ -47,6 +53,21 @@ export default function FixedAssets() {
     setDeprModal(null)
   }
 
+  const schedPreview = schedModal ? previewDepreciation(schedForm.period) : { count: 0, total: 0 }
+  const runSchedule = () => {
+    if (!schedForm.period.trim()) return alert(t('Enter a period label.'))
+    try {
+      const res = runDepreciation({ period: schedForm.period, date: schedForm.date })
+      setSchedModal(false)
+      alert(res.count > 0
+        ? t('Posted depreciation for {n} assets, total {amt}.').replace('{n}', res.count).replace('{amt}', fmtMoney(res.total, sym))
+        : t('No assets are due for depreciation in this period.'))
+    } catch (e) {
+      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.'))
+      throw e
+    }
+  }
+
   const handleDispose = () => {
     const proceeds = parseFloat(dispForm.proceeds) || 0
     if (!dispForm.bankAccountId && proceeds > 0) return alert('Select a bank account for proceeds.')
@@ -63,7 +84,12 @@ export default function FixedAssets() {
       <PageHeader
         title="Fixed Assets"
         subtitle="Asset register — properties, equipment, vehicles, and more"
-        action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={15} /> {t('Add Asset')}</Btn>}
+        action={
+          <div className="flex gap-2">
+            <Btn variant="secondary" onClick={() => { setSchedForm({ period: monthLabel, date: monthEnd }); setSchedModal(true) }}><Calculator size={15} /> {t('Run Depreciation')}</Btn>
+            <Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={15} /> {t('Add Asset')}</Btn>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-3 gap-4 mb-6">
@@ -129,6 +155,26 @@ export default function FixedAssets() {
           </Table>
         )}
       </Card>
+
+      {/* Batch Depreciation Scheduler */}
+      <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('Run Monthly Depreciation')}>
+        <div className="space-y-4">
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t('Posts one month of straight-line depreciation for every active asset that has not been depreciated for this period.')}</p>
+          <div className="grid grid-cols-2 gap-3">
+            <Input label={t('Period label')} value={schedForm.period} onChange={(e) => setSchedForm((f) => ({ ...f, period: e.target.value }))} placeholder="Jul 2026" />
+            <Input label={t('Posting date')} type="date" value={schedForm.date} onChange={(e) => setSchedForm((f) => ({ ...f, date: e.target.value }))} />
+          </div>
+          <div className={`rounded-lg p-3 text-sm ${schedPreview.count > 0 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>
+            {schedPreview.count > 0
+              ? <span>{t('Will post')} <strong>{schedPreview.count}</strong> {t('entries totalling')} <strong>{fmtMoney(schedPreview.total, sym)}</strong>.</span>
+              : <span>{t('No assets are due for this period (already posted or fully depreciated).')}</span>}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Btn variant="secondary" onClick={() => setSchedModal(false)}>{t('Cancel')}</Btn>
+            <Btn onClick={runSchedule} disabled={schedPreview.count === 0}><Calculator size={14} /> {t('Post Depreciation')}</Btn>
+          </div>
+        </div>
+      </Modal>
 
       {/* Depreciation Modal */}
       <Modal open={!!deprModal} onClose={() => setDeprModal(null)} title={`Record Depreciation – ${deprModal?.name}`}>
