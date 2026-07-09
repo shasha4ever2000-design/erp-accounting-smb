@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
+import { alertIfLocked } from '../utils/periodLock'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -66,9 +67,9 @@ export default function Payroll() {
     setNewModal(false)
   }
 
-  const handleProcess = (run) => { if (confirm(`Process payroll run ${run.number}? This posts the journal entry.`)) processPayrollRun(run.id) }
-  const handlePay = () => { if (!payBankId) return alert('Select a bank account.'); payPayrollRun(payModal.id, payBankId, payPayDate); setPayModal(null) }
-  const handleDelete = (run) => { if (confirm(`Delete payroll run ${run.number}?`)) deletePayrollRun(run.id) }
+  const handleProcess = (run) => { if (confirm(`Process payroll run ${run.number}? This posts the journal entry.`)) { try { processPayrollRun(run.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e } } }
+  const handlePay = () => { if (!payBankId) return alert('Select a bank account.'); try { payPayrollRun(payModal.id, payBankId, payPayDate) } catch (e) { if (alertIfLocked(e, t)) return; throw e } setPayModal(null) }
+  const handleDelete = (run) => { if (confirm(`Delete payroll run ${run.number}?`)) { try { deletePayrollRun(run.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e } } }
 
   const bankOpts = bankAccounts.map((ba) => ({ id: ba.accountId, name: ba.name }))
   const sorted = [...payrollRuns].sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)

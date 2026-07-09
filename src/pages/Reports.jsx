@@ -22,6 +22,7 @@ const REPORTS = [
   { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
   { id: 'exp-cat', label: 'Expenses by Category', group: 'Sales & Purchases' },
   { id: 'budget-var', label: 'Budget vs Actual', group: 'Performance' },
+  { id: 'pl-comp', label: 'Comparative P&L', group: 'Performance' },
   { id: 'custom', label: 'Custom Report Builder', group: 'Advanced' },
 ]
 
@@ -459,10 +460,21 @@ export default function Reports() {
   // ─── Cash Flow Statement (direct, ledger-accurate) ────────────
   const CFReport = () => {
     const cashAccIds = new Set(bankAccounts.map((b) => b.accountId))
-    const typeCat = (t) => {
-      if (['fixed_asset', 'asset_disposal'].includes(t)) return 'investing'
-      if (['loan', 'capital', 'drawings', 'financing'].includes(t)) return 'financing'
-      return 'operating'
+    const accById = Object.fromEntries(accounts.map((a) => [a.id, a]))
+    // Classify each cash movement by its counter-accounts (investing = long-term
+    // assets, financing = equity / long-term debt, otherwise operating).
+    const classify = (je) => {
+      if (['fixed_asset', 'asset_disposal'].includes(je.type)) return 'investing'
+      if (['loan', 'capital', 'drawings', 'financing'].includes(je.type)) return 'financing'
+      let investing = false, financing = false
+      je.lines.filter((l) => !cashAccIds.has(l.accountId)).forEach((l) => {
+        const a = accById[l.accountId]
+        if (!a) return
+        if (a.type === 'equity') financing = true
+        else if (a.type === 'liability' && a.subtype === 'non_current') financing = true
+        else if (a.id === 'acc-fixed' || (a.type === 'asset' && a.subtype === 'non_current')) investing = true
+      })
+      return financing ? 'financing' : investing ? 'investing' : 'operating'
     }
     let opening = 0
     const cats = { operating: [], investing: [], financing: [] }
@@ -471,7 +483,7 @@ export default function Reports() {
       if (delta === 0) return
       if (je.date < startDate) { opening += delta; return }
       if (je.date > endDate) return
-      cats[typeCat(je.type)].push({ date: je.date, desc: je.description, ref: je.number, amount: delta })
+      cats[classify(je)].push({ date: je.date, desc: je.description, ref: je.number, amount: delta })
     })
     const catTotal = (c) => cats[c].reduce((s, x) => s + x.amount, 0)
     const net = catTotal('operating') + catTotal('investing') + catTotal('financing')
@@ -795,13 +807,88 @@ export default function Reports() {
     )
   }
 
+  // ─── Comparative P&L (current period vs the preceding equal period) ──
+  const plComparative = useMemo(() => {
+    const s = new Date(startDate), e = new Date(endDate)
+    const lenDays = Math.max(1, Math.round((e - s) / 86400000) + 1)
+    const priorEnd = new Date(s.getTime() - 86400000)
+    const priorStart = new Date(priorEnd.getTime() - (lenDays - 1) * 86400000)
+    const iso = (d) => d.toISOString().slice(0, 10)
+    const priorBals = getAllBalances(iso(priorStart), iso(priorEnd))
+    const build = (type) => accounts.filter((a) => a.type === type).map((a) => {
+      const cur = accountBalance(a.id, balances)
+      const prev = accountBalance(a.id, priorBals)
+      return { id: a.id, name: `${a.code} ${a.name}`, cur, prev, delta: cur - prev, pct: prev ? ((cur - prev) / Math.abs(prev)) * 100 : null }
+    }).filter((r) => Math.abs(r.cur) > 0.001 || Math.abs(r.prev) > 0.001)
+    return { priorLabel: `${iso(priorStart)} — ${iso(priorEnd)}`, revenue: build('revenue'), expense: build('expense') }
+  }, [accounts, balances, startDate, endDate])
+
+  const ComparativePLReport = () => {
+    const { revenue, expense, priorLabel } = plComparative
+    const sum = (arr, k) => arr.reduce((s, r) => s + r[k], 0)
+    const totRevC = sum(revenue, 'cur'), totRevP = sum(revenue, 'prev')
+    const totExpC = sum(expense, 'cur'), totExpP = sum(expense, 'prev')
+    const netC = totRevC - totExpC, netP = totRevP - totExpP
+    const Row = ({ r, favHigh }) => {
+      const good = favHigh ? r.delta >= 0 : r.delta <= 0
+      return (
+        <tr className="border-b border-gray-50 dark:border-slate-700/50">
+          <td className="py-1.5 text-gray-700 dark:text-slate-200">{r.name}</td>
+          <td className="py-1.5 text-end font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.cur, sym)}</td>
+          <td className="py-1.5 text-end text-gray-500 dark:text-slate-400">{fmtMoney(r.prev, sym)}</td>
+          <td className={`py-1.5 text-end font-medium ${good ? 'text-green-600' : 'text-red-500'}`}>{r.delta >= 0 ? '+' : ''}{fmtMoney(r.delta, sym)}</td>
+          <td className="py-1.5 text-end text-gray-500 dark:text-slate-400">{r.pct == null ? '—' : `${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(0)}%`}</td>
+        </tr>
+      )
+    }
+    const Section = ({ title, data, favHigh }) => (
+      <div className="mb-6">
+        <h4 className="font-bold text-sm uppercase tracking-wide mb-2 text-gray-600 dark:text-slate-300">{t(title)}</h4>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-500 text-xs uppercase">
+              <th className="py-1.5 text-start font-semibold">{t('Account')}</th>
+              <th className="py-1.5 text-end font-semibold">{t('Current')}</th>
+              <th className="py-1.5 text-end font-semibold">{t('Prior')}</th>
+              <th className="py-1.5 text-end font-semibold">{t('Change')}</th>
+              <th className="py-1.5 text-end font-semibold">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 && <tr><td colSpan={5} className="py-3 text-center text-gray-400">{t('No data for this period')}</td></tr>}
+            {data.map((r) => <Row key={r.id} r={r} favHigh={favHigh} />)}
+          </tbody>
+        </table>
+      </div>
+    )
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t('Comparative P&L')} · {fmtDate(startDate)} — {fmtDate(endDate)} <span className="text-xs">{t('vs')} {priorLabel}</span></p>
+        </div>
+        <div className="p-6">
+          <Section title="Revenue" data={revenue} favHigh />
+          <Section title="Expenses" data={expense} />
+          <div className="border-t-4 border-gray-300 dark:border-slate-500 mt-2 pt-3 flex items-center text-sm font-black">
+            <span className="flex-1 text-gray-900 dark:text-slate-100">{t('Net')} {netC >= 0 ? t('Profit') : t('Loss')}</span>
+            <span className="w-32 text-end text-gray-900 dark:text-slate-100">{fmtMoney(netC, sym)}</span>
+            <span className="w-32 text-end text-gray-500">{fmtMoney(netP, sym)}</span>
+            <span className={`w-32 text-end ${(netC - netP) >= 0 ? 'text-green-600' : 'text-red-500'}`}>{(netC - netP) >= 0 ? '+' : ''}{fmtMoney(netC - netP, sym)}</span>
+            <span className="w-16" />
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   const CustomReportView = () => (
     <CustomReport
       startDate={startDate} endDate={endDate} sym={sym}
       data={{ invoices, purchases, journalEntries, customers, suppliers, inventoryItems, accounts }} />
   )
 
-  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat', 'budget-var'].includes(report)
+  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat', 'budget-var', 'pl-comp'].includes(report)
 
   const reportTitle = REPORTS.find((r) => r.id === report)?.label || 'Report'
   const buildReportExport = () => {
@@ -863,6 +950,16 @@ export default function Reports() {
         { key: 'category', label: t('Category') },
         { key: 'amount', label: t('Amount'), right: true, map: (v) => Number(v).toFixed(2) },
         { key: 'pct', label: t('% of Total'), right: true, map: (v) => `${v}%` },
+      ] }
+    }
+    if (report === 'pl-comp') {
+      const mk = (arr, lbl) => arr.map((r) => ({ section: lbl, name: r.name, cur: r.cur, prev: r.prev, delta: r.delta, pct: r.pct == null ? '' : r.pct.toFixed(0) }))
+      return { filename: `comparative-pl-${startDate}_${endDate}`, rows: [...mk(plComparative.revenue, t('Revenue')), ...mk(plComparative.expense, t('Expenses'))], columns: [
+        { key: 'section', label: t('Section') }, { key: 'name', label: t('Account') },
+        { key: 'cur', label: t('Current'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'prev', label: t('Prior'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'delta', label: t('Change'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'pct', label: '%', right: true, map: (v) => v === '' ? '' : `${v}%` },
       ] }
     }
     if (report === 'budget-var') {
@@ -935,6 +1032,7 @@ export default function Reports() {
         {report === 'purch-supp' && <PurchasesBySupplierReport />}
         {report === 'exp-cat' && <ExpenseByCategoryReport />}
         {report === 'budget-var' && <BudgetVarReport />}
+        {report === 'pl-comp' && <ComparativePLReport />}
         {report === 'custom' && <CustomReportView />}
       </div>
     </div>

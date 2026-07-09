@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
+import { alertIfLocked } from '../utils/periodLock'
 import { Plus, Trash2, ArrowUpRight, ArrowDownLeft, Landmark } from 'lucide-react'
 
 const BANK_IDS = ['acc-cash', 'acc-bank1']
@@ -44,13 +45,16 @@ export default function Banking() {
     const amount = parseFloat(form.amount)
     if (!amount || amount <= 0) return alert('Enter a valid amount.')
     if (!form.description.trim()) return alert('Enter a description.')
-    addBankTransaction({ ...form, amount })
+    try { addBankTransaction({ ...form, amount }) }
+    catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setModal(false)
     setForm(emptyForm())
   }
 
   const handleDelete = (tx) => {
-    if (confirm('Delete this transaction?')) deleteBankTransaction(tx.id)
+    if (confirm('Delete this transaction?')) {
+      try { deleteBankTransaction(tx.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
+    }
   }
 
   // Enrich bank transactions with account name

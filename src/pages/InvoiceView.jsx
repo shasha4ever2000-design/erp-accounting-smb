@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
+import { alertIfLocked } from '../utils/periodLock'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
@@ -54,14 +55,16 @@ export default function InvoiceView() {
     const amount = parseFloat(payForm.amount)
     if (!amount || amount <= 0) return alert('Enter a valid amount.')
     if (amount > amountDue) return alert(`Amount exceeds balance due (${fmtMoney(amountDue, sym)}).`)
-    recordInvoicePayment(invoice.id, { ...payForm, amount })
+    try { recordInvoicePayment(invoice.id, { ...payForm, amount }) }
+    catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setPayModal(false)
     setPayForm({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
   }
 
   const handleDelete = () => {
     if (confirm('Delete this invoice and its journal entries?')) {
-      deleteInvoice(invoice.id)
+      try { deleteInvoice(invoice.id) }
+      catch (e) { if (alertIfLocked(e, t)) return; throw e }
       navigate('/invoices')
     }
   }

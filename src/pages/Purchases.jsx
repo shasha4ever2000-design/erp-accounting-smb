@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
+import { alertIfLocked } from '../utils/periodLock'
 import ExportMenu from '../components/ExportMenu'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
@@ -49,12 +50,15 @@ export default function Purchases() {
     if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, sym)})`)
     const wht = parseFloat(payForm.wht) || 0
     if (wht > amount) return alert('Withholding tax cannot exceed the payment amount.')
-    recordPurchasePayment(payModal.id, { ...payForm, amount, wht })
+    try { recordPurchasePayment(payModal.id, { ...payForm, amount, wht }) }
+    catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setPayModal(null)
   }
 
   const handleDelete = (p) => {
-    if (confirm(`Delete purchase invoice ${p.number}?`)) deletePurchase(p.id)
+    if (confirm(`Delete purchase invoice ${p.number}?`)) {
+      try { deletePurchase(p.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
+    }
   }
 
   const totals = {

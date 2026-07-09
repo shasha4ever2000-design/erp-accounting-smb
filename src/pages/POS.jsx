@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
+import { alertIfLocked } from '../utils/periodLock'
 import { Plus, Minus, Trash2, ShoppingCart, Search, CheckCircle2, Package } from 'lucide-react'
 
 export default function POS() {
@@ -47,11 +48,14 @@ export default function POS() {
       description: c.name, quantity: c.qty, unitPrice: c.price, taxRate: taxOn ? rate : 0,
       subtotal: c.qty * c.price, itemId: c.itemId, accountId: 'acc-sales',
     }))
-    const inv = addInvoice({
-      customerId: customerId || null, customerName: customer?.name || 'Walk-in Customer',
-      date: today(), dueDate: today(), items, subtotal, taxAmount, total, notes: 'POS Sale',
-    })
-    recordInvoicePayment(inv.id, { date: today(), amount: total, bankAccountId: payAcc, notes: 'POS payment' })
+    let inv
+    try {
+      inv = addInvoice({
+        customerId: customerId || null, customerName: customer?.name || 'Walk-in Customer',
+        date: today(), dueDate: today(), items, subtotal, taxAmount, total, notes: 'POS Sale',
+      })
+      recordInvoicePayment(inv.id, { date: today(), amount: total, bankAccountId: payAcc, notes: 'POS payment' })
+    } catch (e) { if (alertIfLocked(e, t)) return; throw e }
 
     // addInvoice already relieved stock and posted COGS for these tracked lines
     // (so the sale can be safely deleted later). Just log the movements.
