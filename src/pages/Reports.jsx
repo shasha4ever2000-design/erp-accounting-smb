@@ -21,11 +21,12 @@ const REPORTS = [
   { id: 'sales-item', label: 'Sales by Item', group: 'Sales & Purchases' },
   { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
   { id: 'exp-cat', label: 'Expenses by Category', group: 'Sales & Purchases' },
+  { id: 'budget-var', label: 'Budget vs Actual', group: 'Performance' },
   { id: 'custom', label: 'Custom Report Builder', group: 'Advanced' },
 ]
 
 export default function Reports() {
-  const { accounts, journalEntries, invoices, purchases, bankAccounts, customers, suppliers, inventoryItems, getAllBalances, settings } = useStore()
+  const { accounts, journalEntries, invoices, purchases, bankAccounts, customers, suppliers, inventoryItems, budgets, getAllBalances, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -708,13 +709,92 @@ export default function Reports() {
       totalsRow={['Total Expenses', fmtMoney(expenseByCategory.total, sym), '100%']} />
   )
 
+  // ─── Budget vs Actual (annual budget pro-rated to the period) ────
+  const budgetVar = useMemo(() => {
+    const yr = (endDate || `${thisYear}-12-31`).slice(0, 4)
+    const yStart = new Date(`${yr}-01-01`), yEnd = new Date(`${yr}-12-31`)
+    const clampedStart = startDate && startDate > `${yr}-01-01` ? startDate : `${yr}-01-01`
+    const clampedEnd = endDate && endDate < `${yr}-12-31` ? endDate : `${yr}-12-31`
+    const yearDays = (yEnd - yStart) / 86400000 + 1
+    const periodDays = Math.max(0, (new Date(clampedEnd) - new Date(clampedStart)) / 86400000 + 1)
+    const fraction = Math.min(1, periodDays / yearDays)
+    const budgetOf = (id) => (budgets.find((b) => b.accountId === id && b.year === yr)?.amount || 0) * fraction
+
+    const build = (type) => accounts.filter((a) => a.type === type).map((a) => {
+      const budget = Math.round(budgetOf(a.id) * 100) / 100
+      const actual = accountBalance(a.id, balances)
+      // favorable: revenue over budget, or expense under budget
+      const variance = type === 'revenue' ? actual - budget : budget - actual
+      return { id: a.id, code: a.code, name: a.name, type, budget, actual, variance, pct: budget ? (actual / budget) * 100 : 0 }
+    }).filter((r) => r.budget || Math.abs(r.actual) > 0.001)
+
+    const revenue = build('revenue'), expense = build('expense')
+    const sum = (arr, k) => arr.reduce((s, r) => s + r[k], 0)
+    return { fraction, revenue, expense,
+      totals: { budRev: sum(revenue, 'budget'), actRev: sum(revenue, 'actual'),
+                budExp: sum(expense, 'budget'), actExp: sum(expense, 'actual') } }
+  }, [accounts, budgets, balances, startDate, endDate, thisYear])
+
+  const BudgetVarReport = () => {
+    const { revenue, expense, totals, fraction } = budgetVar
+    const netBudget = totals.budRev - totals.budExp
+    const netActual = totals.actRev - totals.actExp
+    const Section = ({ title, data, favHigh }) => (
+      <div className="mb-6">
+        <h4 className="font-bold text-sm uppercase tracking-wide mb-2 text-gray-600 dark:text-slate-300">{t(title)}</h4>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-gray-200 dark:border-slate-600 text-gray-400 dark:text-slate-500 text-xs uppercase">
+              <th className="py-1.5 text-start font-semibold">{t('Account')}</th>
+              <th className="py-1.5 text-end font-semibold">{t('Budget')}</th>
+              <th className="py-1.5 text-end font-semibold">{t('Actual')}</th>
+              <th className="py-1.5 text-end font-semibold">{t('Variance')}</th>
+              <th className="py-1.5 text-end font-semibold">%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.length === 0 && <tr><td colSpan={5} className="py-3 text-center text-gray-400">{t('No data for this period')}</td></tr>}
+            {data.map((r) => (
+              <tr key={r.id} className="border-b border-gray-50 dark:border-slate-700/50">
+                <td className="py-1.5 text-gray-700 dark:text-slate-200"><span className="font-mono text-xs text-gray-400 me-2">{r.code}</span>{r.name}</td>
+                <td className="py-1.5 text-end text-gray-600 dark:text-slate-300">{fmtMoney(r.budget, sym)}</td>
+                <td className="py-1.5 text-end font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.actual, sym)}</td>
+                <td className={`py-1.5 text-end font-semibold ${r.variance >= 0 ? 'text-green-600' : 'text-red-500'}`}>{r.variance >= 0 ? '' : '('}{fmtMoney(Math.abs(r.variance), sym)}{r.variance >= 0 ? '' : ')'}</td>
+                <td className="py-1.5 text-end text-gray-500 dark:text-slate-400">{r.budget ? `${r.pct.toFixed(0)}%` : '—'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{t('Budget vs Actual')} · {fmtDate(startDate)} — {fmtDate(endDate)}
+            {fraction < 0.999 && <span className="ms-1 text-xs">({t('budget pro-rated to')} {(fraction * 100).toFixed(0)}%)</span>}
+          </p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4"><p className="text-xs text-indigo-600 dark:text-indigo-300">{t('Net Budgeted')}</p><p className="text-xl font-bold text-indigo-700 dark:text-indigo-200">{fmtMoney(netBudget, sym)}</p></div>
+            <div className={`${netActual >= 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'} rounded-xl p-4`}><p className="text-xs text-gray-500 dark:text-slate-400">{t('Net Actual')}</p><p className={`text-xl font-bold ${netActual >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>{fmtMoney(netActual, sym)}</p></div>
+            <div className={`${(netActual - netBudget) >= 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-amber-50 dark:bg-amber-900/30'} rounded-xl p-4`}><p className="text-xs text-gray-500 dark:text-slate-400">{t('Net Variance')}</p><p className={`text-xl font-bold ${(netActual - netBudget) >= 0 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>{fmtMoney(netActual - netBudget, sym)}</p></div>
+          </div>
+          <Section title="Revenue" data={revenue} favHigh />
+          <Section title="Expenses" data={expense} />
+        </div>
+      </Card>
+    )
+  }
+
   const CustomReportView = () => (
     <CustomReport
       startDate={startDate} endDate={endDate} sym={sym}
       data={{ invoices, purchases, journalEntries, customers, suppliers, inventoryItems, accounts }} />
   )
 
-  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat'].includes(report)
+  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat', 'budget-var'].includes(report)
 
   const reportTitle = REPORTS.find((r) => r.id === report)?.label || 'Report'
   const buildReportExport = () => {
@@ -778,6 +858,16 @@ export default function Reports() {
         { key: 'pct', label: t('% of Total'), right: true, map: (v) => `${v}%` },
       ] }
     }
+    if (report === 'budget-var') {
+      const mk = (arr, lbl) => arr.map((r) => ({ section: lbl, name: `${r.code} ${r.name}`, budget: r.budget, actual: r.actual, variance: r.variance, pct: r.budget ? r.pct.toFixed(0) : '' }))
+      return { filename: `budget-vs-actual-${startDate}_${endDate}`, rows: [...mk(budgetVar.revenue, t('Revenue')), ...mk(budgetVar.expense, t('Expenses'))], columns: [
+        { key: 'section', label: t('Section') }, { key: 'name', label: t('Account') },
+        { key: 'budget', label: t('Budget'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'actual', label: t('Actual'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'variance', label: t('Variance'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'pct', label: '%', right: true, map: (v) => v ? `${v}%` : '' },
+      ] }
+    }
     // ar / ap aging
     const src = report === 'ar'
       ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
@@ -837,6 +927,7 @@ export default function Reports() {
         {report === 'sales-item' && <SalesByItemReport />}
         {report === 'purch-supp' && <PurchasesBySupplierReport />}
         {report === 'exp-cat' && <ExpenseByCategoryReport />}
+        {report === 'budget-var' && <BudgetVarReport />}
         {report === 'custom' && <CustomReportView />}
       </div>
     </div>

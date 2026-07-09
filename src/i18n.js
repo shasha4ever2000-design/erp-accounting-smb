@@ -645,6 +645,10 @@ const AR = {
   'Choose a category account for this line first.': 'اختر حساب تصنيف لهذا البند أولًا.',
   'Enter a keyword and a category account.': 'أدخل كلمة مفتاحية وحساب تصنيف.',
   'Bank statement line': 'بند كشف حساب بنكي',
+  // ── Budget vs actual ──
+  'Budget vs Actual': 'الموازنة مقابل الفعلي', 'Performance': 'الأداء', 'Budget': 'الموازنة', 'Actual': 'الفعلي',
+  'Variance': 'الانحراف', 'Net Budgeted': 'صافي الموازنة', 'Net Actual': 'صافي الفعلي', 'Net Variance': 'صافي الانحراف',
+  'budget pro-rated to': 'الموازنة موزعة نسبيًا إلى', 'Annual Budget': 'الموازنة السنوية',
   'Pick a category (auto-filled from your rules) and click Book to record and clear each line.': 'اختر تصنيفًا (يُملأ تلقائيًا من قواعدك) وانقر تسجيل لتسجيل وتسوية كل بند.',
 
   // ── Settings (raw labels, AI section, presets) ──
