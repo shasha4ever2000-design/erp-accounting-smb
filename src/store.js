@@ -62,6 +62,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-svc',    code: '4002', name: 'Service Revenue',            type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-otherinc',code:'4003', name: 'Other Income',               type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-gainloss',code:'4004', name: 'Gain on Asset Disposal',     type: 'revenue',   subtype: 'revenue',     isSystem: false },
+  { id: 'acc-fxgl',   code: '4005', name: 'Unrealized FX Gain/(Loss)',  type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-salesret',code:'4010', name: 'Sales Returns & Allowances', type: 'revenue',   subtype: 'revenue',     isSystem: false },
   // EXPENSES
   { id: 'acc-cogs',   code: '5001', name: 'Cost of Goods Sold',         type: 'expense',   subtype: 'expense',     isSystem: false },
@@ -1272,10 +1273,20 @@ export const useStore = create(
           date: tx.date, description: tx.description, reference: tx.reference || '', type: tx.type,
           projectId: tx.projectId || null, lines,
         })
-        set((s) => ({
-          bankTransactions: [...s.bankTransactions, { ...tx, id: uuid(), journalEntryId: je.id, createdAt: new Date().toISOString() }],
-        }))
+        const newTx = { ...tx, id: uuid(), journalEntryId: je.id, createdAt: new Date().toISOString() }
+        set((s) => ({ bankTransactions: [...s.bankTransactions, newTx] }))
+        return newTx
       },
+
+      // ─── BANK-FEED MATCHING RULES ──────────────────────────────────
+      // Rules that auto-categorize imported statement lines whose description
+      // contains a keyword to a target account, so unmatched lines can be
+      // booked and cleared in one click. flow: 'auto' | 'in' | 'out'.
+      matchRules: [],
+      addMatchRule: (rule) =>
+        set((s) => ({ matchRules: [...s.matchRules, { id: uuid(), flow: 'auto', ...rule, contains: (rule.contains || '').trim() }] })),
+      deleteMatchRule: (id) =>
+        set((s) => ({ matchRules: s.matchRules.filter((r) => r.id !== id) })),
 
       deleteBankTransaction: (id) =>
         set((s) => {
@@ -1569,6 +1580,42 @@ export const useStore = create(
       deleteCurrency: (id) =>
         set((s) => ({ currencies: s.currencies.filter((c) => c.id !== id) })),
 
+      // ─── FX REVALUATION ────────────────────────────────────────────
+      // Restates foreign-currency account balances to the period-end closing
+      // rate and posts the unrealized gain/loss to acc-fxgl. `entries` is a list
+      // of { accountId, currency, fcBalance, rate, currentBase, revaluedBase }.
+      fxRevaluations: [],
+      postFxRevaluation: ({ date, entries, note }) => {
+        const rows = (entries || [])
+          .map((e) => ({ ...e, delta: Math.round(((e.revaluedBase || 0) - (e.currentBase || 0)) * 100) / 100 }))
+          .filter((e) => Math.abs(e.delta) >= 0.01)
+        if (rows.length === 0) return null
+        const accs = get().accounts
+        const lines = []
+        let net = 0 // debits minus credits from the account legs
+        rows.forEach((e) => {
+          const acc = accs.find((a) => a.id === e.accountId)
+          const debitNatured = ['asset', 'expense'].includes(acc?.type)
+          // increasing an account's base carrying value debits a debit-natured
+          // account and credits a credit-natured one; negative delta flips it
+          let dr = 0, cr = 0
+          if (debitNatured) { if (e.delta >= 0) dr = e.delta; else cr = -e.delta }
+          else { if (e.delta >= 0) cr = e.delta; else dr = -e.delta }
+          lines.push({ accountId: e.accountId, debit: dr, credit: cr, description: `FX revaluation @ ${e.rate} ${e.currency}` })
+          net += dr - cr
+        })
+        // balancing offset to the FX gain/loss account
+        net = Math.round(net * 100) / 100
+        if (net >= 0) lines.push({ accountId: 'acc-fxgl', debit: 0, credit: net, description: 'Unrealized FX gain' })
+        else lines.push({ accountId: 'acc-fxgl', debit: -net, credit: 0, description: 'Unrealized FX loss' })
+        const je = get().addJournalEntry({
+          date, description: `FX Revaluation${note ? ' – ' + note : ''}`, reference: '', type: 'fx_reval', lines,
+        })
+        const rec = { id: uuid(), date, journalEntryId: je.id, note: note || '', entries: rows, gainLoss: net, createdAt: new Date().toISOString() }
+        set((s) => ({ fxRevaluations: [...s.fxRevaluations, rec] }))
+        return rec
+      },
+
       // ─── CRM · SALES PIPELINE ──────────────────────────────────────
       leads: [],
 
@@ -1673,7 +1720,7 @@ export const useStore = create(
           'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
-          'stockMovements', 'bankTransfers', 'scheduledTransfers',
+          'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
         ]
         const out = { _app: 'erp-accounting-smb', _version: 11, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
@@ -1725,7 +1772,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 13,
+      version: 14,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -1829,6 +1876,13 @@ export const useStore = create(
           if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-wht')) {
             persisted.accounts.push({ id: 'acc-wht', code: '2110', name: 'Withholding Tax Payable', type: 'liability', subtype: 'current', isSystem: false })
           }
+        }
+        if (version < 14) {
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-fxgl')) {
+            persisted.accounts.push({ id: 'acc-fxgl', code: '4005', name: 'Unrealized FX Gain/(Loss)', type: 'revenue', subtype: 'revenue', isSystem: false })
+          }
+          if (!persisted.matchRules) persisted.matchRules = []
+          if (!persisted.fxRevaluations) persisted.fxRevaluations = []
         }
         return persisted
        } catch (e) {

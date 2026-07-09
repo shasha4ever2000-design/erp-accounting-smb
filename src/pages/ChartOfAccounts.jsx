@@ -14,18 +14,19 @@ const SUBTYPES = {
   expense:   ['expense'],
 }
 
-const emptyForm = { code: '', name: '', type: 'asset', subtype: 'current', description: '' }
+const emptyForm = { code: '', name: '', type: 'asset', subtype: 'current', description: '', currency: '' }
 
 export default function ChartOfAccounts() {
   const t = useT()
-  const { accounts, addAccount, updateAccount, deleteAccount } = useStore()
+  const { accounts, addAccount, updateAccount, deleteAccount, currencies, settings } = useStore()
+  const base = settings.company.currency
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [filter, setFilter] = useState('all')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (a) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type, subtype: a.subtype, description: a.description || '' }); setModal(true) }
+  const openEdit = (a) => { setEditing(a); setForm({ code: a.code, name: a.name, type: a.type, subtype: a.subtype, description: a.description || '', currency: a.currency || '' }); setModal(true) }
   const close = () => setModal(false)
 
   const handleSave = () => {
@@ -103,6 +104,7 @@ export default function ChartOfAccounts() {
                   <Td className="font-mono font-semibold text-gray-800 w-24">{a.code}</Td>
                   <Td>
                     <span className="font-medium text-gray-800">{a.name}</span>
+                    {a.currency && a.currency !== base && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-semibold">{a.currency}</span>}
                     {a.isSystem && <span className="ml-2 text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded">system</span>}
                     {a.description && <p className="text-xs text-gray-400 mt-0.5">{a.description}</p>}
                   </Td>
@@ -142,6 +144,11 @@ export default function ChartOfAccounts() {
             ))}
           </Select>
           <Input label="Description (optional)" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Brief description" />
+          <Select label={t('Currency')} value={form.currency} onChange={(e) => setField('currency', e.target.value)}>
+            <option value="">{t('Base currency')} ({base})</option>
+            {currencies.map((c) => <option key={c.id} value={c.code}>{c.code} — {c.name}</option>)}
+          </Select>
+          <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">{t('Set a foreign currency to include this account in FX revaluation.')}</p>
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Create Account'}</Btn>

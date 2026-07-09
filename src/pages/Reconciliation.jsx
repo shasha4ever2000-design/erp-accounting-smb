@@ -4,17 +4,27 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Select, Input, Btn, Modal } from '../components/UI'
 import { parseCSV, detectStatementColumns } from '../utils/csv'
-import { CheckCircle2, Circle, Landmark, Upload, AlertCircle } from 'lucide-react'
+import { CheckCircle2, Circle, Landmark, Upload, AlertCircle, Filter } from 'lucide-react'
 
 export default function Reconciliation() {
   const t = useT()
-  const { bankAccounts, journalEntries, reconciliations, toggleReconciled, getAccountBalance, settings } = useStore()
+  const { bankAccounts, accounts, journalEntries, reconciliations, toggleReconciled, getAccountBalance,
+    matchRules, addMatchRule, deleteMatchRule, addBankTransaction, settings } = useStore()
   const sym = settings.company.currencySymbol
 
   const [accId, setAccId] = useState(bankAccounts[0]?.accountId || '')
   const [stmtBalance, setStmtBalance] = useState('')
   const fileRef = useRef(null)
   const [importResult, setImportResult] = useState(null) // { matched:[], unmatched:[], error? }
+  const [newRule, setNewRule] = useState({ contains: '', accountId: '' })
+
+  // category accounts to book statement lines against (exclude bank/cash accounts themselves)
+  const bankAcctIds = new Set(bankAccounts.map((b) => b.accountId))
+  const categoryAccounts = accounts.filter((a) => !bankAcctIds.has(a.id) && ['revenue', 'expense', 'liability', 'asset', 'equity'].includes(a.type))
+  const ruleFor = (desc) => {
+    const d = (desc || '').toLowerCase()
+    return matchRules.find((r) => r.contains && d.includes(r.contains.toLowerCase())) || null
+  }
 
   const movements = useMemo(() => {
     const rows = []
@@ -66,7 +76,7 @@ export default function Reconciliation() {
             && Math.abs(m.amount - sl.amount) < 0.01
             && Math.abs((new Date(m.date) - new Date(sl.date)) / 86400000) <= 5)
           if (hit) { used.add(hit.id); matched.push({ ...sl, jeId: hit.id }) }
-          else unmatched.push(sl)
+          else unmatched.push({ ...sl, catAccountId: ruleFor(sl.desc)?.accountId || '' })
         })
         setImportResult({ matched, unmatched })
       } catch (err) {
@@ -79,6 +89,34 @@ export default function Reconciliation() {
   const clearMatched = () => {
     importResult.matched.forEach((m) => { if (!isRec(m.jeId)) toggleReconciled(accId, m.jeId) })
     setImportResult(null)
+  }
+
+  // set the chosen category for an unmatched line
+  const setUnmatchedCat = (idx, catAccountId) =>
+    setImportResult((r) => ({ ...r, unmatched: r.unmatched.map((u, i) => (i === idx ? { ...u, catAccountId } : u)) }))
+
+  // book an unmatched statement line as a bank transaction, then mark it cleared
+  const bookLine = (u, idx) => {
+    if (!u.catAccountId) return alert(t('Choose a category account for this line first.'))
+    try {
+      const tx = addBankTransaction({
+        type: u.amount >= 0 ? 'money_in' : 'money_out',
+        bankAccountId: accId, accountId: u.catAccountId,
+        amount: Math.abs(u.amount), date: u.date || new Date().toISOString().slice(0, 10),
+        description: u.desc || t('Bank statement line'), reference: 'STMT',
+      })
+      if (tx?.journalEntryId) toggleReconciled(accId, tx.journalEntryId)
+      setImportResult((r) => ({ ...r, unmatched: r.unmatched.filter((_, i) => i !== idx) }))
+    } catch (e) {
+      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.'))
+      throw e
+    }
+  }
+
+  const saveRule = () => {
+    if (!newRule.contains.trim() || !newRule.accountId) return alert(t('Enter a keyword and a category account.'))
+    addMatchRule(newRule)
+    setNewRule({ contains: '', accountId: '' })
   }
   const clearedBalance = movements.filter((m) => isRec(m.id)).reduce((s, m) => s + m.amount, 0)
   const bookBalance = getAccountBalance(accId)
@@ -104,6 +142,38 @@ export default function Reconciliation() {
         <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{t('Upload a bank statement CSV to auto-match and clear transactions. Expected columns: Date, Description, Amount (or Debit/Credit).')}</p>
       </Card>
 
+      {/* Matching rules: auto-categorize statement lines by keyword */}
+      <Card className="p-5 mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Filter size={16} className="text-blue-500" />
+          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Auto-Match Rules')}</h3>
+        </div>
+        <p className="text-xs text-gray-400 dark:text-slate-500 mb-3">{t('When a statement line description contains a keyword, suggest this category so you can book it in one click.')}</p>
+        <div className="flex flex-wrap items-end gap-2 mb-3">
+          <Input label={t('If description contains')} value={newRule.contains} onChange={(e) => setNewRule((r) => ({ ...r, contains: e.target.value }))} placeholder={t('e.g. STC, Aramex, salary')} className="w-56" />
+          <Select label={t('Categorize as')} value={newRule.accountId} onChange={(e) => setNewRule((r) => ({ ...r, accountId: e.target.value }))} className="w-56">
+            <option value="">{t('Select account…')}</option>
+            {categoryAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </Select>
+          <Btn onClick={saveRule}>{t('Add Rule')}</Btn>
+        </div>
+        {matchRules.length === 0 ? (
+          <p className="text-xs text-gray-400 dark:text-slate-500">{t('No rules yet.')}</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {matchRules.map((r) => {
+              const acc = accounts.find((a) => a.id === r.accountId)
+              return (
+                <span key={r.id} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-gray-600 dark:text-slate-300">
+                  <span className="font-medium">"{r.contains}"</span> → {acc?.name || '—'}
+                  <button onClick={() => deleteMatchRule(r.id)} className="w-4 h-4 rounded-full hover:bg-gray-200 dark:hover:bg-slate-600 flex items-center justify-center text-gray-400">×</button>
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
       <Modal open={!!importResult} onClose={() => setImportResult(null)} title={t('Import Bank Statement')} width="max-w-2xl">
         {importResult?.error ? (
           <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400">
@@ -125,16 +195,22 @@ export default function Reconciliation() {
             {importResult.unmatched.length > 0 && (
               <div>
                 <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1.5">{t('Unmatched statement lines')}</p>
-                <div className="max-h-48 overflow-y-auto border border-gray-100 dark:border-slate-700 rounded-lg divide-y divide-gray-50 dark:divide-slate-700/50">
+                <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-slate-700 rounded-lg divide-y divide-gray-50 dark:divide-slate-700/50">
                   {importResult.unmatched.map((u, i) => (
-                    <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
-                      <span className="text-gray-500 dark:text-slate-400">{fmtDate(u.date)}</span>
-                      <span className="flex-1 px-3 truncate text-gray-700 dark:text-slate-200">{u.desc || '—'}</span>
-                      <span className={u.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}>{u.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(u.amount), sym)}</span>
+                    <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm">
+                      <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(u.date)}</span>
+                      <span className="flex-1 min-w-0 truncate text-gray-700 dark:text-slate-200" title={u.desc}>{u.desc || '—'}</span>
+                      <span className={`whitespace-nowrap ${u.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{u.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(u.amount), sym)}</span>
+                      <select value={u.catAccountId || ''} onChange={(e) => setUnmatchedCat(i, e.target.value)}
+                        className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-1.5 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        <option value="">{t('Category…')}</option>
+                        {categoryAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
+                      </select>
+                      <Btn size="sm" onClick={() => bookLine(u, i)} title={t('Book & clear')}>{t('Book')}</Btn>
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5">{t('Record these in the Banking module, then re-import to clear them.')}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5">{t('Pick a category (auto-filled from your rules) and click Book to record and clear each line.')}</p>
               </div>
             )}
 

@@ -71,6 +71,7 @@ const NAV = [
   { divider: 'Reports & System' },
   { label: 'Analytics',          path: '/analytics',         icon: PieChart },
   { label: 'Currencies',         path: '/currencies',        icon: Coins },
+  { label: 'FX Revaluation',     path: '/revaluation',       icon: ArrowLeftRight },
   { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
   { label: 'Audit Log',          path: '/audit-log',         icon: History },
