@@ -24,8 +24,10 @@ export default function RecurringJournals() {
   const addLine = () => setForm((f) => ({ ...f, lines: [...f.lines, emptyLine()] }))
   const removeLine = (i) => setForm((f) => ({ ...f, lines: f.lines.filter((_, idx) => idx !== i) }))
 
-  const totalDr = form.lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0)
-  const totalCr = form.lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)
+  // only lines that actually carry an account count toward the posted entry
+  const validLines = form.lines.filter((l) => l.accountId && (parseFloat(l.debit) || parseFloat(l.credit)))
+  const totalDr = validLines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0)
+  const totalCr = validLines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)
   const balanced = Math.abs(totalDr - totalCr) < 0.01 && totalDr > 0
 
   const openNew = () => { setEditing(null); setForm(emptyForm()); setModal(true) }

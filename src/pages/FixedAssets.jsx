@@ -53,7 +53,7 @@ export default function FixedAssets() {
     setDeprModal(null)
   }
 
-  const schedPreview = schedModal ? previewDepreciation(schedForm.period) : { count: 0, total: 0 }
+  const schedPreview = schedModal ? previewDepreciation(schedForm.period, schedForm.date) : { count: 0, total: 0 }
   const runSchedule = () => {
     if (!schedForm.period.trim()) return alert(t('Enter a period label.'))
     try {

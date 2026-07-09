@@ -264,8 +264,14 @@ export const useStore = create(
 
       addJournalEntry: (entry) => {
         const s = get()
+        // Integrity guards: every entry must be dated and balanced. This stops any
+        // caller bug from silently corrupting the ledger / trial balance.
+        if (!entry?.date) throw new Error('JE_NO_DATE')
+        const _dr = (entry.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
+        const _cr = (entry.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
+        if (Math.abs(_dr - _cr) > 0.05) throw new Error(`JE_UNBALANCED:${(_dr - _cr).toFixed(2)}`)
         const lock = s.settings?.accounting?.lockDate
-        if (lock && entry?.date && String(entry.date) <= String(lock))
+        if (lock && String(entry.date) <= String(lock))
           throw new Error(`PERIOD_LOCKED:${lock}`)
         const { prefix, next } = s.settings.journal
         const number = nextNum(prefix, next)
@@ -296,6 +302,16 @@ export const useStore = create(
             throw new Error(`PERIOD_LOCKED:${lock}`)
           return { journalEntries: s.journalEntries.filter((j) => j.id !== id) }
         }),
+
+      // Throws PERIOD_LOCKED if deleting a document would remove any journal entry
+      // dated in a closed period. Called by every document delete that cascades JEs.
+      assertJEsUnlocked: (...ids) => {
+        const lock = get().settings?.accounting?.lockDate
+        if (!lock) return
+        const wanted = new Set(ids.filter(Boolean))
+        if (get().journalEntries.some((j) => wanted.has(j.id) && j.date && String(j.date) <= String(lock)))
+          throw new Error(`PERIOD_LOCKED:${lock}`)
+      },
 
       // ─── SALES INVOICES ────────────────────────────────────────────
       invoices: [],
@@ -413,6 +429,7 @@ export const useStore = create(
 
       deleteInvoice: (id) => {
         const inv = get().invoices.find((i) => i.id === id)
+        get().assertJEsUnlocked(inv?.journalEntryId, inv?.cogsJournalEntryId)
         get().logActivity('Deleted invoice', inv?.number || id)
         // Restore any stock issued by this invoice's tracked lines.
         const restore = {}
@@ -503,6 +520,7 @@ export const useStore = create(
       deleteCreditNote: (id) =>
         set((s) => {
           const cn = s.creditNotes.find((c) => c.id === id)
+          get().assertJEsUnlocked(cn?.journalEntryId)
           return {
             creditNotes: s.creditNotes.filter((c) => c.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== cn?.journalEntryId),
@@ -644,6 +662,7 @@ export const useStore = create(
 
       deletePurchase: (id) => {
         const pur = get().purchases.find((p) => p.id === id)
+        get().assertJEsUnlocked(pur?.journalEntryId)
         get().logActivity('Deleted purchase', pur?.number || id)
         // Reverse any perpetual stock received by this purchase.
         const recv = {}
@@ -700,6 +719,7 @@ export const useStore = create(
       deleteDebitNote: (id) =>
         set((s) => {
           const dn = s.debitNotes.find((d) => d.id === id)
+          get().assertJEsUnlocked(dn?.journalEntryId)
           return {
             debitNotes: s.debitNotes.filter((d) => d.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== dn?.journalEntryId),
@@ -809,6 +829,7 @@ export const useStore = create(
       deletePayrollRun: (id) =>
         set((s) => {
           const run = s.payrollRuns.find((r) => r.id === id)
+          get().assertJEsUnlocked(run?.journalEntryId, run?.paymentJEId)
           return {
             payrollRuns: s.payrollRuns.filter((r) => r.id !== id),
             journalEntries: s.journalEntries.filter(
@@ -880,6 +901,7 @@ export const useStore = create(
         let count = 0, total = 0
         assets.forEach((a) => {
           if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
+          if (a.purchaseDate && date && a.purchaseDate > date) return // not yet acquired
           if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
           const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
           const months = (a.usefulLifeYears || 0) * 12
@@ -894,11 +916,12 @@ export const useStore = create(
       },
 
       // preview only (no posting): how many assets are due for a period + total
-      previewDepreciation: (period) => {
+      previewDepreciation: (period, date) => {
         const assets = get().fixedAssets.filter((a) => a.status === 'active')
         let count = 0, total = 0
         assets.forEach((a) => {
           if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
+          if (a.purchaseDate && date && a.purchaseDate > date) return
           if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
           const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
           const months = (a.usefulLifeYears || 0) * 12
@@ -941,10 +964,14 @@ export const useStore = create(
       deleteFixedAsset: (id) =>
         set((s) => {
           const asset = s.fixedAssets.find((a) => a.id === id)
+          // all JEs this asset produced: purchase, every depreciation charge, disposal
+          const depJEs = s.assetDepreciations.filter((d) => d.assetId === id).map((d) => d.journalEntryId)
+          const jeIds = new Set([asset?.journalEntryId, asset?.disposalJEId, ...depJEs].filter(Boolean))
+          get().assertJEsUnlocked(...jeIds)
           return {
             fixedAssets: s.fixedAssets.filter((a) => a.id !== id),
             assetDepreciations: s.assetDepreciations.filter((d) => d.assetId !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== asset?.journalEntryId),
+            journalEntries: s.journalEntries.filter((j) => !jeIds.has(j.id)),
           }
         }),
 
@@ -1017,6 +1044,7 @@ export const useStore = create(
       deleteStockAdjustment: (id) =>
         set((s) => {
           const adj = s.stockAdjustments.find((a) => a.id === id)
+          get().assertJEsUnlocked(adj?.journalEntryId)
           // Only reverse quantity/JE if the adjustment was actually posted (approved or legacy).
           const wasPosted = adj && (adj.status === 'approved' || adj.status === undefined)
           const qtyChange = wasPosted ? (adj.type === 'increase' ? -adj.quantity : adj.quantity) : 0
@@ -1084,6 +1112,7 @@ export const useStore = create(
       deletePrepaidExpense: (id) =>
         set((s) => {
           const pre = s.prepaidExpenses.find((p) => p.id === id)
+          get().assertJEsUnlocked(pre?.journalEntryId)
           return {
             prepaidExpenses: s.prepaidExpenses.filter((p) => p.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== pre?.journalEntryId),
@@ -1195,6 +1224,7 @@ export const useStore = create(
       deleteExpenseClaim: (id) =>
         set((s) => {
           const claim = s.expenseClaims.find((c) => c.id === id)
+          get().assertJEsUnlocked(claim?.approvalJEId, claim?.paymentJEId)
           return {
             expenseClaims: s.expenseClaims.filter((c) => c.id !== id),
             journalEntries: s.journalEntries.filter(
@@ -1272,20 +1302,34 @@ export const useStore = create(
         })
 
         const outputQty = (wo.outputQuantity || 1) * qty
-        get().logStockMovement({ itemId: wo.outputItemId, itemName: wo.outputName, date: completionDate || new Date().toISOString().slice(0, 10), type: 'production', qtyChange: outputQty, ref: wo.number, note: 'Work order output' })
+        const compDate = completionDate || new Date().toISOString().slice(0, 10)
+        // consume raw-material components from stock (mirrors the credit to raw materials)
+        const consume = {}
+        ;(wo.components || []).forEach((comp) => {
+          if (!comp.itemId) return
+          const used = (comp.quantity || 0) * qty
+          if (used <= 0) return
+          consume[comp.itemId] = (consume[comp.itemId] || 0) + used
+          get().logStockMovement({ itemId: comp.itemId, itemName: comp.name, date: compDate, type: 'consumption', qtyChange: -used, ref: wo.number, note: 'Work order material' })
+        })
+        get().logStockMovement({ itemId: wo.outputItemId, itemName: wo.outputName, date: compDate, type: 'production', qtyChange: outputQty, ref: wo.number, note: 'Work order output' })
         set((st) => ({
           workOrders: st.workOrders.map((w) =>
             w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
           ),
-          inventoryItems: st.inventoryItems.map((item) =>
-            item.id === wo.outputItemId ? { ...item, quantity: (item.quantity || 0) + outputQty } : item
-          ),
+          inventoryItems: st.inventoryItems.map((item) => {
+            let q = item.quantity || 0
+            if (consume[item.id]) q -= consume[item.id]
+            if (item.id === wo.outputItemId) q += outputQty
+            return (consume[item.id] || item.id === wo.outputItemId) ? { ...item, quantity: q } : item
+          }),
         }))
       },
 
       deleteWorkOrder: (id) =>
         set((s) => {
           const wo = s.workOrders.find((w) => w.id === id)
+          get().assertJEsUnlocked(wo?.jeIssueId, wo?.jeCompleteId)
           return {
             workOrders: s.workOrders.filter((w) => w.id !== id),
             journalEntries: s.journalEntries.filter(
@@ -1323,13 +1367,14 @@ export const useStore = create(
       // booked and cleared in one click. flow: 'auto' | 'in' | 'out'.
       matchRules: [],
       addMatchRule: (rule) =>
-        set((s) => ({ matchRules: [...s.matchRules, { id: uuid(), flow: 'auto', ...rule, contains: (rule.contains || '').trim() }] })),
+        set((s) => ({ matchRules: [...s.matchRules, { flow: 'auto', ...rule, id: uuid(), contains: (rule.contains || '').trim() }] })),
       deleteMatchRule: (id) =>
         set((s) => ({ matchRules: s.matchRules.filter((r) => r.id !== id) })),
 
       deleteBankTransaction: (id) =>
         set((s) => {
           const tx = s.bankTransactions.find((t) => t.id === id)
+          get().assertJEsUnlocked(tx?.journalEntryId)
           return {
             bankTransactions: s.bankTransactions.filter((t) => t.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== tx?.journalEntryId),
@@ -1367,6 +1412,7 @@ export const useStore = create(
       deleteBankTransfer: (id) =>
         set((s) => {
           const tf = s.bankTransfers.find((t) => t.id === id)
+          get().assertJEsUnlocked(tf?.journalEntryId)
           return {
             bankTransfers: s.bankTransfers.filter((t) => t.id !== id),
             journalEntries: s.journalEntries.filter((j) => j.id !== tf?.journalEntryId),
@@ -1493,11 +1539,18 @@ export const useStore = create(
 
       advanceDate: (dateStr, frequency) => {
         const d = new Date(dateStr)
-        if (frequency === 'weekly')      d.setDate(d.getDate() + 7)
-        else if (frequency === 'biweekly') d.setDate(d.getDate() + 14)
-        else if (frequency === 'monthly')  d.setMonth(d.getMonth() + 1)
-        else if (frequency === 'quarterly')d.setMonth(d.getMonth() + 3)
-        else if (frequency === 'yearly')   d.setFullYear(d.getFullYear() + 1)
+        if (frequency === 'weekly') d.setUTCDate(d.getUTCDate() + 7)
+        else if (frequency === 'biweekly') d.setUTCDate(d.getUTCDate() + 14)
+        else {
+          // month-based: preserve the day-of-month, clamped to the target month's
+          // last day so Jan 31 → Feb 28/29 (never drifts to Mar 3 or skips February)
+          const add = frequency === 'quarterly' ? 3 : frequency === 'yearly' ? 12 : 1
+          const day = d.getUTCDate()
+          d.setUTCDate(1)
+          d.setUTCMonth(d.getUTCMonth() + add)
+          const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
+          d.setUTCDate(Math.min(day, lastDay))
+        }
         return d.toISOString().slice(0, 10)
       },
 
@@ -1555,12 +1608,16 @@ export const useStore = create(
           while (nextDate <= today && r.status === 'active' && guard < 60) {
             if (r.endDate && nextDate > r.endDate) break
             const due30 = get().advanceDate(nextDate, 'monthly')
-            get().addInvoice({
-              customerId: r.customerId, customerName: r.customerName,
-              date: nextDate, dueDate: due30,
-              items: r.items, subtotal: r.subtotal, taxAmount: r.taxAmount, total: r.total,
-              notes: (r.notes ? r.notes + ' ' : '') + `(Recurring ${r.number})`,
-            })
+            // don't let a locked period (or any posting error) crash the page —
+            // skip this schedule and let it retry once the block clears
+            try {
+              get().addInvoice({
+                customerId: r.customerId, customerName: r.customerName,
+                date: nextDate, dueDate: due30,
+                items: r.items, subtotal: r.subtotal, taxAmount: r.taxAmount, total: r.total,
+                notes: (r.notes ? r.notes + ' ' : '') + `(Recurring ${r.number})`,
+              })
+            } catch { break }
             created++
             count++
             nextDate = get().advanceDate(nextDate, r.frequency)
@@ -1803,7 +1860,7 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 11, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 15, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -1815,8 +1872,13 @@ export const useStore = create(
       },
 
       resetAllData: () => {
-        try { if (typeof localStorage !== 'undefined') localStorage.removeItem(currentCompanyKey()) } catch { /* ignore */ }
-        if (typeof window !== 'undefined') window.location.reload()
+        const key = currentCompanyKey()
+        try { if (typeof localStorage !== 'undefined') localStorage.removeItem(key) } catch { /* ignore */ }
+        // Data now lives in IndexedDB — clear it there too, then reload once done.
+        import('./utils/idbKvStorage')
+          .then((m) => m.idbKvStorage.removeItem(key))
+          .catch(() => {})
+          .finally(() => { if (typeof window !== 'undefined') window.location.reload() })
       },
 
       // ─── COMPUTED ──────────────────────────────────────────────────
@@ -1967,6 +2029,8 @@ export const useStore = create(
         }
         if (version < 15) {
           if (!persisted.recurringJournals) persisted.recurringJournals = []
+          if (persisted.settings && !persisted.settings.accounting)
+            persisted.settings.accounting = { lockDate: '', lockedBy: '', lockedAt: '' }
         }
         return persisted
        } catch (e) {

@@ -35,9 +35,14 @@ export default function Reports() {
   const [report, setReport] = useState('pl')
   const [startDate, setStartDate] = useState(`${thisYear}-01-01`)
   const [endDate, setEndDate] = useState(`${thisYear}-12-31`)
+  // hoisted here (not inside GLReport) so it survives the parent's re-renders
+  const [glAcc, setGlAcc] = useState('')
 
-  const balances = useMemo(() => getAllBalances(startDate, endDate), [getAllBalances, startDate, endDate])
-  const allBalances = useMemo(() => getAllBalances(), [getAllBalances])
+  const balances = useMemo(() => getAllBalances(startDate, endDate), [getAllBalances, startDate, endDate, journalEntries])
+  const allBalances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
+  // cumulative balances as at the report end date — the correct basis for a
+  // balance sheet (assets, liabilities, equity and retained earnings to date)
+  const balancesToEnd = useMemo(() => getAllBalances(undefined, endDate), [getAllBalances, endDate, journalEntries])
 
   const accountBalance = (id, bals) => {
     const b = bals[id]
@@ -124,18 +129,19 @@ export default function Reports() {
 
   // ─── Balance Sheet ──────────────────────────────────────────────
   const BSReport = () => {
-    const assetAccs = accounts.filter((a) => a.type === 'asset').map((a) => ({ ...a, balance: accountBalance(a.id, allBalances) })).filter((a) => a.balance !== 0)
-    const liabAccs = accounts.filter((a) => a.type === 'liability').map((a) => ({ ...a, balance: accountBalance(a.id, allBalances) })).filter((a) => a.balance !== 0)
-    const equityAccs = accounts.filter((a) => a.type === 'equity').map((a) => ({ ...a, balance: accountBalance(a.id, allBalances) })).filter((a) => a.balance !== 0)
+    // as at the end date, cumulative from inception (not the selected period)
+    const assetAccs = accounts.filter((a) => a.type === 'asset').map((a) => ({ ...a, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance !== 0)
+    const liabAccs = accounts.filter((a) => a.type === 'liability').map((a) => ({ ...a, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance !== 0)
+    const equityAccs = accounts.filter((a) => a.type === 'equity').map((a) => ({ ...a, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance !== 0)
 
     const totalAssets = assetAccs.reduce((s, a) => s + a.balance, 0)
     const totalLiabs = liabAccs.reduce((s, a) => s + a.balance, 0)
     const totalEquity = equityAccs.reduce((s, a) => s + a.balance, 0)
 
-    // Net profit goes to retained earnings
-    const revBals = getAllBalances(startDate, endDate)
-    const netProfit = accounts.filter((a) => a.type === 'revenue').reduce((s, a) => s + accountBalance(a.id, revBals), 0)
-                    - accounts.filter((a) => a.type === 'expense').reduce((s, a) => s + accountBalance(a.id, revBals), 0)
+    // Retained earnings = all net income from inception through the end date, so
+    // Assets = Liabilities + Equity + Retained Earnings always holds.
+    const netProfit = accounts.filter((a) => a.type === 'revenue').reduce((s, a) => s + accountBalance(a.id, balancesToEnd), 0)
+                    - accounts.filter((a) => a.type === 'expense').reduce((s, a) => s + accountBalance(a.id, balancesToEnd), 0)
     const totalEquityAndProfit = totalEquity + netProfit
 
     const Section = ({ title, items, total, color }) => (
@@ -171,7 +177,7 @@ export default function Reports() {
           </div>
           <div>
             <Section title="Liabilities" items={liabAccs} total={totalLiabs} color="text-orange-700" />
-            <Section title="Equity" items={[...equityAccs, netProfit !== 0 && { id: 'net', code: '', name: `Net ${netProfit >= 0 ? 'Profit' : 'Loss'} (Current Period)`, balance: netProfit }].filter(Boolean)} total={totalEquityAndProfit} color="text-purple-700" />
+            <Section title="Equity" items={[...equityAccs, netProfit !== 0 && { id: 'net', code: '', name: t('Retained Earnings (to date)'), balance: netProfit }].filter(Boolean)} total={totalEquityAndProfit} color="text-purple-700" />
             <div className="border-t-4 border-gray-800 pt-3 flex justify-between">
               <span className="font-black text-gray-900">Total Liabilities + Equity</span>
               <span className={`font-black ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-green-700' : 'text-red-600'}`}>
@@ -239,7 +245,8 @@ export default function Reports() {
 
   // ─── General Ledger ───────────────────────────────────────────
   const GLReport = () => {
-    const [selectedAcc, setSelectedAcc] = useState(accounts[0]?.id || '')
+    const selectedAcc = glAcc || accounts[0]?.id || ''
+    const setSelectedAcc = setGlAcc
     const acc = accounts.find((a) => a.id === selectedAcc)
 
     const lines = []

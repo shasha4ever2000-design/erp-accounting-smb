@@ -649,6 +649,7 @@ const AR = {
   'Budget vs Actual': 'الموازنة مقابل الفعلي', 'Performance': 'الأداء', 'Budget': 'الموازنة', 'Actual': 'الفعلي',
   'Variance': 'الانحراف', 'Net Budgeted': 'صافي الموازنة', 'Net Actual': 'صافي الفعلي', 'Net Variance': 'صافي الانحراف',
   'budget pro-rated to': 'الموازنة موزعة نسبيًا إلى', 'Annual Budget': 'الموازنة السنوية',
+  'Retained Earnings (to date)': 'الأرباح المحتجزة (حتى تاريخه)',
   // ── Recurring journals ──
   'Recurring Journals': 'القيود المتكررة', 'New Recurring Entry': 'قيد متكرر جديد', 'Edit Recurring Entry': 'تعديل القيد المتكرر',
   'No recurring journals yet': 'لا توجد قيود متكررة بعد',

@@ -10,8 +10,8 @@ export default function POS() {
   const t = useT()
   const navigate = useNavigate()
   const {
-    inventoryItems, customers, bankAccounts, warehouses, settings,
-    addInvoice, recordInvoicePayment, addJournalEntry, updateInventoryItem, logStockMovement,
+    inventoryItems, customers, bankAccounts, settings,
+    addInvoice, recordInvoicePayment, logStockMovement,
   } = useStore()
   const sym = settings.company.currencySymbol
   const taxOn = settings.tax.enabled
@@ -45,7 +45,7 @@ export default function POS() {
     const customer = customers.find((c) => c.id === customerId)
     const items = cart.map((c) => ({
       description: c.name, quantity: c.qty, unitPrice: c.price, taxRate: taxOn ? rate : 0,
-      subtotal: c.qty * c.price, accountId: 'acc-sales',
+      subtotal: c.qty * c.price, itemId: c.itemId, accountId: 'acc-sales',
     }))
     const inv = addInvoice({
       customerId: customerId || null, customerName: customer?.name || 'Walk-in Customer',
@@ -53,37 +53,12 @@ export default function POS() {
     })
     recordInvoicePayment(inv.id, { date: today(), amount: total, bankAccountId: payAcc, notes: 'POS payment' })
 
-    // COGS + stock reduction (per-item COGS & inventory accounts)
-    let cogs = 0
-    const cogsByAcc = {}, invByAcc = {}
-    const defWh = warehouses.find((w) => w.isDefault)?.id || 'wh-main'
+    // addInvoice already relieved stock and posted COGS for these tracked lines
+    // (so the sale can be safely deleted later). Just log the movements.
     cart.forEach((c) => {
       const it = inventoryItems.find((i) => i.id === c.itemId)
-      if (!it) return
-      const amt = c.qty * (it.costPrice || 0)
-      cogs += amt
-      const cAcc = it.cogsAccountId || 'acc-cogs'
-      const iAcc = it.inventoryAccountId || 'acc-inv'
-      cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
-      invByAcc[iAcc] = (invByAcc[iAcc] || 0) + amt
-      const patch = { quantity: (it.quantity || 0) - c.qty }
-      if (it.stockByWarehouse) {
-        const map = { ...it.stockByWarehouse }
-        map[defWh] = (map[defWh] || 0) - c.qty
-        patch.stockByWarehouse = map
-      }
-      updateInventoryItem(it.id, patch)
-      logStockMovement({ itemId: it.id, itemName: it.name, date: today(), type: 'sale', qtyChange: -c.qty, ref: inv.number, note: 'POS sale' })
+      if (it) logStockMovement({ itemId: it.id, itemName: it.name, date: today(), type: 'sale', qtyChange: -c.qty, ref: inv.number, note: 'POS sale' })
     })
-    if (cogs > 0) {
-      addJournalEntry({
-        date: today(), description: `POS Cost of Sale – ${inv.number}`, reference: inv.number, type: 'cogs',
-        lines: [
-          ...Object.entries(cogsByAcc).map(([a, amt]) => ({ accountId: a, debit: amt, credit: 0, description: 'Cost of goods sold' })),
-          ...Object.entries(invByAcc).map(([a, amt]) => ({ accountId: a, debit: 0, credit: amt, description: 'Inventory reduction' })),
-        ],
-      })
-    }
 
     setLastSale({ number: inv.number, id: inv.id, total })
     setCart([])

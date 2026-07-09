@@ -10,11 +10,13 @@ import { RefreshCw, TrendingUp, TrendingDown, Info } from 'lucide-react'
 // difference posts to "Unrealized FX Gain/(Loss)".
 export default function Revaluation() {
   const t = useT()
-  const { accounts, currencies, settings, getAllBalances, postFxRevaluation, fxRevaluations } = useStore()
+  const { accounts, currencies, settings, journalEntries, getAllBalances, postFxRevaluation, fxRevaluations } = useStore()
   const base = settings.company.currency
   const sym = settings.company.currencySymbol
 
-  const balances = useMemo(() => getAllBalances(), [getAllBalances])
+  // depend on journalEntries so balances recompute after posting a revaluation
+  // (getAllBalances is a stable reference and would otherwise never refresh)
+  const balances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
   const naturalBalance = (a) => {
     const b = balances[a.id]
     if (!b) return 0
