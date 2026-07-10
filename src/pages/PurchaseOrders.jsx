@@ -84,7 +84,7 @@ export default function PurchaseOrders() {
                 <Td right>
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="purchaseorder" entityId={po.id} />
-                    {po.status !== 'invoiced' && po.status !== 'cancelled' && (
+                    {po.status !== 'invoiced' && po.status !== 'cancelled' && po.status !== 'void' && (
                       <>
                         <Btn size="sm" variant="ghost" title="Mark Received" onClick={() => updatePurchaseOrder(po.id, { status: 'received' })}>
                           ✓

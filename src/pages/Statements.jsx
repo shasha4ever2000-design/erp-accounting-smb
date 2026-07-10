@@ -25,13 +25,13 @@ export default function Statements() {
     if (!entityId) return []
     const txns = []
     if (type === 'customer') {
-      invoices.filter((i) => i.customerId === entityId && i.status !== 'cancelled').forEach((inv) => {
+      invoices.filter((i) => i.customerId === entityId && i.status !== 'cancelled' && i.status !== 'void').forEach((inv) => {
         txns.push({ date: inv.date, type: 'Sales Invoice', ref: inv.number, debit: inv.total, credit: 0 })
         ;(inv.payments || []).forEach((p) => txns.push({ date: p.date, type: 'Payment Received', ref: p.number, debit: 0, credit: p.amount }))
       })
       creditNotes.filter((c) => c.customerId === entityId).forEach((cn) => txns.push({ date: cn.date, type: 'Credit Note', ref: cn.number, debit: 0, credit: cn.total }))
     } else {
-      purchases.filter((p) => p.supplierId === entityId && p.status !== 'cancelled').forEach((pur) => {
+      purchases.filter((p) => p.supplierId === entityId && p.status !== 'cancelled' && p.status !== 'void').forEach((pur) => {
         txns.push({ date: pur.date, type: 'Purchase Invoice', ref: pur.number, debit: 0, credit: pur.total })
         ;(pur.payments || []).forEach((p) => txns.push({ date: p.date, type: 'Payment Made', ref: p.number, debit: p.amount, credit: 0 }))
       })

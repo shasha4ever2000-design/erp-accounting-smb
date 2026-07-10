@@ -19,7 +19,7 @@ export default function PaymentReminders() {
 
   const groups = useMemo(() => {
     const overdue = invoices.filter((i) => {
-      if (i.status === 'paid' || i.status === 'cancelled') return false
+      if (i.status === 'paid' || i.status === 'cancelled' || i.status === 'void') return false
       const bal = (i.total || 0) - (i.amountPaid || 0)
       if (bal <= 0.005) return false
       const due = i.dueDate || i.date

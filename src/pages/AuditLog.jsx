@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { PageHeader, Card, Btn, EmptyState } from '../components/UI'
-import { Search, ShieldCheck, Trash2 } from 'lucide-react'
+import { Search, ShieldCheck, Lock } from 'lucide-react'
 
 function fmtTs(ts) {
   try { return new Date(ts).toLocaleString() } catch { return ts }
@@ -10,7 +10,7 @@ function fmtTs(ts) {
 
 export default function AuditLog() {
   const t = useT()
-  const { auditLog, clearAuditLog } = useStore()
+  const { auditLog } = useStore()
   const [search, setSearch] = useState('')
 
   const rows = useMemo(() => {
@@ -30,9 +30,9 @@ export default function AuditLog() {
         title="Audit Log"
         subtitle={`${(auditLog || []).length} ${t('recorded activities · who did what, and when')}`}
         action={(auditLog || []).length > 0 && (
-          <Btn variant="secondary" onClick={() => { if (confirm('Clear the activity log for this company? This cannot be undone.')) clearAuditLog() }}>
-            <Trash2 size={14} /> {t('Clear log')}
-          </Btn>
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 dark:text-slate-400 bg-gray-100 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5">
+            <Lock size={13} /> {t('Append-only')}
+          </span>
         )}
       />
 

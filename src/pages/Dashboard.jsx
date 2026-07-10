@@ -84,10 +84,10 @@ export default function Dashboard() {
       const yearMonth = format(d, 'yyyy-MM')
       let rev = 0, exp = 0
       invoices.forEach((inv) => {
-        if (inv.date?.startsWith(yearMonth) && inv.status !== 'cancelled') rev += inv.total || 0
+        if (inv.date?.startsWith(yearMonth) && inv.status !== 'cancelled' && inv.status !== 'void') rev += inv.total || 0
       })
       purchases.forEach((pur) => {
-        if (pur.date?.startsWith(yearMonth) && pur.status !== 'cancelled') exp += pur.total || 0
+        if (pur.date?.startsWith(yearMonth) && pur.status !== 'cancelled' && pur.status !== 'void') exp += pur.total || 0
       })
       months.push({ month: label, Revenue: rev, Expenses: exp })
     }
@@ -110,7 +110,7 @@ export default function Dashboard() {
       return months.findIndex((m) => m.key === ym)
     }
     invoices.forEach((inv) => {
-      if (inv.status === 'paid' || inv.status === 'cancelled') return
+      if (inv.status === 'paid' || inv.status === 'cancelled' || inv.status === 'void') return
       const bal = (inv.total || 0) - (inv.amountPaid || 0)
       const i = bucket(inv.dueDate || inv.date)
       if (bal > 0 && i >= 0) months[i].inflow += bal

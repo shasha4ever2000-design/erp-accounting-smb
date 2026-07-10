@@ -9,12 +9,12 @@ import { numberToWords } from '../utils/numberToWords'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
-import { ArrowLeft, DollarSign, Printer, Trash2 } from 'lucide-react'
+import { ArrowLeft, DollarSign, Printer, Ban } from 'lucide-react'
 
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { invoices, customers, accounts, deleteInvoice, recordInvoicePayment, settings } = useStore()
+  const { invoices, customers, accounts, deleteInvoice, voidInvoice, recordInvoicePayment, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -61,8 +61,16 @@ export default function InvoiceView() {
     setPayForm({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
   }
 
+  const handleVoid = () => {
+    const reason = window.prompt(t('Reason for voiding this invoice? (posts reversing entries — the invoice is kept for the audit trail)'))
+    if (reason === null) return
+    try { voidInvoice(invoice.id, { reason }) }
+    catch (e) { if (alertIfLocked(e, t)) return; throw e }
+  }
+
+  // Deleting is only for drafts with no financial history; issued invoices are voided.
   const handleDelete = () => {
-    if (confirm('Delete this invoice and its journal entries?')) {
+    if (confirm('Delete this draft invoice and its journal entries?')) {
       try { deleteInvoice(invoice.id) }
       catch (e) { if (alertIfLocked(e, t)) return; throw e }
       navigate('/invoices')
@@ -80,14 +88,16 @@ export default function InvoiceView() {
           <Btn variant="secondary" size="sm" onClick={() => window.print()}>
             <Printer size={14} /> {t('Download PDF')}
           </Btn>
-          {invoice.status !== 'paid' && (
+          {invoice.status !== 'paid' && invoice.status !== 'void' && (
             <Btn size="sm" onClick={() => setPayModal(true)}>
               <DollarSign size={14} /> {t('Record Payment')}
             </Btn>
           )}
-          <Btn variant="danger" size="sm" onClick={handleDelete}>
-            <Trash2 size={14} />
-          </Btn>
+          {invoice.status !== 'void' && (
+            <Btn variant="secondary" size="sm" onClick={handleVoid} title={t('Void')}>
+              <Ban size={14} /> {t('Void')}
+            </Btn>
+          )}
         </div>
       </div>
 

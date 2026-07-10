@@ -254,10 +254,13 @@ export const useStore = create(
         let user = 'System'
         try { user = useAuth.getState().users.find((u) => u.id === useAuth.getState().currentUserId)?.name || 'System' } catch { /* ignore */ }
         const entry = { id: uuid(), ts: new Date().toISOString(), user, action, detail: detail || '' }
-        set((st) => ({ auditLog: [...(st.auditLog || []).slice(-999), entry] }))
+        // Append-only audit trail (retain up to 20k events; never wiped — immutability)
+        set((st) => ({ auditLog: [...(st.auditLog || []).slice(-19999), entry] }))
       },
 
-      clearAuditLog: () => set({ auditLog: [] }),
+      // Audit trail is immutable — this remains only for API compatibility and no
+      // longer erases history (previously wiped the log).
+      clearAuditLog: () => { get().logActivity('Audit-log clear requested (ignored — trail is immutable)', ''); },
 
       // ─── JOURNAL ENTRIES ───────────────────────────────────────────
       journalEntries: [],
@@ -319,6 +322,35 @@ export const useStore = create(
         const wanted = new Set(ids.filter(Boolean))
         if (get().journalEntries.some((j) => wanted.has(j.id) && j.date && String(j.date) <= String(lock)))
           throw new Error(`PERIOD_LOCKED:${lock}`)
+      },
+
+      // Void a posted entry by posting a mirror-image reversal instead of deleting
+      // it — the original and its reversal both stay in the ledger permanently
+      // (immutable audit trail, no numbering gaps). Reversing on an open date is the
+      // correct way to undo a closed-period entry, so this works even when the
+      // original is locked, as long as the reversal `date` is in an open period.
+      voidJournalEntry: (id, { date, reason } = {}) => {
+        const je = get().journalEntries.find((j) => j.id === id)
+        if (!je) return null
+        if (je.reversedBy) throw new Error('ALREADY_VOID')
+        if (je.reverses) throw new Error('CANNOT_VOID_REVERSAL')
+        const voidDate = date || je.date
+        const rev = get().addJournalEntry({
+          date: voidDate,
+          description: `Reversal of ${je.number}${reason ? ' — ' + reason : ''}`,
+          reference: je.number, type: 'reversal', reverses: je.id,
+          departmentId: je.departmentId || null,
+          lines: (je.lines || []).map((l) => ({
+            accountId: l.accountId, debit: l.credit || 0, credit: l.debit || 0,
+            description: `Reversal: ${l.description || ''}`,
+          })),
+        })
+        set((s) => ({
+          journalEntries: s.journalEntries.map((j) =>
+            j.id === id ? { ...j, reversedBy: rev.id, voidReason: reason || '', voidedAt: new Date().toISOString() } : j),
+        }))
+        get().logActivity('Voided journal entry', `${je.number} reversed by ${rev.number}${reason ? ' · ' + reason : ''}`)
+        return rev
       },
 
       // ─── SALES INVOICES ────────────────────────────────────────────
@@ -440,6 +472,42 @@ export const useStore = create(
 
       updateInvoice: (id, patch) =>
         set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
+
+      // Void an invoice the audit-safe way (ZATCA forbids deleting issued invoices):
+      // reverse its sale, COGS and every receipt via reversal entries, put the stock
+      // back, and mark it 'void' — the document stays in the list (no numbering gap).
+      voidInvoice: (id, { date, reason } = {}) => {
+        const inv = get().invoices.find((i) => i.id === id)
+        if (!inv || inv.status === 'void') return
+        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const jeIds = [inv.journalEntryId, inv.cogsJournalEntryId, ...(inv.payments || []).map((p) => p.journalEntryId)].filter(Boolean)
+        jeIds.forEach((jeId) => {
+          const je = get().journalEntries.find((j) => j.id === jeId)
+          if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void invoice ${inv.number}` })
+        })
+        const restore = {}
+        ;(inv.items || []).forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q > 0) restore[line.itemId] = (restore[line.itemId] || 0) + q
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((s) => ({
+          invoices: s.invoices.map((i) => (i.id === id ? { ...i, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString(), amountPaid: 0 } : i)),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = restore[it.id]
+            if (!q) return it
+            const patch = { quantity: (it.quantity || 0) + q }
+            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + q; patch.stockByWarehouse = m }
+            return { ...it, ...patch }
+          }),
+        }))
+        Object.entries(restore).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: voidDate, type: 'void', qtyChange: q, ref: inv.number, note: 'Invoice voided' })
+        })
+        get().logActivity('Voided invoice', `${inv.number}${reason ? ' · ' + reason : ''}`)
+      },
 
       deleteInvoice: (id) => {
         const inv = get().invoices.find((i) => i.id === id)
@@ -680,6 +748,41 @@ export const useStore = create(
 
       updatePurchase: (id, patch) =>
         set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+
+      // Void a purchase bill: reverse its bill + payment entries and back out the
+      // received stock, marking it 'void' (kept for the audit trail).
+      voidPurchase: (id, { date, reason } = {}) => {
+        const pur = get().purchases.find((p) => p.id === id)
+        if (!pur || pur.status === 'void') return
+        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const jeIds = [pur.journalEntryId, ...(pur.payments || []).map((p) => p.journalEntryId)].filter(Boolean)
+        jeIds.forEach((jeId) => {
+          const je = get().journalEntries.find((j) => j.id === jeId)
+          if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void bill ${pur.number}` })
+        })
+        const back = {}
+        ;(pur.items || []).forEach((line) => {
+          if (!line.itemId) return
+          const q = parseFloat(line.quantity) || 0
+          if (q > 0) back[line.itemId] = (back[line.itemId] || 0) + q
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((s) => ({
+          purchases: s.purchases.map((p) => (p.id === id ? { ...p, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString(), amountPaid: 0 } : p)),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = back[it.id]
+            if (!q) return it
+            const patch = { quantity: Math.max(0, (it.quantity || 0) - q) }
+            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) - q; patch.stockByWarehouse = m }
+            return { ...it, ...patch }
+          }),
+        }))
+        Object.entries(back).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: voidDate, type: 'void', qtyChange: -q, ref: pur.number, note: 'Bill voided' })
+        })
+        get().logActivity('Voided purchase bill', `${pur.number}${reason ? ' · ' + reason : ''}`)
+      },
 
       deletePurchase: (id) => {
         const pur = get().purchases.find((p) => p.id === id)

@@ -48,6 +48,7 @@ export function statusColor(status) {
     overdue:  'bg-red-100 text-red-700',
     received: 'bg-blue-100 text-blue-700',
     cancelled:'bg-gray-100 text-gray-500',
+    void:     'bg-rose-100 text-rose-700 line-through',
     money_in: 'bg-green-100 text-green-700',
     money_out:'bg-red-100 text-red-700',
     manual:   'bg-purple-100 text-purple-700',

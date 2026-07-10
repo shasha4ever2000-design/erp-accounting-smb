@@ -19,7 +19,7 @@ export default function Invoices() {
 
   const enriched = invoices.map((inv) => ({
     ...inv,
-    isOverdue: inv.status !== 'paid' && inv.status !== 'cancelled' && inv.dueDate && inv.dueDate < today,
+    isOverdue: inv.status !== 'paid' && inv.status !== 'cancelled' && inv.status !== 'void' && inv.dueDate && inv.dueDate < today,
   }))
 
   const filtered = enriched.filter((inv) => {

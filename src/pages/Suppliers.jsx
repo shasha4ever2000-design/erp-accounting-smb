@@ -38,7 +38,7 @@ export default function Suppliers() {
 
   const getBalance = (supplierId) => {
     return purchases
-      .filter((p) => p.supplierId === supplierId && p.status !== 'cancelled')
+      .filter((p) => p.supplierId === supplierId && p.status !== 'cancelled' && p.status !== 'void')
       .reduce((sum, p) => sum + (p.total - p.amountPaid), 0)
   }
 

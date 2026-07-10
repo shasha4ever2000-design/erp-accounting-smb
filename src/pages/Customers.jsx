@@ -38,7 +38,7 @@ export default function Customers() {
 
   const getBalance = (customerId) => {
     return invoices
-      .filter((i) => i.customerId === customerId && i.status !== 'cancelled')
+      .filter((i) => i.customerId === customerId && i.status !== 'cancelled' && i.status !== 'void')
       .reduce((sum, i) => sum + (i.total - i.amountPaid), 0)
   }
 

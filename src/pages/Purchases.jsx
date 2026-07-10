@@ -7,11 +7,11 @@ import { useT } from '../i18n'
 import { alertIfLocked } from '../utils/periodLock'
 import ExportMenu from '../components/ExportMenu'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Search, DollarSign, Trash2 } from 'lucide-react'
+import { Plus, Search, DollarSign, Ban } from 'lucide-react'
 import { today } from '../utils/formatters'
 
 export default function Purchases() {
-  const { purchases, suppliers, accounts, deletePurchase, recordPurchasePayment, settings } = useStore()
+  const { purchases, suppliers, accounts, voidPurchase, recordPurchasePayment, settings } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
   const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
@@ -55,10 +55,11 @@ export default function Purchases() {
     setPayModal(null)
   }
 
-  const handleDelete = (p) => {
-    if (confirm(`Delete purchase invoice ${p.number}?`)) {
-      try { deletePurchase(p.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
-    }
+  const handleVoid = (p) => {
+    if (p.status === 'void') return
+    const reason = window.prompt(t('Reason for voiding bill {n}? (posts reversing entries — the bill is kept for the audit trail)').replace('{n}', p.number))
+    if (reason === null) return
+    try { voidPurchase(p.id, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
   }
 
   const totals = {
@@ -145,14 +146,16 @@ export default function Purchases() {
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
                       <AttachmentButton entityType="purchase" entityId={p.id} />
-                      {p.status !== 'paid' && (
+                      {p.status !== 'paid' && p.status !== 'void' && (
                         <Btn size="sm" variant="ghost" onClick={() => openPay(p)} title="Record Payment">
                           <DollarSign size={13} className="text-green-600" />
                         </Btn>
                       )}
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(p)}>
-                        <Trash2 size={13} className="text-red-400" />
-                      </Btn>
+                      {p.status !== 'void' && (
+                        <Btn size="sm" variant="ghost" onClick={() => handleVoid(p)} title={t('Void')}>
+                          <Ban size={13} className="text-rose-400" />
+                        </Btn>
+                      )}
                     </div>
                   </Td>
                 </Tr>

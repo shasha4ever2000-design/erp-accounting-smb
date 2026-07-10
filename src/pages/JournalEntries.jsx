@@ -4,14 +4,14 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Trash2, Eye, Search } from 'lucide-react'
+import { Plus, Ban, Eye, Search } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
 
 export default function JournalEntries() {
   const t = useT()
-  const { journalEntries, accounts, departments, addJournalEntry, deleteJournalEntry, settings } = useStore()
+  const { journalEntries, accounts, departments, addJournalEntry, voidJournalEntry, settings } = useStore()
   const sym = settings.company.currencySymbol
   const [modal, setModal] = useState(false)
   const [viewEntry, setViewEntry] = useState(null)
@@ -52,13 +52,15 @@ export default function JournalEntries() {
     setForm({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
   }
 
-  const handleDelete = (je) => {
-    if (je.type !== 'manual') return alert('Auto-generated entries cannot be deleted here. Delete the source transaction instead.')
-    if (lockDate && je.date && String(je.date) <= String(lockDate)) return alert(t('This entry is in a closed period (locked through {d}) and cannot be deleted.').replace('{d}', lockDate))
-    if (confirm('Delete this journal entry?')) {
-      try { deleteJournalEntry(je.id) }
-      catch (e) { if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This entry is in a closed period and cannot be deleted.')); throw e }
-    }
+  // Entries are never deleted — they are voided by posting a reversal (immutable ledger).
+  const handleVoid = (je) => {
+    if (je.type !== 'manual') return alert(t('Auto-generated entries are voided from their source document.'))
+    if (je.reversedBy) return alert(t('This entry has already been voided.'))
+    if (je.reverses) return alert(t('This is a reversal entry and cannot be voided.'))
+    const reason = window.prompt(t('Reason for voiding {n}? A reversing entry will be posted.').replace('{n}', je.number))
+    if (reason === null) return
+    try { voidJournalEntry(je.id, { reason }) }
+    catch (e) { if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.')); throw e }
   }
 
   const typeColors = {
@@ -103,7 +105,11 @@ export default function JournalEntries() {
                 <Tr key={je.id}>
                   <Td className="font-mono text-gray-600 text-xs">{je.number}</Td>
                   <Td className="text-gray-500">{fmtDate(je.date)}</Td>
-                  <Td className="font-medium text-gray-800">{je.description}</Td>
+                  <Td className="font-medium text-gray-800">
+                    {je.description}
+                    {je.reversedBy && <Badge className="ms-2 bg-rose-100 text-rose-700">{t('Voided')}</Badge>}
+                    {je.reverses && <Badge className="ms-2 bg-amber-100 text-amber-700">{t('Reversal')}</Badge>}
+                  </Td>
                   <Td className="text-gray-400 text-xs">{je.reference || '—'}</Td>
                   <Td><Badge className={typeColors[je.type] || 'bg-gray-100 text-gray-600'}>{je.type?.replace('_', ' ')}</Badge></Td>
                   <Td right className="font-mono text-gray-700">{fmtMoney(dr, sym)}</Td>
@@ -112,8 +118,8 @@ export default function JournalEntries() {
                     <div className="flex justify-end items-center gap-1">
                       <AttachmentButton entityType="journal" entityId={je.id} />
                       <Btn size="sm" variant="ghost" onClick={() => setViewEntry(je)}><Eye size={13} /></Btn>
-                      {je.type === 'manual' && (
-                        <Btn size="sm" variant="ghost" onClick={() => handleDelete(je)}><Trash2 size={13} className="text-red-400" /></Btn>
+                      {je.type === 'manual' && !je.reversedBy && !je.reverses && (
+                        <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-rose-400" /></Btn>
                       )}
                     </div>
                   </Td>

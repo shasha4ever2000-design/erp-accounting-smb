@@ -318,7 +318,7 @@ export default function Reports() {
   // ─── AR Aging ─────────────────────────────────────────────────
   const ARReport = () => {
     const todayStr = new Date().toISOString().slice(0, 10)
-    const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.amountPaid < i.total)
+    const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void' && i.amountPaid < i.total)
 
     const buckets = { current: [], days30: [], days60: [], days90: [], over90: [] }
     unpaid.forEach((inv) => {
@@ -402,7 +402,7 @@ export default function Reports() {
   // ─── AP Aging ─────────────────────────────────────────────────
   const APReport = () => {
     const todayStr = new Date().toISOString().slice(0, 10)
-    const unpaid = purchases.filter((p) => p.status !== 'paid' && p.status !== 'cancelled' && p.amountPaid < p.total)
+    const unpaid = purchases.filter((p) => p.status !== 'paid' && p.status !== 'cancelled' && p.status !== 'void' && p.amountPaid < p.total)
 
     const rows = unpaid.map((p) => {
       const due = p.dueDate || p.date
@@ -542,10 +542,10 @@ export default function Reports() {
   // ─── VAT Return (ZATCA / KSA) ─────────────────────────────────
   const VATReport = () => {
     const inRange = (d) => d && d >= startDate && d <= endDate
-    const taxableSales = invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date) && (i.taxAmount || 0) > 0).reduce((s, i) => s + (i.subtotal || 0), 0)
-    const zeroExemptSales = invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date) && !(i.taxAmount > 0)).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const taxableSales = invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date) && (i.taxAmount || 0) > 0).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const zeroExemptSales = invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date) && !(i.taxAmount > 0)).reduce((s, i) => s + (i.subtotal || 0), 0)
     const outputVat = accountBalance('acc-vatout', balances)
-    const taxablePurch = purchases.filter((p) => p.status !== 'cancelled' && inRange(p.date) && (p.taxAmount || 0) > 0).reduce((s, p) => s + (p.subtotal || 0), 0)
+    const taxablePurch = purchases.filter((p) => p.status !== 'cancelled' && p.status !== 'void' && inRange(p.date) && (p.taxAmount || 0) > 0).reduce((s, p) => s + (p.subtotal || 0), 0)
     const inputVat = accountBalance('acc-vatin', balances)
     const netVat = outputVat - inputVat
 
@@ -601,7 +601,7 @@ export default function Reports() {
 
   const salesByCustomer = useMemo(() => {
     const map = {}
-    invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date)).forEach((i) => {
+    invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date)).forEach((i) => {
       const key = i.customerName || 'Walk-in Customer'
       const m = map[key] || (map[key] = { customer: key, count: 0, subtotal: 0, tax: 0, total: 0, paid: 0, balance: 0 })
       m.count += 1; m.subtotal += i.subtotal || 0; m.tax += i.taxAmount || 0
@@ -612,7 +612,7 @@ export default function Reports() {
 
   const salesByItem = useMemo(() => {
     const map = {}
-    invoices.filter((i) => i.status !== 'cancelled' && inRange(i.date)).forEach((i) => {
+    invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date)).forEach((i) => {
       (i.items || []).forEach((it) => {
         const key = it.itemId || it.description || 'Item'
         const name = it.description || (inventoryItems.find((x) => x.id === it.itemId)?.name) || 'Item'
@@ -626,7 +626,7 @@ export default function Reports() {
 
   const purchasesBySupplier = useMemo(() => {
     const map = {}
-    purchases.filter((p) => p.status !== 'cancelled' && inRange(p.date)).forEach((p) => {
+    purchases.filter((p) => p.status !== 'cancelled' && p.status !== 'void' && inRange(p.date)).forEach((p) => {
       const key = p.supplierName || 'Unknown Supplier'
       const m = map[key] || (map[key] = { supplier: key, count: 0, total: 0, paid: 0, balance: 0 })
       m.count += 1; m.total += p.total || 0; m.paid += p.amountPaid || 0; m.balance += (p.total || 0) - (p.amountPaid || 0)
@@ -1049,8 +1049,8 @@ export default function Reports() {
     }
     // ar / ap aging
     const src = report === 'ar'
-      ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled')
-      : purchases.filter((p) => p.status !== 'paid')
+      ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void')
+      : purchases.filter((p) => p.status !== 'paid' && p.status !== 'void' && p.status !== 'cancelled')
     const todayStr = new Date().toISOString().slice(0, 10)
     const rows = src.map((d) => {
       const due = d.dueDate || d.date

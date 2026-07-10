@@ -37,8 +37,8 @@ export default function Analytics() {
       const d = subMonths(new Date(), i)
       const ym = format(d, 'yyyy-MM')
       let rev = 0, exp = 0
-      invoices.forEach((inv) => { if (inv.date?.startsWith(ym) && inv.status !== 'cancelled') rev += inv.total || 0 })
-      purchases.forEach((p) => { if (p.date?.startsWith(ym) && p.status !== 'cancelled') exp += p.total || 0 })
+      invoices.forEach((inv) => { if (inv.date?.startsWith(ym) && inv.status !== 'cancelled' && inv.status !== 'void') rev += inv.total || 0 })
+      purchases.forEach((p) => { if (p.date?.startsWith(ym) && p.status !== 'cancelled' && p.status !== 'void') exp += p.total || 0 })
       months.push({ month: format(d, 'MMM'), Revenue: Math.round(rev), Expenses: Math.round(exp) })
     }
     return months
@@ -50,7 +50,7 @@ export default function Analytics() {
 
   const topCustomers = useMemo(() => {
     const map = {}
-    invoices.forEach((inv) => { if (inv.status !== 'cancelled') map[inv.customerName || 'Unknown'] = (map[inv.customerName || 'Unknown'] || 0) + (inv.total || 0) })
+    invoices.forEach((inv) => { if (inv.status !== 'cancelled' && inv.status !== 'void') map[inv.customerName || 'Unknown'] = (map[inv.customerName || 'Unknown'] || 0) + (inv.total || 0) })
     return Object.entries(map).map(([name, value]) => ({ name: name.length > 16 ? name.slice(0, 16) + '…' : name, value: Math.round(value) })).sort((a, b) => b.value - a.value).slice(0, 5)
   }, [invoices])
 
