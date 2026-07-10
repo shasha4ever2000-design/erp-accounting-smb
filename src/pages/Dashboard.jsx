@@ -158,39 +158,55 @@ export default function Dashboard() {
 
   const statusBadge = (status) => {
     const map = {
-      paid:    'bg-green-100 text-green-700',
-      sent:    'bg-blue-100 text-blue-700',
-      partial: 'bg-yellow-100 text-yellow-700',
-      overdue: 'bg-red-100 text-red-700',
-      draft:   'bg-gray-100 text-gray-600',
+      paid:    'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+      sent:    'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+      partial: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+      overdue: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
+      draft:   'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
     }
-    return map[status] || 'bg-gray-100 text-gray-600'
+    return map[status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'
+  }
+
+  // Shared premium tooltip treatment for all charts (theme-aware)
+  const tooltipStyle = {
+    contentStyle: {
+      background: dark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.97)',
+      border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.06)',
+      borderRadius: 12,
+      boxShadow: '0 8px 24px -8px rgba(15,23,42,0.25)',
+      padding: '10px 14px',
+      fontSize: 12.5,
+    },
+    labelStyle: { color: dark ? '#e2e8f0' : '#0f172a', fontWeight: 600, marginBottom: 4 },
+    itemStyle: { padding: 0 },
+    cursor: { stroke: dark ? '#334155' : '#cbd5e1', strokeDasharray: '3 3' },
   }
 
   const navigate = useNavigate()
 
   return (
-    <div>
+    <div className="animate-fade-in">
       {/* Hero */}
-      <div className="relative overflow-hidden rounded-2xl mb-6 p-6 lg:p-7 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white shadow-elevated">
-        <div className="absolute -top-16 -end-10 w-72 h-72 rounded-full bg-blue-500/20 blur-3xl" />
-        <div className="absolute -bottom-20 -start-10 w-72 h-72 rounded-full bg-indigo-500/10 blur-3xl" />
+      <div className="relative overflow-hidden rounded-2xl mb-6 p-6 lg:p-8 bg-gradient-to-br from-surface-900 via-surface-925 to-accent-950 text-white shadow-elevated ring-1 ring-white/[0.08]">
+        <div className="absolute -top-20 -end-12 w-80 h-80 rounded-full bg-brand-500/[0.18] blur-3xl" />
+        <div className="absolute -bottom-24 -start-12 w-80 h-80 rounded-full bg-accent-500/[0.12] blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.035] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:40px_40px]" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-slate-300 text-sm">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
-            <h1 className="text-2xl lg:text-[1.75rem] font-bold mt-1">{settings.company.name}</h1>
-            <p className="text-slate-300/90 text-sm mt-1">
+            <p className="text-slate-400 text-[13px] font-medium tracking-wide">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tightest mt-1.5">{settings.company.name}</h1>
+            <p className="text-slate-300/90 text-sm mt-2 max-w-xl leading-relaxed">
               {netProfit >= 0
                 ? t('You are profitable this period — net {v}.').replace('{v}', fmtMoney(netProfit, sym))
                 : t('Watch your spending — net loss of {v} this period.').replace('{v}', fmtMoney(Math.abs(netProfit), sym))}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-slate-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-blue-50 transition-colors shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => navigate('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-surface-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-50 active:scale-[.98] transition-all shadow-elevated">
               <FileText size={16} /> {t('New Invoice')}
             </button>
-            <button onClick={() => navigate('/reports')} className="inline-flex items-center gap-2 bg-white/10 text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-white/20 transition-colors ring-1 ring-white/15">
-              {t('Reports')} <ArrowRight size={15} />
+            <button onClick={() => navigate('/reports')} className="group inline-flex items-center gap-2 bg-white/[0.08] text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-white/[0.14] active:scale-[.98] transition-all ring-1 ring-inset ring-white/[0.14] backdrop-blur-sm">
+              {t('Reports')} <ArrowRight size={15} className="transition-transform duration-150 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
             </button>
           </div>
         </div>
@@ -263,7 +279,7 @@ export default function Dashboard() {
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Balance Sheet')}</h2>
-            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">{t('Full report →')}</button>
+            <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
             <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" />
@@ -279,7 +295,7 @@ export default function Dashboard() {
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Profit & Loss')}</h2>
-            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">{t('Full report →')}</button>
+            <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
             <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" />
@@ -295,25 +311,31 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue vs Expenses chart */}
         <Card className="xl:col-span-2 p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Revenue vs Expenses — Last 6 Months')}</h2>
+          <div className="flex items-center gap-4 mb-5">
+            <h2 className="text-base font-semibold tracking-snug text-slate-800 dark:text-slate-100 flex-1">{t('Revenue vs Expenses — Last 6 Months')}</h2>
+            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-brand-500" /> {t('Revenue')}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-danger-500" /> {t('Expenses')}</span>
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="exp" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.14} />
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
-              <Tooltip formatter={(v) => fmtMoney(v, sym)} />
-              <Area type="monotone" dataKey="Revenue" stroke="#2563eb" fill="url(#rev)" strokeWidth={2} />
-              <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="url(#exp)" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} dy={4} />
+              <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} width={72} />
+              <Tooltip formatter={(v) => fmtMoney(v, sym)} {...tooltipStyle} />
+              <Area type="monotone" dataKey="Revenue" stroke="#3b82f6" fill="url(#rev)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
+              <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="url(#exp)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -333,10 +355,10 @@ export default function Dashboard() {
               <button
                 key={q.path}
                 onClick={() => navigate(q.path)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
+                className="group w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm ring-1 ring-inset ring-transparent hover:ring-slate-200/80 dark:hover:ring-surface-700 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] hover:shadow-xs transition-all"
               >
                 <span className={`font-medium ${q.color}`}>{t(q.label)}</span>
-                <ArrowRight size={14} className="text-gray-400" />
+                <ArrowRight size={14} className="text-slate-300 dark:text-slate-600 transition-all duration-150 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </button>
             ))}
           </div>
@@ -360,15 +382,15 @@ export default function Dashboard() {
           <AreaChart data={forecast} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="fc" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
-            <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} />
-            <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} dy={4} />
+            <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} width={72} />
+            <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} {...tooltipStyle} />
+            <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
           </AreaChart>
         </ResponsiveContainer>
       </Card>
@@ -377,8 +399,8 @@ export default function Dashboard() {
       <Card className="mt-6">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Recent Sales Invoices')}</h2>
-          <button onClick={() => navigate('/invoices')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-            {t('View all')} <ArrowRight size={13} />
+          <button onClick={() => navigate('/invoices')} className="group text-sm font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">
+            {t('View all')} <ArrowRight size={13} className="transition-transform duration-150 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
           </button>
         </div>
         {recentInvoices.length === 0 ? (
@@ -429,7 +451,7 @@ function BSPLSection({ title, rows, total, sym, color }) {
         <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">{t('None')}</p>
       ) : rows.map((a) => (
         <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
-          <span className="truncate pr-2">{a.name}</span>
+          <span className="truncate pe-2">{a.name}</span>
           <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
         </div>
       ))}
