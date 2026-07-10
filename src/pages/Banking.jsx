@@ -17,11 +17,12 @@ const emptyForm = () => ({
   bankAccountId: 'acc-cash',
   accountId: 'acc-sales',
   reference: '',
+  departmentId: '',
 })
 
 export default function Banking() {
   const t = useT()
-  const { accounts, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore()
+  const { accounts, departments, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore()
   const sym = settings.company.currencySymbol
 
   const [modal, setModal] = useState(false)
@@ -159,6 +160,12 @@ export default function Banking() {
           <Select label={form.type === 'money_in' ? 'Income Account' : 'Expense Account'} value={form.accountId} onChange={(e) => setField('accountId', e.target.value)}>
             {nonBankAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
           </Select>
+          {departments.length > 0 && (
+            <Select label={t('Department / Cost Center')} value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
+              <option value="">{t('— Unassigned —')}</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{t('Save Transaction')}</Btn>

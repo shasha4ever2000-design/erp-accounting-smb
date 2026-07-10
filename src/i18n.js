@@ -663,6 +663,10 @@ const AR = {
   'No saved data yet': 'لا توجد بيانات محفوظة بعد', 'Active': 'نشطة', 'Group Total': 'إجمالي المجموعة',
   'Consolidated P&L by Account': 'قائمة الدخل المجمّعة حسب الحساب', 'Loading…': 'جارٍ التحميل…',
   'Liabilities': 'الخصوم', 'Assets': 'الأصول', 'Equity': 'حقوق الملكية',
+  // ── Departmental P&L / cost centers ──
+  'Departmental P&L': 'قائمة الدخل حسب القسم', 'Department': 'القسم', 'Department / Cost Center': 'القسم / مركز التكلفة',
+  '— Unassigned —': '— غير مخصص —', 'Unassigned': 'غير مخصص', 'Unknown': 'غير معروف',
+  'Tag invoices, purchases, bank transactions and journals with a department to attribute their P&L here.': 'حدّد قسمًا للفواتير والمشتريات والحركات البنكية والقيود لتوزيع أرباحها وخسائرها هنا.',
   // ── Recurring journals ──
   'Recurring Journals': 'القيود المتكررة', 'New Recurring Entry': 'قيد متكرر جديد', 'Edit Recurring Entry': 'تعديل القيد المتكرر',
   'No recurring journals yet': 'لا توجد قيود متكررة بعد',

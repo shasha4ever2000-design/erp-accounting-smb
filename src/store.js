@@ -336,7 +336,7 @@ export const useStore = create(
         const je = get().addJournalEntry({
           date: invoice.date,
           description: `Sales Invoice ${number} – ${invoice.customerName || ''}`,
-          reference: number, type: 'invoice', lines,
+          reference: number, type: 'invoice', departmentId: invoice.departmentId || null, lines,
         })
 
         // Perpetual issue: reduce stock + post COGS at weighted-average cost for tracked lines.
@@ -362,6 +362,7 @@ export const useStore = create(
         if (cogs > 0) {
           const cje = get().addJournalEntry({
             date: invoice.date, description: `Cost of Sales – ${number}`, reference: number, type: 'cogs',
+            departmentId: invoice.departmentId || null,
             lines: [
               ...Object.entries(cogsByAcc).map(([a, amt]) => ({ accountId: a, debit: amt, credit: 0, description: 'Cost of goods sold' })),
               ...Object.entries(invByAcc).map(([a, amt]) => ({ accountId: a, debit: 0, credit: amt, description: 'Inventory reduction' })),
@@ -583,7 +584,7 @@ export const useStore = create(
         const je = get().addJournalEntry({
           date: purchase.date,
           description: `Purchase Invoice ${number} – ${purchase.supplierName || ''}`,
-          reference: number, type: 'purchase', lines,
+          reference: number, type: 'purchase', departmentId: purchase.departmentId || null, lines,
         })
         const newPurchase = {
           ...purchase, id: uuid(), number, status: 'received', amountPaid: 0, payments: [],
@@ -1354,7 +1355,7 @@ export const useStore = create(
               ]
         const je = get().addJournalEntry({
           date: tx.date, description: tx.description, reference: tx.reference || '', type: tx.type,
-          projectId: tx.projectId || null, lines,
+          projectId: tx.projectId || null, departmentId: tx.departmentId || null, lines,
         })
         const newTx = { ...tx, id: uuid(), journalEntryId: je.id, createdAt: new Date().toISOString() }
         set((s) => ({ bankTransactions: [...s.bankTransactions, newTx] }))

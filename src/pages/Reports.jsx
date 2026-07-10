@@ -23,11 +23,12 @@ const REPORTS = [
   { id: 'exp-cat', label: 'Expenses by Category', group: 'Sales & Purchases' },
   { id: 'budget-var', label: 'Budget vs Actual', group: 'Performance' },
   { id: 'pl-comp', label: 'Comparative P&L', group: 'Performance' },
+  { id: 'dept-pl', label: 'Departmental P&L', group: 'Performance' },
   { id: 'custom', label: 'Custom Report Builder', group: 'Advanced' },
 ]
 
 export default function Reports() {
-  const { accounts, journalEntries, invoices, purchases, bankAccounts, customers, suppliers, inventoryItems, budgets, getAllBalances, settings } = useStore()
+  const { accounts, journalEntries, invoices, purchases, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -882,13 +883,79 @@ export default function Reports() {
     )
   }
 
+  // ─── Departmental P&L (cost centers) ────────────────────────────
+  const deptPL = useMemo(() => {
+    const typeOf = Object.fromEntries(accounts.map((a) => [a.id, a.type]))
+    const map = {} // deptId -> { revenue, expense }
+    const bucket = (id) => (map[id] || (map[id] = { revenue: 0, expense: 0 }))
+    journalEntries.forEach((je) => {
+      if (startDate && je.date < startDate) return
+      if (endDate && je.date > endDate) return
+      const key = je.departmentId || '__none__'
+      let touched = false
+      ;(je.lines || []).forEach((l) => {
+        const tp = typeOf[l.accountId]
+        if (tp === 'revenue') { bucket(key).revenue += (l.credit || 0) - (l.debit || 0); touched = true }
+        else if (tp === 'expense') { bucket(key).expense += (l.debit || 0) - (l.credit || 0); touched = true }
+      })
+      return touched
+    })
+    const rows = Object.entries(map).map(([id, v]) => ({
+      id,
+      name: id === '__none__' ? t('Unassigned') : (departments.find((d) => d.id === id)?.name || t('Unknown')),
+      revenue: v.revenue, expense: v.expense, net: v.revenue - v.expense,
+    })).filter((r) => Math.abs(r.revenue) > 0.005 || Math.abs(r.expense) > 0.005)
+      .sort((a, b) => b.net - a.net)
+    const totals = rows.reduce((s, r) => ({ revenue: s.revenue + r.revenue, expense: s.expense + r.expense, net: s.net + r.net }), { revenue: 0, expense: 0, net: 0 })
+    return { rows, totals }
+  }, [journalEntries, accounts, departments, startDate, endDate, t])
+
+  const DeptPLReport = () => (
+    <Card className="overflow-x-auto">
+      <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+        <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+        <p className="text-sm text-gray-500 dark:text-slate-400">{t('Departmental P&L')} · {fmtDate(startDate)} — {fmtDate(endDate)}</p>
+      </div>
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400 text-xs uppercase">
+            <th className="py-2.5 px-5 text-start font-semibold">{t('Department')}</th>
+            <th className="py-2.5 px-4 text-end font-semibold">{t('Revenue')}</th>
+            <th className="py-2.5 px-4 text-end font-semibold">{t('Expenses')}</th>
+            <th className="py-2.5 px-5 text-end font-semibold">{t('Net')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {deptPL.rows.length === 0 && <tr><td colSpan={4} className="py-6 text-center text-gray-400">{t('No data for this period')}</td></tr>}
+          {deptPL.rows.map((r) => (
+            <tr key={r.id} className="border-b border-gray-50 dark:border-slate-700/50">
+              <td className="py-2 px-5 font-medium text-gray-800 dark:text-slate-100">{r.name}</td>
+              <td className="py-2 px-4 text-end text-gray-700 dark:text-slate-200">{fmtMoney(r.revenue, sym)}</td>
+              <td className="py-2 px-4 text-end text-gray-700 dark:text-slate-200">{fmtMoney(r.expense, sym)}</td>
+              <td className={`py-2 px-5 text-end font-semibold ${r.net >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtMoney(r.net, sym)}</td>
+            </tr>
+          ))}
+          {deptPL.rows.length > 0 && (
+            <tr className="border-t-2 border-gray-300 dark:border-slate-500 bg-gray-50/60 dark:bg-slate-700/40 font-bold">
+              <td className="py-2.5 px-5 text-gray-900 dark:text-slate-100">{t('Total')}</td>
+              <td className="py-2.5 px-4 text-end">{fmtMoney(deptPL.totals.revenue, sym)}</td>
+              <td className="py-2.5 px-4 text-end">{fmtMoney(deptPL.totals.expense, sym)}</td>
+              <td className={`py-2.5 px-5 text-end ${deptPL.totals.net >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmtMoney(deptPL.totals.net, sym)}</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
+      <p className="px-5 py-3 text-xs text-gray-400 dark:text-slate-500">{t('Tag invoices, purchases, bank transactions and journals with a department to attribute their P&L here.')}</p>
+    </Card>
+  )
+
   const CustomReportView = () => (
     <CustomReport
       startDate={startDate} endDate={endDate} sym={sym}
       data={{ invoices, purchases, journalEntries, customers, suppliers, inventoryItems, accounts }} />
   )
 
-  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat', 'budget-var', 'pl-comp'].includes(report)
+  const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat', 'budget-var', 'pl-comp', 'dept-pl'].includes(report)
 
   const reportTitle = REPORTS.find((r) => r.id === report)?.label || 'Report'
   const buildReportExport = () => {
@@ -950,6 +1017,14 @@ export default function Reports() {
         { key: 'category', label: t('Category') },
         { key: 'amount', label: t('Amount'), right: true, map: (v) => Number(v).toFixed(2) },
         { key: 'pct', label: t('% of Total'), right: true, map: (v) => `${v}%` },
+      ] }
+    }
+    if (report === 'dept-pl') {
+      return { filename: `departmental-pl-${startDate}_${endDate}`, rows: deptPL.rows, columns: [
+        { key: 'name', label: t('Department') },
+        { key: 'revenue', label: t('Revenue'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'expense', label: t('Expenses'), right: true, map: (v) => Number(v).toFixed(2) },
+        { key: 'net', label: t('Net'), right: true, map: (v) => Number(v).toFixed(2) },
       ] }
     }
     if (report === 'pl-comp') {
@@ -1033,6 +1108,7 @@ export default function Reports() {
         {report === 'exp-cat' && <ExpenseByCategoryReport />}
         {report === 'budget-var' && <BudgetVarReport />}
         {report === 'pl-comp' && <ComparativePLReport />}
+        {report === 'dept-pl' && <DeptPLReport />}
         {report === 'custom' && <CustomReportView />}
       </div>
     </div>

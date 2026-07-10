@@ -11,7 +11,7 @@ const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1,
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
-  const { customers, accounts, inventoryItems, settings, addInvoice } = useStore()
+  const { customers, accounts, inventoryItems, departments, settings, addInvoice } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
@@ -25,6 +25,7 @@ export default function InvoiceForm() {
     date: today(),
     dueDate: addDays(today(), settings.invoice.dueDays || 30),
     notes: settings.invoice.notes || '',
+    departmentId: '',
     items: [emptyLine()],
   })
 
@@ -105,7 +106,12 @@ export default function InvoiceForm() {
                 <option value="">Select customer…</option>
                 {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
-              <div />
+              {departments.length > 0 ? (
+                <Select label={t('Department / Cost Center')} value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
+                  <option value="">{t('— Unassigned —')}</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </Select>
+              ) : <div />}
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
               <Input label="Due Date" type="date" value={form.dueDate} onChange={(e) => setField('dueDate', e.target.value)} />
             </div>

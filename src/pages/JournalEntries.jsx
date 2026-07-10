@@ -11,12 +11,12 @@ const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', des
 
 export default function JournalEntries() {
   const t = useT()
-  const { journalEntries, accounts, addJournalEntry, deleteJournalEntry, settings } = useStore()
+  const { journalEntries, accounts, departments, addJournalEntry, deleteJournalEntry, settings } = useStore()
   const sym = settings.company.currencySymbol
   const [modal, setModal] = useState(false)
   const [viewEntry, setViewEntry] = useState(null)
   const [search, setSearch] = useState('')
-  const [form, setForm] = useState({ date: today(), description: '', reference: '', lines: [emptyLine(), emptyLine()] })
+  const [form, setForm] = useState({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
   const updateLine = (lineId, key, value) => {
@@ -49,7 +49,7 @@ export default function JournalEntries() {
       throw e
     }
     setModal(false)
-    setForm({ date: today(), description: '', reference: '', lines: [emptyLine(), emptyLine()] })
+    setForm({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
   }
 
   const handleDelete = (je) => {
@@ -138,6 +138,12 @@ export default function JournalEntries() {
             </div>
           )}
           <Input label="Description *" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Purpose of this entry..." />
+          {departments.length > 0 && (
+            <Select label={t('Department / Cost Center')} value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
+              <option value="">{t('— Unassigned —')}</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          )}
 
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">

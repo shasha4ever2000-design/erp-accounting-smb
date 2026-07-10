@@ -12,7 +12,7 @@ const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1,
 
 export default function PurchaseForm() {
   const navigate = useNavigate()
-  const { suppliers, accounts, inventoryItems, settings, addPurchase } = useStore()
+  const { suppliers, accounts, inventoryItems, departments, settings, addPurchase } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
@@ -26,6 +26,7 @@ export default function PurchaseForm() {
     date: today(),
     dueDate: addDays(today(), 30),
     notes: '',
+    departmentId: '',
     items: [emptyLine()],
   })
 
@@ -101,6 +102,12 @@ export default function PurchaseForm() {
               <Input label="Supplier Invoice Ref" value={form.supplierRef} onChange={(e) => setField('supplierRef', e.target.value)} placeholder="Supplier's invoice number" />
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
               <Input label="Due Date" type="date" value={form.dueDate} onChange={(e) => setField('dueDate', e.target.value)} />
+              {departments.length > 0 && (
+                <Select label={t('Department / Cost Center')} value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
+                  <option value="">{t('— Unassigned —')}</option>
+                  {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                </Select>
+              )}
             </div>
           </Card>
 
