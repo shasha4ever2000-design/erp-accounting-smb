@@ -76,8 +76,8 @@ export default function POS() {
         {/* Products */}
         <div className="lg:col-span-2">
           <div className="relative mb-4">
-            <Search size={15} className="absolute left-3 top-3 text-gray-400" />
-            <input className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+            <input className="w-full ps-9 pe-3 py-2.5 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           {inventoryItems.length === 0 ? (
