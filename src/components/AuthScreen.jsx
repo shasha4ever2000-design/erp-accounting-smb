@@ -114,7 +114,7 @@ export default function AuthScreen() {
               <button
                 type="submit"
                 disabled={busy}
-                className="w-full bg-brand-600 hover:bg-brand-700 active:bg-brand-800 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 shadow-btn-primary transition-all duration-150 active:scale-[.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
+                className="w-full bg-gradient-to-b from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 active:from-brand-700 active:to-brand-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-xl px-4 py-3 text-sm font-semibold flex items-center justify-center gap-2 shadow-btn-primary transition-all duration-150 ease-spring active:scale-[.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-900"
               >
                 {busy && <Loader2 size={16} className="animate-spin" />}
                 {mode === 'signup' ? t('Create account') : t('Sign in')}

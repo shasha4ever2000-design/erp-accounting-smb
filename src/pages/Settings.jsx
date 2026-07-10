@@ -162,17 +162,17 @@ export default function Settings() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Company Info */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Company Information')}</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Company Information')}</h2>
           <div className="space-y-4">
             <Input label="Company Name *" value={company.name} onChange={(e) => setCompanyField('name', e.target.value)} />
             <Input label="Company Name (Arabic) · الاسم بالعربية" value={company.arabicName || ''} onChange={(e) => setCompanyField('arabicName', e.target.value)} dir="rtl" placeholder="اسم الشركة" />
             <Input label="Email" type="email" value={company.email} onChange={(e) => setCompanyField('email', e.target.value)} />
             <Input label="Phone" value={company.phone} onChange={(e) => setCompanyField('phone', e.target.value)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Address')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Address')}</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                 value={company.address}
                 onChange={(e) => setCompanyField('address', e.target.value)}
                 placeholder="Street, City, Country"
@@ -185,7 +185,7 @@ export default function Settings() {
         {/* Currency & Fiscal Year */}
         <div className="space-y-5">
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Currency & Fiscal Year')}</h2>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Currency & Fiscal Year')}</h2>
             <div className="space-y-4">
               <Select label="Currency" value={company.currency} onChange={(e) => setCompanyField('currency', e.target.value)}>
                 {CURRENCIES.map((c) => (
@@ -206,7 +206,7 @@ export default function Settings() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Tax Settings')}</h2>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Tax Settings')}</h2>
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <input
@@ -216,7 +216,7 @@ export default function Settings() {
                   onChange={(e) => setTaxField('enabled', e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
                 />
-                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700">{t('Enable Tax (VAT / GST)')}</label>
+                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable Tax (VAT / GST)')}</label>
               </div>
               {tax.enabled && (
                 <>
@@ -230,7 +230,7 @@ export default function Settings() {
 
         {/* Invoice Settings */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 mb-4">{t('Invoice Settings')}</h2>
+          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Invoice Settings')}</h2>
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <Input label="Invoice Prefix" value={invoice.prefix} onChange={(e) => setInvoiceField('prefix', e.target.value)} placeholder="INV-" />
@@ -266,11 +266,11 @@ export default function Settings() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
               <Sparkles size={14} className="text-white" />
             </div>
-            <h2 className="text-base font-semibold text-gray-800">{t('AI Assistant')}</h2>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('AI Assistant')}</h2>
           </div>
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">{t('Claude API Key')}</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Claude API Key')}</label>
               <div className="relative">
                 <input
                   type={showKey ? 'text' : 'password'}
@@ -489,7 +489,7 @@ export default function Settings() {
           <div className="space-y-3">
             <div className="flex items-center justify-between py-3 border-b border-gray-100">
               <div>
-                <p className="text-sm font-medium text-gray-800">{t('Reset All Data')}</p>
+                <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Reset All Data')}</p>
                 <p className="text-xs text-gray-500">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
               </div>
               {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>{t('Reset Data')}</Btn> : <span className="text-xs text-gray-400 dark:text-slate-500">Owners / Admins only</span>}
