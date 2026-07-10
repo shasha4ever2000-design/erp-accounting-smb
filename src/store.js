@@ -291,7 +291,15 @@ export const useStore = create(
           // block editing an entry in a closed period, or moving one into it
           if (lock && ((je?.date && String(je.date) <= String(lock)) || (patch?.date && String(patch.date) <= String(lock))))
             throw new Error(`PERIOD_LOCKED:${lock}`)
-          return { journalEntries: s.journalEntries.map((j) => (j.id === id ? { ...j, ...patch } : j)) }
+          const merged = je ? { ...je, ...patch } : null
+          // a patch must not unbalance the entry or strip its date
+          if (merged) {
+            if (!merged.date) throw new Error('JE_NO_DATE')
+            const dr = (merged.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
+            const cr = (merged.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
+            if (Math.abs(dr - cr) > 0.05) throw new Error(`JE_UNBALANCED:${(dr - cr).toFixed(2)}`)
+          }
+          return { journalEntries: s.journalEntries.map((j) => (j.id === id ? merged : j)) }
         }),
 
       deleteJournalEntry: (id) =>
@@ -402,23 +410,28 @@ export const useStore = create(
         const s = get()
         const invoice = s.invoices.find((i) => i.id === invoiceId)
         if (!invoice) return
+        // Overpayment guard: never receive more than the outstanding balance, so the
+        // AR subledger can't go negative (no advances/unapplied-cash model yet).
+        const remaining = Math.max(0, (invoice.total || 0) - (invoice.amountPaid || 0))
+        const amount = Math.min(Number(payment.amount) || 0, remaining)
+        if (amount <= 0) return
         const { prefix, next } = s.settings.receipt
         const number = nextNum(prefix, next)
-        const newAmountPaid = invoice.amountPaid + payment.amount
-        const status = newAmountPaid >= invoice.total ? 'paid' : 'partial'
+        const newAmountPaid = invoice.amountPaid + amount
+        const status = newAmountPaid >= invoice.total - 0.005 ? 'paid' : 'partial'
         const je = get().addJournalEntry({
           date: payment.date,
           description: `Receipt ${number} for ${invoice.number}`,
           reference: number, type: 'receipt',
           lines: [
-            { accountId: payment.bankAccountId, debit: payment.amount, credit: 0, description: `Receipt for ${invoice.number}` },
-            { accountId: 'acc-ar', debit: 0, credit: payment.amount, description: `Receipt for ${invoice.number}` },
+            { accountId: payment.bankAccountId, debit: amount, credit: 0, description: `Receipt for ${invoice.number}` },
+            { accountId: 'acc-ar', debit: 0, credit: amount, description: `Receipt for ${invoice.number}` },
           ],
         })
         set((st) => ({
           invoices: st.invoices.map((i) =>
             i.id === invoiceId
-              ? { ...i, amountPaid: newAmountPaid, status, payments: [...(i.payments || []), { ...payment, id: uuid(), number, journalEntryId: je.id }] }
+              ? { ...i, amountPaid: newAmountPaid, status, payments: [...(i.payments || []), { ...payment, amount, id: uuid(), number, journalEntryId: je.id }] }
               : i
           ),
           settings: { ...st.settings, receipt: { ...st.settings.receipt, next: next + 1 } },
@@ -430,7 +443,10 @@ export const useStore = create(
 
       deleteInvoice: (id) => {
         const inv = get().invoices.find((i) => i.id === id)
-        get().assertJEsUnlocked(inv?.journalEntryId, inv?.cogsJournalEntryId)
+        // every JE this invoice produced: the sale, its COGS, and every receipt
+        const payJEs = (inv?.payments || []).map((p) => p.journalEntryId)
+        const jeIds = new Set([inv?.journalEntryId, inv?.cogsJournalEntryId, ...payJEs].filter(Boolean))
+        get().assertJEsUnlocked(...jeIds)
         get().logActivity('Deleted invoice', inv?.number || id)
         // Restore any stock issued by this invoice's tracked lines.
         const restore = {}
@@ -442,7 +458,7 @@ export const useStore = create(
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((s) => ({
           invoices: s.invoices.filter((i) => i.id !== id),
-          journalEntries: s.journalEntries.filter((j) => j.id !== inv?.journalEntryId && j.id !== inv?.cogsJournalEntryId),
+          journalEntries: s.journalEntries.filter((j) => !jeIds.has(j.id)),
           stockMovements: s.stockMovements.filter((m) => m.ref !== inv?.number),
           inventoryItems: s.inventoryItems.map((it) => {
             const q = restore[it.id]
@@ -632,14 +648,18 @@ export const useStore = create(
         const s = get()
         const purchase = s.purchases.find((p) => p.id === purchaseId)
         if (!purchase) return
+        // Overpayment guard: never pay more than the outstanding balance (keeps AP ≥ 0)
+        const remaining = Math.max(0, (purchase.total || 0) - (purchase.amountPaid || 0))
+        const amount = Math.min(Number(payment.amount) || 0, remaining)
+        if (amount <= 0) return
         const { prefix, next } = s.settings.payment
         const number = nextNum(prefix, next)
-        const newAmountPaid = purchase.amountPaid + payment.amount
-        const status = newAmountPaid >= purchase.total ? 'paid' : 'partial'
-        const wht = Math.max(0, Math.min(payment.amount, Number(payment.wht) || 0))
-        const netCash = payment.amount - wht
+        const newAmountPaid = purchase.amountPaid + amount
+        const status = newAmountPaid >= purchase.total - 0.005 ? 'paid' : 'partial'
+        const wht = Math.max(0, Math.min(amount, Number(payment.wht) || 0))
+        const netCash = amount - wht
         const lines = [
-          { accountId: 'acc-ap', debit: payment.amount, credit: 0, description: `Payment for ${purchase.number}` },
+          { accountId: 'acc-ap', debit: amount, credit: 0, description: `Payment for ${purchase.number}` },
           { accountId: payment.bankAccountId, debit: 0, credit: netCash, description: `Payment for ${purchase.number}` },
         ]
         if (wht > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: wht, description: `Withholding tax – ${purchase.number}` })
@@ -651,7 +671,7 @@ export const useStore = create(
         set((st) => ({
           purchases: st.purchases.map((p) =>
             p.id === purchaseId
-              ? { ...p, amountPaid: newAmountPaid, status, payments: [...(p.payments || []), { ...payment, id: uuid(), number, journalEntryId: je.id }] }
+              ? { ...p, amountPaid: newAmountPaid, status, payments: [...(p.payments || []), { ...payment, amount, id: uuid(), number, journalEntryId: je.id }] }
               : p
           ),
           settings: { ...st.settings, payment: { ...st.settings.payment, next: next + 1 } },
@@ -663,7 +683,9 @@ export const useStore = create(
 
       deletePurchase: (id) => {
         const pur = get().purchases.find((p) => p.id === id)
-        get().assertJEsUnlocked(pur?.journalEntryId)
+        const payJEs = (pur?.payments || []).map((p) => p.journalEntryId)
+        const jeIds = new Set([pur?.journalEntryId, ...payJEs].filter(Boolean))
+        get().assertJEsUnlocked(...jeIds)
         get().logActivity('Deleted purchase', pur?.number || id)
         // Reverse any perpetual stock received by this purchase.
         const recv = {}
@@ -675,7 +697,7 @@ export const useStore = create(
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((s) => ({
           purchases: s.purchases.filter((p) => p.id !== id),
-          journalEntries: s.journalEntries.filter((j) => j.id !== pur?.journalEntryId),
+          journalEntries: s.journalEntries.filter((j) => !jeIds.has(j.id)),
           stockMovements: s.stockMovements.filter((m) => m.ref !== pur?.number),
           inventoryItems: s.inventoryItems.map((it) => {
             const q = recv[it.id]
@@ -1319,10 +1341,20 @@ export const useStore = create(
             w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
           ),
           inventoryItems: st.inventoryItems.map((item) => {
-            let q = item.quantity || 0
-            if (consume[item.id]) q -= consume[item.id]
-            if (item.id === wo.outputItemId) q += outputQty
-            return (consume[item.id] || item.id === wo.outputItemId) ? { ...item, quantity: q } : item
+            if (!consume[item.id] && item.id !== wo.outputItemId) return item
+            const patch = { quantity: item.quantity || 0 }
+            if (consume[item.id]) patch.quantity -= consume[item.id]
+            if (item.id === wo.outputItemId) {
+              // roll the finished good's cost into a weighted-average so it later
+              // sells with a real COGS (the total material cost / units produced)
+              const oldQty = item.quantity || 0
+              const newQty = oldQty + outputQty
+              patch.quantity += outputQty
+              patch.costPrice = newQty > 0
+                ? Math.round(((oldQty * (item.costPrice || 0) + totalMaterialCost) / newQty) * 100) / 100
+                : (item.costPrice || 0)
+            }
+            return { ...item, ...patch }
           }),
         }))
       },
