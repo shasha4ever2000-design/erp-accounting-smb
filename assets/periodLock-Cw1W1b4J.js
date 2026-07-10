@@ -1,0 +1,1 @@
+function n(a,t){const s=String((a==null?void 0:a.message)||"");if(!s.startsWith("PERIOD_LOCKED"))return!1;const e=s.split(":")[1]||"",o=t?t("This date falls in a closed accounting period. Choose a later date."):"This date falls in a closed accounting period. Choose a later date.";return alert(o+(e?` (${e})`:"")),!0}export{n as a};
