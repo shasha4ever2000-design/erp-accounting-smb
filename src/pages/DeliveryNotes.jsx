@@ -84,7 +84,7 @@ export default function DeliveryNotes() {
               </div>
             </div>
             <table className="w-full text-sm mb-6">
-              <thead><tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
+              <thead className="bg-gray-50/70 dark:bg-slate-800/50"><tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
                 <th className="text-left py-2">#</th><th className="text-left py-2">Description · الوصف</th><th className="text-right py-2">Qty · الكمية</th>
               </tr></thead>
               <tbody>
