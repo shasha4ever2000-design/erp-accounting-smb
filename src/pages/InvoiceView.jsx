@@ -50,6 +50,10 @@ export default function InvoiceView() {
   const customer = customers.find((c) => c.id === invoice.customerId)
   const bankAccounts = accounts.filter((a) => a.type === 'asset' && (a.id === 'acc-cash' || a.id === 'acc-bank1' || a.subtype === 'current'))
   const amountDue = invoice.total - invoice.amountPaid
+  // Show the VAT column whenever any line carries VAT or a non-standard category
+  // (zero-rated / exempt supplies must still be indicated on a ZATCA tax invoice).
+  const showTaxCol = (invoice.taxAmount || 0) > 0 || (invoice.items || []).some((l) => l.taxCategory && l.taxCategory !== 'standard')
+  const lineTaxLabel = (item) => item.taxCategory === 'zero' ? t('Zero-rated') : item.taxCategory === 'exempt' ? t('Exempt') : `${item.taxRate || 0}%`
 
   const handleRecord = () => {
     const amount = parseFloat(payForm.amount)
@@ -161,7 +165,7 @@ export default function InvoiceView() {
                 <th className="text-left py-2 text-xs font-semibold text-gray-500 uppercase">{t('Description')}</th>
                 <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">Qty</th>
                 <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">{t('Unit Price')}</th>
-                {invoice.taxAmount > 0 && <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">Tax</th>}
+                {showTaxCol && <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">{t('VAT')}</th>}
                 <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">{t('Amount')}</th>
               </tr>
             </thead>
@@ -171,7 +175,7 @@ export default function InvoiceView() {
                   <td className="py-3 text-gray-700">{item.description}</td>
                   <td className="py-3 text-right text-gray-600">{item.quantity}</td>
                   <td className="py-3 text-right text-gray-600">{fmtMoney(item.unitPrice, sym)}</td>
-                  {invoice.taxAmount > 0 && <td className="py-3 text-right text-gray-400">{item.taxRate}%</td>}
+                  {showTaxCol && <td className="py-3 text-right text-gray-400">{lineTaxLabel(item)}</td>}
                   <td className="py-3 text-right font-medium text-gray-800">{fmtMoney(item.subtotal, sym)}</td>
                 </tr>
               ))}

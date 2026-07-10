@@ -6,9 +6,10 @@ import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI
 import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
+import { VAT_CATEGORIES, vatCatRate } from '../utils/vat'
 
 const EXPENSE_TYPES = ['asset', 'expense']
-const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
+const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
 
 export default function PurchaseForm() {
   const navigate = useNavigate()
@@ -16,6 +17,7 @@ export default function PurchaseForm() {
   const t = useT()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
+  const defaultTaxRate = settings.tax.rate
 
   const expenseAccounts = accounts.filter((a) => EXPENSE_TYPES.includes(a.type) && !['acc-ar', 'acc-vatin'].includes(a.id))
 
@@ -51,6 +53,8 @@ export default function PurchaseForm() {
             updated.accountId = it.inventoryAccountId || 'acc-inv'
           }
         }
+        // The VAT category drives the rate: standard → configured rate, zero-rated/exempt → 0%.
+        updated.taxRate = taxEnabled ? vatCatRate(updated.taxCategory, defaultTaxRate) : 0
         const qty = parseFloat(updated.quantity) || 0
         const price = parseFloat(updated.unitPrice) || 0
         const tax = parseFloat(updated.taxRate) || 0
@@ -114,16 +118,16 @@ export default function PurchaseForm() {
           <Card className="p-6">
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
-              <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase ${taxEnabled ? 'grid-cols-[2fr_80px_100px_80px_80px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+              <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Cost')}</span>
-                {taxEnabled && <span>Tax %</span>}
+                {taxEnabled && <span>{t('VAT')}</span>}
                 <span className="text-right">{t('Amount')}</span>
                 <span />
               </div>
               {form.items.map((line) => (
-                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_80px_100px_80px_80px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                   <div className="space-y-1">
                     <Input value={line.description} onChange={(e) => updateLine(line.id, 'description', e.target.value)} placeholder="Item or expense description" />
                     {inventoryItems.length > 0 && (
@@ -140,7 +144,13 @@ export default function PurchaseForm() {
                   </div>
                   <Input type="number" min="0" step="0.01" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', e.target.value)} />
                   <Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(line.id, 'unitPrice', e.target.value)} />
-                  {taxEnabled && <Input type="number" min="0" step="0.1" value={line.taxRate} onChange={(e) => updateLine(line.id, 'taxRate', e.target.value)} />}
+                  {taxEnabled && (
+                    <Select value={line.taxCategory || 'standard'} onChange={(e) => updateLine(line.id, 'taxCategory', e.target.value)}>
+                      {VAT_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>{t(c.label)}{c.id === 'standard' ? ` ${defaultTaxRate}%` : ''}</option>
+                      ))}
+                    </Select>
+                  )}
                   <div className="text-sm font-medium text-gray-800 text-right pt-2">{fmtMoney(line.subtotal, sym)}</div>
                   <button onClick={() => removeLine(line.id)} className="mt-2 text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
                 </div>

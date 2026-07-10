@@ -6,8 +6,9 @@ import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI
 import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
+import { VAT_CATEGORIES, vatCatRate } from '../utils/vat'
 
-const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxRate: 0, accountId: 'acc-sales', subtotal: 0, taxAmount: 0, total: 0 })
+const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-sales', subtotal: 0, taxAmount: 0, total: 0 })
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
@@ -48,9 +49,10 @@ export default function InvoiceForm() {
           if (it) {
             if (!updated.description) updated.description = it.name
             if (!parseFloat(updated.unitPrice)) updated.unitPrice = it.salePrice || 0
-            if (taxEnabled && !parseFloat(updated.taxRate)) updated.taxRate = defaultTaxRate || 0
           }
         }
+        // The VAT category drives the rate: standard → configured rate, zero-rated/exempt → 0%.
+        updated.taxRate = taxEnabled ? vatCatRate(updated.taxCategory, defaultTaxRate) : 0
         // Recalc
         const qty = parseFloat(updated.quantity) || 0
         const price = parseFloat(updated.unitPrice) || 0
@@ -122,17 +124,17 @@ export default function InvoiceForm() {
             <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
               {/* Headers */}
-              <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_80px_100px_80px_80px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+              <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Price')}</span>
-                {taxEnabled && <span>Tax %</span>}
+                {taxEnabled && <span>{t('VAT')}</span>}
                 <span className="text-right">{t('Amount')}</span>
                 <span />
               </div>
 
               {form.items.map((line) => (
-                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_80px_100px_80px_80px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                   <div className="space-y-1">
                     <Input
                       value={line.description}
@@ -168,13 +170,14 @@ export default function InvoiceForm() {
                     onChange={(e) => updateLine(line.id, 'unitPrice', e.target.value)}
                   />
                   {taxEnabled && (
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.1"
-                      value={line.taxRate}
-                      onChange={(e) => updateLine(line.id, 'taxRate', e.target.value)}
-                    />
+                    <Select
+                      value={line.taxCategory || 'standard'}
+                      onChange={(e) => updateLine(line.id, 'taxCategory', e.target.value)}
+                    >
+                      {VAT_CATEGORIES.map((c) => (
+                        <option key={c.id} value={c.id}>{t(c.label)}{c.id === 'standard' ? ` ${defaultTaxRate}%` : ''}</option>
+                      ))}
+                    </Select>
                   )}
                   <div className="text-sm font-medium text-gray-800 text-right pt-2">
                     {fmtMoney(line.subtotal, sym)}

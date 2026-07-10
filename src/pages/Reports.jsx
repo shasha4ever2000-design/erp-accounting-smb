@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
+import { vatBreakdown } from '../utils/vat'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -542,10 +543,11 @@ export default function Reports() {
   // ─── VAT Return (ZATCA / KSA) ─────────────────────────────────
   const VATReport = () => {
     const inRange = (d) => d && d >= startDate && d <= endDate
-    const taxableSales = invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date) && (i.taxAmount || 0) > 0).reduce((s, i) => s + (i.subtotal || 0), 0)
-    const zeroExemptSales = invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date) && !(i.taxAmount > 0)).reduce((s, i) => s + (i.subtotal || 0), 0)
+    const salesDocs = invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date))
+    const purchDocs = purchases.filter((p) => p.status !== 'cancelled' && p.status !== 'void' && inRange(p.date))
+    const sales = vatBreakdown(salesDocs)
+    const purch = vatBreakdown(purchDocs)
     const outputVat = accountBalance('acc-vatout', balances)
-    const taxablePurch = purchases.filter((p) => p.status !== 'cancelled' && p.status !== 'void' && inRange(p.date) && (p.taxAmount || 0) > 0).reduce((s, p) => s + (p.subtotal || 0), 0)
     const inputVat = accountBalance('acc-vatin', balances)
     const netVat = outputVat - inputVat
 
@@ -580,12 +582,13 @@ export default function Reports() {
             </tr>
           </thead>
           <tbody>
-            <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" amount={taxableSales} />
+            <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" amount={sales.standard} />
             <Row n="2" label="Output VAT" ar="ضريبة المخرجات" amount={outputVat} bold />
-            <Row n="3" label="Zero-rated / exempt sales" ar="مبيعات معفاة / صفرية" amount={zeroExemptSales} />
-            <Row n="4" label="Standard rated purchases" ar="المشتريات الخاضعة للضريبة" amount={taxablePurch} />
-            <Row n="5" label="Input VAT (recoverable)" ar="ضريبة المدخلات" amount={inputVat} bold />
-            <Row n="6" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة" amount={netVat} bold strong />
+            <Row n="3" label="Zero-rated sales" ar="مبيعات خاضعة لنسبة صفرية" amount={sales.zero} />
+            <Row n="4" label="Exempt sales" ar="مبيعات معفاة" amount={sales.exempt} />
+            <Row n="5" label="Standard rated purchases" ar="المشتريات الخاضعة للضريبة" amount={purch.standard} />
+            <Row n="6" label="Input VAT (recoverable)" ar="ضريبة المدخلات" amount={inputVat} bold />
+            <Row n="7" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة" amount={netVat} bold strong />
           </tbody>
         </table>
         <div className={`p-5 flex items-center justify-between ${netVat >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
