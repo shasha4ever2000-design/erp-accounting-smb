@@ -18,7 +18,7 @@ function translateChildren(children, t) {
 
 export function Card({ children, className = '' }) {
   return (
-    <div className={`bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 ${className}`}>
+    <div className={`bg-white dark:bg-slate-800/80 rounded-xl shadow-card border border-gray-200/70 dark:border-slate-700/70 ${className}`}>
       {children}
     </div>
   )
@@ -39,14 +39,14 @@ export function PageHeader({ title, subtitle, action }) {
 
 export function Btn({ children, onClick, variant = 'primary', size = 'md', type = 'button', disabled = false, className = '', title }) {
   const t = useT()
-  const base = 'inline-flex items-center gap-2 font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-slate-800 disabled:opacity-50 disabled:cursor-not-allowed'
+  const base = 'inline-flex items-center justify-center gap-2 font-semibold rounded-lg whitespace-nowrap transition-all duration-150 active:scale-[.98] focus:outline-none focus:ring-2 focus:ring-offset-1 dark:focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100'
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
   const variants = {
-    primary:   'bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500',
-    secondary: 'bg-white dark:bg-slate-700 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-600 focus:ring-gray-400',
-    danger:    'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
-    ghost:     'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 focus:ring-gray-400',
-    success:   'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500',
+    primary:   'bg-blue-600 text-white shadow-btn-primary hover:bg-blue-700 focus:ring-blue-500',
+    secondary: 'bg-white dark:bg-slate-800 text-gray-700 dark:text-slate-200 border border-gray-300 dark:border-slate-600 hover:bg-gray-50 hover:border-gray-400 dark:hover:bg-slate-700 focus:ring-gray-400',
+    danger:    'bg-red-600 text-white shadow-sm hover:bg-red-700 focus:ring-red-500',
+    ghost:     'text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700/70 focus:ring-gray-400',
+    success:   'bg-green-600 text-white shadow-sm hover:bg-green-700 focus:ring-green-500',
   }
   return (
     <button type={type} onClick={onClick} disabled={disabled} title={typeof title === 'string' ? t(title) : title} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
@@ -121,8 +121,8 @@ export function Modal({ open, onClose, title, children, width = 'max-w-lg' }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full ${width} max-h-[90vh] flex flex-col`}>
+      <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-fade-in" onClick={onClose} />
+      <div className={`relative bg-white dark:bg-slate-800 rounded-2xl shadow-elevated ring-1 ring-black/5 dark:ring-white/10 w-full ${width} max-h-[90vh] flex flex-col animate-scale-in`}>
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-slate-700">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{typeof title === 'string' ? t(title) : title}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 text-2xl leading-none">&times;</button>
@@ -150,22 +150,22 @@ export function StatCard({ label, value, sub, color = 'blue', icon }) {
   if (typeof label === 'string') label = t(label)
   if (typeof sub === 'string') sub = t(sub)
   const colors = {
-    blue:   'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300',
-    green:  'bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-300',
-    orange: 'bg-orange-50 dark:bg-orange-900/30 text-orange-600 dark:text-orange-300',
-    red:    'bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-300',
-    purple: 'bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300',
+    blue:   'bg-gradient-to-br from-blue-500 to-indigo-600 text-white',
+    green:  'bg-gradient-to-br from-emerald-500 to-green-600 text-white',
+    orange: 'bg-gradient-to-br from-amber-500 to-orange-600 text-white',
+    red:    'bg-gradient-to-br from-rose-500 to-red-600 text-white',
+    purple: 'bg-gradient-to-br from-violet-500 to-purple-600 text-white',
   }
   return (
-    <Card className="p-5">
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-sm text-gray-500 dark:text-slate-400 font-medium">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-slate-100 mt-1">{value}</p>
+    <Card className="p-5 transition-shadow hover:shadow-card-hover">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400 font-semibold">{label}</p>
+          <p className="text-[1.7rem] leading-tight font-bold text-gray-900 dark:text-slate-100 mt-1.5 tabular">{value}</p>
           {sub && <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{sub}</p>}
         </div>
         {icon && (
-          <div className={`p-2.5 rounded-lg ${colors[color]}`}>{icon}</div>
+          <div className={`p-2.5 rounded-xl shadow-sm ${colors[color] || colors.blue}`}>{icon}</div>
         )}
       </div>
     </Card>
@@ -178,13 +178,13 @@ export function Table({ headers, children, empty }) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-gray-100 dark:border-slate-700">
+          <tr className="border-b border-gray-200 dark:border-slate-700 bg-gray-50/70 dark:bg-slate-800/50">
             {headers.map((h, i) => {
               const raw = (h && typeof h === 'object') ? h.label : h
               return (
               <th
                 key={i}
-                className={`px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide ${
+                className={`px-4 py-2.5 text-[11px] font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wider ${
                   h.right ? 'text-right' : 'text-left'
                 }`}
               >

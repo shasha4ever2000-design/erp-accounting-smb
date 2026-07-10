@@ -103,18 +103,18 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-[#f6f8fb] dark:bg-[#0b1220] overflow-hidden">
       {/* Sidebar */}
-      <aside className={`w-60 bg-slate-900 dark:bg-slate-950 border-r border-transparent dark:border-slate-800 flex flex-col flex-shrink-0 overflow-y-auto fixed lg:static inset-y-0 left-0 z-40 transform transition-transform lg:transform-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`w-60 bg-gradient-to-b from-slate-900 to-slate-950 border-r border-slate-800/80 flex flex-col flex-shrink-0 overflow-y-auto fixed lg:static inset-y-0 start-0 z-40 transform transition-transform lg:transform-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 rtl:translate-x-full rtl:lg:translate-x-0'}`}>
         {/* Logo / Company */}
-        <div className="px-5 py-4 border-b border-slate-700/60">
+        <div className="px-5 py-4 border-b border-slate-700/50">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <TrendingUp size={16} className="text-white" />
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-900/40 ring-1 ring-white/10">
+              <TrendingUp size={17} className="text-white" />
             </div>
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm leading-tight truncate">{company.name}</p>
-              <p className="text-slate-400 text-xs">{t('Accounting ERP')}</p>
+              <p className="text-slate-400 text-[11px] tracking-wide">{t('Accounting ERP')}</p>
             </div>
           </div>
         </div>
@@ -137,15 +137,20 @@ export default function Layout({ children }) {
                 end={item.path === '/'}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 mx-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                  `group relative flex items-center gap-3 mx-2 px-3 py-2 rounded-lg text-sm transition-all ${
                     isActive
-                      ? 'bg-blue-600 text-white font-medium'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-semibold shadow-md shadow-blue-900/30'
+                      : 'text-slate-400 hover:bg-white/5 hover:text-white'
                   }`
                 }
               >
-                <Icon size={15} className="flex-shrink-0" />
-                <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <span className="absolute inset-y-1.5 start-0 -ms-2 w-1 rounded-full bg-blue-300" />}
+                    <Icon size={16} className="flex-shrink-0" />
+                    <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
+                  </>
+                )}
               </NavLink>
             )
           })}
@@ -163,7 +168,7 @@ export default function Layout({ children }) {
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="no-print h-14 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-100 dark:border-slate-800 flex items-center gap-3 px-4 lg:px-6">
+        <header className="no-print h-16 flex-shrink-0 bg-white/75 dark:bg-slate-900/75 backdrop-blur-lg border-b border-gray-200/80 dark:border-slate-800 flex items-center gap-3 px-4 lg:px-6 sticky top-0 z-20">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500 dark:text-slate-400">
             <Menu size={20} />
           </button>
