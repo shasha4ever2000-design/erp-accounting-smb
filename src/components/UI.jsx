@@ -162,6 +162,7 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
     blue:   'bg-brand-50 text-brand-600 ring-brand-600/10 dark:bg-brand-500/10 dark:text-brand-400 dark:ring-brand-400/20',
     green:  'bg-success-50 text-success-600 ring-success-600/10 dark:bg-success-500/10 dark:text-success-400 dark:ring-success-400/20',
     orange: 'bg-warning-50 text-warning-600 ring-warning-600/10 dark:bg-warning-500/10 dark:text-warning-400 dark:ring-warning-400/20',
+    amber:  'bg-warning-50 text-warning-600 ring-warning-600/10 dark:bg-warning-500/10 dark:text-warning-400 dark:ring-warning-400/20',
     red:    'bg-danger-50 text-danger-600 ring-danger-600/10 dark:bg-danger-500/10 dark:text-danger-400 dark:ring-danger-400/20',
     purple: 'bg-accent-50 text-accent-600 ring-accent-600/10 dark:bg-accent-500/10 dark:text-accent-400 dark:ring-accent-400/20',
   }
