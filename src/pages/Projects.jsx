@@ -123,10 +123,10 @@ export default function Projects() {
                       </div>
                       <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">{p.number}{p.client ? ` · ${p.client}` : ''}</p>
                     </div>
-                    <div className="hidden md:flex items-center gap-6 text-right">
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Income')}</p><p className="text-sm font-semibold text-green-600 dark:text-green-400">{fmtMoney(s.income, sym)}</p></div>
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Cost</p><p className="text-sm font-semibold text-red-500 dark:text-red-400">{fmtMoney(s.cost, sym)}</p></div>
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Profit</p><p className={`text-sm font-bold ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(s.profit, sym)}</p></div>
+                    <div className="hidden md:flex items-center gap-6 text-end">
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">{t('Income')}</p><p className="text-sm font-semibold text-green-600 dark:text-green-400 tabular-nums">{fmtMoney(s.income, sym)}</p></div>
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">Cost</p><p className="text-sm font-semibold text-red-500 dark:text-red-400 tabular-nums">{fmtMoney(s.cost, sym)}</p></div>
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">Profit</p><p className={`text-sm font-bold tabular-nums ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(s.profit, sym)}</p></div>
                     </div>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <AttachmentButton entityType="project" entityId={p.id} />
@@ -151,7 +151,7 @@ export default function Projects() {
                             <span>{t('Budget used')}</span><span>{fmtMoney(s.cost, sym)} / {fmtMoney(p.budget, sym)}</span>
                           </div>
                           <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
-                            <div className={`h-full ${budgetUsed >= 100 ? 'bg-red-500' : budgetUsed > 80 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${budgetUsed}%` }} />
+                            <div className={`h-full rounded-full transition-all ${budgetUsed >= 100 ? 'bg-red-500' : budgetUsed > 80 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${budgetUsed}%` }} />
                           </div>
                         </div>
                       )}
@@ -216,11 +216,11 @@ export default function Projects() {
       <Modal open={projModal} onClose={() => setProjModal(false)} title={editing ? 'Edit Project' : 'New Project'}>
         <div className="space-y-4">
           <Input label="Project Name *" value={pForm.name} onChange={(e) => setP('name', e.target.value)} placeholder="e.g. Website Redesign" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Client / Customer" value={pForm.client} onChange={(e) => setP('client', e.target.value)} />
             <Input label="Budget" type="number" min="0" step="0.01" value={pForm.budget} onChange={(e) => setP('budget', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Start Date" type="date" value={pForm.startDate} onChange={(e) => setP('startDate', e.target.value)} />
             <Select label="Status" value={pForm.status} onChange={(e) => setP('status', e.target.value)}>
               <option value="active">{t('Active')}</option>
@@ -230,7 +230,7 @@ export default function Projects() {
             </Select>
           </div>
           <Textarea label="Notes" rows={2} value={pForm.notes} onChange={(e) => setP('notes', e.target.value)} />
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setProjModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveProject}>{editing ? 'Save Changes' : 'Create Project'}</Btn>
           </div>
@@ -253,7 +253,7 @@ export default function Projects() {
             {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
           </Select>
           <Input label="Description" value={txForm.description} onChange={(e) => setT('description', e.target.value)} />
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTxModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={saveTx}>{t('Record')}</Btn>
           </div>
@@ -263,11 +263,11 @@ export default function Projects() {
       {/* Time modal */}
       <Modal open={!!timeModal} onClose={() => setTimeModal(null)} title="Log Billable Time">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Employee / Staff" value={tForm.employeeName} onChange={(e) => setTime('employeeName', e.target.value)} />
             <Input label="Date" type="date" value={tForm.date} onChange={(e) => setTime('date', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Hours *" type="number" min="0" step="0.25" value={tForm.hours} onChange={(e) => setTime('hours', e.target.value)} />
             <Input label="Rate / hour" type="number" min="0" step="0.01" value={tForm.rate} onChange={(e) => setTime('rate', e.target.value)} />
           </div>
@@ -276,7 +276,7 @@ export default function Projects() {
             <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
             Billable
           </label>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTimeModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={saveTime}>{t('Log Time')}</Btn>
           </div>
