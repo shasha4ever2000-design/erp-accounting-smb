@@ -21,7 +21,7 @@ const numf = (v) => parseFloat(v) || 0
 
 const EMP_TYPES  = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract' }
 const PAY_FREQ   = { monthly: 'Monthly', bi_weekly: 'Bi-weekly', weekly: 'Weekly' }
-const STATUS_CLR = { active: 'bg-green-100 text-green-700', inactive: 'bg-gray-100 text-gray-500' }
+const STATUS_CLR = { active: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', inactive: 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400' }
 
 export default function Employees() {
   const t = useT()
@@ -85,8 +85,8 @@ export default function Employees() {
       />
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
-        <input className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -95,28 +95,28 @@ export default function Employees() {
           <EmptyState icon="👥" title="No employees" desc="Add employees to manage payroll, departments, and HR records."
             action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Employee')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">{t('No employees match your search')}</div>
+          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No employees match your search')}</div>
         ) : (
           <Table headers={['Employee', 'Department', 'Position', 'Type', 'Pay Frequency', { label: 'Salary', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {filtered.map((emp) => (
               <Tr key={emp.id}>
                 <Td>
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                      <User size={14} className="text-blue-600" />
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 rounded-full flex items-center justify-center flex-shrink-0 ring-1 ring-blue-200/60 dark:ring-blue-800/60">
+                      <User size={14} className="text-blue-600 dark:text-blue-300" />
                     </div>
-                    <div>
-                      <p className="font-medium text-gray-800">{emp.name}</p>
-                      {emp.email && <p className="text-xs text-gray-400">{emp.email}</p>}
+                    <div className="min-w-0">
+                      <p className="font-medium text-gray-900 dark:text-slate-100 truncate">{emp.name}</p>
+                      {emp.email && <p className="text-xs text-gray-400 dark:text-slate-500">{emp.email}</p>}
                     </div>
                   </div>
                 </Td>
-                <Td className="text-gray-600 text-sm">{getDeptName(emp.departmentId)}</Td>
-                <Td className="text-gray-600 text-sm">{emp.position || '—'}</Td>
-                <Td><span className="text-xs text-gray-600">{EMP_TYPES[emp.employmentType] || emp.employmentType}</span></Td>
-                <Td><span className="text-xs text-gray-600">{PAY_FREQ[emp.payFrequency] || emp.payFrequency}</span></Td>
-                <Td right><span className="font-medium text-gray-800">{fmtMoney(emp.salary || 0, sym)}</span></Td>
-                <Td><Badge className={STATUS_CLR[emp.status] || 'bg-gray-100 text-gray-600'}>{emp.status}</Badge></Td>
+                <Td className="text-gray-600 dark:text-slate-300 text-sm">{getDeptName(emp.departmentId)}</Td>
+                <Td className="text-gray-600 dark:text-slate-300 text-sm">{emp.position || '—'}</Td>
+                <Td><span className="text-xs text-gray-600 dark:text-slate-400">{EMP_TYPES[emp.employmentType] || emp.employmentType}</span></Td>
+                <Td><span className="text-xs text-gray-600 dark:text-slate-400">{PAY_FREQ[emp.payFrequency] || emp.payFrequency}</span></Td>
+                <Td right><span className="font-medium text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(emp.salary || 0, sym)}</span></Td>
+                <Td><Badge className={STATUS_CLR[emp.status] || 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}>{emp.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="employee" entityId={emp.id} />
@@ -132,15 +132,15 @@ export default function Employees() {
 
       <Modal open={modal} onClose={close} title={editing ? 'Edit Employee' : 'New Employee'} width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Full Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} />
             <Input label="Email" type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Phone" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
             <Input label="Position / Job Title" value={form.position} onChange={(e) => setField('position', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Department" value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
               <option value="">— No Department —</option>
               {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
@@ -151,7 +151,7 @@ export default function Employees() {
               <option value="contract">Contract</option>
             </Select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Start Date" type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} />
             <Select label="Pay Frequency" value={form.payFrequency} onChange={(e) => setField('payFrequency', e.target.value)}>
               <option value="monthly">Monthly</option>
@@ -175,9 +175,9 @@ export default function Employees() {
             </div>
             <div className="flex justify-between text-sm bg-gray-50 dark:bg-slate-700/40 rounded-lg px-3 py-2">
               <span className="text-gray-500 dark:text-slate-400">{t('Gross Monthly Salary')}</span>
-              <span className="font-bold text-gray-800 dark:text-slate-100">{fmtMoney(gross, sym)}</span>
+              <span className="font-bold text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(gross, sym)}</span>
             </div>
-            {!editing && <p className="text-[11px] text-gray-400">{t('Save the employee first, then re-open to attach the contract file.')}</p>}
+            {!editing && <p className="text-[11px] text-gray-400 dark:text-slate-500">{t('Save the employee first, then re-open to attach the contract file.')}</p>}
           </div>
 
           {/* Statutory: GOSI & tax (off by default) */}
@@ -201,18 +201,18 @@ export default function Employees() {
               </label>
               {form.taxApplicable
                 ? <Input label="Tax Rate %" type="number" min="0" step="0.01" value={form.taxRate} onChange={(e) => setField('taxRate', e.target.value)} />
-                : <p className="text-[11px] text-gray-400">{t('No salary tax (default). Enable only where your country taxes salaries.')}</p>}
+                : <p className="text-[11px] text-gray-400 dark:text-slate-500">{t('No salary tax (default). Enable only where your country taxes salaries.')}</p>}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Bank Account Number" value={form.bankAccountNumber} onChange={(e) => setField('bankAccountNumber', e.target.value)} placeholder="For payroll transfer" />
             <Select label="Status" value={form.status} onChange={(e) => setField('status', e.target.value)}>
               <option value="active">{t('Active')}</option>
               <option value="inactive">Inactive / Terminated</option>
             </Select>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Employee'}</Btn>
           </div>
