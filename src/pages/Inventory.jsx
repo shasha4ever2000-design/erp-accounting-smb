@@ -84,18 +84,20 @@ export default function Inventory() {
       />
 
       {lowStock.length > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-5 flex items-start gap-3">
-          <Package size={18} className="text-amber-600 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="font-medium text-amber-800 text-sm">{t('Low Stock Alert')}</p>
-            <p className="text-amber-700 text-sm">{lowStock.map((i) => i.name).join(', ')} {lowStock.length === 1 ? 'is' : 'are'} at or below reorder level.</p>
+        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex-shrink-0">
+            <Package size={16} className="text-amber-600 dark:text-amber-400" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">{t('Low Stock Alert')}</p>
+            <p className="text-amber-700 dark:text-amber-400/90 text-sm mt-0.5">{lowStock.map((i) => i.name).join(', ')} {lowStock.length === 1 ? 'is' : 'are'} at or below reorder level.</p>
           </div>
         </div>
       )}
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute left-3 top-2.5 text-gray-400" />
-        <input className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           placeholder={t('Search items...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -103,7 +105,7 @@ export default function Inventory() {
         {inventoryItems.length === 0 ? (
           <EmptyState icon="📦" title={t('No inventory items')} desc={t('Add products or services to your inventory.')} action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Item')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">{t('No items match your search')}</div>
+          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No items match your search')}</div>
         ) : (
           <Table headers={[t('Code'), t('Item Name'), t('Unit'), { label: t('Cost Price'), right: true }, { label: t('Sale Price'), right: true }, { label: t('Qty on Hand'), right: true }, { label: t('Stock Value'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((item) => {
@@ -111,21 +113,21 @@ export default function Inventory() {
               const isLow = (item.reorderLevel || 0) > 0 && (item.quantity || 0) <= (item.reorderLevel || 0)
               return (
                 <Tr key={item.id}>
-                  <Td className="font-mono text-gray-500 text-xs">{item.code || '—'}</Td>
+                  <Td className="font-mono text-gray-500 dark:text-slate-400 text-xs">{item.code || '—'}</Td>
                   <Td>
-                    <p className="font-medium text-gray-800">{item.name}</p>
-                    {item.description && <p className="text-xs text-gray-400">{item.description}</p>}
+                    <p className="font-medium text-gray-900 dark:text-slate-100">{item.name}</p>
+                    {item.description && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-xs">{item.description}</p>}
                   </Td>
-                  <Td className="text-gray-500">{item.unit}</Td>
-                  <Td right>{fmtMoney(item.costPrice || 0, sym)}</Td>
-                  <Td right className="font-medium">{fmtMoney(item.salePrice || 0, sym)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400">{item.unit}</Td>
+                  <Td right className="tabular-nums text-gray-600 dark:text-slate-400">{fmtMoney(item.costPrice || 0, sym)}</Td>
+                  <Td right className="font-medium tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(item.salePrice || 0, sym)}</Td>
                   <Td right>
-                    <span className={isLow ? 'text-red-600 font-semibold' : 'text-gray-800'}>
+                    <span className={`tabular-nums ${isLow ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-800 dark:text-slate-200'}`}>
                       {item.quantity || 0} {item.unit}
-                      {isLow && <span className="ml-1 text-[10px] bg-red-100 text-red-600 px-1 rounded">LOW</span>}
+                      {isLow && <span className="ms-1.5 text-[10px] font-semibold bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 px-1.5 py-px rounded-full uppercase tracking-wide">LOW</span>}
                     </span>
                   </Td>
-                  <Td right className="text-gray-600">{fmtMoney(stockValue, sym)}</Td>
+                  <Td right className="text-gray-600 dark:text-slate-400 tabular-nums">{fmtMoney(stockValue, sym)}</Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="inventory" entityId={item.id} />
@@ -142,26 +144,26 @@ export default function Inventory() {
 
       <Modal open={modal} onClose={close} title={editing ? 'Edit Item' : 'New Inventory Item'} width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Item Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Product or service name" />
             <Input label="Item Code / SKU" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="e.g. SKU-001" />
           </div>
           <Textarea label="Description" value={form.description} onChange={(e) => setField('description', e.target.value)} rows={2} />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)} placeholder="e.g. Raw Materials, Finished Goods" />
             <Input label="Barcode" value={form.barcode} onChange={(e) => setField('barcode', e.target.value)} placeholder="EAN / UPC / scan" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Unit" value={form.unit} onChange={(e) => setField('unit', e.target.value)} placeholder="pcs, kg, hr..." />
             <Input label="Cost Price" type="number" min="0" step="0.01" value={form.costPrice} onChange={(e) => setField('costPrice', e.target.value)} />
             <Input label="Sale Price" type="number" min="0" step="0.01" value={form.salePrice} onChange={(e) => setField('salePrice', e.target.value)} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Qty on Hand" type="number" min="0" step="0.01" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label="Reorder Level" type="number" min="0" step="0.01" value={form.reorderLevel} onChange={(e) => setField('reorderLevel', e.target.value)} />
             <Input label="Max Level" type="number" min="0" step="0.01" value={form.maxLevel} onChange={(e) => setField('maxLevel', e.target.value)} placeholder="optional" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label="Inventory Account" value={form.inventoryAccountId} onChange={(e) => setField('inventoryAccountId', e.target.value)}>
               {assetAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
@@ -172,7 +174,7 @@ export default function Inventory() {
               {revenueAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
           </div>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>
           </div>
