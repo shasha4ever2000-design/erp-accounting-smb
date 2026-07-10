@@ -140,6 +140,22 @@ export default function Dashboard() {
 
   const forecastLow = forecast.length ? Math.min(...forecast.map((f) => f.Projected)) : 0
 
+  // Month-over-month trend chips for the headline KPIs
+  const pctTrend = (cur, prev) => {
+    if (!prev) return null
+    const p = ((cur - prev) / Math.abs(prev)) * 100
+    return { label: `${Math.abs(p).toFixed(0)}%`, up: p >= 0 }
+  }
+  const cm = chartData[chartData.length - 1] || { Revenue: 0, Expenses: 0 }
+  const pm = chartData[chartData.length - 2] || { Revenue: 0, Expenses: 0 }
+  const revTrend = pctTrend(cm.Revenue, pm.Revenue)
+  const expTrend = pctTrend(cm.Expenses, pm.Expenses)
+
+  // Theme-aware chart colors
+  const dark = (settings.theme || 'light') === 'dark'
+  const gridStroke = dark ? '#1e293b' : '#eef2f7'
+  const tickFill = dark ? '#94a3b8' : '#6b7280'
+
   const statusBadge = (status) => {
     const map = {
       paid:    'bg-green-100 text-green-700',
@@ -155,9 +171,29 @@ export default function Dashboard() {
 
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('Dashboard')}</h1>
-        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{format(new Date(), 'MMMM d, yyyy')}</p>
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl mb-6 p-6 lg:p-7 bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950 text-white shadow-elevated">
+        <div className="absolute -top-16 -end-10 w-72 h-72 rounded-full bg-blue-500/20 blur-3xl" />
+        <div className="absolute -bottom-20 -start-10 w-72 h-72 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-slate-300 text-sm">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+            <h1 className="text-2xl lg:text-[1.75rem] font-bold mt-1">{settings.company.name}</h1>
+            <p className="text-slate-300/90 text-sm mt-1">
+              {netProfit >= 0
+                ? t('You are profitable this period — net {v}.').replace('{v}', fmtMoney(netProfit, sym))
+                : t('Watch your spending — net loss of {v} this period.').replace('{v}', fmtMoney(Math.abs(netProfit), sym))}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => navigate('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-slate-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-blue-50 transition-colors shadow-sm">
+              <FileText size={16} /> {t('New Invoice')}
+            </button>
+            <button onClick={() => navigate('/reports')} className="inline-flex items-center gap-2 bg-white/10 text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-white/20 transition-colors ring-1 ring-white/15">
+              {t('Reports')} <ArrowRight size={15} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -167,12 +203,16 @@ export default function Dashboard() {
           value={fmtMoney(totalRevenue, sym)}
           color="green"
           icon={<TrendingUp size={18} />}
+          trend={revTrend?.label} trendUp={revTrend?.up}
+          sub={revTrend ? t('vs last month') : undefined}
         />
         <StatCard
           label={t('Total Expenses')}
           value={fmtMoney(totalExpenses, sym)}
           color="red"
           icon={<TrendingDown size={18} />}
+          trend={expTrend?.label} trendUp={expTrend ? !expTrend.up : undefined}
+          sub={expTrend ? t('vs last month') : undefined}
         />
         <StatCard
           label={t('Net Profit')}
@@ -268,9 +308,9 @@ export default function Dashboard() {
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
               <Tooltip formatter={(v) => fmtMoney(v, sym)} />
               <Area type="monotone" dataKey="Revenue" stroke="#2563eb" fill="url(#rev)" strokeWidth={2} />
               <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="url(#exp)" strokeWidth={2} />
@@ -324,9 +364,9 @@ export default function Dashboard() {
                 <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
             <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} />
             <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2} />
           </AreaChart>

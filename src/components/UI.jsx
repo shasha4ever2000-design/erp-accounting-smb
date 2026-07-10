@@ -145,7 +145,7 @@ export function EmptyState({ icon, title, desc, action }) {
   )
 }
 
-export function StatCard({ label, value, sub, color = 'blue', icon }) {
+export function StatCard({ label, value, sub, color = 'blue', icon, trend, trendUp }) {
   const t = useT()
   if (typeof label === 'string') label = t(label)
   if (typeof sub === 'string') sub = t(sub)
@@ -162,7 +162,14 @@ export function StatCard({ label, value, sub, color = 'blue', icon }) {
         <div className="min-w-0">
           <p className="text-xs uppercase tracking-wide text-gray-500 dark:text-slate-400 font-semibold">{label}</p>
           <p className="text-[1.7rem] leading-tight font-bold text-gray-900 dark:text-slate-100 mt-1.5 tabular">{value}</p>
-          {sub && <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{sub}</p>}
+          <div className="flex items-center gap-2 mt-1">
+            {trend != null && (
+              <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ${trendUp ? 'text-green-700 bg-green-50 dark:text-green-300 dark:bg-green-900/30' : 'text-red-600 bg-red-50 dark:text-red-300 dark:bg-red-900/30'}`}>
+                {trendUp ? '▲' : '▼'} {trend}
+              </span>
+            )}
+            {sub && <p className="text-xs text-gray-400 dark:text-slate-500">{sub}</p>}
+          </div>
         </div>
         {icon && (
           <div className={`p-2.5 rounded-xl shadow-sm ${colors[color] || colors.blue}`}>{icon}</div>

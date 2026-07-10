@@ -650,6 +650,9 @@ const AR = {
   'Variance': 'الانحراف', 'Net Budgeted': 'صافي الموازنة', 'Net Actual': 'صافي الفعلي', 'Net Variance': 'صافي الانحراف',
   'budget pro-rated to': 'الموازنة موزعة نسبيًا إلى', 'Annual Budget': 'الموازنة السنوية',
   'Retained Earnings (to date)': 'الأرباح المحتجزة (حتى تاريخه)',
+  'You are profitable this period — net {v}.': 'أنت محقق للربح هذه الفترة — صافي {v}.',
+  'Watch your spending — net loss of {v} this period.': 'انتبه لمصروفاتك — صافي خسارة {v} هذه الفترة.',
+  'New Invoice': 'فاتورة جديدة', 'vs last month': 'مقارنة بالشهر الماضي',
   'Comparative P&L': 'قائمة الدخل المقارنة', 'Current': 'الحالي', 'Prior': 'السابق', 'Change': 'التغير',
   'vs': 'مقابل', 'Net': 'صافي', 'Profit': 'ربح', 'Loss': 'خسارة',
   // ── Recurring journals ──
