@@ -55,6 +55,19 @@
   /* Avoid awkward breaks inside table rows and totals */
   tr, .avoid-break { break-inside: avoid; page-break-inside: avoid; }
 
+  /* Repeat table headers/footers on every printed page (long ledgers/reports) */
+  thead { display: table-header-group; }
+  tfoot { display: table-footer-group; }
+
+  /* Cleaner printed tables: crisp header rule, light row separators */
+  body { font-size: 12px; color: #111827 !important; }
+  h1 { font-size: 20px; } h2 { font-size: 16px; } h3 { font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; }
+  thead th { border-bottom: 1.5px solid #374151 !important; padding: 6px 8px; }
+  tbody td { border-bottom: 1px solid #e5e7eb !important; padding: 5px 8px; }
+  /* Keep a card's heading with the content that follows it */
+  h1, h2, h3, thead { break-after: avoid; page-break-after: avoid; }
+
   @page { margin: 14mm; size: A4; }
 }
 

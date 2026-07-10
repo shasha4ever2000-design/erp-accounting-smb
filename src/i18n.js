@@ -655,6 +655,14 @@ const AR = {
   'New Invoice': 'فاتورة جديدة', 'vs last month': 'مقارنة بالشهر الماضي',
   'Comparative P&L': 'قائمة الدخل المقارنة', 'Current': 'الحالي', 'Prior': 'السابق', 'Change': 'التغير',
   'vs': 'مقابل', 'Net': 'صافي', 'Profit': 'ربح', 'Loss': 'خسارة',
+  // ── Group consolidation ──
+  'Group Consolidation': 'التجميع للمجموعة', 'Combined performance and position across all your companies': 'الأداء والمركز المجمّع عبر جميع شركاتك',
+  'Companies use different base currencies. Figures are summed at face value without FX translation.': 'تستخدم الشركات عملات أساسية مختلفة. تُجمع الأرقام بقيمتها الاسمية دون تحويل عملات.',
+  'Group Revenue': 'إيرادات المجموعة', 'Group Expenses': 'مصروفات المجموعة', 'Group Net Profit': 'صافي ربح المجموعة',
+  'Group Assets': 'أصول المجموعة', 'Group': 'المجموعة', 'By Company': 'حسب الشركة', 'Company': 'الشركة',
+  'No saved data yet': 'لا توجد بيانات محفوظة بعد', 'Active': 'نشطة', 'Group Total': 'إجمالي المجموعة',
+  'Consolidated P&L by Account': 'قائمة الدخل المجمّعة حسب الحساب', 'Loading…': 'جارٍ التحميل…',
+  'Liabilities': 'الخصوم', 'Assets': 'الأصول', 'Equity': 'حقوق الملكية',
   // ── Recurring journals ──
   'Recurring Journals': 'القيود المتكررة', 'New Recurring Entry': 'قيد متكرر جديد', 'Edit Recurring Entry': 'تعديل القيد المتكرر',
   'No recurring journals yet': 'لا توجد قيود متكررة بعد',
