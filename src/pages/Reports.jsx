@@ -300,21 +300,26 @@ export default function Reports() {
 
     return (
       <Card>
-        <div className="p-6 border-b border-gray-100 dark:border-surface-750 flex items-center gap-4">
+        <div className="p-6 border-b border-gray-100 dark:border-surface-750 flex items-center gap-4 flex-wrap">
           <div>
-            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name} — General Ledger</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(startDate)} to {fmtDate(endDate)}</p>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg tracking-tight">{company.name} — {t('General Ledger')}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(startDate)} — {fmtDate(endDate)}</p>
           </div>
-          <div className="ml-auto w-72">
-            <Select value={selectedAcc} onChange={(e) => setSelectedAcc(e.target.value)}>
-              {['asset', 'liability', 'equity', 'revenue', 'expense'].map((type) => (
-                <optgroup key={type} label={type.charAt(0).toUpperCase() + type.slice(1)}>
-                  {accounts.filter((a) => a.type === type).map((a) => (
-                    <option key={a.id} value={a.id}>{a.code} – {a.name}</option>
-                  ))}
-                </optgroup>
-              ))}
-            </Select>
+          <div className="ml-auto flex items-end gap-2">
+            <div className="w-72">
+              <Select value={selectedAcc} onChange={(e) => setSelectedAcc(e.target.value)}>
+                {['asset', 'liability', 'equity', 'revenue', 'expense'].map((type) => (
+                  <optgroup key={type} label={type.charAt(0).toUpperCase() + type.slice(1)}>
+                    {accounts.filter((a) => a.type === type).map((a) => (
+                      <option key={a.id} value={a.id}>{a.code} – {a.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </Select>
+            </div>
+            <Btn variant="secondary" onClick={() => selectedAcc && openDrill(selectedAcc, 'period')} className="print:hidden whitespace-nowrap">
+              <ChevronRight size={14} /> {t('Statement of Account')}
+            </Btn>
           </div>
         </div>
         <table className="w-full text-sm">
@@ -331,13 +336,14 @@ export default function Reports() {
           <tbody>
             {lines.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No transactions for this account in the selected period')}</td></tr>}
             {lines.map((l, i) => (
-              <tr key={i} className="border-b border-gray-50 dark:border-surface-800">
+              <tr key={i} onClick={() => openDrill(selectedAcc, 'period')}
+                className="group border-b border-gray-50 dark:border-surface-800 cursor-pointer hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] transition-colors">
                 <td className="px-6 py-2 text-gray-500 dark:text-slate-400">{fmtDate(l.date)}</td>
                 <td className="px-4 py-2 text-gray-700 dark:text-slate-200">{l.desc}</td>
                 <td className="px-4 py-2 text-gray-400 dark:text-slate-500 text-xs font-mono">{l.ref}</td>
-                <td className="px-4 py-2 text-right font-mono text-gray-700 dark:text-slate-200">{l.dr > 0 ? fmtMoney(l.dr, sym) : ''}</td>
-                <td className="px-4 py-2 text-right font-mono text-gray-700 dark:text-slate-200">{l.cr > 0 ? fmtMoney(l.cr, sym) : ''}</td>
-                <td className={`px-4 py-2 text-right font-mono font-semibold ${l.running >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(l.running, sym)}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums text-gray-700 dark:text-slate-200">{l.dr > 0 ? fmtMoney(l.dr, sym) : ''}</td>
+                <td className="px-4 py-2 text-right font-mono tabular-nums text-gray-700 dark:text-slate-200">{l.cr > 0 ? fmtMoney(l.cr, sym) : ''}</td>
+                <td className={`px-4 py-2 text-right font-mono tabular-nums font-semibold ${l.running >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(l.running, sym)}</td>
               </tr>
             ))}
           </tbody>
