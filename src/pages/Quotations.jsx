@@ -5,11 +5,14 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
+import ConvertModal from '../components/ConvertModal'
+import { docFulfillment } from '../utils/fulfillment'
 import { Plus, Trash2, FileText, ArrowRight } from 'lucide-react'
 
 const STATUS_COLORS = {
   sent:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
   accepted: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  partial:  'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
   rejected: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
   invoiced: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
   draft:    'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
@@ -20,14 +23,16 @@ export default function Quotations() {
   const navigate = useNavigate()
   const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice } = useStore()
   const sym = settings.company.currencySymbol
+  const taxEnabled = settings.tax?.enabled !== false
   const [filter, setFilter] = useState('all')
+  const [convertDoc, setConvertDoc] = useState(null)
 
   const filtered = filter === 'all' ? quotations : quotations.filter((q) => q.status === filter)
   const sorted   = [...filtered].sort((a, b) => b.date.localeCompare(a.date))
 
-  const handleConvert = (q) => {
-    if (!confirm(`Convert ${q.number} to a Sales Invoice?`)) return
-    const inv = convertQuotationToInvoice(q.id)
+  const doConvert = (selections) => {
+    const inv = convertQuotationToInvoice(convertDoc.id, selections)
+    setConvertDoc(null)
     if (inv) navigate(`/invoices/${inv.id}`)
   }
 
@@ -89,6 +94,7 @@ export default function Quotations() {
                     <Badge className={STATUS_COLORS[q.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>
                       {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                     </Badge>
+                    {q.status === 'partial' && (() => { const f = docFulfillment(q.items || [], 'invoicedQty'); return <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">{f.done} / {f.ordered} {t('invoiced')}</p> })()}
                   </Td>
                   <Td right>
                     <span className="font-semibold text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(q.total, sym)}</span>
@@ -98,16 +104,18 @@ export default function Quotations() {
                       <AttachmentButton entityType="quotation" entityId={q.id} />
                       {q.status !== 'invoiced' && q.status !== 'rejected' && (
                         <>
-                          <Btn size="sm" variant="ghost" title="Mark Accepted" onClick={() => updateQuotation(q.id, { status: 'accepted' })}>
-                            <FileText size={13} className="text-green-500" />
-                          </Btn>
-                          <Btn size="sm" variant="secondary" onClick={() => handleConvert(q)} title="Convert to Invoice">
-                            <ArrowRight size={13} /> Invoice
+                          {q.status !== 'partial' && (
+                            <Btn size="sm" variant="ghost" title="Mark Accepted" onClick={() => updateQuotation(q.id, { status: 'accepted' })}>
+                              <FileText size={13} className="text-green-500" />
+                            </Btn>
+                          )}
+                          <Btn size="sm" variant="secondary" onClick={() => setConvertDoc(q)} title="Convert to Invoice">
+                            <ArrowRight size={13} /> {q.status === 'partial' ? t('Invoice rest') : t('Invoice')}
                           </Btn>
                         </>
                       )}
                       {q.status === 'invoiced' && (
-                        <span className="text-xs text-gray-400 dark:text-slate-500 px-2">Converted</span>
+                        <span className="text-xs text-gray-400 dark:text-slate-500 px-2">{t('Converted')}</span>
                       )}
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(q)}>
                         <Trash2 size={13} className="text-red-400" />
@@ -120,6 +128,18 @@ export default function Quotations() {
           </Table>
         )}
       </Card>
+
+      <ConvertModal
+        open={!!convertDoc}
+        onClose={() => setConvertDoc(null)}
+        doc={convertDoc}
+        docKey="invoicedQty"
+        sym={sym}
+        taxEnabled={taxEnabled}
+        title={t('Convert quotation to invoice')}
+        confirmLabel={t('Create Invoice')}
+        onConfirm={doConvert}
+      />
     </div>
   )
 }

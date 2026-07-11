@@ -47,7 +47,8 @@ export default function QuotationForm() {
     setLines((ls) => ls.map((l) => {
       if (l.id !== lineId) return l
       const qty = parseFloat(l.quantity) || 1
-      return { ...l, description: item.name, unitPrice: item.salePrice || 0, subtotal: qty * (item.salePrice || 0), accountId: item.revenueAccountId || 'acc-sales', taxRate: item.taxRate || 0 }
+      // Carry itemId so a converted invoice issues stock & posts COGS at average cost.
+      return { ...l, itemId, description: item.name, unitPrice: item.salePrice || 0, subtotal: qty * (item.salePrice || 0), accountId: item.revenueAccountId || 'acc-sales', taxRate: item.taxRate || 0 }
     }))
   }
 

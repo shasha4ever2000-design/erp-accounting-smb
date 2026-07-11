@@ -4,6 +4,7 @@ import { v4 as uuid } from 'uuid'
 import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
 import { idbKvStorage } from './utils/idbKvStorage'
+import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -588,16 +589,28 @@ export const useStore = create(
       deleteQuotation: (id) =>
         set((s) => ({ quotations: s.quotations.filter((q) => q.id !== id) })),
 
-      convertQuotationToInvoice: (id) => {
+      // Convert a quotation to an invoice — in full, or partially by passing a
+      // { lineId: qty } selection. Each source line tracks how much has been
+      // invoiced (invoicedQty), so the remainder stays an open backorder and can
+      // be invoiced later. Omitting `selections` invoices everything remaining.
+      convertQuotationToInvoice: (id, selections) => {
         const q = get().quotations.find((x) => x.id === id)
         if (!q || q.status === 'invoiced') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(q.items || [], 'invoicedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(q.items || [], sel, { key: 'invoicedQty', taxEnabled })
+        if (items.length === 0) return null
         const invoice = get().addInvoice({
           customerId: q.customerId, customerName: q.customerName,
           date: new Date().toISOString().slice(0, 10),
           dueDate: q.expiryDate || new Date().toISOString().slice(0, 10),
-          items: q.items, subtotal: q.subtotal, taxAmount: q.taxAmount, total: q.total, notes: q.notes || '',
+          departmentId: q.departmentId || null,
+          currency: q.currency, exchangeRate: q.exchangeRate,
+          items, subtotal, taxAmount, total, notes: q.notes || '',
         })
-        get().updateQuotation(id, { status: 'invoiced', invoiceId: invoice.id })
+        const newItems = (q.items || []).map((l) => (applied[l.id] ? { ...l, invoicedQty: (Number(l.invoicedQty) || 0) + applied[l.id] } : l))
+        const status = docFulfillment(newItems, 'invoicedQty').status === 'complete' ? 'invoiced' : 'partial'
+        get().updateQuotation(id, { items: newItems, status, invoiceId: invoice.id, invoiceIds: [...(q.invoiceIds || []), invoice.id] })
         return invoice
       },
 
@@ -658,16 +671,27 @@ export const useStore = create(
       deletePurchaseOrder: (id) =>
         set((s) => ({ purchaseOrders: s.purchaseOrders.filter((p) => p.id !== id) })),
 
-      convertPOToPurchase: (id) => {
+      // Receive/bill a purchase order — in full, or partially via a { lineId:
+      // qty } selection. Each line tracks receivedQty, so undelivered quantities
+      // remain open. Omitting `selections` bills everything remaining.
+      convertPOToPurchase: (id, selections) => {
         const po = get().purchaseOrders.find((p) => p.id === id)
         if (!po || po.status === 'invoiced') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(po.items || [], 'receivedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(po.items || [], sel, { key: 'receivedQty', taxEnabled })
+        if (items.length === 0) return null
         const purchase = get().addPurchase({
           supplierId: po.supplierId, supplierName: po.supplierName,
           date: new Date().toISOString().slice(0, 10),
           dueDate: po.deliveryDate || new Date().toISOString().slice(0, 10),
-          items: po.items, subtotal: po.subtotal, taxAmount: po.taxAmount, total: po.total, notes: po.notes || '',
+          departmentId: po.departmentId || null,
+          currency: po.currency, exchangeRate: po.exchangeRate,
+          items, subtotal, taxAmount, total, notes: po.notes || '',
         })
-        get().updatePurchaseOrder(id, { status: 'invoiced', purchaseId: purchase.id })
+        const newItems = (po.items || []).map((l) => (applied[l.id] ? { ...l, receivedQty: (Number(l.receivedQty) || 0) + applied[l.id] } : l))
+        const status = docFulfillment(newItems, 'receivedQty').status === 'complete' ? 'invoiced' : 'partial'
+        get().updatePurchaseOrder(id, { items: newItems, status, purchaseId: purchase.id, purchaseIds: [...(po.purchaseIds || []), purchase.id] })
         return purchase
       },
 

@@ -47,7 +47,8 @@ export default function PurchaseOrderForm() {
     setLines((ls) => ls.map((l) => {
       if (l.id !== lineId) return l
       const qty = parseFloat(l.quantity) || 1
-      return { ...l, description: item.name, unitPrice: item.costPrice || 0, subtotal: qty * (item.costPrice || 0), accountId: item.inventoryAccountId || 'acc-inv', taxRate: item.taxRate || 0 }
+      // Carry itemId so a converted bill receives stock into inventory (perpetual).
+      return { ...l, itemId, description: item.name, unitPrice: item.costPrice || 0, subtotal: qty * (item.costPrice || 0), accountId: item.inventoryAccountId || 'acc-inv', taxRate: item.taxRate || 0 }
     }))
   }
 
