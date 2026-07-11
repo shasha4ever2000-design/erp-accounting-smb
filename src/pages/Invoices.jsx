@@ -76,9 +76,9 @@ export default function Invoices() {
           <button
             key={s.key}
             onClick={() => setStatusFilter(s.key)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${
               statusFilter === s.key
-                ? s.red ? 'bg-red-600 text-white shadow-sm' : 'bg-blue-600 text-white shadow-btn-primary'
+                ? s.red ? 'bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-sm' : 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary'
                 : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'
             }`}
           >
@@ -96,7 +96,7 @@ export default function Invoices() {
       <div className="relative mb-4 max-w-sm">
         <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
         <input
-          className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder={t('Search invoices...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}

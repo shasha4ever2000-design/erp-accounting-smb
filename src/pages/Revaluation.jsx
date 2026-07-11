@@ -115,11 +115,11 @@ export default function Revaluation() {
                   <td className="py-2 px-3 text-center"><span className="text-[10px] font-semibold bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded">{r.acc.currency}</span></td>
                   <td className="py-2 px-3 text-end">
                     <input type="number" step="0.01" value={rows[r.acc.id]?.fcBalance ?? ''} onChange={(e) => setCell(r.acc.id, 'fcBalance', e.target.value)}
-                      className="w-28 text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-28 text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
                   </td>
                   <td className="py-2 px-3 text-end">
                     <input type="number" step="0.0001" value={rows[r.acc.id]?.rate ?? ''} onChange={(e) => setCell(r.acc.id, 'rate', e.target.value)}
-                      className="w-24 text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                      className="w-24 text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
                   </td>
                   <td className="py-2 px-3 text-end text-gray-600 dark:text-slate-300">{fmtMoney(r.currentBase, sym)}</td>
                   <td className="py-2 px-3 text-end font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.revaluedBase, sym)}</td>

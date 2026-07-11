@@ -112,7 +112,7 @@ export default function InventoryControl() {
       <div className="flex gap-2 mb-5 flex-wrap">
         {TABS.map((tb) => (
           <button key={tb.id} onClick={() => setTab(tb.id)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${tab === tb.id ? 'bg-blue-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${tab === tb.id ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
             <tb.icon size={14} /> {t(tb.label)}
           </button>
         ))}
@@ -123,7 +123,7 @@ export default function InventoryControl() {
         <Card>
           <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
             <div className="relative max-w-xs flex-1">
-              <input className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              <input className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150"
                 placeholder={t('Search items...')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <ExportMenu size="sm" filename="stock-status" title={t('Stock Status')} rows={filtered} columns={statusExportCols} />

@@ -51,7 +51,7 @@ export default class ErrorBoundary extends React.Component {
             </p>
             <p className="text-xs text-gray-400 dark:text-slate-500 mb-6 break-words font-mono">{String(this.state.error?.message || this.state.error)}</p>
             <div className="flex flex-col gap-2">
-              <button onClick={() => this.setState({ error: null })} className="w-full bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-700">
+              <button onClick={() => this.setState({ error: null })} className="w-full bg-gradient-to-b from-brand-500 to-brand-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold shadow-btn-primary hover:from-brand-600 hover:to-brand-700 transition-all">
                 {tr('Try again')}
               </button>
               <button onClick={() => { window.location.hash = ''; window.location.reload() }} className="w-full bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600">

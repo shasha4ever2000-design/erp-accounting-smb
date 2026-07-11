@@ -78,7 +78,7 @@ export default function Budgets() {
                   value={budgetFor(r.id)}
                   onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
                   placeholder="0"
-                  className="w-28 text-right border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-28 text-right border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
               </td>
               <td className="px-3 py-2 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.actual, sym)}</td>
               <td className={`px-3 py-2 text-right font-medium ${r.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{fmtMoney(r.variance, sym)}</td>

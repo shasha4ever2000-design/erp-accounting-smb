@@ -219,7 +219,7 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('Search')}</label>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('Filter rows…')}
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
           </div>
           <Select label={t('Group By')} value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
             <option value="">{t('— None —')}</option>

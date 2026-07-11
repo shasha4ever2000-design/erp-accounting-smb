@@ -172,7 +172,7 @@ export default function Settings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Address')}</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150 resize-none"
                 value={company.address}
                 onChange={(e) => setCompanyField('address', e.target.value)}
                 placeholder="Street, City, Country"
@@ -241,7 +241,7 @@ export default function Settings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Default Invoice Notes')}</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150 resize-none"
                 value={invoice.notes}
                 onChange={(e) => setInvoiceField('notes', e.target.value)}
                 placeholder="e.g. Thank you for your business! Payment due within 30 days."
@@ -251,7 +251,7 @@ export default function Settings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Bank Details / Payment Instructions')}</label>
               <textarea
                 rows={3}
-                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150 resize-none"
                 value={invoice.bankDetails || ''}
                 onChange={(e) => setInvoiceField('bankDetails', e.target.value)}
                 placeholder="Bank name, IBAN, account number, SWIFT… — shown at the bottom of every invoice."
@@ -401,7 +401,7 @@ export default function Settings() {
               </div>
               <div className="flex gap-2">
                 <input value={newCf[entity]} onChange={(e) => setNewCf((n) => ({ ...n, [entity]: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && addCf(entity)}
-                  placeholder={`Add a ${entity} field…`} className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  placeholder={`Add a ${entity} field…`} className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
                 <Btn size="sm" variant="secondary" onClick={() => addCf(entity)}>Add</Btn>
               </div>
             </div>
@@ -499,7 +499,7 @@ export default function Settings() {
       </div>
 
       {saved && (
-        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-bounce">
+        <div className="fixed bottom-6 end-6 z-50 bg-gradient-to-b from-success-500 to-success-600 text-white px-4 py-2.5 rounded-xl shadow-elevated text-sm font-semibold flex items-center gap-2 animate-slide-up">
           <Save size={15} /> Settings saved!
         </div>
       )}

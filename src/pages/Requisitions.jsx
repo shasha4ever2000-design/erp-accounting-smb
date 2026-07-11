@@ -62,7 +62,7 @@ export default function Requisitions() {
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-lg text-sm capitalize ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>
+          <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-lg text-sm capitalize ${tab === t ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>
             {t}{t === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         ))}
