@@ -5,6 +5,7 @@ import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
 import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
+import { allocateLandedCost } from './utils/landedCost'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -1446,6 +1447,66 @@ export const useStore = create(
       stockMovements: [],
       logStockMovement: (mv) =>
         set((s) => ({ stockMovements: [...s.stockMovements, { id: uuid(), createdAt: new Date().toISOString(), ...mv }] })),
+
+      // ── Landed cost ────────────────────────────────────────────────
+      // Capitalise extra acquisition costs (freight, duty, insurance, handling)
+      // into inventory value. Additive: bumps each item's weighted-average cost
+      // and posts a balanced JE (Dr Inventory / Cr the funding account, e.g. AP).
+      landedCosts: [],
+      postLandedCost: ({ date, reference, note, method = 'value', amount, creditAccountId = 'acc-ap', lines }) => {
+        const total = Math.round((Number(amount) || 0) * 100) / 100
+        if (total <= 0) throw new Error('LANDED_NO_AMOUNT')
+        const items = get().inventoryItems
+        const enriched = (lines || [])
+          .filter((l) => l.itemId && (parseFloat(l.qty) || 0) > 0)
+          .map((l) => {
+            const it = items.find((i) => i.id === l.itemId)
+            return { itemId: l.itemId, name: it?.name || '', qty: parseFloat(l.qty) || 0, unitCost: it?.costPrice || 0, weight: parseFloat(l.weight) || 0 }
+          })
+        if (enriched.length === 0) throw new Error('LANDED_NO_LINES')
+
+        const alloc = allocateLandedCost(total, enriched, method) // [{ itemId, allocated }]
+        const allocMap = Object.fromEntries(alloc.map((a) => [a.itemId, a.allocated]))
+
+        // Debit each item's own inventory account for its share.
+        const drMap = {}
+        enriched.forEach((e) => {
+          const it = items.find((i) => i.id === e.itemId)
+          const acc = it?.inventoryAccountId || 'acc-inv'
+          drMap[acc] = Math.round(((drMap[acc] || 0) + (allocMap[e.itemId] || 0)) * 100) / 100
+        })
+        const jeLines = [
+          ...Object.entries(drMap).map(([accountId, amt]) => ({ accountId, debit: amt, credit: 0, description: 'Landed cost capitalised' })),
+          { accountId: creditAccountId, debit: 0, credit: total, description: `Landed cost ${reference || ''}`.trim() },
+        ]
+        const je = get().addJournalEntry({
+          date, description: `Landed cost ${reference || ''}`.trim() || 'Landed cost', reference: reference || '', type: 'landed-cost', lines: jeLines,
+        })
+
+        // Bump weighted-average unit cost: spread each item's share over its on-hand
+        // quantity, so total inventory value rises by exactly the allocated amount.
+        set((st) => ({
+          inventoryItems: st.inventoryItems.map((it) => {
+            const share = allocMap[it.id]
+            if (!share) return it
+            const q = it.quantity || 0
+            if (q <= 0) return it
+            const newCost = Math.round(((it.costPrice || 0) + share / q) * 10000) / 10000
+            return { ...it, costPrice: newCost }
+          }),
+        }))
+
+        const rec = {
+          id: uuid(), date, reference: reference || '', note: note || '', method, amount: total,
+          creditAccountId, journalEntryId: je.id,
+          lines: enriched.map((e) => ({ itemId: e.itemId, name: e.name, qty: e.qty, allocated: allocMap[e.itemId] || 0 })),
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({ landedCosts: [...st.landedCosts, rec] }))
+        enriched.forEach((e) => get().logStockMovement({ itemId: e.itemId, itemName: e.name, date, type: 'landed-cost', qtyChange: 0, ref: reference || 'LC', note: `Landed cost +${allocMap[e.itemId] || 0}` }))
+        get().logActivity('Posted landed cost', `${reference || ''} · ${total}`.trim())
+        return rec
+      },
 
       // Segregation of duties: an adjustment is created as PENDING — it does not
       // touch the ledger or on-hand quantity until a *different* manager approves it.

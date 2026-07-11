@@ -15,7 +15,7 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
-  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent,
+  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship,
 } from 'lucide-react'
 
 const NAV = [
@@ -48,6 +48,7 @@ const NAV = [
   { label: 'Purchase Orders',    path: '/purchase-orders',  icon: Truck },
   { label: 'Purchase Invoices',  path: '/purchases',        icon: ShoppingCart },
   { label: 'Debit Notes',        path: '/debit-notes',      icon: FilePlus },
+  { label: 'Landed Costs',       path: '/landed-costs',     icon: Ship },
 
   { divider: 'Inventory & Production' },
   { label: 'Inventory Items',    path: '/inventory',        icon: Package },

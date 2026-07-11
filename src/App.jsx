@@ -57,6 +57,7 @@ const Revaluation = lazy(() => import('./pages/Revaluation'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const TradeAnalytics = lazy(() => import('./pages/TradeAnalytics'))
 const Commissions = lazy(() => import('./pages/Commissions'))
+const LandedCosts = lazy(() => import('./pages/LandedCosts'))
 const FinancialHealth = lazy(() => import('./pages/FinancialHealth'))
 const Consolidation = lazy(() => import('./pages/Consolidation'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
@@ -159,6 +160,7 @@ export default function App() {
         <Route path="/purchases" element={<Purchases />} />
         <Route path="/purchases/new" element={<PurchaseForm />} />
         <Route path="/debit-notes" element={<DebitNotes />} />
+        <Route path="/landed-costs" element={<LandedCosts />} />
 
         {/* Inventory */}
         <Route path="/inventory" element={<Inventory />} />
