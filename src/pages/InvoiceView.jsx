@@ -61,6 +61,9 @@ export default function InvoiceView() {
   // (zero-rated / exempt supplies must still be indicated on a ZATCA tax invoice).
   const showTaxCol = (invoice.taxAmount || 0) > 0 || (invoice.items || []).some((l) => l.taxCategory && l.taxCategory !== 'standard')
   const lineTaxLabel = (item) => item.taxCategory === 'zero' ? t('Zero-rated') : item.taxCategory === 'exempt' ? t('Exempt') : `${item.taxRate || 0}%`
+  const anyDiscount = (invoice.items || []).some((l) => (Number(l.discount) || 0) > 0)
+  const grossSubtotal = (invoice.items || []).reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0)
+  const invDiscount = Math.round((grossSubtotal - (invoice.subtotal || 0)) * 100) / 100
 
   const handleRecord = () => {
     const amount = parseFloat(payForm.amount)
@@ -172,6 +175,7 @@ export default function InvoiceView() {
                 <th className="text-left py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Description')}</th>
                 <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Qty</th>
                 <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Unit Price')}</th>
+                {anyDiscount && <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Disc %')}</th>}
                 {showTaxCol && <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('VAT')}</th>}
                 <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Amount')}</th>
               </tr>
@@ -182,6 +186,7 @@ export default function InvoiceView() {
                   <td className="py-3 text-gray-700 dark:text-slate-200">{item.description}</td>
                   <td className="py-3 text-right text-gray-600 dark:text-slate-300">{item.quantity}</td>
                   <td className="py-3 text-right text-gray-600 dark:text-slate-300">{fmtMoney(item.unitPrice, invSym)}</td>
+                  {anyDiscount && <td className="py-3 text-right text-gray-500 dark:text-slate-400">{(Number(item.discount) || 0) > 0 ? `${item.discount}%` : '—'}</td>}
                   {showTaxCol && <td className="py-3 text-right text-gray-400 dark:text-slate-500">{lineTaxLabel(item)}</td>}
                   <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(item.subtotal, invSym)}</td>
                 </tr>
@@ -192,8 +197,20 @@ export default function InvoiceView() {
           {/* Totals */}
           <div className="flex justify-end">
             <div className="w-56 space-y-2 text-sm">
+              {invDiscount > 0.005 && (
+                <div className="flex justify-between text-gray-600 dark:text-slate-300">
+                  <span>Subtotal</span>
+                  <span>{fmtMoney(grossSubtotal, invSym)}</span>
+                </div>
+              )}
+              {invDiscount > 0.005 && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>{t('Discount')}</span>
+                  <span>− {fmtMoney(invDiscount, invSym)}</span>
+                </div>
+              )}
               <div className="flex justify-between text-gray-600 dark:text-slate-300">
-                <span>Subtotal</span>
+                <span>{invDiscount > 0.005 ? t('Net Subtotal') : 'Subtotal'}</span>
                 <span>{fmtMoney(invoice.subtotal, invSym)}</span>
               </div>
               {invoice.taxAmount > 0 && (

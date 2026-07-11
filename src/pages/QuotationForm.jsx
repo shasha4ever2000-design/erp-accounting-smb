@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { computeLine } from '../utils/lineMath'
 import { Plus, Trash2 } from 'lucide-react'
 
-const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, subtotal: 0, taxRate: 0, accountId: 'acc-sales' })
+const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0, taxRate: 0, accountId: 'acc-sales' })
 
 export default function QuotationForm() {
   const t = useT()
@@ -33,10 +34,8 @@ export default function QuotationForm() {
     setLines((ls) => ls.map((l) => {
       if (l.id !== id) return l
       const updated = { ...l, [k]: v }
-      if (k === 'quantity' || k === 'unitPrice') {
-        const qty = parseFloat(k === 'quantity' ? v : updated.quantity) || 0
-        const price = parseFloat(k === 'unitPrice' ? v : updated.unitPrice) || 0
-        updated.subtotal = qty * price
+      if (k === 'quantity' || k === 'unitPrice' || k === 'discount') {
+        updated.subtotal = computeLine(updated, { taxEnabled }).subtotal
       }
       return updated
     }))
@@ -117,9 +116,10 @@ export default function QuotationForm() {
                     </div>
                   </div>
                   <Input label="Description *" value={line.description} onChange={(e) => setLine(line.id, 'description', e.target.value)} placeholder="Item / service description" />
-                  <div className="grid grid-cols-4 gap-2 items-end">
+                  <div className="grid grid-cols-5 gap-2 items-end">
                     <Input label="Qty" type="number" min="0" step="any" value={line.quantity} onChange={(e) => setLine(line.id, 'quantity', e.target.value)} />
                     <Input label={`Unit Price (${sym})`} type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => setLine(line.id, 'unitPrice', e.target.value)} />
+                    <Input label={t('Disc %')} type="number" min="0" max="100" step="0.1" value={line.discount} onChange={(e) => setLine(line.id, 'discount', e.target.value)} />
                     {taxEnabled && <Input label={`Tax %`} type="number" min="0" max="100" value={line.taxRate ?? taxRate} onChange={(e) => setLine(line.id, 'taxRate', e.target.value)} />}
                     <div className={`flex items-end gap-2 ${taxEnabled ? '' : 'col-span-2'}`}>
                       <div className="flex-1">

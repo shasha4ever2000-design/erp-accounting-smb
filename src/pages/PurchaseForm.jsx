@@ -7,9 +7,10 @@ import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 import { VAT_CATEGORIES, vatCatRate } from '../utils/vat'
+import { computeLine, documentTotals } from '../utils/lineMath'
 
 const EXPENSE_TYPES = ['asset', 'expense']
-const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
+const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
 
 export default function PurchaseForm() {
   const navigate = useNavigate()
@@ -67,12 +68,10 @@ export default function PurchaseForm() {
         }
         // The VAT category drives the rate: standard → configured rate, zero-rated/exempt → 0%.
         updated.taxRate = taxEnabled ? vatCatRate(updated.taxCategory, defaultTaxRate) : 0
-        const qty = parseFloat(updated.quantity) || 0
-        const price = parseFloat(updated.unitPrice) || 0
-        const tax = parseFloat(updated.taxRate) || 0
-        updated.subtotal = qty * price
-        updated.taxAmount = updated.subtotal * tax / 100
-        updated.total = updated.subtotal + updated.taxAmount
+        const c = computeLine(updated, { taxEnabled })
+        updated.subtotal = c.subtotal   // net of discount — posts as expense/inventory cost
+        updated.taxAmount = c.taxAmount
+        updated.total = c.total
         return updated
       }),
     }))
@@ -81,9 +80,12 @@ export default function PurchaseForm() {
   const addLine = () => setForm((f) => ({ ...f, items: [...f.items, emptyLine()] }))
   const removeLine = (id) => setForm((f) => ({ ...f, items: f.items.filter((l) => l.id !== id) }))
 
-  const subtotal = form.items.reduce((s, l) => s + (l.subtotal || 0), 0)
-  const taxTotal = form.items.reduce((s, l) => s + (l.taxAmount || 0), 0)
-  const total = subtotal + taxTotal
+  const totals = documentTotals(form.items, { taxEnabled })
+  const grossSubtotal = totals.gross
+  const discountTotal = totals.discount
+  const subtotal = totals.subtotal
+  const taxTotal = totals.taxAmount
+  const total = totals.total
 
   const handleSave = () => {
     if (!form.supplierId) return alert('Please select a supplier.')
@@ -143,16 +145,17 @@ export default function PurchaseForm() {
           <Card className="p-6">
             <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
-              <div className={`grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+              <div className={`grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Cost')}</span>
+                <span>{t('Disc %')}</span>
                 {taxEnabled && <span>{t('VAT')}</span>}
                 <span className="text-right">{t('Amount')}</span>
                 <span />
               </div>
               {form.items.map((line) => (
-                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
                   <div className="space-y-1">
                     <Input value={line.description} onChange={(e) => updateLine(line.id, 'description', e.target.value)} placeholder="Item or expense description" />
                     {inventoryItems.length > 0 && (
@@ -169,6 +172,7 @@ export default function PurchaseForm() {
                   </div>
                   <Input type="number" min="0" step="0.01" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', e.target.value)} />
                   <Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(line.id, 'unitPrice', e.target.value)} />
+                  <Input type="number" min="0" max="100" step="0.1" value={line.discount} onChange={(e) => updateLine(line.id, 'discount', e.target.value)} />
                   {taxEnabled && (
                     <Select value={line.taxCategory || 'standard'} onChange={(e) => updateLine(line.id, 'taxCategory', e.target.value)}>
                       {VAT_CATEGORIES.map((c) => (
@@ -184,7 +188,9 @@ export default function PurchaseForm() {
             </div>
 
             <div className="border-t border-gray-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
+              {discountTotal > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{fmtMoney(grossSubtotal, sym)}</span></div>}
+              {discountTotal > 0 && <div className="flex justify-between text-success-600 dark:text-success-400"><span>{t('Discount')}</span><span>− {fmtMoney(discountTotal, sym)}</span></div>}
+              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{discountTotal > 0 ? t('Net Subtotal') : 'Subtotal'}</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
               {taxEnabled && taxTotal > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
               <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t border-slate-200 dark:border-surface-700 pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
               {isFC && <div className="flex justify-between text-xs text-gray-400 dark:text-slate-500"><span>≈ {t('in')} {baseCurrency}</span><span>{fmtMoney(total * (Number(form.exchangeRate) || 1), settings.company.currencySymbol)}</span></div>}
