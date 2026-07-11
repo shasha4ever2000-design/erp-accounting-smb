@@ -43,6 +43,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
@@ -102,6 +103,7 @@ const DEFAULT_SETTINGS = {
   payment:       { prefix: 'PAY-',  next: 1 },
   quotation:     { prefix: 'QUO-',  next: 1 },
   purchaseOrder: { prefix: 'PO-',   next: 1 },
+  goodsReceipt:  { prefix: 'GRN-',  next: 1 },
   creditNote:    { prefix: 'CN-',   next: 1 },
   debitNote:     { prefix: 'DN-',   next: 1 },
   ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
@@ -689,10 +691,122 @@ export const useStore = create(
           currency: po.currency, exchangeRate: po.exchangeRate,
           items, subtotal, taxAmount, total, notes: po.notes || '',
         })
-        const newItems = (po.items || []).map((l) => (applied[l.id] ? { ...l, receivedQty: (Number(l.receivedQty) || 0) + applied[l.id] } : l))
-        const status = docFulfillment(newItems, 'receivedQty').status === 'complete' ? 'invoiced' : 'partial'
+        // Direct path receives and bills together, so both counters advance.
+        const newItems = (po.items || []).map((l) => (applied[l.id] ? { ...l, receivedQty: (Number(l.receivedQty) || 0) + applied[l.id], billedQty: (Number(l.billedQty) || 0) + applied[l.id] } : l))
+        const status = docFulfillment(newItems, 'billedQty').status === 'complete' ? 'invoiced' : 'partial'
         get().updatePurchaseOrder(id, { items: newItems, status, purchaseId: purchase.id, purchaseIds: [...(po.purchaseIds || []), purchase.id] })
         return purchase
+      },
+
+      // ─── GOODS RECEIPTS (GRN) + 3-WAY MATCH ────────────────────────
+      // Procure-to-pay separates the physical receipt of goods from the vendor
+      // bill. A GRN records what arrived: it puts stock in and accrues the cost
+      // to "Goods Received Not Invoiced" (GRNI). The later bill clears GRNI into
+      // Accounts Payable. Comparing PO ↔ GRN ↔ Bill quantities is the 3-way match.
+      goodsReceipts: [],
+
+      receiveGoods: (poId, selections, { date } = {}) => {
+        const po = get().purchaseOrders.find((p) => p.id === poId)
+        if (!po) return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(po.items || [], 'receivedQty')
+        const { items, applied } = buildConversion(po.items || [], sel, { key: 'receivedQty', taxEnabled })
+        if (items.length === 0) return null
+        const rate = Number(po.exchangeRate) || 1
+        const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
+        const recvDate = date || new Date().toISOString().slice(0, 10)
+        const { prefix, next } = get().settings.goodsReceipt
+
+        // JE: Dr inventory (stock) / expense (non-stock) at cost, Cr GRNI accrual.
+        const debitByAcc = {}
+        const recv = {} // itemId -> { qty, cost(base) }
+        items.forEach((l) => {
+          const acc = l.itemId ? (get().inventoryItems.find((i) => i.id === l.itemId)?.inventoryAccountId || 'acc-inv') : (l.accountId || 'acc-admin')
+          const amt = toBase(l.subtotal)
+          debitByAcc[acc] = (debitByAcc[acc] || 0) + amt
+          if (l.itemId) { recv[l.itemId] = recv[l.itemId] || { qty: 0, cost: 0 }; recv[l.itemId].qty += l.quantity; recv[l.itemId].cost += amt }
+        })
+        const netBase = Object.values(debitByAcc).reduce((s, v) => s + v, 0)
+        const lines = [
+          ...Object.entries(debitByAcc).map(([a, amt]) => ({ accountId: a, debit: amt, credit: 0, description: 'Goods received' })),
+          { accountId: 'acc-grni', debit: 0, credit: netBase, description: 'Goods received not invoiced' },
+        ]
+        const number = nextNum(prefix, next)
+        const je = get().addJournalEntry({ date: recvDate, description: `Goods Receipt ${number} – ${po.supplierName || ''}`, reference: number, type: 'goods_receipt', lines })
+
+        // Perpetual receipt into stock (weighted-average, base cost).
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((st) => ({
+          inventoryItems: st.inventoryItems.map((it) => {
+            const u = recv[it.id]; if (!u) return it
+            const oldQty = it.quantity || 0, newQty = oldQty + u.qty
+            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
+            const patch = { quantity: newQty, costPrice: newCost }
+            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + u.qty; patch.stockByWarehouse = m }
+            return { ...it, ...patch }
+          }),
+          settings: { ...st.settings, goodsReceipt: { ...st.settings.goodsReceipt, next: next + 1 } },
+        }))
+        Object.entries(recv).forEach(([itemId, u]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: recvDate, type: 'purchase', qtyChange: u.qty, ref: number, note: `GRN from ${po.supplierName || 'supplier'}` })
+        })
+
+        const grn = { id: uuid(), number, poId, poNumber: po.number, supplierId: po.supplierId, supplierName: po.supplierName, date: recvDate, items, journalEntryId: je.id, createdAt: new Date().toISOString() }
+        const newItems = (po.items || []).map((l) => (applied[l.id] ? { ...l, receivedQty: (Number(l.receivedQty) || 0) + applied[l.id] } : l))
+        const fullyBilled = docFulfillment(newItems, 'billedQty').status === 'complete'
+        set((st) => ({ goodsReceipts: [...st.goodsReceipts, grn] }))
+        get().updatePurchaseOrder(poId, { items: newItems, status: fullyBilled ? 'invoiced' : 'partial', grnIds: [...(po.grnIds || []), grn.id] })
+        get().logActivity('Received goods', `${number} · ${po.number}`)
+        return grn
+      },
+
+      // Bill the received-but-not-yet-billed quantities of a PO: Dr GRNI + input
+      // VAT, Cr AP. No stock movement (the GRN already received it).
+      billReceivedPO: (poId, selections, { date, dueDate } = {}) => {
+        const po = get().purchaseOrders.find((p) => p.id === poId)
+        if (!po) return null
+        const rate = Number(po.exchangeRate) || 1
+        const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        // Clamp each line to what's received but not billed.
+        const billable = {}
+        ;(po.items || []).forEach((l) => {
+          const cap = Math.max(0, (Number(l.receivedQty) || 0) - (Number(l.billedQty) || 0))
+          const want = selections ? (Number(selections[l.id]) || 0) : cap
+          const q = Math.min(want, cap)
+          if (q > 1e-9) billable[l.id] = q
+        })
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(po.items || [], billable, { key: 'billedQty', taxEnabled })
+        if (items.length === 0) return null
+
+        const netBase = items.reduce((s, l) => s + toBase(l.subtotal), 0)
+        const vatBase = items.reduce((s, l) => s + toBase(l.taxAmount), 0)
+        const apBase = Math.round((netBase + vatBase) * 100) / 100
+        const lines = [{ accountId: 'acc-grni', debit: netBase, credit: 0, description: 'Clear GRNI' }]
+        if (vatBase > 0) lines.push({ accountId: 'acc-vatin', debit: vatBase, credit: 0, description: 'Input Tax' })
+        lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Bill for ${po.number}` })
+
+        const { prefix, next } = get().settings.purchase
+        const number = nextNum(prefix, next)
+        const billDate = date || new Date().toISOString().slice(0, 10)
+        const je = get().addJournalEntry({ date: billDate, description: `Purchase Invoice ${number} – ${po.supplierName || ''}`, reference: number, type: 'purchase', departmentId: po.departmentId || null, lines })
+
+        const newPurchase = {
+          id: uuid(), number, supplierId: po.supplierId, supplierName: po.supplierName,
+          date: billDate, dueDate: dueDate || po.deliveryDate || billDate,
+          departmentId: po.departmentId || null, currency: po.currency, exchangeRate: rate,
+          items, subtotal, taxAmount, total, baseTotal: apBase, notes: `From ${po.number} (GRNI)`,
+          status: 'received', amountPaid: 0, payments: [], journalEntryId: je.id, poId, fromGrni: true,
+          createdAt: new Date().toISOString(),
+        }
+        set((st) => ({ purchases: [...st.purchases, newPurchase], settings: { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } } }))
+
+        const newItems = (po.items || []).map((l) => (applied[l.id] ? { ...l, billedQty: (Number(l.billedQty) || 0) + applied[l.id] } : l))
+        const status = docFulfillment(newItems, 'billedQty').status === 'complete' ? 'invoiced' : 'partial'
+        get().updatePurchaseOrder(poId, { items: newItems, status, purchaseId: newPurchase.id, purchaseIds: [...(po.purchaseIds || []), newPurchase.id] })
+        get().logActivity('Billed received goods', `${number} · ${po.number}`)
+        return newPurchase
       },
 
       // ─── PURCHASE INVOICES ─────────────────────────────────────────
@@ -2084,9 +2198,9 @@ export const useStore = create(
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
-          'recurringJournals',
+          'recurringJournals', 'goodsReceipts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 17, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 18, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -2141,7 +2255,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 17,
+      version: 18,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -2265,6 +2379,13 @@ export const useStore = create(
         if (version < 17) {
           if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-fxreal'))
             persisted.accounts.push({ id: 'acc-fxreal', code: '4006', name: 'Realized FX Gain/(Loss)', type: 'revenue', subtype: 'revenue', isSystem: false })
+        }
+        if (version < 18) {
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-grni'))
+            persisted.accounts.push({ id: 'acc-grni', code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current', isSystem: true })
+          if (!persisted.goodsReceipts) persisted.goodsReceipts = []
+          if (persisted.settings && !persisted.settings.goodsReceipt)
+            persisted.settings.goodsReceipt = { prefix: 'GRN-', next: 1 }
         }
         return persisted
        } catch (e) {

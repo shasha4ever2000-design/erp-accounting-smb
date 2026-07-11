@@ -43,3 +43,26 @@ export function buildConversion(sourceItems = [], selections = {}, { key, taxEna
   const total = Math.round((subtotal + taxAmount) * 100) / 100
   return { items, applied, subtotal, taxAmount, total }
 }
+
+// Three-way match: reconcile a purchase order's Ordered vs Received vs Billed
+// quantities per line and roll up a status. `variance` = physically received or
+// billed more than ordered (needs attention); `matched` = every line ordered =
+// received = billed; otherwise it's still `in_progress`.
+export function poMatch(po) {
+  const lines = (po?.items || []).map((l) => {
+    const ordered = Number(l.quantity) || 0
+    const received = Number(l.receivedQty) || 0
+    const billed = Number(l.billedQty) || 0
+    return {
+      id: l.id, description: l.description, ordered, received, billed,
+      awaitingReceipt: Math.max(0, ordered - received),
+      awaitingBill: Math.max(0, received - billed),
+      overReceived: received > ordered + 1e-6,
+      overBilled: billed > received + 1e-6,
+    }
+  })
+  const variance = lines.some((l) => l.overReceived || l.overBilled)
+  const matched = lines.length > 0 && lines.every((l) => Math.abs(l.ordered - l.received) < 1e-6 && Math.abs(l.received - l.billed) < 1e-6)
+  const status = variance ? 'variance' : matched ? 'matched' : 'in_progress'
+  return { lines, status, variance, matched }
+}

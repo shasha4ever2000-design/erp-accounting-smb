@@ -7,16 +7,17 @@ import { lineDone, lineRemaining, buildConversion } from '../utils/fulfillment'
 // A quantity picker for partially converting a source document (quotation → invoice,
 // purchase order → bill). Lines already fully fulfilled are shown but locked; every
 // other line defaults to its full remaining quantity and can be dialled down.
-export default function ConvertModal({ open, onClose, doc, docKey, sym, title, confirmLabel, onConfirm, taxEnabled = true }) {
+export default function ConvertModal({ open, onClose, doc, docKey, sym, title, confirmLabel, onConfirm, taxEnabled = true, remainingOf }) {
   const t = useT()
   const items = doc?.items || []
   const [qty, setQty] = useState({})
+  const remainOf = remainingOf || ((l) => lineRemaining(l, docKey))
 
   // Seed the inputs with each line's remaining quantity whenever a new doc opens.
   useEffect(() => {
     if (!doc) return
     const seed = {}
-    ;(doc.items || []).forEach((l) => { seed[l.id] = lineRemaining(l, docKey) })
+    ;(doc.items || []).forEach((l) => { seed[l.id] = remainOf(l) })
     setQty(seed)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [doc?.id])
@@ -49,7 +50,7 @@ export default function ConvertModal({ open, onClose, doc, docKey, sym, title, c
               </thead>
               <tbody>
                 {items.map((l) => {
-                  const remaining = lineRemaining(l, docKey)
+                  const remaining = remainOf(l)
                   const done = lineDone(l, docKey)
                   return (
                     <tr key={l.id} className="border-b border-gray-50 dark:border-surface-700/50">
