@@ -1,8 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { StatCard, Card, Badge } from '../components/UI'
+import AccountLedgerModal from '../components/AccountLedgerModal'
 import { useT } from '../i18n'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
@@ -14,9 +15,13 @@ import {
 import { format, subMonths, parseISO, isValid } from 'date-fns'
 
 export default function Dashboard() {
-  const { invoices, purchases, accounts, getAllBalances, settings, recurringInvoices, leases } = useStore()
+  const { invoices, purchases, accounts, journalEntries, getAllBalances, settings, recurringInvoices, leases } = useStore()
   const sym = settings.company.currencySymbol
   const t = useT()
+
+  // Click a money tile → its ledger's Statement of Account (same drawer as Reports).
+  const [drill, setDrill] = useState(null)
+  const today = new Date().toISOString().slice(0, 10)
 
   const balances = useMemo(() => getAllBalances(), [getAllBalances])
 
@@ -241,6 +246,7 @@ export default function Dashboard() {
           value={fmtMoney(cashBalance, sym)}
           color="purple"
           icon={<DollarSign size={18} />}
+          onClick={() => setDrill({ id: '__cashbank__', name: t('Cash & Bank'), type: 'asset', memberIds: ['acc-cash', 'acc-bank1'] })}
         />
       </div>
 
@@ -251,6 +257,7 @@ export default function Dashboard() {
           sub={t('Amount owed to you')}
           color="blue"
           icon={<FileText size={18} />}
+          onClick={() => setDrill(accounts.find((a) => a.id === 'acc-ar'))}
         />
         <StatCard
           label={t('Accounts Payable')}
@@ -258,6 +265,7 @@ export default function Dashboard() {
           sub={t('Amount you owe')}
           color="orange"
           icon={<ShoppingCart size={18} />}
+          onClick={() => setDrill(accounts.find((a) => a.id === 'acc-ap'))}
         />
         <StatCard
           label={t('Overdue Invoices')}
@@ -438,6 +446,20 @@ export default function Dashboard() {
           </table>
         )}
       </Card>
+
+      <AccountLedgerModal
+        open={!!drill}
+        onClose={() => setDrill(null)}
+        account={drill}
+        accounts={accounts}
+        journalEntries={journalEntries}
+        sym={sym}
+        startDate={today}
+        endDate={today}
+        mode="todate"
+        companyName={settings.company.name}
+        onOpenAccount={(id) => setDrill(accounts.find((a) => a.id === id) || null)}
+      />
     </div>
   )
 }

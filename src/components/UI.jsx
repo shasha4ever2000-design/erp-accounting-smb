@@ -1,5 +1,6 @@
 // Shared UI primitives (light + dark mode aware)
 import { Fragment } from 'react'
+import { ChevronRight } from 'lucide-react'
 import { useT } from '../i18n'
 
 // Translate string children of buttons while preserving icons/layout.
@@ -16,9 +17,9 @@ function translateChildren(children, t) {
   return children
 }
 
-export function Card({ children, className = '' }) {
+export function Card({ children, className = '', ...rest }) {
   return (
-    <div className={`bg-white dark:bg-surface-850/90 rounded-xl shadow-card border border-slate-200/80 dark:border-surface-750/80 dark:shadow-none dark:ring-1 dark:ring-white/[0.03] ${className}`}>
+    <div {...rest} className={`bg-white dark:bg-surface-850/90 rounded-xl shadow-card border border-slate-200/80 dark:border-surface-750/80 dark:shadow-none dark:ring-1 dark:ring-white/[0.03] ${className}`}>
       {children}
     </div>
   )
@@ -153,10 +154,13 @@ export function EmptyState({ icon, title, desc, action }) {
   )
 }
 
-export function StatCard({ label, value, sub, color = 'blue', icon, trend, trendUp }) {
+export function StatCard({ label, value, sub, color = 'blue', icon, trend, trendUp, onClick }) {
   const t = useT()
   if (typeof label === 'string') label = t(label)
   if (typeof sub === 'string') sub = t(sub)
+  const clickProps = onClick
+    ? { onClick, role: 'button', tabIndex: 0, onKeyDown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick() } } }
+    : {}
   // Soft tinted icon chips — quieter and more premium than saturated fills.
   const colors = {
     blue:   'bg-brand-50 text-brand-600 ring-brand-600/10 dark:bg-brand-500/10 dark:text-brand-400 dark:ring-brand-400/20',
@@ -167,10 +171,10 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
     purple: 'bg-accent-50 text-accent-600 ring-accent-600/10 dark:bg-accent-500/10 dark:text-accent-400 dark:ring-accent-400/20',
   }
   return (
-    <Card className="group p-5 transition-all duration-200 ease-spring hover:shadow-card-hover hover:-translate-y-px">
+    <Card {...clickProps} className={`group p-5 transition-all duration-200 ease-spring hover:shadow-card-hover hover:-translate-y-px ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 font-semibold">{label}</p>
+          <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">{label}{onClick && <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity" />}</p>
           <p className="text-[1.7rem] leading-tight font-bold tracking-tightest text-slate-900 dark:text-white mt-2 tabular truncate">{value}</p>
           <div className="flex items-center gap-2 mt-1.5">
             {trend != null && (

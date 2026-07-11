@@ -32,23 +32,25 @@ export default function AccountLedgerModal({ open, onClose, account, accounts, j
     const sign = isDebitNormal(account.type) ? 1 : -1
     const rangeStart = mode === 'todate' ? '0000-01-01' : startDate
     const rangeEnd = endDate
+    // A tile like "Cash & Bank" aggregates several ledgers: pass memberIds and the
+    // drawer shows their combined statement, with contra = accounts outside the group.
+    const memberIds = account.memberIds && account.memberIds.length ? account.memberIds : [account.id]
+    const inGroup = (id) => memberIds.includes(id)
 
     let opening = 0
     const rows = []
     const sorted = [...(journalEntries || [])].sort((a, b) => (a.date === b.date ? String(a.number).localeCompare(String(b.number)) : a.date.localeCompare(b.date)))
 
     sorted.forEach((je) => {
-      je.lines.forEach((l) => {
-        if (l.accountId !== account.id) return
-        const dr = +l.debit || 0
-        const cr = +l.credit || 0
-        const move = sign * (dr - cr)
-        if (je.date < rangeStart) { opening += move; return }
-        if (je.date > rangeEnd) return
-        // Contra = the other accounts on the same voucher, for one-click pivoting.
-        const contra = je.lines.filter((x) => x.accountId !== account.id).map((x) => accById[x.accountId]).filter(Boolean)
-        rows.push({ id: je.id + '-' + (l.description || '') + Math.random(), date: je.date, ref: je.number, type: je.type, desc: l.description || je.description, dr, cr, move, contra })
-      })
+      // Net the group's movement on this voucher into a single line.
+      let dr = 0, cr = 0, descPick = ''
+      je.lines.forEach((l) => { if (inGroup(l.accountId)) { dr += +l.debit || 0; cr += +l.credit || 0; if (!descPick) descPick = l.description } })
+      if (dr === 0 && cr === 0) return
+      const move = sign * (dr - cr)
+      if (je.date < rangeStart) { opening += move; return }
+      if (je.date > rangeEnd) return
+      const contra = je.lines.filter((x) => !inGroup(x.accountId)).map((x) => accById[x.accountId]).filter(Boolean)
+      rows.push({ id: je.id, date: je.date, ref: je.number, type: je.type, desc: descPick || je.description, dr, cr, move, contra })
     })
 
     let running = opening
