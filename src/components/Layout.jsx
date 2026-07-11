@@ -15,7 +15,7 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
-  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity,
+  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows,
 } from 'lucide-react'
 
 const NAV = [
@@ -72,6 +72,7 @@ const NAV = [
 
   { divider: 'Reports & System' },
   { label: 'Analytics',          path: '/analytics',         icon: PieChart },
+  { label: 'Sales & Purchasing', path: '/trade-analytics',   icon: GitCompareArrows },
   { label: 'Financial Health',   path: '/financial-health',  icon: Activity },
   { label: 'Group Consolidation',path: '/consolidation',     icon: Layers },
   { label: 'Currencies',         path: '/currencies',        icon: Coins },
