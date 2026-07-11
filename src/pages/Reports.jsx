@@ -227,27 +227,38 @@ export default function Reports() {
 
     return (
       <Card>
-        <div className="p-6 border-b border-gray-100 dark:border-surface-750">
-          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Trial Balance as at {fmtDate(endDate)}</p>
+        <div className="p-6 border-b border-gray-100 dark:border-surface-750 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg tracking-tight">{company.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('Trial Balance')} · {t('As at')} {fmtDate(endDate)}</p>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-surface-800 rounded-full px-2.5 py-1 print:hidden">
+            <ChevronRight size={12} /> {t('Click any line for its ledger')}
+          </span>
         </div>
         <div className="p-0">
           <table className="w-full text-sm">
             <thead className="bg-slate-50/80 dark:bg-surface-900/40">
               <tr>
                 <th className="text-left px-6 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Code</th>
-                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Account</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Debit</th>
-                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Credit</th>
+                <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Account')}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Debit')}</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Credit')}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-gray-50 dark:border-surface-800">
+                <tr key={r.id} onClick={() => openDrill(r.id, 'todate')}
+                  className="group border-b border-gray-50 dark:border-surface-800 cursor-pointer hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] transition-colors">
                   <td className="px-6 py-2 font-mono text-gray-500 dark:text-slate-400 text-xs">{r.code}</td>
-                  <td className="px-4 py-2 text-gray-700 dark:text-slate-200">{r.name}</td>
-                  <td className="px-4 py-2 text-right font-mono text-gray-800 dark:text-slate-100">{r.netDr > 0 ? fmtMoney(r.netDr, sym) : ''}</td>
-                  <td className="px-4 py-2 text-right font-mono text-gray-800 dark:text-slate-100">{r.netCr > 0 ? fmtMoney(r.netCr, sym) : ''}</td>
+                  <td className="px-4 py-2 text-gray-700 dark:text-slate-200">
+                    <span className="inline-flex items-center gap-1.5 group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">
+                      {r.name}
+                      <ChevronRight size={13} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity print:hidden" />
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums text-gray-800 dark:text-slate-100">{r.netDr > 0 ? fmtMoney(r.netDr, sym) : ''}</td>
+                  <td className="px-4 py-2 text-right font-mono tabular-nums text-gray-800 dark:text-slate-100">{r.netCr > 0 ? fmtMoney(r.netCr, sym) : ''}</td>
                 </tr>
               ))}
               <tr className="border-t-2 border-gray-300 dark:border-surface-600 bg-gray-50 dark:bg-surface-800/60 font-bold">
