@@ -6,6 +6,8 @@ import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../componen
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import CustomReport from '../components/CustomReport'
+import AccountLedgerModal from '../components/AccountLedgerModal'
+import { ChevronRight } from 'lucide-react'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 
@@ -40,6 +42,34 @@ export default function Reports() {
   const [endDate, setEndDate] = useState(`${thisYear}-12-31`)
   // hoisted here (not inside GLReport) so it survives the parent's re-renders
   const [glAcc, setGlAcc] = useState('')
+  // Drill-down: click any Balance Sheet / P&L line to open its Statement of Account.
+  // mode 'period' → P&L (movements in the range); 'todate' → Balance Sheet (cumulative).
+  const [drill, setDrill] = useState(null)
+  const openDrill = (accountId, mode) => setDrill({ accountId, mode })
+  const drillAccount = drill ? accounts.find((a) => a.id === drill.accountId) : null
+
+  // One clickable Balance-Sheet / P&L line → drills into that ledger's Statement
+  // of Account. Non-real (aggregate) rows like Retained Earnings pass clickable=false.
+  const LedgerLine = ({ account, mode, clickable = true, indent = false }) => {
+    const body = (
+      <>
+        <span className={`flex items-center gap-2 text-gray-600 dark:text-slate-300 ${indent ? 'ps-3' : ''}`}>
+          {account.code && <span className="font-mono text-[11px] text-gray-400 dark:text-slate-500">{account.code}</span>}
+          <span className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{account.name}</span>
+          {clickable && <ChevronRight size={13} className="opacity-0 group-hover:opacity-100 -ms-1 text-brand-400 transition-opacity print:hidden" />}
+        </span>
+        <span className="font-medium text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(account.balance, sym)}</span>
+      </>
+    )
+    if (!clickable)
+      return <div className="group flex items-center justify-between px-3 py-1.5 rounded-lg text-sm">{body}</div>
+    return (
+      <button type="button" onClick={() => openDrill(account.id, mode)}
+        className="group w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-sm text-start hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40">
+        {body}
+      </button>
+    )
+  }
 
   const balances = useMemo(() => getAllBalances(startDate, endDate), [getAllBalances, startDate, endDate, journalEntries])
   const allBalances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
@@ -75,54 +105,45 @@ export default function Reports() {
           </div>
         </div>
 
-        <Card>
-          <div className="p-6 border-b border-gray-100 dark:border-surface-750">
-            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400">Income Statement for the period {fmtDate(startDate)} to {fmtDate(endDate)}</p>
+        <Card className="overflow-hidden">
+          <div className="p-6 border-b border-gray-100 dark:border-surface-750 flex items-start justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg tracking-tight">{company.name}</h3>
+              <p className="text-sm text-gray-500 dark:text-slate-400">{t('Income Statement')} · {fmtDate(startDate)} — {fmtDate(endDate)}</p>
+            </div>
+            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-surface-800 rounded-full px-2.5 py-1 print:hidden">
+              <ChevronRight size={12} /> {t('Click any line for its ledger')}
+            </span>
           </div>
           <div className="p-6">
             {/* Revenue */}
-            <h4 className="font-bold text-green-700 dark:text-green-400 text-sm uppercase tracking-wide mb-3">{t('Revenue')}</h4>
-            {revenueAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4">{t('No revenue for this period')}</p> : (
-              <table className="w-full text-sm mb-4">
-                <tbody>
-                  {revenueAccs.map((a) => (
-                    <tr key={a.id} className="border-b border-gray-50 dark:border-surface-800">
-                      <td className="py-1.5 text-gray-600 dark:text-slate-300">{a.code} – {a.name}</td>
-                      <td className="py-1.5 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(a.balance, sym)}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-success-200 dark:border-success-400/25 bg-success-50/50 dark:bg-success-500/[0.07]">
-                    <td className="py-2 font-bold text-success-800 dark:text-success-300">{t('Total Revenue')}</td>
-                    <td className="py-2 text-right font-bold text-success-800 dark:text-success-300">{fmtMoney(totalRevenue, sym)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="flex items-center gap-2 mb-1"><span className="w-1.5 h-1.5 rounded-full bg-success-500" /><h4 className="font-bold text-success-700 dark:text-success-400 text-xs uppercase tracking-wider">{t('Revenue')}</h4></div>
+            {revenueAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No revenue for this period')}</p> : (
+              <div className="mb-2">
+                {revenueAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" />)}
+                <div className="flex items-center justify-between mt-1 rounded-lg bg-success-50/60 dark:bg-success-500/[0.08] px-3 py-2">
+                  <span className="font-bold text-success-800 dark:text-success-300 text-sm">{t('Total Revenue')}</span>
+                  <span className="font-bold text-success-800 dark:text-success-300 tabular-nums">{fmtMoney(totalRevenue, sym)}</span>
+                </div>
+              </div>
             )}
 
             {/* Expenses */}
-            <h4 className="font-bold text-red-700 dark:text-red-400 text-sm uppercase tracking-wide mb-3 mt-6">{t('Expenses')}</h4>
-            {expenseAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4">{t('No expenses for this period')}</p> : (
-              <table className="w-full text-sm mb-4">
-                <tbody>
-                  {expenseAccs.map((a) => (
-                    <tr key={a.id} className="border-b border-gray-50 dark:border-surface-800">
-                      <td className="py-1.5 text-gray-600 dark:text-slate-300">{a.code} – {a.name}</td>
-                      <td className="py-1.5 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(a.balance, sym)}</td>
-                    </tr>
-                  ))}
-                  <tr className="border-t-2 border-danger-200 dark:border-danger-400/25 bg-danger-50/50 dark:bg-danger-500/[0.07]">
-                    <td className="py-2 font-bold text-danger-800 dark:text-danger-300">{t('Total Expenses')}</td>
-                    <td className="py-2 text-right font-bold text-danger-800 dark:text-danger-300">{fmtMoney(totalExpenses, sym)}</td>
-                  </tr>
-                </tbody>
-              </table>
+            <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><h4 className="font-bold text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wider">{t('Expenses')}</h4></div>
+            {expenseAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No expenses for this period')}</p> : (
+              <div className="mb-2">
+                {expenseAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" />)}
+                <div className="flex items-center justify-between mt-1 rounded-lg bg-rose-50/60 dark:bg-rose-500/[0.08] px-3 py-2">
+                  <span className="font-bold text-rose-800 dark:text-rose-300 text-sm">{t('Total Expenses')}</span>
+                  <span className="font-bold text-rose-800 dark:text-rose-300 tabular-nums">{fmtMoney(totalExpenses, sym)}</span>
+                </div>
+              </div>
             )}
 
             {/* Net */}
-            <div className={`border-t-4 border-gray-300 dark:border-surface-600 mt-4 pt-3 flex justify-between items-center`}>
-              <span className="text-xl font-black text-gray-900 dark:text-slate-100">Net {netProfit >= 0 ? 'Profit' : 'Loss'}</span>
-              <span className={`text-xl font-black ${netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{fmtMoney(Math.abs(netProfit), sym)}</span>
+            <div className="border-t-2 border-gray-200 dark:border-surface-700 mt-5 pt-4 flex justify-between items-center">
+              <span className="text-lg font-black text-gray-900 dark:text-slate-100 tracking-tight">{t('Net')} {netProfit >= 0 ? t('Profit') : t('Loss')}</span>
+              <span className={`text-2xl font-black tabular-nums tracking-tight ${netProfit >= 0 ? 'text-success-600 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(Math.abs(netProfit), sym)}</span>
             </div>
           </div>
         </Card>
@@ -147,48 +168,46 @@ export default function Reports() {
                     - accounts.filter((a) => a.type === 'expense').reduce((s, a) => s + accountBalance(a.id, balancesToEnd), 0)
     const totalEquityAndProfit = totalEquity + netProfit
 
-    const Section = ({ title, items, total, color }) => (
+    const Section = ({ title, items, total, dot }) => (
       <div className="mb-6">
-        <h4 className={`font-bold text-sm uppercase tracking-wide mb-3 ${color}`}>{title}</h4>
-        <table className="w-full text-sm">
-          <tbody>
-            {items.map((a) => (
-              <tr key={a.id} className="border-b border-gray-50 dark:border-surface-800">
-                <td className="py-1.5 pl-3 text-gray-600 dark:text-slate-300">{a.code} – {a.name}</td>
-                <td className="py-1.5 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(a.balance, sym)}</td>
-              </tr>
-            ))}
-            {items.length === 0 && <tr><td colSpan={2} className="py-2 pl-3 text-gray-400 dark:text-slate-500 text-sm">—</td></tr>}
-            <tr className="border-t-2 border-gray-200 dark:border-surface-700">
-              <td className="py-2 pl-3 font-bold text-gray-800 dark:text-slate-100">Total {title}</td>
-              <td className="py-2 text-right font-bold text-gray-800 dark:text-slate-100">{fmtMoney(total, sym)}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div className="flex items-center gap-2 mb-1.5"><span className={`w-1.5 h-1.5 rounded-full ${dot}`} /><h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-slate-400">{title}</h4></div>
+        {items.length === 0 && <p className="py-1.5 ps-3 text-gray-400 dark:text-slate-500 text-sm">—</p>}
+        {items.map((a) => <LedgerLine key={a.id} account={a} mode="todate" clickable={a.id !== 'net'} indent />)}
+        <div className="flex items-center justify-between border-t border-gray-200 dark:border-surface-700 mt-1.5 pt-2 px-3">
+          <span className="font-bold text-gray-800 dark:text-slate-100 text-sm">{t('Total')} {title}</span>
+          <span className="font-bold text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(total, sym)}</span>
+        </div>
       </div>
     )
 
     return (
-      <Card>
-        <div className="p-6 border-b border-gray-100 dark:border-surface-750">
-          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Balance Sheet as at {fmtDate(endDate)}</p>
-        </div>
-        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+      <Card className="overflow-hidden">
+        <div className="p-6 border-b border-gray-100 dark:border-surface-750 flex items-start justify-between gap-4">
           <div>
-            <Section title="Assets" items={assetAccs} total={totalAssets} color="text-blue-700" />
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg tracking-tight">{company.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">{t('Balance Sheet')} · {t('As at')} {fmtDate(endDate)}</p>
+          </div>
+          <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-surface-800 rounded-full px-2.5 py-1 print:hidden">
+            <ChevronRight size={12} /> {t('Click any line for its ledger')}
+          </span>
+        </div>
+        <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
+          <div>
+            <div className="flex items-center justify-between rounded-xl bg-brand-50/60 dark:bg-brand-500/[0.08] px-4 py-3 mb-4">
+              <span className="text-sm font-bold text-brand-700 dark:text-brand-300 uppercase tracking-wide">{t('Total Assets')}</span>
+              <span className="text-lg font-black text-brand-700 dark:text-brand-300 tabular-nums">{fmtMoney(totalAssets, sym)}</span>
+            </div>
+            <Section title="Assets" items={assetAccs} total={totalAssets} dot="bg-brand-500" />
           </div>
           <div>
-            <Section title="Liabilities" items={liabAccs} total={totalLiabs} color="text-orange-700" />
-            <Section title="Equity" items={[...equityAccs, netProfit !== 0 && { id: 'net', code: '', name: t('Retained Earnings (to date)'), balance: netProfit }].filter(Boolean)} total={totalEquityAndProfit} color="text-purple-700" />
-            <div className="border-t-4 border-gray-800 dark:border-slate-400 pt-3 flex justify-between">
-              <span className="font-black text-gray-900 dark:text-slate-100">Total Liabilities + Equity</span>
-              <span className={`font-black ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {fmtMoney(totalLiabs + totalEquityAndProfit, sym)}
-              </span>
+            <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-4 ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'bg-success-50/60 dark:bg-success-500/[0.08]' : 'bg-rose-50/60 dark:bg-rose-500/[0.08]'}`}>
+              <span className={`text-sm font-bold uppercase tracking-wide ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-700 dark:text-rose-300'}`}>{t('Liabilities + Equity')}</span>
+              <span className={`text-lg font-black tabular-nums ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(totalLiabs + totalEquityAndProfit, sym)}</span>
             </div>
+            <Section title="Liabilities" items={liabAccs} total={totalLiabs} dot="bg-orange-500" />
+            <Section title="Equity" items={[...equityAccs, netProfit !== 0 && { id: 'net', code: '', name: t('Retained Earnings (to date)'), balance: netProfit }].filter(Boolean)} total={totalEquityAndProfit} dot="bg-violet-500" />
             {Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) > 0.01 && (
-              <p className="text-xs text-red-500 dark:text-red-400 mt-1">⚠ Balance sheet is out of balance by {fmtMoney(Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)), sym)}</p>
+              <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 flex items-center gap-1">⚠ {t('Balance sheet is out of balance by')} {fmtMoney(Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)), sym)}</p>
             )}
           </div>
         </div>
@@ -1114,6 +1133,20 @@ export default function Reports() {
         {report === 'dept-pl' && <DeptPLReport />}
         {report === 'custom' && <CustomReportView />}
       </div>
+
+      <AccountLedgerModal
+        open={!!drill}
+        onClose={() => setDrill(null)}
+        account={drillAccount}
+        accounts={accounts}
+        journalEntries={journalEntries}
+        sym={sym}
+        startDate={startDate}
+        endDate={endDate}
+        mode={drill?.mode || 'period'}
+        companyName={company.name}
+        onOpenAccount={(id) => setDrill((d) => ({ accountId: id, mode: d?.mode || 'period' }))}
+      />
     </div>
   )
 }

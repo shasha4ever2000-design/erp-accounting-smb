@@ -75,6 +75,10 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(-6px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' },
         },
+        'slide-in-right': {
+          '0%': { opacity: '0', transform: 'translateX(24px)' },
+          '100%': { opacity: '1', transform: 'translateX(0)' },
+        },
         shimmer: {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' },
@@ -85,6 +89,7 @@ export default {
         'scale-in': 'scale-in .22s cubic-bezier(0.16, 1, 0.3, 1)',
         'slide-up': 'slide-up .28s cubic-bezier(0.16, 1, 0.3, 1)',
         'slide-down': 'slide-down .18s cubic-bezier(0.16, 1, 0.3, 1)',
+        'slide-in-right': 'slide-in-right .3s cubic-bezier(0.16, 1, 0.3, 1)',
         shimmer: 'shimmer 1.8s linear infinite',
       },
       transitionTimingFunction: {
