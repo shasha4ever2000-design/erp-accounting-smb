@@ -10,8 +10,8 @@ const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1
 const emptyForm = { customerId: '', customerName: '', date: today(), reference: '', address: '', notes: '', lines: [blankLine()] }
 
 const STATUS = {
-  pending:   'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  delivered: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  pending:   'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  delivered: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
 }
 
 export default function DeliveryNotes() {

@@ -11,10 +11,10 @@ const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1
 const emptyForm = { requestedBy: '', department: '', supplierName: '', date: today(), neededBy: '', notes: '', lines: [blankLine()] }
 
 const STATUS = {
-  pending:  'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  approved: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  ordered:  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  pending:  'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  approved: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  rejected: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
+  ordered:  'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
 }
 const TABS = ['all', 'pending', 'approved', 'ordered', 'rejected']
 

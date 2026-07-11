@@ -10,10 +10,10 @@ const ROLES = [
   { id: 'viewer', label: 'Viewer', desc: 'Read-only access' },
 ]
 const ROLE_CLR = {
-  owner: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
-  admin: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  accountant: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  viewer: 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300',
+  owner: 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300',
+  admin: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+  accountant: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  viewer: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
 }
 
 export default function Team() {

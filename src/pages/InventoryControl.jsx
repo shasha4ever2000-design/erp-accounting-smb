@@ -80,10 +80,10 @@ export default function InventoryControl() {
   const cardOpening = cardItem ? (cardItem.quantity || 0) - stockMovements.filter((m) => m.itemId === cardItemId).reduce((s, m) => s + (m.qtyChange || 0), 0) : 0
 
   const statusBadge = (st) => ({
-    out:  <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{t('Out of stock')}</Badge>,
-    low:  <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">{t('Low')}</Badge>,
-    over: <Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300">{t('Overstock')}</Badge>,
-    ok:   <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">{t('OK')}</Badge>,
+    out:  <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Out of stock')}</Badge>,
+    low:  <Badge className="bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{t('Low')}</Badge>,
+    over: <Badge className="bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">{t('Overstock')}</Badge>,
+    ok:   <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('OK')}</Badge>,
   })[st]
 
   const statusExportCols = [
@@ -204,7 +204,7 @@ export default function InventoryControl() {
               <Table headers={[t('Class'), t('Code'), t('Item Name'), { label: t('Stock Value'), right: true }, { label: t('Cumulative %'), right: true }]}>
                 {abc.map((i) => (
                   <Tr key={i.id}>
-                    <Td><Badge className={i.cls === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : i.cls === 'B' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'}>{i.cls}</Badge></Td>
+                    <Td><Badge className={i.cls === 'A' ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' : i.cls === 'B' ? 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' : 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{i.cls}</Badge></Td>
                     <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
                     <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
                     <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(i.val, sym)}</Td>

@@ -111,9 +111,9 @@ export default function RecurringInvoices() {
                 <Td><span className="text-gray-600 dark:text-slate-300">{r.generatedCount || 0}×</span></Td>
                 <Td>
                   <Badge className={
-                    r.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                    : r.status === 'paused' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
-                    : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
+                    r.status === 'active' ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300'
+                    : r.status === 'paused' ? 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300'
+                    : 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'
                   }>{r.status}</Badge>
                 </Td>
                 <Td right>

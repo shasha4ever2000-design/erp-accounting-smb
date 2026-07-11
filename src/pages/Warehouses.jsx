@@ -83,7 +83,7 @@ export default function Warehouses() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-800 dark:text-slate-100">{w.name}</p>
-                      {w.isDefault && <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">default</Badge>}
+                      {w.isDefault && <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">default</Badge>}
                     </div>
                     {w.location && <p className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1"><MapPin size={11} /> {w.location}</p>}
                   </div>

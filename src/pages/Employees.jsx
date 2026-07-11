@@ -21,7 +21,7 @@ const numf = (v) => parseFloat(v) || 0
 
 const EMP_TYPES  = { full_time: 'Full-time', part_time: 'Part-time', contract: 'Contract' }
 const PAY_FREQ   = { monthly: 'Monthly', bi_weekly: 'Bi-weekly', weekly: 'Weekly' }
-const STATUS_CLR = { active: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300', inactive: 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400' }
+const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', inactive: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400' }
 
 export default function Employees() {
   const t = useT()
@@ -116,7 +116,7 @@ export default function Employees() {
                 <Td><span className="text-xs text-gray-600 dark:text-slate-400">{EMP_TYPES[emp.employmentType] || emp.employmentType}</span></Td>
                 <Td><span className="text-xs text-gray-600 dark:text-slate-400">{PAY_FREQ[emp.payFrequency] || emp.payFrequency}</span></Td>
                 <Td right><span className="font-medium text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(emp.salary || 0, sym)}</span></Td>
-                <Td><Badge className={STATUS_CLR[emp.status] || 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}>{emp.status}</Badge></Td>
+                <Td><Badge className={STATUS_CLR[emp.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{emp.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="employee" entityId={emp.id} />

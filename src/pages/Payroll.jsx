@@ -8,8 +8,8 @@ import AttachmentButton from '../components/Attachments'
 import { Plus, Play, DollarSign, Trash2, Users, MinusCircle } from 'lucide-react'
 
 const STATUS_CLR = {
-  draft:     'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-  processed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  draft:     'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  processed: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
 }
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100
 const num = (v) => parseFloat(v) || 0
@@ -118,7 +118,7 @@ export default function Payroll() {
                 <Td right className="text-red-500 dark:text-red-400">{fmtMoney(g - nnet, sym)}</Td>
                 <Td right className="font-semibold text-green-700 dark:text-green-400">{fmtMoney(nnet, sym)}</Td>
                 <Td><Badge className={STATUS_CLR[run.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{run.status}</Badge></Td>
-                <Td>{run.paid ? <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">{t('Paid')} {run.paymentDate ? fmtDate(run.paymentDate) : ''}</Badge> : <span className="text-xs text-gray-400">{t('Unpaid')}</span>}</Td>
+                <Td>{run.paid ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('Paid')} {run.paymentDate ? fmtDate(run.paymentDate) : ''}</Badge> : <span className="text-xs text-gray-400">{t('Unpaid')}</span>}</Td>
                 <Td right>
                   <div className="flex justify-end items-center gap-1">
                     <AttachmentButton entityType="payroll" entityId={run.id} />

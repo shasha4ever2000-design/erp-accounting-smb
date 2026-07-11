@@ -8,11 +8,11 @@ import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, ArrowRight } from 'lucide-react'
 
 const STATUS_COLORS = {
-  sent:     'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  received: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  invoiced: 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300',
-  draft:    'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-  cancelled:'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+  sent:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+  received: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  invoiced: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
+  draft:    'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  cancelled:'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
 }
 
 export default function PurchaseOrders() {
@@ -76,7 +76,7 @@ export default function PurchaseOrders() {
                 <Td className="text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">{fmtDate(po.date)}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">{po.deliveryDate ? fmtDate(po.deliveryDate) : '—'}</Td>
                 <Td>
-                  <Badge className={STATUS_COLORS[po.status] || 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}>
+                  <Badge className={STATUS_COLORS[po.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>
                     {po.status.charAt(0).toUpperCase() + po.status.slice(1)}
                   </Badge>
                 </Td>

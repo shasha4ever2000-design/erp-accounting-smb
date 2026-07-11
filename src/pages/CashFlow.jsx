@@ -207,8 +207,8 @@ export default function CashFlow() {
                   <Td>
                     <span className="flex items-center gap-2">
                       <span className={due ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}>{fmtDate(sc.nextDate)}</span>
-                      {due && <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{t('Due')}</Badge>}
-                      {!sc.active && <Badge className="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">{t('Paused')}</Badge>}
+                      {due && <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Due')}</Badge>}
+                      {!sc.active && <Badge className="bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{t('Paused')}</Badge>}
                     </span>
                   </Td>
                   <Td right>

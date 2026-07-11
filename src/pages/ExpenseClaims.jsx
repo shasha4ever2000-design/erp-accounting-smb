@@ -60,7 +60,7 @@ export default function ExpenseClaims() {
     setForm(emptyForm())
   }
 
-  const STATUS_CLR   = { pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300', approved: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', paid: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' }
+  const STATUS_CLR   = { pending: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300', approved: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300', paid: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' }
   const STATUS_ICONS = { pending: <Clock size={10} />, approved: <AlertCircle size={10} />, paid: <CheckCircle size={10} /> }
 
   return (
