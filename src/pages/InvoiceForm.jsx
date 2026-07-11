@@ -7,12 +7,13 @@ import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 import { VAT_CATEGORIES, vatCatRate } from '../utils/vat'
+import { creditStatus } from '../utils/credit'
 
 const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-sales', subtotal: 0, taxAmount: 0, total: 0 })
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
-  const { customers, accounts, inventoryItems, departments, currencies, settings, addInvoice } = useStore()
+  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const taxEnabled = settings.tax.enabled
@@ -85,10 +86,24 @@ export default function InvoiceForm() {
   const taxTotal = form.items.reduce((s, l) => s + (l.taxAmount || 0), 0)
   const total = subtotal + taxTotal
 
+  // Live credit check for the selected customer (this invoice's base value included).
+  const selectedCustomer = customers.find((c) => c.id === form.customerId)
+  const newBase = total * (Number(form.exchangeRate) || 1)
+  const credit = creditStatus(selectedCustomer, invoices, newBase)
+
   const handleSave = () => {
     if (!form.customerId) return alert('Please select a customer.')
     if (form.items.length === 0) return alert('Add at least one line item.')
     if (form.items.some((l) => !l.description)) return alert('All line items must have a description.')
+
+    if (credit.willExceed) {
+      const msg = t('This invoice puts {name} over their credit limit.\n\nLimit: {limit}\nOutstanding now: {exp}\nAfter this invoice: {proj}\n\nCreate it anyway?')
+        .replace('{name}', selectedCustomer?.name || '')
+        .replace('{limit}', fmtMoney(credit.limit, settings.company.currencySymbol))
+        .replace('{exp}', fmtMoney(credit.exposure, settings.company.currencySymbol))
+        .replace('{proj}', fmtMoney(credit.projected, settings.company.currencySymbol))
+      if (!confirm(msg)) return
+    }
 
     const lock = settings?.accounting?.lockDate
     if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
@@ -295,6 +310,17 @@ export default function InvoiceForm() {
                   </div>
                 )
               })()}
+              {credit.hasLimit && (
+                <div className={`mt-3 pt-3 border-t text-xs space-y-1 ${credit.willExceed ? 'border-danger-200 dark:border-danger-500/30' : 'border-gray-100 dark:border-surface-700'}`}>
+                  <div className="flex justify-between text-gray-500 dark:text-slate-400"><span>{t('Credit limit')}</span><span className="tabular">{fmtMoney(credit.limit, settings.company.currencySymbol)}</span></div>
+                  <div className="flex justify-between text-gray-500 dark:text-slate-400"><span>{t('Outstanding')}</span><span className="tabular">{fmtMoney(credit.exposure, settings.company.currencySymbol)}</span></div>
+                  <div className={`flex justify-between font-semibold ${credit.willExceed ? 'text-danger-600 dark:text-danger-400' : 'text-success-600 dark:text-success-400'}`}>
+                    <span>{credit.willExceed ? t('Over limit by') : t('Available')}</span>
+                    <span className="tabular">{fmtMoney(Math.abs(credit.willExceed ? credit.projected - credit.limit : credit.limit - credit.projected), settings.company.currencySymbol)}</span>
+                  </div>
+                  {credit.willExceed && <p className="text-[11px] text-danger-600 dark:text-danger-400">{t('This invoice would exceed the limit — you’ll be asked to confirm.')}</p>}
+                </div>
+              )}
             </Card>
           )}
         </div>

@@ -7,7 +7,7 @@ import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', notes: '', customFields: {} }
 
 export default function Customers() {
   const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings } = useStore()
@@ -20,15 +20,16 @@ export default function Customers() {
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', notes: c.notes || '', customFields: c.customFields || {} }); setModal(true) }
+  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', notes: c.notes || '', customFields: c.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
-    if (editing) updateCustomer(editing.id, form)
-    else addCustomer(form)
+    const data = { ...form, creditLimit: parseFloat(form.creditLimit) || 0 }
+    if (editing) updateCustomer(editing.id, data)
+    else addCustomer(data)
     close()
   }
 
@@ -138,6 +139,7 @@ export default function Customers() {
             <Input label="Phone" value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+1 234 567 890" />
           </div>
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} placeholder="Tax registration number" />
+          <Input label={`${t('Credit limit')} (${sym})`} type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setField('creditLimit', e.target.value)} placeholder={t('0 = no limit')} />
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} placeholder="Street, City, Country" />
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Internal notes..." />
           {customDefs.length > 0 && (
