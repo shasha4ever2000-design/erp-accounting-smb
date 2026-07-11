@@ -67,6 +67,8 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-fxgl',   code: '4005', name: 'Unrealized FX Gain/(Loss)',  type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-fxreal', code: '4006', name: 'Realized FX Gain/(Loss)',    type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-salesret',code:'4010', name: 'Sales Returns & Allowances', type: 'revenue',   subtype: 'revenue',     isSystem: false },
+  { id: 'acc-salesdisc',code:'4011',name: 'Sales Discounts',           type: 'revenue',   subtype: 'revenue',     isSystem: false },
+  { id: 'acc-shipinc', code: '4020', name: 'Shipping & Delivery Income',type: 'revenue',   subtype: 'revenue',     isSystem: false },
   // EXPENSES
   { id: 'acc-cogs',   code: '5001', name: 'Cost of Goods Sold',         type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-salary', code: '5002', name: 'Salaries & Wages',           type: 'expense',   subtype: 'expense',     isSystem: false },
@@ -80,6 +82,8 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-invadj', code: '5010', name: 'Inventory Adjustments',      type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-lossdis',code: '5011', name: 'Loss on Asset Disposal',     type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-bankchg',code: '5014', name: 'Bank Charges',               type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-purchdisc',code:'5030',name: 'Purchase Discounts',        type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-freightin',code:'5031',name: 'Freight-In / Delivery',     type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-gosiemp',code: '5015', name: 'Employer Social Insurance (GOSI)', type: 'expense', subtype: 'expense', isSystem: false },
   { id: 'acc-purret', code: '5012', name: 'Purchase Returns',           type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-mfgcost',code: '5013', name: 'Manufacturing Costs',        type: 'expense',   subtype: 'expense',     isSystem: false },
@@ -384,9 +388,16 @@ export const useStore = create(
         const revLines = Object.entries(revenueMap).map(([accId, amount]) =>
           ({ accountId: accId, debit: 0, credit: toBase(amount), description: `Revenue – ${number}` }))
         const vatBase = invoice.taxAmount > 0 ? toBase(invoice.taxAmount) : 0
-        // AR = sum of the base-converted credits, so the entry balances after rounding.
-        const arBase = revLines.reduce((s, l) => s + l.credit, 0) + vatBase
+        // Optional whole-invoice discount (contra-revenue) and shipping charge (income).
+        // The form passes taxAmount already net of the discount and inclusive of any
+        // shipping VAT, so the ledger just needs the extra debit/credit legs here.
+        const docDiscBase = toBase(invoice.docDiscountAmount || 0)
+        const shipBase = toBase(invoice.shipping || 0)
+        // AR = revenue − doc discount + shipping + VAT (all base), so the entry balances.
+        const arBase = Math.round((revLines.reduce((s, l) => s + l.credit, 0) - docDiscBase + shipBase + vatBase) * 100) / 100
         const lines = [{ accountId: 'acc-ar', debit: arBase, credit: 0, description: `Invoice ${number}` }, ...revLines]
+        if (docDiscBase > 0) lines.push({ accountId: 'acc-salesdisc', debit: docDiscBase, credit: 0, description: 'Invoice discount' })
+        if (shipBase > 0) lines.push({ accountId: 'acc-shipinc', debit: 0, credit: shipBase, description: 'Shipping & delivery' })
         if (vatBase > 0)
           lines.push({ accountId: 'acc-vatout', debit: 0, credit: vatBase, description: 'Output Tax' })
 
@@ -966,11 +977,16 @@ export const useStore = create(
         const expLines = Object.entries(expMap).map(([accId, amount]) =>
           ({ accountId: accId, debit: toBase(amount), credit: 0, description: `Purchase – ${number}` }))
         const vatBase = purchase.taxAmount > 0 ? toBase(purchase.taxAmount) : 0
+        // Optional whole-bill discount (contra-expense credit) and freight-in charge (added cost).
+        const docDiscBase = toBase(purchase.docDiscountAmount || 0)
+        const freightBase = toBase(purchase.shipping || 0)
         const lines = [...expLines]
         if (vatBase > 0)
           lines.push({ accountId: 'acc-vatin', debit: vatBase, credit: 0, description: 'Input Tax' })
-        // AP = sum of the base-converted debits, so the entry balances after rounding.
-        const apBase = expLines.reduce((s, l) => s + l.debit, 0) + vatBase
+        if (docDiscBase > 0) lines.push({ accountId: 'acc-purchdisc', debit: 0, credit: docDiscBase, description: 'Bill discount' })
+        if (freightBase > 0) lines.push({ accountId: 'acc-freightin', debit: freightBase, credit: 0, description: 'Freight-in' })
+        // AP = expenses − discount + freight + VAT (all base), so the entry balances.
+        const apBase = Math.round((expLines.reduce((s, l) => s + l.debit, 0) - docDiscBase + freightBase + vatBase) * 100) / 100
         lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Purchase ${number}` })
         const je = get().addJournalEntry({
           date: purchase.date,
@@ -2338,7 +2354,7 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 18, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 19, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -2393,7 +2409,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 18,
+      version: 19,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -2524,6 +2540,15 @@ export const useStore = create(
           if (!persisted.goodsReceipts) persisted.goodsReceipts = []
           if (persisted.settings && !persisted.settings.goodsReceipt)
             persisted.settings.goodsReceipt = { prefix: 'GRN-', next: 1 }
+        }
+        if (version < 19) {
+          const add = [
+            { id: 'acc-salesdisc', code: '4011', name: 'Sales Discounts', type: 'revenue', subtype: 'revenue', isSystem: false },
+            { id: 'acc-shipinc', code: '4020', name: 'Shipping & Delivery Income', type: 'revenue', subtype: 'revenue', isSystem: false },
+            { id: 'acc-purchdisc', code: '5030', name: 'Purchase Discounts', type: 'expense', subtype: 'expense', isSystem: false },
+            { id: 'acc-freightin', code: '5031', name: 'Freight-In / Delivery', type: 'expense', subtype: 'expense', isSystem: false },
+          ]
+          if (Array.isArray(persisted.accounts)) add.forEach((a) => { if (!persisted.accounts.some((x) => x.id === a.id)) persisted.accounts.push(a) })
         }
         return persisted
        } catch (e) {

@@ -8,7 +8,7 @@ import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 import { VAT_CATEGORIES, vatCatRate } from '../utils/vat'
 import { creditStatus } from '../utils/credit'
-import { computeLine, documentTotals } from '../utils/lineMath'
+import { computeLine, invoiceTotals } from '../utils/lineMath'
 
 const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-sales', subtotal: 0, taxAmount: 0, total: 0 })
 
@@ -29,6 +29,9 @@ export default function InvoiceForm() {
     dueDate: addDays(today(), settings.invoice.dueDays || 30),
     notes: settings.invoice.notes || '',
     departmentId: '',
+    docDiscount: 0,
+    shipping: 0,
+    shippingTaxable: false,
     currency: baseCurrency,
     exchangeRate: 1,
     items: [emptyLine()],
@@ -63,7 +66,11 @@ export default function InvoiceForm() {
           const it = inventoryItems.find((i) => i.id === value)
           if (it) {
             if (!updated.description) updated.description = it.name
-            if (!parseFloat(updated.unitPrice)) updated.unitPrice = it.salePrice || 0
+            if (!parseFloat(updated.unitPrice)) {
+              // Apply the customer's price level (a % adjustment off the standard sale price).
+              const pct = Number(customers.find((c) => c.id === f.customerId)?.priceListPct) || 0
+              updated.unitPrice = Math.round((it.salePrice || 0) * (1 + pct / 100) * 100) / 100
+            }
           }
         }
         // The VAT category drives the rate: standard → configured rate, zero-rated/exempt → 0%.
@@ -80,10 +87,10 @@ export default function InvoiceForm() {
   const addLine = () => setForm((f) => ({ ...f, items: [...f.items, emptyLine()] }))
   const removeLine = (id) => setForm((f) => ({ ...f, items: f.items.filter((l) => l.id !== id) }))
 
-  const totals = documentTotals(form.items, { taxEnabled })
-  const grossSubtotal = totals.gross
-  const discountTotal = totals.discount
-  const subtotal = totals.subtotal
+  const totals = invoiceTotals(form.items, { taxEnabled, docDiscountPct: form.docDiscount, shipping: form.shipping, shippingTaxRate: form.shippingTaxable ? defaultTaxRate : 0 })
+  const grossSubtotal = totals.grossSubtotal
+  const discountTotal = totals.lineDiscount
+  const subtotal = totals.netSubtotal
   const taxTotal = totals.taxAmount
   const total = totals.total
 
@@ -109,7 +116,7 @@ export default function InvoiceForm() {
     const lock = settings?.accounting?.lockDate
     if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
     try {
-      addInvoice({ ...form, subtotal, taxAmount: taxTotal, total })
+      addInvoice({ ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping })
     } catch (e) {
       if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
       throw e
@@ -261,6 +268,28 @@ export default function InvoiceForm() {
               <div className="flex justify-between text-gray-600 dark:text-slate-300">
                 <span>{discountTotal > 0 ? t('Net Subtotal') : 'Subtotal'}</span>
                 <span className="font-medium">{fmtMoney(subtotal, sym)}</span>
+              </div>
+              {/* Whole-invoice discount + shipping */}
+              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">{t('Invoice discount')}
+                  <input type="number" min="0" max="100" step="0.1" value={form.docDiscount}
+                    onChange={(e) => setField('docDiscount', e.target.value)}
+                    className="w-16 text-end border border-gray-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" /> %
+                </span>
+                <span className="text-success-600 dark:text-success-400">{totals.docDiscountAmount > 0 ? `− ${fmtMoney(totals.docDiscountAmount, sym)}` : '—'}</span>
+              </div>
+              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-slate-300">
+                <span className="flex items-center gap-1.5">{t('Shipping')}
+                  <input type="number" min="0" step="0.01" value={form.shipping}
+                    onChange={(e) => setField('shipping', e.target.value)}
+                    className="w-20 text-end border border-gray-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" />
+                  {taxEnabled && (
+                    <label className="inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500">
+                      <input type="checkbox" checked={form.shippingTaxable} onChange={(e) => setField('shippingTaxable', e.target.checked)} /> {t('taxable')}
+                    </label>
+                  )}
+                </span>
+                <span>{totals.shipping > 0 ? fmtMoney(totals.shipping, sym) : '—'}</span>
               </div>
               {taxEnabled && taxTotal > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-slate-300">

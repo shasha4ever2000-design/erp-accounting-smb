@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeLine, documentTotals } from '../src/utils/lineMath.js'
+import { computeLine, documentTotals, invoiceTotals } from '../src/utils/lineMath.js'
 
 describe('line arithmetic with discounts', () => {
   it('computes a plain line (no discount)', () => {
@@ -37,5 +37,32 @@ describe('line arithmetic with discounts', () => {
     expect(t.subtotal).toBe(1000)
     expect(t.taxAmount).toBe(135)
     expect(t.total).toBe(1135)
+  })
+
+  it('applies a whole-document discount, reducing VAT pro-rata', () => {
+    const items = [{ quantity: 1, unitPrice: 1000, taxRate: 15 }] // net 1000, VAT 150
+    const r = invoiceTotals(items, { docDiscountPct: 10 })
+    expect(r.netSubtotal).toBe(1000)
+    expect(r.docDiscountAmount).toBe(100)   // 10% of 1000
+    expect(r.afterDoc).toBe(900)
+    expect(r.taxAmount).toBe(135)           // VAT reduced 10% → 150 × 0.9
+    expect(r.total).toBe(1035)              // 900 + 135
+  })
+
+  it('adds a taxable shipping charge on top', () => {
+    const items = [{ quantity: 1, unitPrice: 1000, taxRate: 15 }]
+    const r = invoiceTotals(items, { shipping: 50, shippingTaxRate: 15 })
+    expect(r.shipping).toBe(50)
+    expect(r.shippingVat).toBe(7.5)
+    expect(r.taxAmount).toBe(157.5)         // 150 line + 7.5 shipping
+    expect(r.total).toBe(1207.5)            // 1000 + 50 + 157.5
+  })
+
+  it('combines document discount and shipping correctly', () => {
+    const items = [{ quantity: 1, unitPrice: 1000, taxRate: 15 }]
+    const r = invoiceTotals(items, { docDiscountPct: 10, shipping: 50, shippingTaxRate: 0 })
+    expect(r.afterDoc).toBe(900)
+    expect(r.taxAmount).toBe(135)           // only line VAT, discounted; shipping not taxed
+    expect(r.total).toBe(1085)              // 900 + 50 + 135
   })
 })

@@ -21,6 +21,25 @@ export function computeLine(line, { taxEnabled = true } = {}) {
   return { gross, discountAmount, subtotal, taxAmount, total }
 }
 
+// Full document math including a whole-document discount and a shipping/freight
+// charge. The document discount is a percentage of the net (after line discounts)
+// subtotal; because it spreads pro-rata across every line, each line's VAT is
+// reduced by the same percentage — so total line VAT simply scales down. Shipping
+// is a flat amount that may carry its own VAT.
+export function invoiceTotals(items = [], { taxEnabled = true, docDiscountPct = 0, shipping = 0, shippingTaxRate = 0 } = {}) {
+  const t = documentTotals(items, { taxEnabled })
+  const netSubtotal = t.subtotal
+  const dpct = Math.min(100, Math.max(0, Number(docDiscountPct) || 0))
+  const docDiscountAmount = Math.round(netSubtotal * (dpct / 100) * 100) / 100
+  const afterDoc = Math.round((netSubtotal - docDiscountAmount) * 100) / 100
+  const lineVat = Math.round(t.taxAmount * (1 - dpct / 100) * 100) / 100
+  const ship = Math.max(0, Number(shipping) || 0)
+  const shippingVat = taxEnabled ? Math.round(ship * ((Number(shippingTaxRate) || 0) / 100) * 100) / 100 : 0
+  const taxAmount = Math.round((lineVat + shippingVat) * 100) / 100
+  const total = Math.round((afterDoc + ship + taxAmount) * 100) / 100
+  return { grossSubtotal: t.gross, lineDiscount: t.discount, netSubtotal, docDiscountAmount, afterDoc, shipping: ship, shippingVat, taxAmount, total }
+}
+
 // Roll a set of lines up into document totals (all in the document's currency).
 export function documentTotals(items = [], opts) {
   return items.reduce(

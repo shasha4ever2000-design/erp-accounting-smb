@@ -227,6 +227,18 @@ export default function InvoiceView() {
                 <span>{invDiscount > 0.005 ? t('Net Subtotal') : 'Subtotal'}</span>
                 <span>{fmtMoney(invoice.subtotal, invSym)}</span>
               </div>
+              {(invoice.docDiscountAmount || 0) > 0.005 && (
+                <div className="flex justify-between text-green-600 dark:text-green-400">
+                  <span>{t('Invoice discount')}{invoice.docDiscount ? ` (${invoice.docDiscount}%)` : ''}</span>
+                  <span>− {fmtMoney(invoice.docDiscountAmount, invSym)}</span>
+                </div>
+              )}
+              {(invoice.shipping || 0) > 0.005 && (
+                <div className="flex justify-between text-gray-600 dark:text-slate-300">
+                  <span>{t('Shipping')}</span>
+                  <span>{fmtMoney(invoice.shipping, invSym)}</span>
+                </div>
+              )}
               {invoice.taxAmount > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-slate-300">
                   <span>{settings.tax.name}</span>
