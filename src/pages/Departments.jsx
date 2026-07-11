@@ -51,8 +51,8 @@ export default function Departments() {
                 <Tr key={d.id}>
                   <Td>
                     <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-                        <Building2 size={14} className="text-indigo-600 dark:text-indigo-400" />
+                      <div className="w-8 h-8 bg-accent-50 dark:bg-accent-500/10 ring-1 ring-inset ring-accent-600/10 dark:ring-accent-400/20 rounded-lg flex items-center justify-center">
+                        <Building2 size={14} className="text-accent-600 dark:text-accent-400" />
                       </div>
                       <span className="font-medium text-gray-800 dark:text-slate-100">{d.name}</span>
                     </div>

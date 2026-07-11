@@ -83,8 +83,8 @@ export default function BankAccounts() {
             <div
               key={ba.id}
               onClick={() => setSelected(isSelected ? null : ba)}
-              className={`bg-white rounded-xl border-2 p-5 cursor-pointer transition-all ${
-                isSelected ? 'border-blue-500 shadow-md' : 'border-gray-100 shadow-sm hover:border-blue-200'
+              className={`bg-white dark:bg-surface-850/90 rounded-xl border-2 p-5 cursor-pointer transition-all duration-200 ease-spring ${
+                isSelected ? 'border-brand-500 dark:border-brand-500 shadow-card-hover' : 'border-slate-200/80 dark:border-surface-750 shadow-card dark:shadow-none hover:border-brand-200 dark:hover:border-brand-500/40 hover:shadow-card-hover hover:-translate-y-px'
               }`}
             >
               <div className="flex items-start justify-between mb-3">

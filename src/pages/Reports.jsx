@@ -67,11 +67,11 @@ export default function Reports() {
       <div className="space-y-6">
         {/* Summary cards */}
         <div className="grid grid-cols-3 gap-4">
-          <div className="bg-green-50 rounded-xl p-4"><p className="text-sm text-green-600 dark:text-green-400">{t('Total Revenue')}</p><p className="text-2xl font-bold text-green-700 dark:text-green-400">{fmtMoney(totalRevenue, sym)}</p></div>
-          <div className="bg-red-50 rounded-xl p-4"><p className="text-sm text-red-600 dark:text-red-400">{t('Total Expenses')}</p><p className="text-2xl font-bold text-red-700 dark:text-red-400">{fmtMoney(totalExpenses, sym)}</p></div>
-          <div className={`${netProfit >= 0 ? 'bg-blue-50' : 'bg-orange-50'} rounded-xl p-4`}>
-            <p className={`text-sm ${netProfit >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-orange-600 dark:text-orange-400'}`}>Net {netProfit >= 0 ? 'Profit' : 'Loss'}</p>
-            <p className={`text-2xl font-bold ${netProfit >= 0 ? 'text-blue-700 dark:text-blue-400' : 'text-orange-700'}`}>{fmtMoney(Math.abs(netProfit), sym)}</p>
+          <div className="bg-success-50 dark:bg-success-500/10 ring-1 ring-inset ring-success-600/10 dark:ring-success-400/15 rounded-xl p-4"><p className="text-sm text-success-600 dark:text-success-400">{t('Total Revenue')}</p><p className="text-2xl font-bold tracking-tightest tabular text-success-700 dark:text-success-300">{fmtMoney(totalRevenue, sym)}</p></div>
+          <div className="bg-danger-50 dark:bg-danger-500/10 ring-1 ring-inset ring-danger-600/10 dark:ring-danger-400/15 rounded-xl p-4"><p className="text-sm text-danger-600 dark:text-danger-400">{t('Total Expenses')}</p><p className="text-2xl font-bold tracking-tightest tabular text-danger-700 dark:text-danger-300">{fmtMoney(totalExpenses, sym)}</p></div>
+          <div className={`${netProfit >= 0 ? 'bg-brand-50 dark:bg-brand-500/10 ring-brand-600/10 dark:ring-brand-400/15' : 'bg-warning-50 dark:bg-warning-500/10 ring-warning-600/10 dark:ring-warning-400/15'} ring-1 ring-inset rounded-xl p-4`}>
+            <p className={`text-sm ${netProfit >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-warning-600 dark:text-warning-400'}`}>Net {netProfit >= 0 ? 'Profit' : 'Loss'}</p>
+            <p className={`text-2xl font-bold tracking-tightest tabular ${netProfit >= 0 ? 'text-brand-700 dark:text-brand-300' : 'text-warning-700 dark:text-warning-300'}`}>{fmtMoney(Math.abs(netProfit), sym)}</p>
           </div>
         </div>
 
@@ -87,14 +87,14 @@ export default function Reports() {
               <table className="w-full text-sm mb-4">
                 <tbody>
                   {revenueAccs.map((a) => (
-                    <tr key={a.id} className="border-b border-gray-50">
+                    <tr key={a.id} className="border-b border-gray-50 dark:border-surface-800">
                       <td className="py-1.5 text-gray-600 dark:text-slate-300">{a.code} – {a.name}</td>
                       <td className="py-1.5 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(a.balance, sym)}</td>
                     </tr>
                   ))}
-                  <tr className="border-t-2 border-green-200 bg-green-50/50">
-                    <td className="py-2 font-bold text-green-800">{t('Total Revenue')}</td>
-                    <td className="py-2 text-right font-bold text-green-800">{fmtMoney(totalRevenue, sym)}</td>
+                  <tr className="border-t-2 border-success-200 dark:border-success-400/25 bg-success-50/50 dark:bg-success-500/[0.07]">
+                    <td className="py-2 font-bold text-success-800 dark:text-success-300">{t('Total Revenue')}</td>
+                    <td className="py-2 text-right font-bold text-success-800 dark:text-success-300">{fmtMoney(totalRevenue, sym)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -106,14 +106,14 @@ export default function Reports() {
               <table className="w-full text-sm mb-4">
                 <tbody>
                   {expenseAccs.map((a) => (
-                    <tr key={a.id} className="border-b border-gray-50">
+                    <tr key={a.id} className="border-b border-gray-50 dark:border-surface-800">
                       <td className="py-1.5 text-gray-600 dark:text-slate-300">{a.code} – {a.name}</td>
                       <td className="py-1.5 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(a.balance, sym)}</td>
                     </tr>
                   ))}
-                  <tr className="border-t-2 border-red-200 bg-red-50/50">
-                    <td className="py-2 font-bold text-red-800">{t('Total Expenses')}</td>
-                    <td className="py-2 text-right font-bold text-red-800">{fmtMoney(totalExpenses, sym)}</td>
+                  <tr className="border-t-2 border-danger-200 dark:border-danger-400/25 bg-danger-50/50 dark:bg-danger-500/[0.07]">
+                    <td className="py-2 font-bold text-danger-800 dark:text-danger-300">{t('Total Expenses')}</td>
+                    <td className="py-2 text-right font-bold text-danger-800 dark:text-danger-300">{fmtMoney(totalExpenses, sym)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -153,7 +153,7 @@ export default function Reports() {
         <table className="w-full text-sm">
           <tbody>
             {items.map((a) => (
-              <tr key={a.id} className="border-b border-gray-50">
+              <tr key={a.id} className="border-b border-gray-50 dark:border-surface-800">
                 <td className="py-1.5 pl-3 text-gray-600 dark:text-slate-300">{a.code} – {a.name}</td>
                 <td className="py-1.5 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(a.balance, sym)}</td>
               </tr>
@@ -181,7 +181,7 @@ export default function Reports() {
           <div>
             <Section title="Liabilities" items={liabAccs} total={totalLiabs} color="text-orange-700" />
             <Section title="Equity" items={[...equityAccs, netProfit !== 0 && { id: 'net', code: '', name: t('Retained Earnings (to date)'), balance: netProfit }].filter(Boolean)} total={totalEquityAndProfit} color="text-purple-700" />
-            <div className="border-t-4 border-gray-800 pt-3 flex justify-between">
+            <div className="border-t-4 border-gray-800 dark:border-slate-400 pt-3 flex justify-between">
               <span className="font-black text-gray-900 dark:text-slate-100">Total Liabilities + Equity</span>
               <span className={`font-black ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                 {fmtMoney(totalLiabs + totalEquityAndProfit, sym)}
@@ -224,7 +224,7 @@ export default function Reports() {
             </thead>
             <tbody>
               {rows.map((r) => (
-                <tr key={r.id} className="border-b border-gray-50">
+                <tr key={r.id} className="border-b border-gray-50 dark:border-surface-800">
                   <td className="px-6 py-2 font-mono text-gray-500 dark:text-slate-400 text-xs">{r.code}</td>
                   <td className="px-4 py-2 text-gray-700 dark:text-slate-200">{r.name}</td>
                   <td className="px-4 py-2 text-right font-mono text-gray-800 dark:text-slate-100">{r.netDr > 0 ? fmtMoney(r.netDr, sym) : ''}</td>
@@ -301,7 +301,7 @@ export default function Reports() {
           <tbody>
             {lines.length === 0 && <tr><td colSpan={6} className="px-6 py-8 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No transactions for this account in the selected period')}</td></tr>}
             {lines.map((l, i) => (
-              <tr key={i} className="border-b border-gray-50">
+              <tr key={i} className="border-b border-gray-50 dark:border-surface-800">
                 <td className="px-6 py-2 text-gray-500 dark:text-slate-400">{fmtDate(l.date)}</td>
                 <td className="px-4 py-2 text-gray-700 dark:text-slate-200">{l.desc}</td>
                 <td className="px-4 py-2 text-gray-400 dark:text-slate-500 text-xs font-mono">{l.ref}</td>
@@ -347,7 +347,7 @@ export default function Reports() {
         <div className="mb-4">
           <h4 className={`font-semibold text-sm mb-2 ${color}`}>{label}</h4>
           {items.map((inv) => (
-            <div key={inv.id} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-50">
+            <div key={inv.id} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-50 dark:border-surface-800">
               <div className="flex gap-4">
                 <span className="font-mono text-gray-400 dark:text-slate-500 text-xs w-20">{inv.number}</span>
                 <span className="text-gray-700 dark:text-slate-200">{inv.customerName}</span>
@@ -434,7 +434,7 @@ export default function Reports() {
                 </thead>
                 <tbody>
                   {rows.map((p) => (
-                    <tr key={p.id} className="border-b border-gray-50">
+                    <tr key={p.id} className="border-b border-gray-50 dark:border-surface-800">
                       <td className="py-2 font-mono text-orange-600 dark:text-orange-400 text-xs">{p.number}</td>
                       <td className="py-2 text-gray-700 dark:text-slate-200">{p.supplierName}</td>
                       <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(p.dueDate)}</td>
@@ -1078,7 +1078,7 @@ export default function Reports() {
         <div className="flex flex-wrap gap-4 items-end">
           <div>
             <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('Report')}</label>
-            <select className="border border-gray-300 dark:border-surface-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            <select className="border border-slate-300/90 dark:border-surface-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 shadow-input dark:shadow-none focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 cursor-pointer transition-all duration-150"
               value={report} onChange={(e) => setReport(e.target.value)}>
               {[...new Set(REPORTS.map((r) => r.group || 'Reports'))].map((g) => (
                 <optgroup key={g} label={t(g)}>

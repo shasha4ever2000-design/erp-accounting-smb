@@ -478,7 +478,7 @@ export default function Settings() {
         </Card>
 
         {/* Danger Zone */}
-        <Card className="p-6 border-red-100">
+        <Card className="p-6 border-danger-200/70 dark:border-danger-500/25">
           <div className="flex items-start gap-3 mb-4">
             <AlertTriangle size={18} className="text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <div>
