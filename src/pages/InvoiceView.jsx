@@ -7,14 +7,16 @@ import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
 import { numberToWords } from '../utils/numberToWords'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
+import ConvertModal from '../components/ConvertModal'
+import { lineRemaining } from '../utils/fulfillment'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
-import { ArrowLeft, DollarSign, Printer, Ban } from 'lucide-react'
+import { ArrowLeft, DollarSign, Printer, Ban, RotateCcw } from 'lucide-react'
 
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { invoices, customers, accounts, deleteInvoice, voidInvoice, recordInvoicePayment, settings } = useStore()
+  const { invoices, customers, accounts, deleteInvoice, voidInvoice, createSalesReturn, recordInvoicePayment, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -22,6 +24,7 @@ export default function InvoiceView() {
   const invoice = invoices.find((i) => i.id === id)
   const [payModal, setPayModal] = useState(false)
   const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
+  const [returnOpen, setReturnOpen] = useState(false)
   const [qrUrl, setQrUrl] = useState('')
 
   const zatca = settings.zatca || {}
@@ -64,6 +67,12 @@ export default function InvoiceView() {
   const anyDiscount = (invoice.items || []).some((l) => (Number(l.discount) || 0) > 0)
   const grossSubtotal = (invoice.items || []).reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0)
   const invDiscount = Math.round((grossSubtotal - (invoice.subtotal || 0)) * 100) / 100
+  const canReturn = invoice.status !== 'void' && (invoice.items || []).some((l) => lineRemaining(l, 'returnedQty') > 1e-6)
+  const doReturn = (selections) => {
+    const reason = window.prompt(t('Reason for the return? (a credit note will be raised and stock restocked)')) || ''
+    try { createSalesReturn(invoice.id, selections, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
+    setReturnOpen(false)
+  }
 
   const handleRecord = () => {
     const amount = parseFloat(payForm.amount)
@@ -105,6 +114,11 @@ export default function InvoiceView() {
           {invoice.status !== 'paid' && invoice.status !== 'void' && (
             <Btn size="sm" onClick={openPay}>
               <DollarSign size={14} /> {t('Record Payment')}
+            </Btn>
+          )}
+          {canReturn && (
+            <Btn variant="secondary" size="sm" onClick={() => setReturnOpen(true)} title={t('Return / refund')}>
+              <RotateCcw size={14} /> {t('Return')}
             </Btn>
           )}
           {invoice.status !== 'void' && (
@@ -320,6 +334,18 @@ export default function InvoiceView() {
           </div>
         </div>
       </Modal>
+
+      <ConvertModal
+        open={returnOpen}
+        onClose={() => setReturnOpen(false)}
+        doc={invoice}
+        docKey="returnedQty"
+        sym={invSym}
+        taxEnabled={(invoice.taxAmount || 0) > 0}
+        title={t('Return items')}
+        confirmLabel={t('Create Credit Note')}
+        onConfirm={doReturn}
+      />
     </div>
   )
 }

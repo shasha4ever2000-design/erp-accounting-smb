@@ -7,11 +7,13 @@ import { useT } from '../i18n'
 import { alertIfLocked } from '../utils/periodLock'
 import ExportMenu from '../components/ExportMenu'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Search, DollarSign, Ban } from 'lucide-react'
+import ConvertModal from '../components/ConvertModal'
+import { lineRemaining } from '../utils/fulfillment'
+import { Plus, Search, DollarSign, Ban, RotateCcw } from 'lucide-react'
 import { today } from '../utils/formatters'
 
 export default function Purchases() {
-  const { purchases, suppliers, accounts, voidPurchase, recordPurchasePayment, settings } = useStore()
+  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, settings } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
   const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
@@ -21,6 +23,14 @@ export default function Purchases() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [payModal, setPayModal] = useState(null) // holds the purchase
   const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '', wht: '' })
+  const [returnDoc, setReturnDoc] = useState(null)
+
+  const canReturn = (p) => p.status !== 'void' && (p.items || []).some((l) => lineRemaining(l, 'returnedQty') > 1e-6)
+  const doReturn = (selections) => {
+    const reason = window.prompt(t('Reason for the return? (a debit note will be raised and stock removed)')) || ''
+    try { createPurchaseReturn(returnDoc.id, selections, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
+    setReturnDoc(null)
+  }
 
   const bankAccounts = accounts.filter((a) => ['acc-cash', 'acc-bank1'].includes(a.id))
 
@@ -155,6 +165,11 @@ export default function Purchases() {
                           <DollarSign size={13} className="text-green-600 dark:text-green-400" />
                         </Btn>
                       )}
+                      {canReturn(p) && (
+                        <Btn size="sm" variant="ghost" onClick={() => setReturnDoc(p)} title={t('Return to supplier')}>
+                          <RotateCcw size={13} className="text-amber-500" />
+                        </Btn>
+                      )}
                       {p.status !== 'void' && (
                         <Btn size="sm" variant="ghost" onClick={() => handleVoid(p)} title={t('Void')}>
                           <Ban size={13} className="text-rose-400" />
@@ -206,6 +221,18 @@ export default function Purchases() {
           </div>
         )}
       </Modal>
+
+      <ConvertModal
+        open={!!returnDoc}
+        onClose={() => setReturnDoc(null)}
+        doc={returnDoc}
+        docKey="returnedQty"
+        sym={returnDoc && returnDoc.currency && returnDoc.currency !== settings.company.currency ? `${returnDoc.currency} ` : sym}
+        taxEnabled={returnDoc ? (returnDoc.taxAmount || 0) > 0 : true}
+        title={t('Return to supplier')}
+        confirmLabel={t('Create Debit Note')}
+        onConfirm={doReturn}
+      />
     </div>
   )
 }

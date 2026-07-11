@@ -642,6 +642,144 @@ export const useStore = create(
         return newCN
       },
 
+      // Sales return (RMA): raise a credit note FROM an invoice by picking the
+      // quantities coming back. Reverses the sale proportionally (Dr Sales
+      // Returns + Dr output VAT, Cr AR), and for stocked lines puts the goods
+      // back and reverses COGS at current average cost. Tracks returnedQty so a
+      // line can't be over-returned.
+      createSalesReturn: (invoiceId, selections, { date, reason } = {}) => {
+        const inv = get().invoices.find((i) => i.id === invoiceId)
+        if (!inv || inv.status === 'void') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(inv.items || [], 'returnedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(inv.items || [], sel, { key: 'returnedQty', taxEnabled })
+        if (items.length === 0) return null
+        const rate = Number(inv.exchangeRate) || 1
+        const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
+        const rDate = date || new Date().toISOString().slice(0, 10)
+        const { prefix, next } = get().settings.creditNote
+        const number = nextNum(prefix, next)
+
+        const netBase = items.reduce((s, l) => s + toBase(l.subtotal), 0)
+        const vatBase = items.reduce((s, l) => s + toBase(l.taxAmount), 0)
+        const arBase = Math.round((netBase + vatBase) * 100) / 100
+        const lines = [{ accountId: 'acc-salesret', debit: netBase, credit: 0, description: `Credit Note ${number}` }]
+        if (vatBase > 0) lines.push({ accountId: 'acc-vatout', debit: vatBase, credit: 0, description: 'Output Tax reversal' })
+        lines.push({ accountId: 'acc-ar', debit: 0, credit: arBase, description: `Credit Note ${number} for ${inv.number}` })
+        const je = get().addJournalEntry({ date: rDate, description: `Sales Return ${number} – ${inv.customerName || ''}`, reference: number, type: 'credit_note', departmentId: inv.departmentId || null, lines })
+
+        // Restock returned stock + reverse COGS at current average cost.
+        const cogsByAcc = {}, invByAcc = {}, restock = {}
+        let cogs = 0
+        items.forEach((l) => {
+          if (!l.itemId) return
+          const it = get().inventoryItems.find((i) => i.id === l.itemId); if (!it) return
+          const amt = Math.round(l.quantity * (it.costPrice || 0) * 100) / 100
+          if (amt <= 0) { restock[l.itemId] = (restock[l.itemId] || 0) + l.quantity; return }
+          cogs += amt
+          const cAcc = it.cogsAccountId || 'acc-cogs', iAcc = it.inventoryAccountId || 'acc-inv'
+          invByAcc[iAcc] = (invByAcc[iAcc] || 0) + amt
+          cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
+          restock[l.itemId] = (restock[l.itemId] || 0) + l.quantity
+        })
+        let cogsJeId = null
+        if (cogs > 0) {
+          const cje = get().addJournalEntry({
+            date: rDate, description: `Restock – Return ${number}`, reference: number, type: 'cogs',
+            departmentId: inv.departmentId || null,
+            lines: [
+              ...Object.entries(invByAcc).map(([a, amt]) => ({ accountId: a, debit: amt, credit: 0, description: 'Inventory returned' })),
+              ...Object.entries(cogsByAcc).map(([a, amt]) => ({ accountId: a, debit: 0, credit: amt, description: 'COGS reversal' })),
+            ],
+          })
+          cogsJeId = cje.id
+        }
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((st) => ({ inventoryItems: st.inventoryItems.map((it) => {
+          const q = restock[it.id]; if (!q) return it
+          const patch = { quantity: (it.quantity || 0) + q }
+          if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + q; patch.stockByWarehouse = m }
+          return { ...it, ...patch }
+        }) }))
+        Object.entries(restock).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: rDate, type: 'return', qtyChange: q, ref: number, note: `Return from ${inv.customerName || 'customer'}` })
+        })
+
+        const cn = {
+          id: uuid(), number, invoiceId, invoiceNumber: inv.number,
+          customerId: inv.customerId, customerName: inv.customerName, date: rDate, reason: reason || '',
+          currency: inv.currency, exchangeRate: rate, items, subtotal, taxAmount, total,
+          status: 'issued', journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
+        }
+        const newItems = (inv.items || []).map((l) => (applied[l.id] ? { ...l, returnedQty: (Number(l.returnedQty) || 0) + applied[l.id] } : l))
+        set((st) => ({
+          creditNotes: [...st.creditNotes, cn],
+          invoices: st.invoices.map((i) => (i.id === invoiceId ? { ...i, items: newItems, creditNoteIds: [...(i.creditNoteIds || []), cn.id] } : i)),
+          settings: { ...st.settings, creditNote: { ...st.settings.creditNote, next: next + 1 } },
+        }))
+        get().logActivity('Sales return', `${number} · ${inv.number}`)
+        return cn
+      },
+
+      // Purchase return: raise a debit note FROM a bill. Reverses the purchase
+      // proportionally (Dr AP, Cr input VAT, Cr Inventory/Expense) and removes
+      // the returned stock. Tracks returnedQty on the bill lines.
+      createPurchaseReturn: (purchaseId, selections, { date, reason } = {}) => {
+        const pur = get().purchases.find((p) => p.id === purchaseId)
+        if (!pur || pur.status === 'void') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(pur.items || [], 'returnedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(pur.items || [], sel, { key: 'returnedQty', taxEnabled })
+        if (items.length === 0) return null
+        const rate = Number(pur.exchangeRate) || 1
+        const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
+        const rDate = date || new Date().toISOString().slice(0, 10)
+        const { prefix, next } = get().settings.debitNote
+        const number = nextNum(prefix, next)
+
+        const creditByAcc = {}, remove = {}
+        items.forEach((l) => {
+          const acc = l.itemId ? (get().inventoryItems.find((i) => i.id === l.itemId)?.inventoryAccountId || 'acc-inv') : (l.accountId || 'acc-admin')
+          creditByAcc[acc] = (creditByAcc[acc] || 0) + toBase(l.subtotal)
+          if (l.itemId) remove[l.itemId] = (remove[l.itemId] || 0) + l.quantity
+        })
+        const netBase = Object.values(creditByAcc).reduce((s, v) => s + v, 0)
+        const vatBase = items.reduce((s, l) => s + toBase(l.taxAmount), 0)
+        const apBase = Math.round((netBase + vatBase) * 100) / 100
+        const lines = [{ accountId: 'acc-ap', debit: apBase, credit: 0, description: `Debit Note ${number} for ${pur.number}` }]
+        if (vatBase > 0) lines.push({ accountId: 'acc-vatin', debit: 0, credit: vatBase, description: 'Input Tax reversal' })
+        Object.entries(creditByAcc).forEach(([a, amt]) => lines.push({ accountId: a, debit: 0, credit: amt, description: 'Goods returned' }))
+        const je = get().addJournalEntry({ date: rDate, description: `Purchase Return ${number} – ${pur.supplierName || ''}`, reference: number, type: 'debit_note', departmentId: pur.departmentId || null, lines })
+
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((st) => ({ inventoryItems: st.inventoryItems.map((it) => {
+          const q = remove[it.id]; if (!q) return it
+          const patch = { quantity: (it.quantity || 0) - q }
+          if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) - q; patch.stockByWarehouse = m }
+          return { ...it, ...patch }
+        }) }))
+        Object.entries(remove).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: rDate, type: 'return', qtyChange: -q, ref: number, note: `Return to ${pur.supplierName || 'supplier'}` })
+        })
+
+        const dn = {
+          id: uuid(), number, purchaseId, purchaseNumber: pur.number,
+          supplierId: pur.supplierId, supplierName: pur.supplierName, date: rDate, reason: reason || '',
+          currency: pur.currency, exchangeRate: rate, items, subtotal, taxAmount, total,
+          status: 'issued', journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        const newItems = (pur.items || []).map((l) => (applied[l.id] ? { ...l, returnedQty: (Number(l.returnedQty) || 0) + applied[l.id] } : l))
+        set((st) => ({
+          debitNotes: [...st.debitNotes, dn],
+          purchases: st.purchases.map((p) => (p.id === purchaseId ? { ...p, items: newItems, debitNoteIds: [...(p.debitNoteIds || []), dn.id] } : p)),
+          settings: { ...st.settings, debitNote: { ...st.settings.debitNote, next: next + 1 } },
+        }))
+        get().logActivity('Purchase return', `${number} · ${pur.number}`)
+        return dn
+      },
+
       deleteCreditNote: (id) =>
         set((s) => {
           const cn = s.creditNotes.find((c) => c.id === id)
