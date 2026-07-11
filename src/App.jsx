@@ -55,6 +55,7 @@ const DeliveryNotes = lazy(() => import('./pages/DeliveryNotes'))
 const Currencies = lazy(() => import('./pages/Currencies'))
 const Revaluation = lazy(() => import('./pages/Revaluation'))
 const Analytics = lazy(() => import('./pages/Analytics'))
+const FinancialHealth = lazy(() => import('./pages/FinancialHealth'))
 const Consolidation = lazy(() => import('./pages/Consolidation'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const Requisitions = lazy(() => import('./pages/Requisitions'))
@@ -183,6 +184,7 @@ export default function App() {
 
         {/* Reports & System */}
         <Route path="/analytics" element={<Analytics />} />
+        <Route path="/financial-health" element={<FinancialHealth />} />
         <Route path="/consolidation" element={<Consolidation />} />
         <Route path="/currencies" element={<Currencies />} />
         <Route path="/revaluation" element={<Revaluation />} />
