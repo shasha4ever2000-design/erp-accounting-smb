@@ -63,6 +63,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-otherinc',code:'4003', name: 'Other Income',               type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-gainloss',code:'4004', name: 'Gain on Asset Disposal',     type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-fxgl',   code: '4005', name: 'Unrealized FX Gain/(Loss)',  type: 'revenue',   subtype: 'revenue',     isSystem: false },
+  { id: 'acc-fxreal', code: '4006', name: 'Realized FX Gain/(Loss)',    type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-salesret',code:'4010', name: 'Sales Returns & Allowances', type: 'revenue',   subtype: 'revenue',     isSystem: false },
   // EXPENSES
   { id: 'acc-cogs',   code: '5001', name: 'Cost of Goods Sold',         type: 'expense',   subtype: 'expense',     isSystem: false },
@@ -367,17 +368,24 @@ export const useStore = create(
         const { prefix, next } = s.settings.invoice
         const number = nextNum(prefix, next)
 
-        const lines = [{ accountId: 'acc-ar', debit: invoice.total, credit: 0, description: `Invoice ${number}` }]
+        // Foreign-currency invoices are entered in their own currency; the ledger is
+        // always in base currency, so each amount is converted at the invoice's rate
+        // (base units per 1 unit of the invoice currency; 1 for base-currency invoices).
+        const rate = Number(invoice.exchangeRate) || 1
+        const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
         const revenueMap = {}
         invoice.items.forEach((item) => {
           const acc = item.accountId || 'acc-sales'
           revenueMap[acc] = (revenueMap[acc] || 0) + item.subtotal
         })
-        Object.entries(revenueMap).forEach(([accId, amount]) =>
-          lines.push({ accountId: accId, debit: 0, credit: amount, description: `Revenue – ${number}` })
-        )
-        if (invoice.taxAmount > 0)
-          lines.push({ accountId: 'acc-vatout', debit: 0, credit: invoice.taxAmount, description: 'Output Tax' })
+        const revLines = Object.entries(revenueMap).map(([accId, amount]) =>
+          ({ accountId: accId, debit: 0, credit: toBase(amount), description: `Revenue – ${number}` }))
+        const vatBase = invoice.taxAmount > 0 ? toBase(invoice.taxAmount) : 0
+        // AR = sum of the base-converted credits, so the entry balances after rounding.
+        const arBase = revLines.reduce((s, l) => s + l.credit, 0) + vatBase
+        const lines = [{ accountId: 'acc-ar', debit: arBase, credit: 0, description: `Invoice ${number}` }, ...revLines]
+        if (vatBase > 0)
+          lines.push({ accountId: 'acc-vatout', debit: 0, credit: vatBase, description: 'Output Tax' })
 
         const je = get().addJournalEntry({
           date: invoice.date,
@@ -419,6 +427,7 @@ export const useStore = create(
 
         const newInvoice = {
           ...invoice, id: uuid(), number, status: 'sent', amountPaid: 0, payments: [],
+          exchangeRate: rate, baseTotal: arBase,
           journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
         }
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
@@ -457,14 +466,24 @@ export const useStore = create(
         const number = nextNum(prefix, next)
         const newAmountPaid = invoice.amountPaid + amount
         const status = newAmountPaid >= invoice.total - 0.005 ? 'paid' : 'partial'
+        // Multi-currency settlement: AR was booked at the invoice rate; cash arrives
+        // valued at the payment-date rate. The difference is a realized FX gain/loss.
+        // (Both rates default to 1, so base-currency receipts post exactly as before.)
+        const invRate = Number(invoice.exchangeRate) || 1
+        const payRate = Number(payment.exchangeRate) || invRate
+        const cashBase = Math.round(amount * payRate * 100) / 100
+        const arBase = Math.round(amount * invRate * 100) / 100
+        const fx = Math.round((cashBase - arBase) * 100) / 100
+        const payLines = [
+          { accountId: payment.bankAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
+          { accountId: 'acc-ar', debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
+        ]
+        if (fx > 0) payLines.push({ accountId: 'acc-fxreal', debit: 0, credit: fx, description: `Realized FX gain – ${invoice.number}` })
+        else if (fx < 0) payLines.push({ accountId: 'acc-fxreal', debit: -fx, credit: 0, description: `Realized FX loss – ${invoice.number}` })
         const je = get().addJournalEntry({
           date: payment.date,
           description: `Receipt ${number} for ${invoice.number}`,
-          reference: number, type: 'receipt',
-          lines: [
-            { accountId: payment.bankAccountId, debit: amount, credit: 0, description: `Receipt for ${invoice.number}` },
-            { accountId: 'acc-ar', debit: 0, credit: amount, description: `Receipt for ${invoice.number}` },
-          ],
+          reference: number, type: 'receipt', lines: payLines,
         })
         set((st) => ({
           invoices: st.invoices.map((i) =>
@@ -659,18 +678,24 @@ export const useStore = create(
         const s = get()
         const { prefix, next } = s.settings.purchase
         const number = nextNum(prefix, next)
-        const lines = []
+        // Foreign-currency bills are entered in their own currency; convert every
+        // amount to base at the bill's rate (1 for base-currency bills) for the ledger.
+        const rate = Number(purchase.exchangeRate) || 1
+        const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
         const expMap = {}
         purchase.items.forEach((item) => {
           const acc = item.accountId || 'acc-admin'
           expMap[acc] = (expMap[acc] || 0) + item.subtotal
         })
-        Object.entries(expMap).forEach(([accId, amount]) =>
-          lines.push({ accountId: accId, debit: amount, credit: 0, description: `Purchase – ${number}` })
-        )
-        if (purchase.taxAmount > 0)
-          lines.push({ accountId: 'acc-vatin', debit: purchase.taxAmount, credit: 0, description: 'Input Tax' })
-        lines.push({ accountId: 'acc-ap', debit: 0, credit: purchase.total, description: `Purchase ${number}` })
+        const expLines = Object.entries(expMap).map(([accId, amount]) =>
+          ({ accountId: accId, debit: toBase(amount), credit: 0, description: `Purchase – ${number}` }))
+        const vatBase = purchase.taxAmount > 0 ? toBase(purchase.taxAmount) : 0
+        const lines = [...expLines]
+        if (vatBase > 0)
+          lines.push({ accountId: 'acc-vatin', debit: vatBase, credit: 0, description: 'Input Tax' })
+        // AP = sum of the base-converted debits, so the entry balances after rounding.
+        const apBase = expLines.reduce((s, l) => s + l.debit, 0) + vatBase
+        lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Purchase ${number}` })
         const je = get().addJournalEntry({
           date: purchase.date,
           description: `Purchase Invoice ${number} – ${purchase.supplierName || ''}`,
@@ -678,6 +703,7 @@ export const useStore = create(
         })
         const newPurchase = {
           ...purchase, id: uuid(), number, status: 'received', amountPaid: 0, payments: [],
+          exchangeRate: rate, baseTotal: apBase,
           journalEntryId: je.id, createdAt: new Date().toISOString(),
         }
 
@@ -689,7 +715,8 @@ export const useStore = create(
           if (q <= 0) return
           recv[line.itemId] = recv[line.itemId] || { qty: 0, cost: 0 }
           recv[line.itemId].qty += q
-          recv[line.itemId].cost += line.subtotal || 0
+          // Weighted-average cost is held in base currency, so convert FC line costs.
+          recv[line.itemId].cost += toBase(line.subtotal || 0)
         })
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
@@ -732,11 +759,22 @@ export const useStore = create(
         const status = newAmountPaid >= purchase.total - 0.005 ? 'paid' : 'partial'
         const wht = Math.max(0, Math.min(amount, Number(payment.wht) || 0))
         const netCash = amount - wht
+        // Multi-currency settlement: AP and WHT are relieved at the bill's rate; cash
+        // leaves at the payment-date rate. The difference is a realized FX gain/loss.
+        // (Both rates default to 1, so base-currency payments post exactly as before.)
+        const purRate = Number(purchase.exchangeRate) || 1
+        const payRate = Number(payment.exchangeRate) || purRate
+        const apBase = Math.round(amount * purRate * 100) / 100
+        const whtBase = Math.round(wht * purRate * 100) / 100
+        const cashBase = Math.round(netCash * payRate * 100) / 100
+        const fx = Math.round((apBase - whtBase - cashBase) * 100) / 100
         const lines = [
-          { accountId: 'acc-ap', debit: amount, credit: 0, description: `Payment for ${purchase.number}` },
-          { accountId: payment.bankAccountId, debit: 0, credit: netCash, description: `Payment for ${purchase.number}` },
+          { accountId: 'acc-ap', debit: apBase, credit: 0, description: `Payment for ${purchase.number}` },
+          { accountId: payment.bankAccountId, debit: 0, credit: cashBase, description: `Payment for ${purchase.number}` },
         ]
-        if (wht > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: wht, description: `Withholding tax – ${purchase.number}` })
+        if (whtBase > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: whtBase, description: `Withholding tax – ${purchase.number}` })
+        if (fx > 0) lines.push({ accountId: 'acc-fxreal', debit: 0, credit: fx, description: `Realized FX gain – ${purchase.number}` })
+        else if (fx < 0) lines.push({ accountId: 'acc-fxreal', debit: -fx, credit: 0, description: `Realized FX loss – ${purchase.number}` })
         const je = get().addJournalEntry({
           date: payment.date,
           description: `Payment ${number} for ${purchase.number}`,
@@ -2024,7 +2062,7 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 16, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 17, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -2079,7 +2117,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 16,
+      version: 17,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -2199,6 +2237,10 @@ export const useStore = create(
         if (version < 16) {
           if (persisted.settings?.accounting && persisted.settings.accounting.autoPostRecurring === undefined)
             persisted.settings.accounting.autoPostRecurring = true
+        }
+        if (version < 17) {
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-fxreal'))
+            persisted.accounts.push({ id: 'acc-fxreal', code: '4006', name: 'Realized FX Gain/(Loss)', type: 'revenue', subtype: 'revenue', isSystem: false })
         }
         return persisted
        } catch (e) {

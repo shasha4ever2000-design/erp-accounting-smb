@@ -12,9 +12,9 @@ const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1,
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
-  const { customers, accounts, inventoryItems, departments, settings, addInvoice } = useStore()
+  const { customers, accounts, inventoryItems, departments, currencies, settings, addInvoice } = useStore()
   const t = useT()
-  const sym = settings.company.currencySymbol
+  const baseCurrency = settings.company.currency
   const taxEnabled = settings.tax.enabled
   const defaultTaxRate = settings.tax.rate
 
@@ -27,8 +27,21 @@ export default function InvoiceForm() {
     dueDate: addDays(today(), settings.invoice.dueDays || 30),
     notes: settings.invoice.notes || '',
     departmentId: '',
+    currency: baseCurrency,
+    exchangeRate: 1,
     items: [emptyLine()],
   })
+
+  // Foreign-currency invoicing: the selected currency drives the symbol shown on
+  // totals; exchangeRate is base-currency units per 1 unit of the invoice currency.
+  const isFC = form.currency && form.currency !== baseCurrency
+  const sym = isFC ? `${form.currency} ` : settings.company.currencySymbol
+  const setCurrency = (code) => {
+    if (code === baseCurrency) return setForm((f) => ({ ...f, currency: code, exchangeRate: 1 }))
+    const cur = currencies.find((c) => c.code === code)
+    const rate = cur && cur.rate ? Math.round((1 / cur.rate) * 1e6) / 1e6 : 1 // stored rate is FC-per-base
+    setForm((f) => ({ ...f, currency: code, exchangeRate: rate }))
+  }
 
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -116,6 +129,19 @@ export default function InvoiceForm() {
               ) : <div />}
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
               <Input label="Due Date" type="date" value={form.dueDate} onChange={(e) => setField('dueDate', e.target.value)} />
+              {currencies.length > 0 && (
+                <>
+                  <Select label={t('Currency')} value={form.currency} onChange={(e) => setCurrency(e.target.value)}>
+                    <option value={baseCurrency}>{baseCurrency} ({t('base')})</option>
+                    {currencies.map((c) => <option key={c.id} value={c.code}>{c.code} — {c.name}</option>)}
+                  </Select>
+                  {isFC && (
+                    <Input label={t('Exchange rate (1 {c} = ? {b})').replace('{c}', form.currency).replace('{b}', baseCurrency)}
+                      type="number" min="0" step="0.000001" value={form.exchangeRate}
+                      onChange={(e) => setField('exchangeRate', e.target.value)} />
+                  )}
+                </>
+              )}
             </div>
           </Card>
 
@@ -209,6 +235,12 @@ export default function InvoiceForm() {
                 <span>Total</span>
                 <span>{fmtMoney(total, sym)}</span>
               </div>
+              {isFC && (
+                <div className="flex justify-between text-xs text-gray-400 dark:text-slate-500">
+                  <span>≈ {t('in')} {baseCurrency}</span>
+                  <span>{fmtMoney(total * (Number(form.exchangeRate) || 1), settings.company.currencySymbol)}</span>
+                </div>
+              )}
             </div>
           </Card>
 

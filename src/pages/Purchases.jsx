@@ -37,17 +37,21 @@ export default function Purchases() {
   })
   const sorted = [...filtered].sort((a, b) => b.createdAt?.localeCompare(a.createdAt))
 
+  const baseCurrency = settings.company.currency
+  const payIsFC = payModal && payModal.currency && payModal.currency !== baseCurrency
+  const paySym = payIsFC ? `${payModal.currency} ` : sym
+
   const openPay = (p) => {
     setPayModal(p)
     const amt = p.total - p.amountPaid
-    setPayForm({ date: today(), amount: String(amt), bankAccountId: 'acc-cash', notes: '', wht: whtCfg.enabled ? (amt * whtCfg.rate / 100).toFixed(2) : '' })
+    setPayForm({ date: today(), amount: String(amt), bankAccountId: 'acc-cash', notes: '', wht: whtCfg.enabled ? (amt * whtCfg.rate / 100).toFixed(2) : '', exchangeRate: Number(p.exchangeRate) || 1 })
   }
 
   const handleRecord = () => {
     const amount = parseFloat(payForm.amount)
     if (!amount || amount <= 0) return
     const due = payModal.total - payModal.amountPaid
-    if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, sym)})`)
+    if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, paySym)})`)
     const wht = parseFloat(payForm.wht) || 0
     if (wht > amount) return alert('Withholding tax cannot exceed the payment amount.')
     try { recordPurchasePayment(payModal.id, { ...payForm, amount, wht }) }
@@ -169,10 +173,19 @@ export default function Purchases() {
         {payModal && (
           <div className="space-y-4">
             <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 rounded-lg p-3 text-sm text-orange-700 dark:text-orange-300">
-              Balance Due: <strong className="tabular-nums">{fmtMoney(payModal.total - payModal.amountPaid, sym)}</strong>
+              Balance Due: <strong className="tabular-nums">{fmtMoney(payModal.total - payModal.amountPaid, paySym)}</strong>
             </div>
             <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
-            <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
+            <Input label={`Amount (${paySym.trim()})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
+            {payIsFC && (
+              <div className="space-y-1">
+                <Input label={t('Exchange rate at payment (1 {c} = ? {b})').replace('{c}', payModal.currency).replace('{b}', baseCurrency)}
+                  type="number" min="0" step="0.000001" value={payForm.exchangeRate} onChange={(e) => setPayForm((f) => ({ ...f, exchangeRate: e.target.value }))} />
+                <p className="text-xs text-gray-400 dark:text-slate-500">
+                  ≈ {fmtMoney(((parseFloat(payForm.amount) || 0) - (parseFloat(payForm.wht) || 0)) * (Number(payForm.exchangeRate) || 1), sym)} {t('from bank')} · {t('bill booked at')} {Number(payModal.exchangeRate) || 1} → {t('difference is realized FX')}
+                </p>
+              </div>
+            )}
             {whtCfg.enabled && (
               <>
                 <Input label={`${whtCfg.name} withheld (${sym})`} type="number" min="0" step="0.01" value={payForm.wht} onChange={(e) => setPayForm((f) => ({ ...f, wht: e.target.value }))} />

@@ -50,6 +50,13 @@ export default function InvoiceView() {
   const customer = customers.find((c) => c.id === invoice.customerId)
   const bankAccounts = accounts.filter((a) => a.type === 'asset' && (a.id === 'acc-cash' || a.id === 'acc-bank1' || a.subtype === 'current'))
   const amountDue = invoice.total - invoice.amountPaid
+  // Foreign-currency invoice: amounts show in the invoice currency; the receipt can
+  // settle at a different rate, producing a realized FX gain/loss in the base ledger.
+  const baseSym = settings.company.currencySymbol
+  const invIsFC = invoice.currency && invoice.currency !== settings.company.currency
+  const invSym = invIsFC ? `${invoice.currency} ` : baseSym
+  const invRate = Number(invoice.exchangeRate) || 1
+  const openPay = () => { setPayForm({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '', exchangeRate: invRate }); setPayModal(true) }
   // Show the VAT column whenever any line carries VAT or a non-standard category
   // (zero-rated / exempt supplies must still be indicated on a ZATCA tax invoice).
   const showTaxCol = (invoice.taxAmount || 0) > 0 || (invoice.items || []).some((l) => l.taxCategory && l.taxCategory !== 'standard')
@@ -58,7 +65,7 @@ export default function InvoiceView() {
   const handleRecord = () => {
     const amount = parseFloat(payForm.amount)
     if (!amount || amount <= 0) return alert('Enter a valid amount.')
-    if (amount > amountDue) return alert(`Amount exceeds balance due (${fmtMoney(amountDue, sym)}).`)
+    if (amount > amountDue) return alert(`Amount exceeds balance due (${fmtMoney(amountDue, invSym)}).`)
     try { recordInvoicePayment(invoice.id, { ...payForm, amount }) }
     catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setPayModal(false)
@@ -93,7 +100,7 @@ export default function InvoiceView() {
             <Printer size={14} /> {t('Download PDF')}
           </Btn>
           {invoice.status !== 'paid' && invoice.status !== 'void' && (
-            <Btn size="sm" onClick={() => setPayModal(true)}>
+            <Btn size="sm" onClick={openPay}>
               <DollarSign size={14} /> {t('Record Payment')}
             </Btn>
           )}
@@ -174,9 +181,9 @@ export default function InvoiceView() {
                 <tr key={item.id} className="border-b border-gray-100 dark:border-surface-750">
                   <td className="py-3 text-gray-700 dark:text-slate-200">{item.description}</td>
                   <td className="py-3 text-right text-gray-600 dark:text-slate-300">{item.quantity}</td>
-                  <td className="py-3 text-right text-gray-600 dark:text-slate-300">{fmtMoney(item.unitPrice, sym)}</td>
+                  <td className="py-3 text-right text-gray-600 dark:text-slate-300">{fmtMoney(item.unitPrice, invSym)}</td>
                   {showTaxCol && <td className="py-3 text-right text-gray-400 dark:text-slate-500">{lineTaxLabel(item)}</td>}
-                  <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(item.subtotal, sym)}</td>
+                  <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(item.subtotal, invSym)}</td>
                 </tr>
               ))}
             </tbody>
@@ -187,27 +194,27 @@ export default function InvoiceView() {
             <div className="w-56 space-y-2 text-sm">
               <div className="flex justify-between text-gray-600 dark:text-slate-300">
                 <span>Subtotal</span>
-                <span>{fmtMoney(invoice.subtotal, sym)}</span>
+                <span>{fmtMoney(invoice.subtotal, invSym)}</span>
               </div>
               {invoice.taxAmount > 0 && (
                 <div className="flex justify-between text-gray-600 dark:text-slate-300">
                   <span>{settings.tax.name}</span>
-                  <span>{fmtMoney(invoice.taxAmount, sym)}</span>
+                  <span>{fmtMoney(invoice.taxAmount, invSym)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-base border-t border-slate-200 dark:border-surface-700 pt-2">
                 <span>Total</span>
-                <span>{fmtMoney(invoice.total, sym)}</span>
+                <span>{fmtMoney(invoice.total, invSym)}</span>
               </div>
               {invoice.amountPaid > 0 && (
                 <>
                   <div className="flex justify-between text-green-600 dark:text-green-400">
                     <span>{t('Amount Paid')}</span>
-                    <span>({fmtMoney(invoice.amountPaid, sym)})</span>
+                    <span>({fmtMoney(invoice.amountPaid, invSym)})</span>
                   </div>
                   <div className="flex justify-between font-bold text-orange-600 dark:text-orange-400 border-t border-slate-200 dark:border-surface-700 pt-2">
                     <span>{t('Balance Due')}</span>
-                    <span>{fmtMoney(amountDue, sym)}</span>
+                    <span>{fmtMoney(amountDue, invSym)}</span>
                   </div>
                 </>
               )}
@@ -217,7 +224,7 @@ export default function InvoiceView() {
           {/* Amount in words */}
           <div className="mt-4 pt-3 border-t border-gray-100 dark:border-surface-750">
             <p className="text-xs text-gray-500 dark:text-slate-400">
-              <span className="font-semibold">Amount in words:</span> {numberToWords(invoice.total)} {company.currency} only
+              <span className="font-semibold">Amount in words:</span> {numberToWords(invoice.total)} {invoice.currency || company.currency} only
             </p>
           </div>
 
@@ -257,7 +264,7 @@ export default function InvoiceView() {
                 {invoice.payments.map((p) => (
                   <div key={p.id} className="flex justify-between text-sm">
                     <span className="text-gray-500 dark:text-slate-400">{fmtDate(p.date)} — {p.number}</span>
-                    <span className="font-medium text-green-600 dark:text-green-400">{fmtMoney(p.amount, sym)}</span>
+                    <span className="font-medium text-green-600 dark:text-green-400">{fmtMoney(p.amount, invSym)}</span>
                   </div>
                 ))}
               </div>
@@ -270,10 +277,20 @@ export default function InvoiceView() {
       <Modal open={payModal} onClose={() => setPayModal(false)} title="Record Payment">
         <div className="space-y-4">
           <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm">
-            <span className="text-blue-700 dark:text-blue-400 font-medium">Balance Due: {fmtMoney(amountDue, sym)}</span>
+            <span className="text-blue-700 dark:text-blue-400 font-medium">Balance Due: {fmtMoney(amountDue, invSym)}</span>
           </div>
           <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
-          <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} placeholder={`Max: ${fmtMoney(amountDue, sym)}`} />
+          <Input label={`Amount (${invSym.trim()})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} placeholder={`Max: ${fmtMoney(amountDue, invSym)}`} />
+          {invIsFC && (
+            <div className="space-y-1">
+              <Input label={t('Exchange rate at payment (1 {c} = ? {b})').replace('{c}', invoice.currency).replace('{b}', settings.company.currency)}
+                type="number" min="0" step="0.000001" value={payForm.exchangeRate ?? invRate}
+                onChange={(e) => setPayForm((f) => ({ ...f, exchangeRate: e.target.value }))} />
+              <p className="text-xs text-gray-400 dark:text-slate-500">
+                ≈ {fmtMoney((parseFloat(payForm.amount) || 0) * (Number(payForm.exchangeRate) || invRate), baseSym)} {t('into bank')} · {t('booked at')} {invRate} → {t('difference is realized FX')}
+              </p>
+            </div>
+          )}
           <Select label="Deposit To" value={payForm.bankAccountId} onChange={(e) => setPayForm((f) => ({ ...f, bankAccountId: e.target.value }))}>
             {bankAccounts.filter((a) => ['acc-cash', 'acc-bank1'].includes(a.id) || a.subtype === 'current').map((a) => (
               <option key={a.id} value={a.id}>{a.code} – {a.name}</option>
