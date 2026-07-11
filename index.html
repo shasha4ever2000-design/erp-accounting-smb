@@ -8,10 +8,11 @@
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>" />
 
     <!-- Typography: Inter for Latin/numerals, IBM Plex Sans Arabic for Arabic.
-         display=swap degrades gracefully to system fonts when offline (PWA). -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet" />
+         Self-hosted (woff2) so fonts render identically offline in the PWA —
+         no external requests, no FOUT fallback to system fonts when disconnected. -->
+    <link rel="preload" href="./fonts/inter-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href="./fonts/ibm-plex-sans-arabic-400-arabic.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="./fonts/fonts.css" />
 
     <!-- Installable desktop / PWA -->
     <link rel="manifest" href="/erp-accounting-smb/manifest.webmanifest" />
