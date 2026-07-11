@@ -184,7 +184,7 @@ export default function Employees() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
-                <input type="checkbox" checked={form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+                <input type="checkbox" checked={form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
                 {t('GOSI / Social Insurance')}
               </label>
               {form.gosiApplicable && (
@@ -196,7 +196,7 @@ export default function Employees() {
             </div>
             <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
-                <input type="checkbox" checked={form.taxApplicable} onChange={(e) => setField('taxApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+                <input type="checkbox" checked={form.taxApplicable} onChange={(e) => setField('taxApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
                 {t('Income Tax on salary')}
               </label>
               {form.taxApplicable

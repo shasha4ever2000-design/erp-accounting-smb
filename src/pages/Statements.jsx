@@ -89,7 +89,7 @@ export default function Statements() {
               {company.address && <p className="text-sm text-gray-500 dark:text-slate-400 whitespace-pre-line">{company.address}</p>}
             </div>
             <div className="text-right">
-              <p className="text-2xl font-black text-blue-600">STATEMENT</p>
+              <p className="text-2xl font-black text-blue-600 dark:text-blue-400">STATEMENT</p>
               <p className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(startDate)} → {fmtDate(endDate)}</p>
             </div>
           </div>

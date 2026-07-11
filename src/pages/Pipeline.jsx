@@ -89,14 +89,14 @@ export default function Pipeline() {
                     </div>
                     <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-50 dark:border-slate-700/50">
                       <div className="flex gap-1">
-                        <button onClick={() => move(l, -1)} disabled={l.stage === 'new'} className="text-gray-400 hover:text-blue-600 disabled:opacity-30"><ChevronLeft size={14} /></button>
-                        <button onClick={() => move(l, 1)} disabled={l.stage === 'lost'} className="text-gray-400 hover:text-blue-600 disabled:opacity-30"><ChevronRight size={14} /></button>
+                        <button onClick={() => move(l, -1)} disabled={l.stage === 'new'} className="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-brand-400 disabled:opacity-30"><ChevronLeft size={14} /></button>
+                        <button onClick={() => move(l, 1)} disabled={l.stage === 'lost'} className="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-brand-400 disabled:opacity-30"><ChevronRight size={14} /></button>
                       </div>
                       <div className="flex gap-1 items-center">
                         <AttachmentButton entityType="lead" entityId={l.id} />
-                        {l.stage !== 'won' && <button onClick={() => convert(l)} title="Convert to customer" className="text-gray-400 hover:text-green-600"><UserPlus size={13} /></button>}
-                        <button onClick={() => openEdit(l)} className="text-gray-400 hover:text-blue-600"><Pencil size={12} /></button>
-                        <button onClick={() => { if (confirm('Delete this lead?')) deleteLead(l.id) }} className="text-gray-400 hover:text-red-500"><Trash2 size={12} /></button>
+                        {l.stage !== 'won' && <button onClick={() => convert(l)} title="Convert to customer" className="text-gray-400 dark:text-slate-500 hover:text-green-600"><UserPlus size={13} /></button>}
+                        <button onClick={() => openEdit(l)} className="text-gray-400 dark:text-slate-500 hover:text-blue-600 dark:hover:text-brand-400"><Pencil size={12} /></button>
+                        <button onClick={() => { if (confirm('Delete this lead?')) deleteLead(l.id) }} className="text-gray-400 dark:text-slate-500 hover:text-red-500"><Trash2 size={12} /></button>
                       </div>
                     </div>
                   </div>

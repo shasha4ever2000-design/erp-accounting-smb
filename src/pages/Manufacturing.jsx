@@ -89,7 +89,7 @@ export default function Manufacturing() {
   const woSorted   = [...workOrders].sort((a, b) => b.createdAt.localeCompare(a.createdAt))
   const bomSorted  = [...billsOfMaterials].sort((a, b) => a.name.localeCompare(b.name))
 
-  const STATUS_CLR = { draft: 'bg-gray-100 text-gray-600', in_progress: 'bg-amber-100 text-amber-700', completed: 'bg-green-100 text-green-700' }
+  const STATUS_CLR = { draft: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300', in_progress: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300', completed: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' }
   const activeWOs    = workOrders.filter((w) => w.status === 'in_progress').length
   const completedWOs = workOrders.filter((w) => w.status === 'completed').length
   const totalOutput  = workOrders.filter((w) => w.status === 'completed').reduce((s, w) => s + w.actualCost, 0)
@@ -134,20 +134,20 @@ export default function Manufacturing() {
             <Table headers={['Product Name', 'Description', 'Output Qty', 'Components', { label: 'Material Cost / Run', right: true }, { label: '', right: true }]}>
               {bomSorted.map((bom) => (
                 <Tr key={bom.id}>
-                  <Td className="font-medium text-gray-800">{bom.name}</Td>
-                  <Td className="text-gray-500 text-sm truncate max-w-[150px]">{bom.description || '—'}</Td>
-                  <Td className="text-gray-600 text-sm">{bom.outputQuantity} unit{bom.outputQuantity !== 1 ? 's' : ''}</Td>
+                  <Td className="font-medium text-gray-800 dark:text-slate-100">{bom.name}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm truncate max-w-[150px]">{bom.description || '—'}</Td>
+                  <Td className="text-gray-600 dark:text-slate-300 text-sm">{bom.outputQuantity} unit{bom.outputQuantity !== 1 ? 's' : ''}</Td>
                   <Td>
                     <div className="space-y-0.5">
                       {(bom.components || []).slice(0, 3).map((c, i) => (
-                        <p key={i} className="text-xs text-gray-500">{c.name || 'Item'} × {c.quantity}</p>
+                        <p key={i} className="text-xs text-gray-500 dark:text-slate-400">{c.name || 'Item'} × {c.quantity}</p>
                       ))}
                       {(bom.components || []).length > 3 && (
-                        <p className="text-xs text-gray-400">+{bom.components.length - 3} more</p>
+                        <p className="text-xs text-gray-400 dark:text-slate-500">+{bom.components.length - 3} more</p>
                       )}
                     </div>
                   </Td>
-                  <Td right className="font-medium text-gray-700">{fmtMoney(bomTotalCost(bom), sym)}</Td>
+                  <Td right className="font-medium text-gray-700 dark:text-slate-200">{fmtMoney(bomTotalCost(bom), sym)}</Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <Btn size="sm" variant="ghost" onClick={() => openBomEdit(bom)}><Edit3 size={13} /></Btn>
@@ -174,20 +174,20 @@ export default function Manufacturing() {
             <Table headers={['Number', 'Product', 'Qty', 'Scheduled', { label: 'Material Cost', right: true }, 'Status', { label: 'Actions', right: true }]}>
               {woSorted.map((wo) => (
                 <Tr key={wo.id}>
-                  <Td><span className="font-mono text-xs text-gray-500">{wo.number}</span></Td>
+                  <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{wo.number}</span></Td>
                   <Td>
-                    <p className="font-medium text-gray-800">{wo.outputName}</p>
-                    {wo.notes && <p className="text-xs text-gray-400 truncate max-w-[120px]">{wo.notes}</p>}
+                    <p className="font-medium text-gray-800 dark:text-slate-100">{wo.outputName}</p>
+                    {wo.notes && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[120px]">{wo.notes}</p>}
                   </Td>
-                  <Td className="text-gray-600 text-sm">{wo.targetQuantity}</Td>
-                  <Td className="text-gray-500 text-sm">{wo.scheduledDate ? fmtDate(wo.scheduledDate) : '—'}</Td>
-                  <Td right className="text-gray-700">
+                  <Td className="text-gray-600 dark:text-slate-300 text-sm">{wo.targetQuantity}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{wo.scheduledDate ? fmtDate(wo.scheduledDate) : '—'}</Td>
+                  <Td right className="text-gray-700 dark:text-slate-200">
                     {wo.status === 'completed'
                       ? fmtMoney(wo.actualCost || 0, sym)
                       : fmtMoney((wo.components || []).reduce((s, c) => s + (c.quantity || 0) * (c.unitCost || 0), 0) * (wo.targetQuantity || 1), sym)
                     }
                   </Td>
-                  <Td><Badge className={STATUS_CLR[wo.status] || 'bg-gray-100 text-gray-500'}>{wo.status.replace('_', ' ')}</Badge></Td>
+                  <Td><Badge className={STATUS_CLR[wo.status] || 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{wo.status.replace('_', ' ')}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="workorder" entityId={wo.id} />
@@ -233,11 +233,11 @@ export default function Manufacturing() {
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="text-sm font-medium text-gray-700">Components / Raw Materials</label>
+              <label className="text-sm font-medium text-gray-700 dark:text-slate-200">Components / Raw Materials</label>
               <Btn size="sm" variant="secondary" onClick={addComp}><Plus size={13} /> {t('Add Component')}</Btn>
             </div>
             {bomForm.components.length === 0 ? (
-              <p className="text-sm text-gray-400 text-center py-4 border border-dashed border-gray-200 rounded-lg">No components yet — click Add Component</p>
+              <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-4 border border-dashed border-gray-200 dark:border-surface-700 rounded-lg">No components yet — click Add Component</p>
             ) : (
               <div className="space-y-2">
                 {bomForm.components.map((comp, idx) => (
@@ -260,17 +260,17 @@ export default function Manufacturing() {
                       <Input label={idx === 0 ? `Unit Cost (${sym})` : ''} type="number" min="0" step="0.01" value={comp.unitCost} onChange={(e) => updateComp(idx, 'unitCost', e.target.value)} />
                     </div>
                     <div className="col-span-2 pb-1">
-                      <p className="text-sm font-medium text-right text-gray-700">
+                      <p className="text-sm font-medium text-right text-gray-700 dark:text-slate-200">
                         {sym}{((parseFloat(comp.quantity) || 0) * (parseFloat(comp.unitCost) || 0)).toFixed(2)}
                       </p>
                     </div>
                     <div className="col-span-1 pb-1">
-                      <button onClick={() => removeComp(idx)} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                      <button onClick={() => removeComp(idx)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={14} /></button>
                     </div>
                   </div>
                 ))}
-                <div className="flex justify-end pt-1 border-t border-gray-100">
-                  <p className="text-sm font-semibold text-gray-800">
+                <div className="flex justify-end pt-1 border-t border-gray-100 dark:border-surface-750">
+                  <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
                     Total per run: {fmtMoney(bomTotalCost(bomForm), sym)}
                   </p>
                 </div>
@@ -298,8 +298,8 @@ export default function Manufacturing() {
             )}
             {woForm.bomId && (
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Product</label>
-                <p className="py-2 px-3 text-sm text-gray-800 border border-gray-200 rounded-lg bg-gray-50">{woForm.outputName}</p>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Product</label>
+                <p className="py-2 px-3 text-sm text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-surface-700 rounded-lg bg-slate-50 dark:bg-surface-800/60">{woForm.outputName}</p>
               </div>
             )}
           </div>
@@ -309,15 +309,15 @@ export default function Manufacturing() {
           </div>
 
           {woForm.components.length > 0 && (
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
-              <p className="font-medium text-gray-700 mb-2">Materials required (× {woForm.targetQuantity} run{woForm.targetQuantity > 1 ? 's' : ''})</p>
+            <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-sm">
+              <p className="font-medium text-gray-700 dark:text-slate-200 mb-2">Materials required (× {woForm.targetQuantity} run{woForm.targetQuantity > 1 ? 's' : ''})</p>
               {woForm.components.map((c, i) => (
-                <div key={i} className="flex justify-between text-gray-600 text-xs mb-1">
+                <div key={i} className="flex justify-between text-gray-600 dark:text-slate-300 text-xs mb-1">
                   <span>{c.name} × {(c.quantity || 0) * woForm.targetQuantity}</span>
                   <span>{fmtMoney((c.quantity || 0) * (c.unitCost || 0) * woForm.targetQuantity, sym)}</span>
                 </div>
               ))}
-              <div className="border-t border-gray-200 mt-1.5 pt-1.5 flex justify-between font-semibold text-gray-800">
+              <div className="border-t border-gray-200 dark:border-surface-700 mt-1.5 pt-1.5 flex justify-between font-semibold text-gray-800 dark:text-slate-100">
                 <span>{t('Est. Total Cost')}</span>
                 <span>{fmtMoney(woForm.components.reduce((s, c) => s + (c.quantity || 0) * (c.unitCost || 0), 0) * woForm.targetQuantity, sym)}</span>
               </div>
@@ -325,7 +325,7 @@ export default function Manufacturing() {
           )}
 
           <Textarea label="Notes" value={woForm.notes} onChange={(e) => setWoField('notes', e.target.value)} rows={2} placeholder="Production run notes..." />
-          <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-xs text-brand-700 dark:text-brand-300">
             On complete: Dr WIP ← Cr Raw Materials → Dr Finished Goods ← Cr WIP
           </div>
           <div className="flex justify-end gap-2">
@@ -338,15 +338,15 @@ export default function Manufacturing() {
       {/* Complete Work Order Modal */}
       <Modal open={!!completeModal} onClose={() => setCompleteModal(null)} title={`Complete Work Order – ${completeModal?.number}`}>
         <div className="space-y-4">
-          <div className="bg-green-50 rounded-lg p-3 text-sm text-green-700">
+          <div className="bg-success-50 dark:bg-success-500/10 rounded-lg p-3 text-sm text-success-700 dark:text-success-300">
             <p>Product: <strong>{completeModal?.outputName}</strong></p>
             <p>Quantity: <strong>{completeModal?.targetQuantity}</strong></p>
-            <p className="text-xs mt-1 text-green-600">This will post journal entries transferring materials through WIP to Finished Goods.</p>
+            <p className="text-xs mt-1 text-green-600 dark:text-green-400">This will post journal entries transferring materials through WIP to Finished Goods.</p>
           </div>
           <Input label="Completion Date" type="date" value={completeDate} onChange={(e) => setCompleteDate(e.target.value)} />
           {completeModal && (
-            <div className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
-              <p className="font-medium text-gray-700">Journal Entries:</p>
+            <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-xs text-slate-600 dark:text-slate-300 space-y-1">
+              <p className="font-medium text-gray-700 dark:text-slate-200">Journal Entries:</p>
               <p>1. Dr Work-in-Progress → Cr Raw Materials ({fmtMoney((completeModal.components || []).reduce((s, c) => s + (c.quantity || 0) * (c.unitCost || 0), 0) * completeModal.targetQuantity, sym)})</p>
               <p>2. Dr Finished Goods → Cr Work-in-Progress (same amount)</p>
             </div>

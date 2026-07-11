@@ -71,7 +71,7 @@ export default function AuditLog() {
                     <td className="px-5 py-2.5 text-gray-500 dark:text-slate-400">{e.detail}</td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400">{t('No matching activity')}</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={4} className="px-5 py-8 text-center text-gray-400 dark:text-slate-500">{t('No matching activity')}</td></tr>}
               </tbody>
             </table>
           </Card>

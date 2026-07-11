@@ -239,7 +239,7 @@ export default function Reconciliation() {
 
       <Card className="overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2">
-          <Landmark size={15} className="text-gray-400" />
+          <Landmark size={15} className="text-gray-400 dark:text-slate-500" />
           <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Transactions — tick each one that appears on your bank statement')}</h3>
         </div>
         <table className="w-full text-sm">

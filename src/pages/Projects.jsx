@@ -112,7 +112,7 @@ export default function Projects() {
               return (
                 <div key={p.id}>
                   <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => setExpanded(open ? null : p.id)}>
-                    <button className="text-gray-400">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
+                    <button className="text-gray-400 dark:text-slate-500">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
                     <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
                       <Briefcase size={16} className="text-indigo-600 dark:text-indigo-300" />
                     </div>
@@ -196,7 +196,7 @@ export default function Projects() {
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <span className="text-gray-600 dark:text-slate-300">{t.hours} hrs{t.rate ? ` @ ${fmtMoney(t.rate, sym)}` : ''}</span>
-                                  <button onClick={() => deleteTimeEntry(t.id)} className="text-red-400 hover:text-red-600"><Trash2 size={12} /></button>
+                                  <button onClick={() => deleteTimeEntry(t.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={12} /></button>
                                 </div>
                               </div>
                             ))}
@@ -273,7 +273,7 @@ export default function Projects() {
           </div>
           <Input label="Description" value={tForm.description} onChange={(e) => setTime('description', e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-            <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+            <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
             Billable
           </label>
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">

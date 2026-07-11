@@ -214,7 +214,7 @@ export default function Settings() {
                   id="taxEnabled"
                   checked={tax.enabled}
                   onChange={(e) => setTaxField('enabled', e.target.checked)}
-                  className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                  className="w-4 h-4 rounded text-blue-600 dark:text-blue-400 focus:ring-blue-500"
                 />
                 <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable Tax (VAT / GST)')}</label>
               </div>
@@ -277,20 +277,20 @@ export default function Settings() {
                   value={ai.apiKey}
                   onChange={(e) => setAiField('apiKey', e.target.value)}
                   placeholder="sk-ant-api03-..."
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono"
+                  className="w-full border border-gray-300 dark:border-surface-600 rounded-lg px-3 py-2 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent font-mono"
                 />
-                <button onClick={() => setShowKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                <button onClick={() => setShowKey(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300">
                   {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <p className="text-xs text-gray-400 mt-1">Your key is stored locally in the browser only. Get a key at console.anthropic.com.</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">Your key is stored locally in the browser only. Get a key at console.anthropic.com.</p>
             </div>
             <Select label="Model" value={ai.model} onChange={(e) => setAiField('model', e.target.value)}>
               <option value="claude-haiku-4-5-20251001">{t('Claude Haiku 4.5 – Fast & Economical (Recommended)')}</option>
               <option value="claude-sonnet-4-6">{t('Claude Sonnet 4.6 – Balanced')}</option>
               <option value="claude-opus-4-8">{t('Claude Opus 4.8 – Most Capable')}</option>
             </Select>
-            <div className="bg-violet-50 rounded-lg p-3 text-xs text-violet-700 space-y-1">
+            <div className="bg-accent-50 dark:bg-accent-500/10 rounded-lg p-3 text-xs text-accent-700 dark:text-accent-300 space-y-1">
               <p className="font-medium">{t('What the AI assistant can do:')}</p>
               <p>• Answer questions about your live financial data (AR, AP, balances, invoices)</p>
               <p>{t('• Explain accounting concepts and double-entry bookkeeping')}</p>
@@ -308,7 +308,7 @@ export default function Settings() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Company Logo')}</label>
               <div className="flex items-center gap-4">
                 <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50">
-                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400">{t('No logo')}</span>}
+                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400 dark:text-slate-500">{t('No logo')}</span>}
                 </div>
                 <div className="space-y-2">
                   <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>{t('Upload Logo')}</Btn>
@@ -342,7 +342,7 @@ export default function Settings() {
           </p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <input type="checkbox" id="zatcaEnabled" checked={zatca.enabled} onChange={(e) => setZatcaField('enabled', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
+              <input type="checkbox" id="zatcaEnabled" checked={zatca.enabled} onChange={(e) => setZatcaField('enabled', e.target.checked)} className="w-4 h-4 rounded text-green-600 dark:text-green-400 focus:ring-green-500" />
               <label htmlFor="zatcaEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable ZATCA e-invoicing')}</label>
             </div>
             {zatca.enabled && (
@@ -352,7 +352,7 @@ export default function Settings() {
                   <Input label="Commercial Registration (CR)" value={zatca.crNumber} onChange={(e) => setZatcaField('crNumber', e.target.value)} placeholder="10xxxxxxxx" />
                 </div>
                 <div className="flex items-center gap-3">
-                  <input type="checkbox" id="zatcaQr" checked={zatca.showQr} onChange={(e) => setZatcaField('showQr', e.target.checked)} className="w-4 h-4 rounded text-green-600 focus:ring-green-500" />
+                  <input type="checkbox" id="zatcaQr" checked={zatca.showQr} onChange={(e) => setZatcaField('showQr', e.target.checked)} className="w-4 h-4 rounded text-green-600 dark:text-green-400 focus:ring-green-500" />
                   <label htmlFor="zatcaQr" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Show ZATCA QR code on invoices')}</label>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-xs text-green-700 dark:text-green-300 space-y-1">
@@ -371,7 +371,7 @@ export default function Settings() {
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Deduct withholding tax on supplier payments (e.g. KSA WHT on payments to non-residents). The withheld amount is posted to a “Withholding Tax Payable” account to remit later.</p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <input type="checkbox" id="whtEnabled" checked={wht.enabled} onChange={(e) => setWhtField('enabled', e.target.checked)} className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+              <input type="checkbox" id="whtEnabled" checked={wht.enabled} onChange={(e) => setWhtField('enabled', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400 focus:ring-blue-500" />
               <label htmlFor="whtEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable withholding tax on payments')}</label>
             </div>
             {wht.enabled && (
@@ -473,24 +473,24 @@ export default function Settings() {
             <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
               <div className={`h-full ${storagePct > 85 ? 'bg-red-500' : storagePct > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${storagePct}%` }} />
             </div>
-            {storagePct > 85 && <p className="text-xs text-red-500 mt-1">Storage is nearly full — download a backup and consider removing your logo or old data.</p>}
+            {storagePct > 85 && <p className="text-xs text-red-500 dark:text-red-400 mt-1">Storage is nearly full — download a backup and consider removing your logo or old data.</p>}
           </div>
         </Card>
 
         {/* Danger Zone */}
         <Card className="p-6 border-red-100">
           <div className="flex items-start gap-3 mb-4">
-            <AlertTriangle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+            <AlertTriangle size={18} className="text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
             <div>
-              <h2 className="text-base font-semibold text-red-700">{t('Danger Zone')}</h2>
-              <p className="text-sm text-gray-500 mt-1">{t('These actions are irreversible. Please proceed with caution.')}</p>
+              <h2 className="text-base font-semibold text-red-700 dark:text-red-400">{t('Danger Zone')}</h2>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">{t('These actions are irreversible. Please proceed with caution.')}</p>
             </div>
           </div>
           <div className="space-y-3">
-            <div className="flex items-center justify-between py-3 border-b border-gray-100">
+            <div className="flex items-center justify-between py-3 border-b border-gray-100 dark:border-surface-750">
               <div>
                 <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{t('Reset All Data')}</p>
-                <p className="text-xs text-gray-500">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
               </div>
               {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>{t('Reset Data')}</Btn> : <span className="text-xs text-gray-400 dark:text-slate-500">Owners / Admins only</span>}
             </div>

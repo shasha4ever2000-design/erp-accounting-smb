@@ -59,7 +59,7 @@ export default function Team() {
                     <div>
                       <p className="font-medium text-gray-800 dark:text-slate-100 flex items-center gap-1.5">
                         {u.name}{u.role === 'owner' && <Crown size={12} className="text-violet-500" />}
-                        {u.id === currentUserId && <span className="text-xs text-gray-400">(you)</span>}
+                        {u.id === currentUserId && <span className="text-xs text-gray-400 dark:text-slate-500">(you)</span>}
                       </p>
                     </div>
                   </div>
@@ -72,7 +72,7 @@ export default function Team() {
                 </td>
                 <td className="px-5 py-3 text-right">
                   {u.id !== currentUserId && (
-                    <button onClick={() => { if (confirm(`Remove ${u.name}'s account from this device?`)) removeUser(u.id) }} className="text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
+                    <button onClick={() => { if (confirm(`Remove ${u.name}'s account from this device?`)) removeUser(u.id) }} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
                   )}
                 </td>
               </tr>

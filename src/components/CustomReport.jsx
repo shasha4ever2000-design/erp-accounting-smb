@@ -258,7 +258,7 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
           </p>
         </div>
         {chosen.length === 0 ? (
-          <p className="p-8 text-center text-gray-400">{t('Select at least one column.')}</p>
+          <p className="p-8 text-center text-gray-400 dark:text-slate-500">{t('Select at least one column.')}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
@@ -267,7 +267,7 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
               </tr>
             </thead>
             <tbody>
-              {working.length === 0 && <tr><td colSpan={chosen.length} className="py-8 text-center text-gray-400">{t('No data for this period')}</td></tr>}
+              {working.length === 0 && <tr><td colSpan={chosen.length} className="py-8 text-center text-gray-400 dark:text-slate-500">{t('No data for this period')}</td></tr>}
 
               {!groupBy && working.map((r, ri) => (
                 <tr key={ri} className="border-b border-gray-50 dark:border-slate-700/50">
@@ -283,7 +283,7 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
                 <Fragment key={g.key}>
                   <tr className="bg-gray-50 dark:bg-slate-700/40">
                     <td colSpan={chosen.length} className="py-2 px-2 font-bold text-gray-700 dark:text-slate-200">
-                      {g.key} <span className="text-xs font-normal text-gray-400">({g.rows.length})</span>
+                      {g.key} <span className="text-xs font-normal text-gray-400 dark:text-slate-500">({g.rows.length})</span>
                     </td>
                   </tr>
                   {g.rows.map((r, ri) => (

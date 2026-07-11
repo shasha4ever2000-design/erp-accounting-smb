@@ -109,7 +109,7 @@ export default function POS() {
           <div className="flex items-center gap-2 mb-3">
             <ShoppingCart size={17} className="text-gray-500 dark:text-slate-400" />
             <h2 className="font-semibold text-gray-800 dark:text-slate-100">{t('Current Sale')}</h2>
-            {cart.length > 0 && <span className="ml-auto text-xs text-gray-400">{cart.length} item(s)</span>}
+            {cart.length > 0 && <span className="ml-auto text-xs text-gray-400 dark:text-slate-500">{cart.length} item(s)</span>}
           </div>
 
           {lastSale && (
@@ -130,7 +130,7 @@ export default function POS() {
                 <div key={c.itemId} className="flex items-center gap-2 text-sm">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800 dark:text-slate-100 truncate">{c.name}</p>
-                    <p className="text-xs text-gray-400">{fmtMoney(c.price, sym)} × {c.qty}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">{fmtMoney(c.price, sym)} × {c.qty}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setQty(c.itemId, -1)} className="w-6 h-6 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center"><Minus size={12} /></button>
@@ -138,7 +138,7 @@ export default function POS() {
                     <button onClick={() => setQty(c.itemId, 1)} className="w-6 h-6 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center"><Plus size={12} /></button>
                   </div>
                   <span className="w-16 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(c.qty * c.price, sym)}</span>
-                  <button onClick={() => removeLine(c.itemId)} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                  <button onClick={() => removeLine(c.itemId)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>

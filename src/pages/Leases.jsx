@@ -61,7 +61,7 @@ export default function Leases() {
     setPayModal(null)
   }
 
-  const STATUS_CLR = { active: 'bg-green-100 text-green-700', terminated: 'bg-gray-100 text-gray-500', expired: 'bg-amber-100 text-amber-700' }
+  const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', terminated: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400', expired: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' }
 
   const leaseStatus = (lease) => {
     if (lease.status === 'terminated') return 'terminated'
@@ -97,7 +97,7 @@ export default function Leases() {
           <EmptyState icon="🏢" title="No leases recorded" desc="Add office space, equipment, or vehicle leases. Each rent payment automatically posts a journal entry (Dr Rent Expense / Cr Bank)."
             action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Lease')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No {filter} leases</div>
+          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} leases</div>
         ) : (
           <Table headers={['Number', 'Name', 'Landlord', 'Type', 'Start', 'End', { label: 'Monthly Rent', right: true }, { label: 'Total Paid', right: true }, 'Payments', 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((lease) => {
@@ -105,19 +105,19 @@ export default function Leases() {
               const status     = leaseStatus(lease)
               return (
                 <Tr key={lease.id}>
-                  <Td><span className="font-mono text-xs text-gray-500">{lease.number}</span></Td>
+                  <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{lease.number}</span></Td>
                   <Td>
-                    <p className="font-medium text-gray-800">{lease.name}</p>
-                    {lease.notes && <p className="text-xs text-gray-400 truncate max-w-[120px]">{lease.notes}</p>}
+                    <p className="font-medium text-gray-800 dark:text-slate-100">{lease.name}</p>
+                    {lease.notes && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[120px]">{lease.notes}</p>}
                   </Td>
-                  <Td className="text-gray-500 text-sm">{lease.landlord || '—'}</Td>
-                  <Td className="text-gray-500 text-sm capitalize">{lease.leaseType}</Td>
-                  <Td className="text-gray-500 text-sm">{fmtDate(lease.startDate)}</Td>
-                  <Td className="text-gray-500 text-sm">{lease.endDate ? fmtDate(lease.endDate) : 'Open'}</Td>
-                  <Td right className="font-medium text-gray-700">{fmtMoney(lease.monthlyRent, sym)}</Td>
-                  <Td right className="text-gray-700">{fmtMoney(totalPaid, sym)}</Td>
-                  <Td className="text-gray-500 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
-                  <Td><Badge className={STATUS_CLR[status] || 'bg-gray-100 text-gray-500'}>{status}</Badge></Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.landlord || '—'}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm capitalize">{lease.leaseType}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(lease.startDate)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.endDate ? fmtDate(lease.endDate) : 'Open'}</Td>
+                  <Td right className="font-medium text-gray-700 dark:text-slate-200">{fmtMoney(lease.monthlyRent, sym)}</Td>
+                  <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(totalPaid, sym)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
+                  <Td><Badge className={STATUS_CLR[status] || 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{status}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="lease" entityId={lease.id} />
@@ -176,7 +176,7 @@ export default function Leases() {
       {/* Pay Modal */}
       <Modal open={!!payModal} onClose={() => setPayModal(null)} title={`Record Payment – ${payModal?.name}`}>
         <div className="space-y-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
             <p>Monthly rent: <strong>{fmtMoney(payModal?.monthlyRent || 0, sym)}</strong></p>
             <p className="text-xs mt-0.5 text-blue-500">Posts: Dr Rent Expense → Cr Bank</p>
           </div>

@@ -91,10 +91,10 @@ export default function InvoiceForm() {
   return (
     <div>
       <div className="mb-6">
-        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
+        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
           <ArrowLeft size={15} /> {t('Back to Invoices')}
         </button>
-        <h1 className="text-2xl font-bold text-gray-900">{t('New Sales Invoice')}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('New Sales Invoice')}</h1>
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -102,7 +102,7 @@ export default function InvoiceForm() {
         <div className="xl:col-span-2 space-y-5">
           {/* Header */}
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Invoice Details')}</h2>
+            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Invoice Details')}</h2>
             <div className="grid grid-cols-2 gap-4">
               <Select label="Customer *" value={form.customerId} onChange={(e) => setCustomer(e.target.value)}>
                 <option value="">Select customer…</option>
@@ -121,10 +121,10 @@ export default function InvoiceForm() {
 
           {/* Line Items */}
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
+            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
               {/* Headers */}
-              <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+              <div className={`grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Price')}</span>
@@ -179,10 +179,10 @@ export default function InvoiceForm() {
                       ))}
                     </Select>
                   )}
-                  <div className="text-sm font-medium text-gray-800 text-right pt-2">
+                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100 text-right pt-2">
                     {fmtMoney(line.subtotal, sym)}
                   </div>
-                  <button onClick={() => removeLine(line.id)} className="mt-2 text-red-400 hover:text-red-600 flex-shrink-0">
+                  <button onClick={() => removeLine(line.id)} className="mt-2 text-red-400 hover:text-red-600 dark:hover:text-danger-400 flex-shrink-0">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -194,18 +194,18 @@ export default function InvoiceForm() {
             </div>
 
             {/* Totals */}
-            <div className="border-t border-gray-100 mt-6 pt-4 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600">
+            <div className="border-t border-gray-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600 dark:text-slate-300">
                 <span>Subtotal</span>
                 <span className="font-medium">{fmtMoney(subtotal, sym)}</span>
               </div>
               {taxEnabled && taxTotal > 0 && (
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-600 dark:text-slate-300">
                   <span>{settings.tax.name}</span>
                   <span>{fmtMoney(taxTotal, sym)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-gray-900 text-base border-t border-gray-200 pt-2 mt-2">
+              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t border-gray-200 dark:border-surface-700 pt-2 mt-2">
                 <span>Total</span>
                 <span>{fmtMoney(total, sym)}</span>
               </div>
@@ -221,21 +221,21 @@ export default function InvoiceForm() {
         {/* Sidebar */}
         <div className="space-y-4">
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Summary</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Summary</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500">Subtotal</span>
+                <span className="text-gray-500 dark:text-slate-400">Subtotal</span>
                 <span className="font-medium">{fmtMoney(subtotal, sym)}</span>
               </div>
               {taxEnabled && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500">{settings.tax.name} ({settings.tax.rate}%)</span>
+                  <span className="text-gray-500 dark:text-slate-400">{settings.tax.name} ({settings.tax.rate}%)</span>
                   <span>{fmtMoney(taxTotal, sym)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
                 <span>Total</span>
-                <span className="text-blue-600">{fmtMoney(total, sym)}</span>
+                <span className="text-blue-600 dark:text-blue-400">{fmtMoney(total, sym)}</span>
               </div>
             </div>
             <div className="mt-5 space-y-2">
@@ -250,16 +250,16 @@ export default function InvoiceForm() {
 
           {form.customerId && (
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-gray-700 mb-3">{t('Customer')}</h2>
+              <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">{t('Customer')}</h2>
               {(() => {
                 const c = customers.find((c) => c.id === form.customerId)
                 if (!c) return null
                 return (
                   <div className="text-sm space-y-1">
-                    <p className="font-medium text-gray-800">{c.name}</p>
-                    {c.email && <p className="text-gray-500">{c.email}</p>}
-                    {c.phone && <p className="text-gray-500">{c.phone}</p>}
-                    {c.address && <p className="text-gray-400 text-xs mt-1">{c.address}</p>}
+                    <p className="font-medium text-gray-800 dark:text-slate-100">{c.name}</p>
+                    {c.email && <p className="text-gray-500 dark:text-slate-400">{c.email}</p>}
+                    {c.phone && <p className="text-gray-500 dark:text-slate-400">{c.phone}</p>}
+                    {c.address && <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{c.address}</p>}
                   </div>
                 )
               })()}

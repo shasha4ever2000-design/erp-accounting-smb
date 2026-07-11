@@ -163,7 +163,7 @@ export default function RecurringInvoices() {
                     <option value="">Revenue…</option>
                     {revenueAccs.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>

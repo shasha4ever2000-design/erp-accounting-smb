@@ -64,13 +64,13 @@ export default function JournalEntries() {
   }
 
   const typeColors = {
-    manual: 'bg-purple-100 text-purple-700',
-    invoice: 'bg-blue-100 text-blue-700',
-    receipt: 'bg-green-100 text-green-700',
-    purchase: 'bg-orange-100 text-orange-700',
-    payment_out: 'bg-red-100 text-red-700',
-    money_in: 'bg-teal-100 text-teal-700',
-    money_out: 'bg-rose-100 text-rose-700',
+    manual: 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300',
+    invoice: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+    receipt: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+    purchase: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+    payment_out: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
+    money_in: 'bg-teal-50 text-teal-700 dark:bg-teal-500/10 dark:text-teal-300',
+    money_out: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
   }
 
   const sorted = [...journalEntries]
@@ -103,17 +103,17 @@ export default function JournalEntries() {
               const cr = je.lines?.reduce((s, l) => s + (l.credit || 0), 0) || 0
               return (
                 <Tr key={je.id}>
-                  <Td className="font-mono text-gray-600 text-xs">{je.number}</Td>
-                  <Td className="text-gray-500">{fmtDate(je.date)}</Td>
-                  <Td className="font-medium text-gray-800">
+                  <Td className="font-mono text-gray-600 dark:text-slate-300 text-xs">{je.number}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400">{fmtDate(je.date)}</Td>
+                  <Td className="font-medium text-gray-800 dark:text-slate-100">
                     {je.description}
-                    {je.reversedBy && <Badge className="ms-2 bg-rose-100 text-rose-700">{t('Voided')}</Badge>}
-                    {je.reverses && <Badge className="ms-2 bg-amber-100 text-amber-700">{t('Reversal')}</Badge>}
+                    {je.reversedBy && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Voided')}</Badge>}
+                    {je.reverses && <Badge className="ms-2 bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{t('Reversal')}</Badge>}
                   </Td>
-                  <Td className="text-gray-400 text-xs">{je.reference || '—'}</Td>
-                  <Td><Badge className={typeColors[je.type] || 'bg-gray-100 text-gray-600'}>{je.type?.replace('_', ' ')}</Badge></Td>
-                  <Td right className="font-mono text-gray-700">{fmtMoney(dr, sym)}</Td>
-                  <Td right className="font-mono text-gray-700">{fmtMoney(cr, sym)}</Td>
+                  <Td className="text-gray-400 dark:text-slate-500 text-xs">{je.reference || '—'}</Td>
+                  <Td><Badge className={typeColors[je.type] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{je.type?.replace('_', ' ')}</Badge></Td>
+                  <Td right className="font-mono text-gray-700 dark:text-slate-200">{fmtMoney(dr, sym)}</Td>
+                  <Td right className="font-mono text-gray-700 dark:text-slate-200">{fmtMoney(cr, sym)}</Td>
                   <Td right>
                     <div className="flex justify-end items-center gap-1">
                       <AttachmentButton entityType="journal" entityId={je.id} />
@@ -153,17 +153,17 @@ export default function JournalEntries() {
 
           <div className="border rounded-lg overflow-hidden">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50">
+              <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Account</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Debit</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Credit</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Account</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Debit</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Credit</th>
                   <th className="px-2 py-2 w-8" />
                 </tr>
               </thead>
               <tbody>
                 {form.lines.map((line) => (
-                  <tr key={line.id} className="border-t border-gray-100">
+                  <tr key={line.id} className="border-t border-gray-100 dark:border-surface-750">
                     <td className="px-2 py-1.5">
                       <Select value={line.accountId} onChange={(e) => updateLine(line.id, 'accountId', e.target.value)}>
                         <option value="">Select account…</option>
@@ -179,33 +179,33 @@ export default function JournalEntries() {
                     <td className="px-2 py-1.5">
                       <input type="number" min="0" step="0.01" value={line.debit}
                         onChange={(e) => updateLine(line.id, 'debit', e.target.value)}
-                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full border border-gray-300 dark:border-surface-600 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         placeholder="0.00" />
                     </td>
                     <td className="px-2 py-1.5">
                       <input type="number" min="0" step="0.01" value={line.credit}
                         onChange={(e) => updateLine(line.id, 'credit', e.target.value)}
-                        className="w-full border border-gray-300 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full border border-gray-300 dark:border-surface-600 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
                         placeholder="0.00" />
                     </td>
                     <td className="px-1 py-1.5">
-                      <button onClick={() => removeLine(line.id)} className="text-red-400 hover:text-red-600">
+                      <button onClick={() => removeLine(line.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400">
                         <Trash2 size={13} />
                       </button>
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t-2 border-gray-200 bg-gray-50 font-semibold">
-                  <td className="px-3 py-2 text-xs text-gray-600">Totals</td>
-                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-green-700' : 'text-red-600'}`}>{fmtMoney(totalDr, sym)}</td>
-                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-green-700' : 'text-red-600'}`}>{fmtMoney(totalCr, sym)}</td>
+                <tr className="border-t-2 border-gray-200 dark:border-surface-700 bg-gray-50 dark:bg-surface-800/60 font-semibold">
+                  <td className="px-3 py-2 text-xs text-gray-600 dark:text-slate-300">Totals</td>
+                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(totalDr, sym)}</td>
+                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(totalCr, sym)}</td>
                   <td />
                 </tr>
               </tbody>
             </table>
           </div>
           {!balanced && totalDr > 0 && (
-            <p className="text-xs text-red-600">Debits and credits must be equal. Difference: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
+            <p className="text-xs text-red-600 dark:text-red-400">Debits and credits must be equal. Difference: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
           )}
           <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add Line')}</Btn>
           <div className="flex justify-end gap-2 pt-1">
@@ -220,24 +220,24 @@ export default function JournalEntries() {
         {viewEntry && (
           <div className="space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><p className="text-gray-400">Date</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
-              <div><p className="text-gray-400">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
-              <div className="col-span-2"><p className="text-gray-400">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>
+              <div><p className="text-gray-400 dark:text-slate-500">Date</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
+              <div><p className="text-gray-400 dark:text-slate-500">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
+              <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>
             </div>
             <table className="w-full text-sm border rounded-lg overflow-hidden">
-              <thead className="bg-gray-50">
+              <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Account</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Debit</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500">Credit</th>
+                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Account</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Debit</th>
+                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Credit</th>
                 </tr>
               </thead>
               <tbody>
                 {viewEntry.lines?.map((line, i) => (
-                  <tr key={i} className="border-t border-gray-100">
-                    <td className="px-3 py-2 text-gray-700">{accName(line.accountId)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700">{line.debit > 0 ? fmtMoney(line.debit, sym) : '—'}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700">{line.credit > 0 ? fmtMoney(line.credit, sym) : '—'}</td>
+                  <tr key={i} className="border-t border-gray-100 dark:border-surface-750">
+                    <td className="px-3 py-2 text-gray-700 dark:text-slate-200">{accName(line.accountId)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-gray-700 dark:text-slate-200">{line.debit > 0 ? fmtMoney(line.debit, sym) : '—'}</td>
+                    <td className="px-3 py-2 text-right font-mono text-gray-700 dark:text-slate-200">{line.credit > 0 ? fmtMoney(line.credit, sym) : '—'}</td>
                   </tr>
                 ))}
               </tbody>

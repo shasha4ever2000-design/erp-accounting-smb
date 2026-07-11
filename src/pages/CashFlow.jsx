@@ -176,8 +176,8 @@ export default function CashFlow() {
                 <Td className="text-gray-300 dark:text-slate-600"><ArrowRight size={14} /></Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(tf.toAccountId)}</Td>
                 <Td right className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(tf.amount, sym)}</Td>
-                <Td right className="text-gray-400">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
-                <Td className="text-gray-400 text-xs font-mono">{tf.reference || '—'}</Td>
+                <Td right className="text-gray-400 dark:text-slate-500">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
+                <Td className="text-gray-400 dark:text-slate-500 text-xs font-mono">{tf.reference || '—'}</Td>
                 <Td right><div className="flex items-center justify-end gap-1"><AttachmentButton entityType="transfer" entityId={tf.id} /><Btn size="sm" variant="ghost" onClick={() => handleDelete(tf)}><Trash2 size={13} className="text-red-400" /></Btn></div></Td>
               </Tr>
             ))}
@@ -219,7 +219,7 @@ export default function CashFlow() {
                         </Btn>
                       )}
                       <Btn size="sm" variant="ghost" onClick={() => updateScheduledTransfer(sc.id, { active: !sc.active })} title={sc.active ? t('Pause') : t('Resume')}>
-                        {sc.active ? <Pause size={13} className="text-amber-500" /> : <Play size={13} className="text-green-600" />}
+                        {sc.active ? <Pause size={13} className="text-amber-500" /> : <Play size={13} className="text-green-600 dark:text-green-400" />}
                       </Btn>
                       <Btn size="sm" variant="ghost" onClick={() => handleDeleteSchedule(sc)}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>
@@ -246,7 +246,7 @@ export default function CashFlow() {
                 <Td className="text-gray-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
                 <Td className="text-gray-800 dark:text-slate-200">{m.desc}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm">{m.account}</Td>
-                <Td className="text-gray-400 text-xs font-mono">{m.ref || '—'}</Td>
+                <Td className="text-gray-400 dark:text-slate-500 text-xs font-mono">{m.ref || '—'}</Td>
                 <Td right className="font-medium text-green-600 dark:text-green-400">{m.amount > 0 ? fmtMoney(m.amount, sym) : ''}</Td>
                 <Td right className="font-medium text-red-500 dark:text-red-400">{m.amount < 0 ? fmtMoney(Math.abs(m.amount), sym) : ''}</Td>
               </Tr>
@@ -268,7 +268,7 @@ export default function CashFlow() {
           </div>
           <div className="bg-gray-50 dark:bg-slate-700/40 rounded-lg p-2.5 text-sm text-gray-600 dark:text-slate-300 flex justify-between">
             <span>{t('Available in source')}</span>
-            <strong className={fromBal >= 0 ? '' : 'text-red-600'}>{fmtMoney(fromBal, sym)}</strong>
+            <strong className={fromBal >= 0 ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(fromBal, sym)}</strong>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />

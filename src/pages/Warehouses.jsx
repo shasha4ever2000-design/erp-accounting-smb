@@ -153,7 +153,7 @@ export default function Warehouses() {
                   <span className="text-gray-700 dark:text-slate-200 font-medium">{tr.quantity} × {itemName(tr.itemId)}</span>
                   <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1.5 text-xs">{whName(tr.fromWarehouseId)} <ArrowLeftRight size={11} /> {whName(tr.toWarehouseId)}</span>
                 </div>
-                <button onClick={() => deleteStockTransfer(tr.id)} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                <button onClick={() => deleteStockTransfer(tr.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
               </div>
             ))}
           </div>

@@ -50,7 +50,7 @@ export default function InstallButton() {
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" onClick={() => setShowHelp(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
           <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
-            <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><X size={18} /></button>
+            <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"><X size={18} /></button>
             <div className="flex items-center gap-2.5 mb-3">
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
                 <Download size={18} className="text-white" />

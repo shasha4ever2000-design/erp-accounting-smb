@@ -115,7 +115,7 @@ export default function Layout({ children }) {
             </div>
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm leading-tight truncate tracking-snug">{company.name}</p>
-              <p className="text-slate-500 text-[10.5px] font-medium tracking-[0.08em] uppercase mt-0.5">{t('Accounting ERP')}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10.5px] font-medium tracking-[0.08em] uppercase mt-0.5">{t('Accounting ERP')}</p>
             </div>
           </div>
         </div>
@@ -148,7 +148,7 @@ export default function Layout({ children }) {
                 {({ isActive }) => (
                   <>
                     {isActive && <span className="absolute inset-y-[7px] start-0 w-[3px] rounded-full bg-gradient-to-b from-brand-400 to-accent-500" />}
-                    <Icon size={16} strokeWidth={isActive ? 2.25 : 2} className={`flex-shrink-0 transition-colors ${isActive ? 'text-brand-400' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    <Icon size={16} strokeWidth={isActive ? 2.25 : 2} className={`flex-shrink-0 transition-colors ${isActive ? 'text-brand-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-300'}`} />
                     <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
                   </>
                 )}
@@ -159,7 +159,7 @@ export default function Layout({ children }) {
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-white/[0.06]">
-          <p className="text-[10px] font-medium tracking-[0.08em] text-slate-600 text-center">ERP ACCOUNTING v3.0</p>
+          <p className="text-[10px] font-medium tracking-[0.08em] text-slate-600 dark:text-slate-300 text-center">ERP ACCOUNTING v3.0</p>
         </div>
       </aside>
 

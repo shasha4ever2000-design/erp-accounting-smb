@@ -7,7 +7,7 @@ import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, 
 import AttachmentButton from '../components/Attachments'
 import { Plus, Calculator, Trash2, TrendingDown, Package } from 'lucide-react'
 
-const STATUS_CLR = { active: 'bg-green-100 text-green-700', disposed: 'bg-gray-100 text-gray-500' }
+const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', disposed: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400' }
 
 export default function FixedAssets() {
   const t = useT()
@@ -112,23 +112,23 @@ export default function FixedAssets() {
           <EmptyState icon="🏗️" title="No fixed assets" desc="Add equipment, vehicles, buildings, and other long-term assets. Depreciation is tracked automatically."
             action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={14} /> {t('Add Asset')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No {filter} assets</div>
+          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} assets</div>
         ) : (
           <Table headers={['Number', 'Asset Name', 'Category', 'Purchase Date', { label: 'Cost', right: true }, { label: 'Acc. Dep.', right: true }, { label: 'Book Value', right: true }, 'Method', 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((asset) => (
               <Tr key={asset.id}>
-                <Td><span className="font-mono text-xs text-gray-500">{asset.number}</span></Td>
+                <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{asset.number}</span></Td>
                 <Td>
-                  <p className="font-medium text-gray-800">{asset.name}</p>
-                  {asset.description && <p className="text-xs text-gray-400 truncate max-w-[150px]">{asset.description}</p>}
+                  <p className="font-medium text-gray-800 dark:text-slate-100">{asset.name}</p>
+                  {asset.description && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[150px]">{asset.description}</p>}
                 </Td>
-                <Td className="text-gray-500 text-sm">{asset.category || '—'}</Td>
-                <Td className="text-gray-500 text-sm">{fmtDate(asset.purchaseDate)}</Td>
-                <Td right className="text-gray-700">{fmtMoney(asset.purchaseCost, sym)}</Td>
-                <Td right className="text-orange-600">{fmtMoney(asset.accumulatedDepreciation, sym)}</Td>
-                <Td right className="font-semibold text-gray-900">{fmtMoney(asset.currentBookValue, sym)}</Td>
-                <Td className="text-xs text-gray-500">{asset.depreciationMethod === 'straight_line' ? 'SL' : asset.depreciationMethod || 'SL'}</Td>
-                <Td><Badge className={STATUS_CLR[asset.status] || 'bg-gray-100 text-gray-600'}>{asset.status}</Badge></Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{asset.category || '—'}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(asset.purchaseDate)}</Td>
+                <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(asset.purchaseCost, sym)}</Td>
+                <Td right className="text-orange-600 dark:text-orange-400">{fmtMoney(asset.accumulatedDepreciation, sym)}</Td>
+                <Td right className="font-semibold text-gray-900 dark:text-slate-100">{fmtMoney(asset.currentBookValue, sym)}</Td>
+                <Td className="text-xs text-gray-500 dark:text-slate-400">{asset.depreciationMethod === 'straight_line' ? 'SL' : asset.depreciationMethod || 'SL'}</Td>
+                <Td><Badge className={STATUS_CLR[asset.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{asset.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="fixedasset" entityId={asset.id} />
@@ -143,7 +143,7 @@ export default function FixedAssets() {
                       </>
                     )}
                     {asset.status === 'disposed' && (
-                      <span className="text-xs text-gray-400 px-2">Disposed {asset.disposalDate ? fmtDate(asset.disposalDate) : ''}</span>
+                      <span className="text-xs text-gray-400 dark:text-slate-500 px-2">Disposed {asset.disposalDate ? fmtDate(asset.disposalDate) : ''}</span>
                     )}
                     <Btn size="sm" variant="ghost" onClick={() => handleDelete(asset)}>
                       <Trash2 size={13} className="text-red-400" />
@@ -179,7 +179,7 @@ export default function FixedAssets() {
       {/* Depreciation Modal */}
       <Modal open={!!deprModal} onClose={() => setDeprModal(null)} title={`Record Depreciation – ${deprModal?.name}`}>
         <div className="space-y-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
             <p>Book value: <strong>{fmtMoney(deprModal?.currentBookValue || 0, sym)}</strong></p>
             <p>Straight-line annual: <strong>{fmtMoney(((deprModal?.purchaseCost||0)-(deprModal?.salvageValue||0))/(deprModal?.usefulLifeYears||5), sym)}</strong></p>
           </div>
@@ -188,7 +188,7 @@ export default function FixedAssets() {
             <Input label="Date" type="date" value={deprForm.date} onChange={(e) => setDeprForm((f)=>({...f,date:e.target.value}))} />
             <Input label={`Amount (${sym}) *`} type="number" min="0" step="0.01" value={deprForm.amount} onChange={(e) => setDeprForm((f)=>({...f,amount:e.target.value}))} />
           </div>
-          <p className="text-xs text-blue-600 bg-blue-50 rounded p-2">
+          <p className="text-xs bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 rounded p-2">
             Posts: Dr Depreciation Expense → Cr Accumulated Depreciation
           </p>
           <div className="flex justify-end gap-2">
@@ -201,7 +201,7 @@ export default function FixedAssets() {
       {/* Dispose Modal */}
       <Modal open={!!dispModal} onClose={() => setDispModal(null)} title={`Dispose Asset – ${dispModal?.name}`}>
         <div className="space-y-4">
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+          <div className="bg-warning-50 dark:bg-warning-500/10 border border-warning-200 dark:border-warning-400/20 rounded-lg p-3 text-sm text-warning-700 dark:text-warning-300">
             <p>Current book value: <strong>{fmtMoney(dispModal?.currentBookValue || 0, sym)}</strong></p>
             <p className="text-xs mt-1">Gain or loss will be calculated automatically based on disposal proceeds.</p>
           </div>
@@ -214,13 +214,13 @@ export default function FixedAssets() {
             </Select>
           )}
           {dispModal && (
-            <div className="bg-gray-50 rounded-lg p-3 text-sm">
+            <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-sm">
               {(() => {
                 const proceeds = parseFloat(dispForm.proceeds) || 0
                 const gl = proceeds - (dispModal.currentBookValue || 0)
                 return gl >= 0
-                  ? <p className="text-green-700">Gain on disposal: <strong>{fmtMoney(gl, sym)}</strong></p>
-                  : <p className="text-red-600">Loss on disposal: <strong>({fmtMoney(Math.abs(gl), sym)})</strong></p>
+                  ? <p className="text-green-700 dark:text-green-400">Gain on disposal: <strong>{fmtMoney(gl, sym)}</strong></p>
+                  : <p className="text-red-600 dark:text-red-400">Loss on disposal: <strong>({fmtMoney(Math.abs(gl), sym)})</strong></p>
               })()}
             </div>
           )}

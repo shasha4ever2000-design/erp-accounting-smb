@@ -34,9 +34,9 @@ export default function ExportMenu({ filename, rows, columns, title, subtitle, s
       </button>
       {open && (
         <div className="absolute z-30 mt-1 end-0 right-0 w-44 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-100 dark:border-slate-700 py-1">
-          <MenuItem icon={<FileText size={15} className="text-gray-500" />} label={t('CSV (.csv)')} onClick={() => run(() => exportCSV(filename, rows, columns))} />
-          <MenuItem icon={<FileSpreadsheet size={15} className="text-green-600" />} label={t('Excel (.xlsx)')} onClick={() => run(() => exportExcel(filename, rows, columns, title))} />
-          <MenuItem icon={<FileDown size={15} className="text-red-500" />} label={t('PDF (.pdf)')} onClick={() => run(() => exportPDF(rows, columns, meta))} />
+          <MenuItem icon={<FileText size={15} className="text-gray-500 dark:text-slate-400" />} label={t('CSV (.csv)')} onClick={() => run(() => exportCSV(filename, rows, columns))} />
+          <MenuItem icon={<FileSpreadsheet size={15} className="text-green-600 dark:text-green-400" />} label={t('Excel (.xlsx)')} onClick={() => run(() => exportExcel(filename, rows, columns, title))} />
+          <MenuItem icon={<FileDown size={15} className="text-red-500 dark:text-red-400" />} label={t('PDF (.pdf)')} onClick={() => run(() => exportPDF(rows, columns, meta))} />
         </div>
       )}
     </div>

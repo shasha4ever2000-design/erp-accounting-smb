@@ -57,13 +57,13 @@ export default function DebitNotes() {
           <Table headers={['Number', 'Supplier', 'Date', 'Purchase Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((dn) => (
               <Tr key={dn.id}>
-                <Td><span className="font-mono text-sm font-medium text-orange-600">{dn.number}</span></Td>
-                <Td className="font-medium text-gray-800">{dn.supplierName}</Td>
-                <Td className="text-gray-500 text-sm">{fmtDate(dn.date)}</Td>
-                <Td className="text-gray-500 text-sm font-mono">{dn.purchaseRef || '—'}</Td>
-                <Td className="text-gray-600 text-sm max-w-[200px] truncate">{dn.reason || '—'}</Td>
+                <Td><span className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">{dn.number}</span></Td>
+                <Td className="font-medium text-gray-800 dark:text-slate-100">{dn.supplierName}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(dn.date)}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{dn.purchaseRef || '—'}</Td>
+                <Td className="text-gray-600 dark:text-slate-300 text-sm max-w-[200px] truncate">{dn.reason || '—'}</Td>
                 <Td right>
-                  <span className="font-semibold text-green-600">{fmtMoney(dn.total, sym)}</span>
+                  <span className="font-semibold text-green-600 dark:text-green-400">{fmtMoney(dn.total, sym)}</span>
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="debitnote" entityId={dn.id} />
@@ -97,12 +97,12 @@ export default function DebitNotes() {
               <Input label={`Tax Amount (${sym})`} type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setField('taxAmount', e.target.value)} />
             )}
           </div>
-          <div className="bg-gray-50 rounded-lg p-3 text-sm">
-            <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{fmtMoney(subtotal, sym)}</span></div>
-            {taxEnabled && <div className="flex justify-between text-gray-600"><span>Tax ({taxRate}%):</span><span>{fmtMoney(taxAmt, sym)}</span></div>}
-            <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 mt-1 pt-1"><span>Total Debit:</span><span>{fmtMoney(total, sym)}</span></div>
+          <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-sm">
+            <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal:</span><span>{fmtMoney(subtotal, sym)}</span></div>
+            {taxEnabled && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Tax ({taxRate}%):</span><span>{fmtMoney(taxAmt, sym)}</span></div>}
+            <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 border-t border-gray-200 dark:border-surface-700 mt-1 pt-1"><span>Total Debit:</span><span>{fmtMoney(total, sym)}</span></div>
           </div>
-          <p className="text-xs text-blue-600 bg-blue-50 rounded p-2">
+          <p className="text-xs bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 rounded p-2">
             Journal Entry: Dr Accounts Payable ({fmtMoney(total, sym)}) → Cr Purchase Returns ({fmtMoney(subtotal, sym)}){taxEnabled ? ` + Cr Input Tax (${fmtMoney(taxAmt, sym)})` : ''}
           </p>
           <div className="flex justify-end gap-2 pt-1">

@@ -109,7 +109,7 @@ export default function CommandPalette() {
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div className="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-          <Search size={18} className="text-gray-400 flex-shrink-0" />
+          <Search size={18} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
@@ -121,7 +121,7 @@ export default function CommandPalette() {
           <kbd className="hidden sm:inline-block text-[10px] text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto py-2">
-          {results.length === 0 && <p className="px-4 py-6 text-center text-sm text-gray-400">{t('No matches')}</p>}
+          {results.length === 0 && <p className="px-4 py-6 text-center text-sm text-gray-400 dark:text-slate-500">{t('No matches')}</p>}
           {results.map((cmd, i) => {
             const showGroup = cmd.group !== lastGroup
             lastGroup = cmd.group

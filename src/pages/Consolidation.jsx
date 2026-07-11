@@ -94,7 +94,7 @@ export default function Consolidation() {
     return { companyRows, totals, pl, mixedCurrency: currencies.size > 1 }
   }, [rows])
 
-  if (!data) return <div className="py-24 text-center text-gray-400">{t('Loading…')}</div>
+  if (!data) return <div className="py-24 text-center text-gray-400 dark:text-slate-500">{t('Loading…')}</div>
 
   const exportRows = data.companyRows.filter((r) => !r.missing).map((r) => ({
     company: r.name, revenue: r.revenue, expense: r.expense, net: r.net, assets: r.assets, liabilities: r.liabilities, equity: r.equity,
@@ -161,10 +161,10 @@ export default function Consolidation() {
               </tr>
             ) : (
               <tr key={r.id} className="border-b border-gray-50 dark:border-slate-700/50">
-                <td className="py-2 px-4 font-medium text-gray-800 dark:text-slate-100">{r.name}{r.id === currentCompanyId && <Badge className="ms-2 bg-blue-100 text-blue-700">{t('Active')}</Badge>}</td>
+                <td className="py-2 px-4 font-medium text-gray-800 dark:text-slate-100">{r.name}{r.id === currentCompanyId && <Badge className="ms-2 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{t('Active')}</Badge>}</td>
                 <td className="py-2 px-4 text-end text-gray-700 dark:text-slate-200">{fmtMoney(r.revenue, sym)}</td>
                 <td className="py-2 px-4 text-end text-gray-700 dark:text-slate-200">{fmtMoney(r.expense, sym)}</td>
-                <td className={`py-2 px-4 text-end font-semibold ${r.net >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtMoney(r.net, sym)}</td>
+                <td className={`py-2 px-4 text-end font-semibold ${r.net >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{fmtMoney(r.net, sym)}</td>
                 <td className="py-2 px-4 text-end text-gray-700 dark:text-slate-200">{fmtMoney(r.assets, sym)}</td>
                 <td className="py-2 px-4 text-end text-gray-700 dark:text-slate-200">{fmtMoney(r.equity, sym)}</td>
               </tr>
@@ -173,7 +173,7 @@ export default function Consolidation() {
               <td className="py-2.5 px-4 text-gray-900 dark:text-slate-100">{t('Group Total')}</td>
               <td className="py-2.5 px-4 text-end">{fmtMoney(data.totals.revenue, sym)}</td>
               <td className="py-2.5 px-4 text-end">{fmtMoney(data.totals.expense, sym)}</td>
-              <td className={`py-2.5 px-4 text-end ${data.totals.net >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmtMoney(data.totals.net, sym)}</td>
+              <td className={`py-2.5 px-4 text-end ${data.totals.net >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(data.totals.net, sym)}</td>
               <td className="py-2.5 px-4 text-end">{fmtMoney(data.totals.assets, sym)}</td>
               <td className="py-2.5 px-4 text-end">{fmtMoney(data.totals.equity, sym)}</td>
             </tr>
@@ -193,11 +193,11 @@ export default function Consolidation() {
             </tr>
           </thead>
           <tbody>
-            {data.pl.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-gray-400">{t('No data for this period')}</td></tr>}
+            {data.pl.length === 0 && <tr><td colSpan={3} className="py-6 text-center text-gray-400 dark:text-slate-500">{t('No data for this period')}</td></tr>}
             {data.pl.map((r, i) => (
               <tr key={i} className="border-b border-gray-50 dark:border-slate-700/50">
                 <td className="py-2 px-4 text-gray-700 dark:text-slate-200">{r.name}</td>
-                <td className="py-2 px-4"><Badge className={r.type === 'revenue' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>{t(r.type === 'revenue' ? 'Revenue' : 'Expense')}</Badge></td>
+                <td className="py-2 px-4"><Badge className={r.type === 'revenue' ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' : 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300'}>{t(r.type === 'revenue' ? 'Revenue' : 'Expense')}</Badge></td>
                 <td className="py-2 px-4 text-end font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.total, sym)}</td>
               </tr>
             ))}

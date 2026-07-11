@@ -90,7 +90,7 @@ export default function DeliveryNotes() {
               <tbody>
                 {dn.items.map((it, i) => (
                   <tr key={i} className="border-b border-gray-100 dark:border-slate-700/50">
-                    <td className="py-3 text-gray-400">{i + 1}</td>
+                    <td className="py-3 text-gray-400 dark:text-slate-500">{i + 1}</td>
                     <td className="py-3 text-gray-700 dark:text-slate-200">{it.description}</td>
                     <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{it.quantity}</td>
                   </tr>
@@ -130,7 +130,7 @@ export default function DeliveryNotes() {
                 <Td className="text-gray-400 dark:text-slate-500">{dn.reference || '—'}</Td>
                 <Td><Badge className={STATUS[dn.status] || STATUS.pending}>{dn.status}</Badge></Td>
                 <Td right>
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this delivery note?')) deleteDeliveryNote(dn.id) }} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this delivery note?')) deleteDeliveryNote(dn.id) }} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={14} /></button>
                 </Td>
               </Tr>
             ))}
@@ -158,7 +158,7 @@ export default function DeliveryNotes() {
                     value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
                   <input className="w-20 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty"
                     value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>

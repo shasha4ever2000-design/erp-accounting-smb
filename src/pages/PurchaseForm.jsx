@@ -89,15 +89,15 @@ export default function PurchaseForm() {
 
   return (
     <div>
-      <button onClick={() => navigate('/purchases')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 mb-4">
+      <button onClick={() => navigate('/purchases')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
         <ArrowLeft size={15} /> {t('Back to Purchases')}
       </button>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">{t('New Purchase Invoice')}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">{t('New Purchase Invoice')}</h1>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-5">
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Purchase Details')}</h2>
+            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Purchase Details')}</h2>
             <div className="grid grid-cols-2 gap-4">
               <Select label="Supplier *" value={form.supplierId} onChange={(e) => setSupplier(e.target.value)}>
                 <option value="">Select supplier…</option>
@@ -116,9 +116,9 @@ export default function PurchaseForm() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
+            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
-              <div className={`grid gap-2 text-xs font-semibold text-gray-400 uppercase ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
+              <div className={`grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase ${taxEnabled ? 'grid-cols-[2fr_70px_90px_130px_90px_32px]' : 'grid-cols-[2fr_80px_100px_80px_32px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Cost')}</span>
@@ -151,17 +151,17 @@ export default function PurchaseForm() {
                       ))}
                     </Select>
                   )}
-                  <div className="text-sm font-medium text-gray-800 text-right pt-2">{fmtMoney(line.subtotal, sym)}</div>
-                  <button onClick={() => removeLine(line.id)} className="mt-2 text-red-400 hover:text-red-600"><Trash2 size={15} /></button>
+                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100 text-right pt-2">{fmtMoney(line.subtotal, sym)}</div>
+                  <button onClick={() => removeLine(line.id)} className="mt-2 text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
                 </div>
               ))}
               <Btn variant="ghost" onClick={addLine} size="sm"><Plus size={14} /> {t('Add Line')}</Btn>
             </div>
 
-            <div className="border-t border-gray-100 mt-6 pt-4 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600"><span>Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
-              {taxEnabled && taxTotal > 0 && <div className="flex justify-between text-gray-600"><span>{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-gray-900 text-base border-t pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
+            <div className="border-t border-gray-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
+              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
+              {taxEnabled && taxTotal > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
+              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
             </div>
           </Card>
 
@@ -172,11 +172,11 @@ export default function PurchaseForm() {
 
         <div className="space-y-4">
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-4">Summary</h2>
+            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Summary</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500">Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
-              {taxEnabled && <div className="flex justify-between"><span className="text-gray-500">{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2"><span>Total</span><span className="text-orange-600">{fmtMoney(total, sym)}</span></div>
+              <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
+              {taxEnabled && <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
+              <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2"><span>Total</span><span className="text-orange-600 dark:text-orange-400">{fmtMoney(total, sym)}</span></div>
             </div>
             <div className="mt-5 space-y-2">
               <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Invoice')}</Btn>

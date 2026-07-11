@@ -87,9 +87,9 @@ export default function ChartOfAccounts() {
       <div className="space-y-4">
         {grouped.map(({ type, items }) => (
           <Card key={type}>
-            <div className={`px-5 py-3 border-b border-gray-100 flex items-center gap-2`}>
+            <div className={`px-5 py-3 border-b border-gray-100 dark:border-surface-750 flex items-center gap-2`}>
               <Badge className={accountTypeColor(type)}>{accountTypeLabel(type)}</Badge>
-              <span className="text-xs text-gray-400">({items.length} accounts)</span>
+              <span className="text-xs text-gray-400 dark:text-slate-500">({items.length} accounts)</span>
             </div>
             <Table
               headers={[
@@ -101,14 +101,14 @@ export default function ChartOfAccounts() {
             >
               {items.map((a) => (
                 <Tr key={a.id}>
-                  <Td className="font-mono font-semibold text-gray-800 w-24">{a.code}</Td>
+                  <Td className="font-mono font-semibold text-gray-800 dark:text-slate-100 w-24">{a.code}</Td>
                   <Td>
-                    <span className="font-medium text-gray-800">{a.name}</span>
-                    {a.currency && a.currency !== base && <span className="ml-2 text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-semibold">{a.currency}</span>}
-                    {a.isSystem && <span className="ml-2 text-[10px] bg-gray-100 text-gray-400 px-1.5 py-0.5 rounded">system</span>}
-                    {a.description && <p className="text-xs text-gray-400 mt-0.5">{a.description}</p>}
+                    <span className="font-medium text-gray-800 dark:text-slate-100">{a.name}</span>
+                    {a.currency && a.currency !== base && <span className="ml-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold">{a.currency}</span>}
+                    {a.isSystem && <span className="ml-2 text-[10px] bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 px-1.5 py-0.5 rounded">system</span>}
+                    {a.description && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{a.description}</p>}
                   </Td>
-                  <Td className="text-gray-500 capitalize text-xs">{a.subtype?.replace('_', ' ')}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 capitalize text-xs">{a.subtype?.replace('_', ' ')}</Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(a)}>

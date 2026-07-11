@@ -81,7 +81,7 @@ export default function Revaluation() {
         <Input label={t('Note (optional)')} value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('e.g. December close')} className="w-56" />
         <div className="ms-auto text-end">
           <p className="text-xs text-gray-400 dark:text-slate-500">{t('Net unrealized')}</p>
-          <p className={`text-lg font-bold ${totalDelta >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`text-lg font-bold ${totalDelta >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {totalDelta >= 0 ? '+' : ''}{fmtMoney(totalDelta, sym)}
           </p>
         </div>
@@ -112,7 +112,7 @@ export default function Revaluation() {
               {computed.map((r) => (
                 <tr key={r.acc.id} className="border-b border-gray-50 dark:border-slate-700/50">
                   <td className="py-2 px-3 text-gray-700 dark:text-slate-200"><span className="font-mono text-xs text-gray-400 me-2">{r.acc.code}</span>{r.acc.name}</td>
-                  <td className="py-2 px-3 text-center"><span className="text-[10px] font-semibold bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded">{r.acc.currency}</span></td>
+                  <td className="py-2 px-3 text-center"><span className="text-[10px] font-semibold bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded">{r.acc.currency}</span></td>
                   <td className="py-2 px-3 text-end">
                     <input type="number" step="0.01" value={rows[r.acc.id]?.fcBalance ?? ''} onChange={(e) => setCell(r.acc.id, 'fcBalance', e.target.value)}
                       className="w-28 text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -123,7 +123,7 @@ export default function Revaluation() {
                   </td>
                   <td className="py-2 px-3 text-end text-gray-600 dark:text-slate-300">{fmtMoney(r.currentBase, sym)}</td>
                   <td className="py-2 px-3 text-end font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.revaluedBase, sym)}</td>
-                  <td className={`py-2 px-3 text-end font-semibold ${r.gl > 0 ? 'text-green-600' : r.gl < 0 ? 'text-red-600' : 'text-gray-400'}`}>
+                  <td className={`py-2 px-3 text-end font-semibold ${r.gl > 0 ? 'text-green-600 dark:text-green-400' : r.gl < 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-400 dark:text-slate-500'}`}>
                     <span className="inline-flex items-center gap-1 justify-end">
                       {r.gl > 0 && <TrendingUp size={12} />}{r.gl < 0 && <TrendingDown size={12} />}
                       {r.gl >= 0 ? '' : '('}{fmtMoney(Math.abs(r.gl), sym)}{r.gl >= 0 ? '' : ')'}
@@ -133,7 +133,7 @@ export default function Revaluation() {
               ))}
               <tr className="border-t-2 border-gray-300 dark:border-slate-500 bg-gray-50/60 dark:bg-slate-700/40 font-bold">
                 <td className="py-2 px-3" colSpan={6}>{t('Net Unrealized FX Gain / (Loss)')}</td>
-                <td className={`py-2 px-3 text-end ${totalDelta >= 0 ? 'text-green-700' : 'text-red-700'}`}>{totalDelta >= 0 ? '' : '('}{fmtMoney(Math.abs(totalDelta), sym)}{totalDelta >= 0 ? '' : ')'}</td>
+                <td className={`py-2 px-3 text-end ${totalDelta >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>{totalDelta >= 0 ? '' : '('}{fmtMoney(Math.abs(totalDelta), sym)}{totalDelta >= 0 ? '' : ')'}</td>
               </tr>
             </tbody>
           </table>
@@ -158,7 +158,7 @@ export default function Revaluation() {
                   <td className="py-2 px-3 text-gray-600 dark:text-slate-300">{fmtDate(r.date)}</td>
                   <td className="py-2 px-3 text-gray-600 dark:text-slate-300">{r.note || '—'}</td>
                   <td className="py-2 px-3 text-end text-gray-600 dark:text-slate-300">{r.entries.length}</td>
-                  <td className={`py-2 px-3 text-end font-semibold ${r.gainLoss >= 0 ? 'text-green-600' : 'text-red-600'}`}>{r.gainLoss >= 0 ? '' : '('}{fmtMoney(Math.abs(r.gainLoss), sym)}{r.gainLoss >= 0 ? '' : ')'}</td>
+                  <td className={`py-2 px-3 text-end font-semibold ${r.gainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{r.gainLoss >= 0 ? '' : '('}{fmtMoney(Math.abs(r.gainLoss), sym)}{r.gainLoss >= 0 ? '' : ')'}</td>
                 </tr>
               ))}
             </tbody>

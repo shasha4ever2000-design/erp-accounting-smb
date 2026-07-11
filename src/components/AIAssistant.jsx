@@ -171,7 +171,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
 
       {/* Chat Panel */}
       {open && (
-        <div className="fixed bottom-24 right-6 z-50 w-[390px] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-hidden"
+        <div className="fixed bottom-24 right-6 z-50 w-[390px] flex flex-col bg-white rounded-2xl shadow-2xl border border-gray-200 dark:border-surface-700 overflow-hidden"
           style={{ height: '520px' }}>
 
           {/* Header */}
@@ -195,14 +195,14 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
 
           {/* No API Key Banner */}
           {!apiKey && (
-            <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 flex items-center gap-1.5 flex-shrink-0">
+            <div className="px-3 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1.5 flex-shrink-0">
               <AlertCircle size={12} className="flex-shrink-0" />
               <span>{t('Add your Claude API key in')}<strong>Settings → AI Assistant</strong> to enable chat.</span>
             </div>
           )}
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-surface-800/60">
             {displayMessages.map((msg, i) => (
               <div key={i} className={`flex gap-2 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                 {msg.role === 'assistant' && (
@@ -226,7 +226,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
                 <div className="w-7 h-7 rounded-full bg-gradient-to-br from-violet-100 to-blue-100 flex items-center justify-center flex-shrink-0 border border-violet-200">
                   <Sparkles size={12} className="text-violet-600" />
                 </div>
-                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm border border-gray-100">
+                <div className="bg-white rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm border border-gray-100 dark:border-surface-750">
                   <div className="flex gap-1.5 items-center">
                     <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                     <span className="w-2 h-2 bg-violet-400 rounded-full animate-bounce" style={{ animationDelay: '160ms' }} />
@@ -238,7 +238,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
 
             {/* Error */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 flex gap-2 items-start">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-xs text-red-600 dark:text-red-400 flex gap-2 items-start">
                 <AlertCircle size={13} className="flex-shrink-0 mt-0.5" />
                 <span>{error}</span>
               </div>
@@ -249,7 +249,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
 
           {/* Suggested prompts (show only at start) */}
           {displayMessages.length === 1 && !loading && (
-            <div className="px-3 pb-2 bg-slate-50 flex-shrink-0">
+            <div className="px-3 pb-2 bg-slate-50 dark:bg-surface-800/60 flex-shrink-0">
               <div className="flex flex-wrap gap-1.5">
                 {[
                   'What is my AR balance?',
@@ -258,7 +258,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
                   'What is my monthly rent cost?',
                 ].map((prompt) => (
                   <button key={prompt} onClick={() => { setInput(prompt); inputRef.current?.focus() }}
-                    className="text-xs bg-white border border-gray-200 text-gray-600 hover:border-violet-300 hover:text-violet-700 rounded-full px-2.5 py-1 transition-colors">
+                    className="text-xs bg-white border border-gray-200 dark:border-surface-700 text-gray-600 dark:text-slate-300 hover:border-violet-300 hover:text-violet-700 rounded-full px-2.5 py-1 transition-colors">
                     {prompt}
                   </button>
                 ))}
@@ -267,7 +267,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
           )}
 
           {/* Input */}
-          <div className="p-3 border-t border-gray-100 bg-white flex-shrink-0">
+          <div className="p-3 border-t border-gray-100 dark:border-surface-750 bg-white flex-shrink-0">
             <div className="flex gap-2">
               <input
                 ref={inputRef}
@@ -276,7 +276,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
                 placeholder={apiKey ? 'Ask about your finances...' : 'Set API key in Settings first'}
-                className="flex-1 text-sm border border-gray-200 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-transparent bg-gray-50"
+                className="flex-1 text-sm border border-gray-200 dark:border-surface-700 rounded-xl px-3.5 py-2 focus:outline-none focus:ring-2 focus:ring-violet-300 focus:border-transparent bg-gray-50 dark:bg-surface-800/60"
                 disabled={loading}
               />
               <button

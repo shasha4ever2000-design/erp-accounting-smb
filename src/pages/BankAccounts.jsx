@@ -88,7 +88,7 @@ export default function BankAccounts() {
               }`}
             >
               <div className="flex items-start justify-between mb-3">
-                <div className={`p-2.5 rounded-lg ${balance >= 0 ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-600'}`}>
+                <div className={`p-2.5 rounded-lg ${balance >= 0 ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300' : 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300'}`}>
                   <Icon size={18} />
                 </div>
                 <div className="flex gap-1">
@@ -96,13 +96,13 @@ export default function BankAccounts() {
                   <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(ba) }}><Trash2 size={13} className="text-red-400" /></Btn>
                 </div>
               </div>
-              <p className="font-semibold text-gray-900">{ba.name}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{TYPE_LABELS[ba.type] || ba.type}{ba.bankName ? ` · ${ba.bankName}` : ''}</p>
-              {ba.accountNumber && <p className="text-xs text-gray-400 font-mono">···{ba.accountNumber.slice(-4)}</p>}
-              <p className={`text-2xl font-bold mt-3 ${balance >= 0 ? 'text-gray-900' : 'text-red-600'}`}>
+              <p className="font-semibold text-gray-900 dark:text-slate-100">{ba.name}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{TYPE_LABELS[ba.type] || ba.type}{ba.bankName ? ` · ${ba.bankName}` : ''}</p>
+              {ba.accountNumber && <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">···{ba.accountNumber.slice(-4)}</p>}
+              <p className={`text-2xl font-bold mt-3 ${balance >= 0 ? 'text-gray-900 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>
                 {fmtMoney(balance, sym)}
               </p>
-              {ba.isDefault && <Badge className="mt-1 bg-blue-100 text-blue-700">Default</Badge>}
+              {ba.isDefault && <Badge className="mt-1 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">Default</Badge>}
             </div>
           )
         })}
@@ -116,26 +116,26 @@ export default function BankAccounts() {
       {/* Recent transactions for selected account */}
       {selected && (
         <Card>
-          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800">Recent Transactions – {selected.name}</h3>
-            <button onClick={() => setSelected(null)} className="text-gray-400 hover:text-gray-600 text-xl">&times;</button>
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-surface-750 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800 dark:text-slate-100">Recent Transactions – {selected.name}</h3>
+            <button onClick={() => setSelected(null)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xl">&times;</button>
           </div>
           {filteredTxns.length === 0 ? (
-            <div className="py-10 text-center text-gray-400 text-sm">{t('No transactions yet for this account.')}</div>
+            <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No transactions yet for this account.')}</div>
           ) : (
             <Table headers={['Date', 'Description', 'Type', { label: 'Amount', right: true }]}>
               {filteredTxns.map((tx, i) => (
                 <Tr key={tx.id || i}>
-                  <Td className="text-gray-500 text-sm">{fmtDate(tx.date)}</Td>
-                  <Td className="font-medium text-gray-800">{tx.description}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(tx.date)}</Td>
+                  <Td className="font-medium text-gray-800 dark:text-slate-100">{tx.description}</Td>
                   <Td>
                     {tx.type === 'money_in' || tx.type === 'receipt'
-                      ? <span className="inline-flex items-center gap-1 text-green-600 text-xs"><ArrowDownLeft size={12} /> In</span>
-                      : <span className="inline-flex items-center gap-1 text-red-600 text-xs"><ArrowUpRight size={12} /> Out</span>
+                      ? <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs"><ArrowDownLeft size={12} /> In</span>
+                      : <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs"><ArrowUpRight size={12} /> Out</span>
                     }
                   </Td>
                   <Td right>
-                    <span className={`font-semibold ${tx.type === 'money_in' || tx.type === 'receipt' ? 'text-green-600' : 'text-red-600'}`}>
+                    <span className={`font-semibold ${tx.type === 'money_in' || tx.type === 'receipt' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                       {tx.type === 'money_in' || tx.type === 'receipt' ? '+' : '-'}{fmtMoney(tx.amount, sym)}
                     </span>
                   </Td>

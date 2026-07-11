@@ -129,17 +129,17 @@ export default function InventoryControl() {
             <ExportMenu size="sm" filename="stock-status" title={t('Stock Status')} rows={filtered} columns={statusExportCols} />
           </div>
           {filtered.length === 0 ? (
-            <div className="py-10 text-center text-gray-400 text-sm">{t('No items match your search')}</div>
+            <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No items match your search')}</div>
           ) : (
             <Table headers={[t('Code'), t('Item Name'), t('Category'), { label: t('On Hand'), right: true }, { label: t('Reorder'), right: true }, { label: t('Max'), right: true }, { label: t('Stock Value'), right: true }, t('Status')]}>
               {filtered.map((i) => (
                 <Tr key={i.id}>
-                  <Td className="font-mono text-xs text-gray-500">{i.code || '—'}</Td>
+                  <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
                   <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
                   <Td className="text-gray-500 dark:text-slate-400 text-sm">{i.category || '—'}</Td>
                   <Td right className="font-medium">{i.quantity || 0} {i.unit}</Td>
-                  <Td right className="text-gray-500">{i.reorderLevel || '—'}</Td>
-                  <Td right className="text-gray-500">{i.maxLevel || '—'}</Td>
+                  <Td right className="text-gray-500 dark:text-slate-400">{i.reorderLevel || '—'}</Td>
+                  <Td right className="text-gray-500 dark:text-slate-400">{i.maxLevel || '—'}</Td>
                   <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(value(i), sym)}</Td>
                   <Td>{statusBadge(statusOf(i))}</Td>
                 </Tr>
@@ -163,16 +163,16 @@ export default function InventoryControl() {
             ]} />}
           </div>
           {suggestions.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 text-sm">✅ {t('All items are above their reorder level.')}</div>
+            <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">✅ {t('All items are above their reorder level.')}</div>
           ) : (
             <Table headers={[t('Code'), t('Item Name'), { label: t('On Hand'), right: true }, { label: t('Reorder'), right: true }, { label: t('Max'), right: true }, { label: t('Suggested Order'), right: true }, { label: t('Est. Cost'), right: true }]}>
               {suggestions.map((i) => (
                 <Tr key={i.id}>
-                  <Td className="font-mono text-xs text-gray-500">{i.code || '—'}</Td>
+                  <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
                   <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
-                  <Td right className={`font-medium ${(i.quantity || 0) <= 0 ? 'text-red-600' : 'text-amber-600'}`}>{i.quantity || 0} {i.unit}</Td>
-                  <Td right className="text-gray-500">{i.reorderLevel}</Td>
-                  <Td right className="text-gray-500">{i.maxLevel || '—'}</Td>
+                  <Td right className={`font-medium ${(i.quantity || 0) <= 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>{i.quantity || 0} {i.unit}</Td>
+                  <Td right className="text-gray-500 dark:text-slate-400">{i.reorderLevel}</Td>
+                  <Td right className="text-gray-500 dark:text-slate-400">{i.maxLevel || '—'}</Td>
                   <Td right className="font-bold text-blue-600 dark:text-blue-400">{i.orderQty} {i.unit}</Td>
                   <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(i.orderCost, sym)}</Td>
                 </Tr>
@@ -199,16 +199,16 @@ export default function InventoryControl() {
               ]} />
             </div>
             {abc.length === 0 ? (
-              <div className="py-10 text-center text-gray-400 text-sm">{t('No valued inventory yet.')}</div>
+              <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No valued inventory yet.')}</div>
             ) : (
               <Table headers={[t('Class'), t('Code'), t('Item Name'), { label: t('Stock Value'), right: true }, { label: t('Cumulative %'), right: true }]}>
                 {abc.map((i) => (
                   <Tr key={i.id}>
                     <Td><Badge className={i.cls === 'A' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300' : i.cls === 'B' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'}>{i.cls}</Badge></Td>
-                    <Td className="font-mono text-xs text-gray-500">{i.code || '—'}</Td>
+                    <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
                     <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
                     <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(i.val, sym)}</Td>
-                    <Td right className="text-gray-500">{i.cumPct.toFixed(1)}%</Td>
+                    <Td right className="text-gray-500 dark:text-slate-400">{i.cumPct.toFixed(1)}%</Td>
                   </Tr>
                 ))}
               </Table>
@@ -233,26 +233,26 @@ export default function InventoryControl() {
             ]} />}
           </div>
           {!cardItem ? (
-            <div className="py-12 text-center text-gray-400 text-sm">{t('Select an item to view its movement history.')}</div>
+            <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('Select an item to view its movement history.')}</div>
           ) : (
             <Table headers={[t('Date'), t('Type'), t('Reference'), t('Note'), { label: t('Change'), right: true }, { label: t('Balance'), right: true }]}>
               <Tr>
-                <Td className="text-gray-400 text-sm" colSpan={4}>{t('Opening balance')}</Td>
-                <Td right className="text-gray-400">—</Td>
-                <Td right className="font-semibold text-gray-500">{cardOpening}</Td>
+                <Td className="text-gray-400 dark:text-slate-500 text-sm" colSpan={4}>{t('Opening balance')}</Td>
+                <Td right className="text-gray-400 dark:text-slate-500">—</Td>
+                <Td right className="font-semibold text-gray-500 dark:text-slate-400">{cardOpening}</Td>
               </Tr>
               {cardRows.map((m) => (
                 <Tr key={m.id}>
                   <Td className="text-gray-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
                   <Td><Badge className="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">{t(MOVE_LABELS[m.type] || m.type)}</Badge></Td>
-                  <Td className="font-mono text-xs text-gray-400">{m.ref || '—'}</Td>
+                  <Td className="font-mono text-xs text-gray-400 dark:text-slate-500">{m.ref || '—'}</Td>
                   <Td className="text-gray-500 dark:text-slate-400 text-sm max-w-[160px] truncate">{m.note || '—'}</Td>
-                  <Td right className={`font-medium ${m.qtyChange >= 0 ? 'text-green-600' : 'text-red-500'}`}>{m.qtyChange >= 0 ? '+' : ''}{m.qtyChange}</Td>
+                  <Td right className={`font-medium ${m.qtyChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{m.qtyChange >= 0 ? '+' : ''}{m.qtyChange}</Td>
                   <Td right className="font-semibold text-gray-800 dark:text-slate-100">{m.balance}</Td>
                 </Tr>
               ))}
               {cardRows.length === 0 && (
-                <Tr><Td colSpan={6} className="py-8 text-center text-gray-400 text-sm">{t('No recorded movements yet for this item.')}</Td></Tr>
+                <Tr><Td colSpan={6} className="py-8 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No recorded movements yet for this item.')}</Td></Tr>
               )}
             </Table>
           )}

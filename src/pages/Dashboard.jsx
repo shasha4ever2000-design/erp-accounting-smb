@@ -287,7 +287,7 @@ export default function Dashboard() {
             <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" />
             <div className="flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-bold text-gray-900 dark:text-slate-100">
               <span>{t('Liabilities + Equity')}</span>
-              <span className={balanced ? '' : 'text-red-600'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
+              <span className={balanced ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
             </div>
           </div>
         </Card>

@@ -108,21 +108,21 @@ export default function Banking() {
           <Table headers={['Date', 'Description', 'Account', 'Bank Account', 'Type', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((tx) => (
               <Tr key={tx.id}>
-                <Td className="text-gray-500">{fmtDate(tx.date)}</Td>
-                <Td className="font-medium text-gray-800">
+                <Td className="text-gray-500 dark:text-slate-400">{fmtDate(tx.date)}</Td>
+                <Td className="font-medium text-gray-800 dark:text-slate-100">
                   {tx.description}
-                  {tx.reference && <span className="text-xs text-gray-400 ml-2">({tx.reference})</span>}
+                  {tx.reference && <span className="text-xs text-gray-400 dark:text-slate-500 ml-2">({tx.reference})</span>}
                 </Td>
-                <Td className="text-gray-500 text-sm">{tx.accountName}</Td>
-                <Td className="text-gray-500 text-sm">{tx.bankName}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{tx.accountName}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{tx.bankName}</Td>
                 <Td>
                   {tx.type === 'money_in'
-                    ? <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
-                    : <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
+                    ? <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
+                    : <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
                   }
                 </Td>
                 <Td right>
-                  <span className={`font-semibold ${tx.type === 'money_in' ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`font-semibold ${tx.type === 'money_in' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {tx.type === 'money_in' ? '+' : '-'}{fmtMoney(tx.amount, sym)}
                   </span>
                 </Td>

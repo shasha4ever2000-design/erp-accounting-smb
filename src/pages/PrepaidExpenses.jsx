@@ -86,21 +86,21 @@ export default function PrepaidExpenses() {
               const pct = pre.amount > 0 ? (pre.amortized / pre.amount) * 100 : 0
               return (
                 <Tr key={pre.id}>
-                  <Td><span className="font-mono text-xs text-gray-500">{pre.number}</span></Td>
+                  <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{pre.number}</span></Td>
                   <Td>
-                    <p className="font-medium text-gray-800">{pre.name}</p>
-                    {pre.notes && <p className="text-xs text-gray-400 truncate max-w-[140px]">{pre.notes}</p>}
+                    <p className="font-medium text-gray-800 dark:text-slate-100">{pre.name}</p>
+                    {pre.notes && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[140px]">{pre.notes}</p>}
                   </Td>
-                  <Td className="text-gray-500 text-sm">{pre.category}</Td>
-                  <Td className="text-gray-500 text-sm">{fmtDate(pre.startDate)}</Td>
-                  <Td className="text-gray-500 text-sm">{pre.endDate ? fmtDate(pre.endDate) : '—'}</Td>
-                  <Td right className="text-gray-700">{fmtMoney(pre.amount, sym)}</Td>
-                  <Td right className="text-green-600">{fmtMoney(pre.amortized, sym)}</Td>
-                  <Td right className="font-semibold text-blue-700">{fmtMoney(pre.remaining, sym)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{pre.category}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(pre.startDate)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{pre.endDate ? fmtDate(pre.endDate) : '—'}</Td>
+                  <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(pre.amount, sym)}</Td>
+                  <Td right className="text-green-600 dark:text-green-400">{fmtMoney(pre.amortized, sym)}</Td>
+                  <Td right className="font-semibold text-blue-700 dark:text-blue-400">{fmtMoney(pre.remaining, sym)}</Td>
                   <Td>
                     {pre.remaining <= 0
-                      ? <Badge className="bg-gray-100 text-gray-500">{t('Fully Amortized')}</Badge>
-                      : <Badge className="bg-blue-100 text-blue-700">{pct.toFixed(0)}% Used</Badge>
+                      ? <Badge className="bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{t('Fully Amortized')}</Badge>
+                      : <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{pct.toFixed(0)}% Used</Badge>
                     }
                   </Td>
                   <Td right>
@@ -147,7 +147,7 @@ export default function PrepaidExpenses() {
             </Select>
           </div>
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Policy number, provider, coverage details..." />
-          <div className="bg-blue-50 rounded-lg p-3 text-xs text-blue-700">
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-xs text-brand-700 dark:text-brand-300">
             Posts: Dr Prepaid Expenses → Cr {bankOpts.find(b => b.id === form.bankAccountId)?.name || 'Bank'}
           </div>
           <div className="flex justify-end gap-2">
@@ -160,7 +160,7 @@ export default function PrepaidExpenses() {
       {/* Amortize Modal */}
       <Modal open={!!amortModal} onClose={() => setAmortModal(null)} title={`Amortize – ${amortModal?.name}`}>
         <div className="space-y-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
             <p>Remaining balance: <strong>{fmtMoney(amortModal?.remaining || 0, sym)}</strong></p>
             {amortModal && monthlyAmt(amortModal) && (
               <p className="text-xs mt-0.5 text-blue-500">Monthly amount: {fmtMoney(monthlyAmt(amortModal), sym)}</p>
@@ -171,7 +171,7 @@ export default function PrepaidExpenses() {
             <Input label="Date" type="date" value={amortForm.date} onChange={(e) => setAmortForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${sym}) *`} type="number" min="0" step="0.01" value={amortForm.amount} onChange={(e) => setAmortForm((f) => ({ ...f, amount: e.target.value }))} />
           </div>
-          <p className="text-xs text-blue-600 bg-blue-50 rounded p-2">
+          <p className="text-xs bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 rounded p-2">
             Posts: Dr {accounts.find(a => a.id === amortModal?.expenseAccountId)?.name || 'Expense Account'} → Cr Prepaid Expenses
           </p>
           <div className="flex justify-end gap-2">

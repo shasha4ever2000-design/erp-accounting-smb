@@ -65,7 +65,7 @@ export default function Currencies() {
       {/* Converter */}
       <Card className="p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <ArrowRightLeft size={16} className="text-gray-400" />
+          <ArrowRightLeft size={16} className="text-gray-400 dark:text-slate-500" />
           <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Quick Converter')}</h3>
         </div>
         <div className="flex flex-wrap items-end gap-3">

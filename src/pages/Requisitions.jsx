@@ -120,7 +120,7 @@ export default function Requisitions() {
                   <input className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" placeholder="What's needed" value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
                   <input className="w-16 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty" value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
                   <input className="w-24 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" step="0.01" placeholder="Est. price" value={l.estPrice} onChange={(e) => setLine(l.id, 'estPrice', e.target.value)} />
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>

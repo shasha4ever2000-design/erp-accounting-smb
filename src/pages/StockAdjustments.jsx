@@ -89,10 +89,10 @@ export default function StockAdjustments() {
               const st = stat(adj)
               return (
               <Tr key={adj.id}>
-                <Td><span className="font-mono text-xs text-gray-500">{adj.number}</span></Td>
-                <Td className="text-gray-500 text-sm">{fmtDate(adj.date)}</Td>
+                <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{adj.number}</span></Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(adj.date)}</Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{adj.itemName || '—'}
-                  {adj.createdByName && <span className="block text-[11px] text-gray-400">{t('by')} {adj.createdByName}</span>}
+                  {adj.createdByName && <span className="block text-[11px] text-gray-400 dark:text-slate-500">{t('by')} {adj.createdByName}</span>}
                 </Td>
                 <Td>
                   {adj.type === 'increase'
@@ -101,7 +101,7 @@ export default function StockAdjustments() {
                 </Td>
                 <Td right className="text-gray-700 dark:text-slate-200">{adj.quantity}</Td>
                 <Td right>
-                  <span className={`font-semibold ${adj.type === 'increase' ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`font-semibold ${adj.type === 'increase' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {adj.type === 'increase' ? '+' : '-'}{fmtMoney(adj.totalAmount, sym)}
                   </span>
                 </Td>

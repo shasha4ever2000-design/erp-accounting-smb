@@ -148,7 +148,7 @@ export default function Purchases() {
                       <AttachmentButton entityType="purchase" entityId={p.id} />
                       {p.status !== 'paid' && p.status !== 'void' && (
                         <Btn size="sm" variant="ghost" onClick={() => openPay(p)} title="Record Payment">
-                          <DollarSign size={13} className="text-green-600" />
+                          <DollarSign size={13} className="text-green-600 dark:text-green-400" />
                         </Btn>
                       )}
                       {p.status !== 'void' && (

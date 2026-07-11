@@ -42,7 +42,7 @@ export default function InvoiceView() {
 
   if (!invoice) return (
     <div className="text-center py-20">
-      <p className="text-gray-500 mb-4">{t('Invoice not found.')}</p>
+      <p className="text-gray-500 dark:text-slate-400 mb-4">{t('Invoice not found.')}</p>
       <Btn variant="secondary" onClick={() => navigate('/invoices')}>{t('Back to Invoices')}</Btn>
     </div>
   )
@@ -84,7 +84,7 @@ export default function InvoiceView() {
   return (
     <div>
       <div className="flex items-center justify-between mb-6 no-print">
-        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800">
+        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100">
           <ArrowLeft size={15} /> {t('Back to Invoices')}
         </button>
         <div className="flex items-center gap-2">
@@ -112,24 +112,24 @@ export default function InvoiceView() {
             <div className="flex items-start gap-4">
               {company.logo && <img src={company.logo} alt="logo" className="h-16 w-auto object-contain" />}
               <div>
-              <h1 className="text-3xl font-bold text-gray-900">{company.name}</h1>
-              {company.arabicName && <p className="text-xl font-bold text-gray-800" dir="rtl">{company.arabicName}</p>}
-              {company.address && <p className="text-gray-500 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
-              {company.phone && <p className="text-gray-400 text-sm">{company.phone}</p>}
-              {company.email && <p className="text-gray-400 text-sm">{company.email}</p>}
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{company.name}</h1>
+              {company.arabicName && <p className="text-xl font-bold text-gray-800 dark:text-slate-100" dir="rtl">{company.arabicName}</p>}
+              {company.address && <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
+              {company.phone && <p className="text-gray-400 dark:text-slate-500 text-sm">{company.phone}</p>}
+              {company.email && <p className="text-gray-400 dark:text-slate-500 text-sm">{company.email}</p>}
               {zatca.enabled && zatca.vatNumber
-                ? <p className="text-gray-600 text-sm font-medium mt-1">VAT No · الرقم الضريبي: {zatca.vatNumber}</p>
-                : company.taxId && <p className="text-gray-400 text-sm">Tax ID: {company.taxId}</p>}
-              {zatca.enabled && zatca.crNumber && <p className="text-gray-400 text-sm">CR · السجل التجاري: {zatca.crNumber}</p>}
+                ? <p className="text-gray-600 dark:text-slate-300 text-sm font-medium mt-1">VAT No · الرقم الضريبي: {zatca.vatNumber}</p>
+                : company.taxId && <p className="text-gray-400 dark:text-slate-500 text-sm">Tax ID: {company.taxId}</p>}
+              {zatca.enabled && zatca.crNumber && <p className="text-gray-400 dark:text-slate-500 text-sm">CR · السجل التجاري: {zatca.crNumber}</p>}
               </div>
             </div>
             <div className="text-right">
               <p className="text-4xl font-black" style={{ color: company.accentColor || '#2563eb' }}>INVOICE</p>
               {zatca.enabled
-                ? <p className="text-sm font-semibold text-gray-600" dir="rtl">فاتورة ضريبية مبسطة</p>
+                ? <p className="text-sm font-semibold text-gray-600 dark:text-slate-300" dir="rtl">فاتورة ضريبية مبسطة</p>
                 : null}
-              {zatca.enabled && <p className="text-xs text-gray-400">{t('Simplified Tax Invoice')}</p>}
-              <p className="text-2xl font-bold text-gray-800 mt-1">{invoice.number}</p>
+              {zatca.enabled && <p className="text-xs text-gray-400 dark:text-slate-500">{t('Simplified Tax Invoice')}</p>}
+              <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{invoice.number}</p>
               <Badge className={`mt-2 ${statusColor(invoice.status)}`}>
                 {invoice.status.toUpperCase()}
               </Badge>
@@ -139,21 +139,21 @@ export default function InvoiceView() {
           {/* Billing & Dates */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">Bill To</p>
-              <p className="font-semibold text-gray-800">{invoice.customerName}</p>
-              {customer?.email && <p className="text-sm text-gray-500">{customer.email}</p>}
-              {customer?.phone && <p className="text-sm text-gray-500">{customer.phone}</p>}
-              {customer?.taxId && <p className="text-sm text-gray-500">Tax ID: {customer.taxId}</p>}
-              {customer?.address && <p className="text-sm text-gray-400 mt-1 whitespace-pre-line">{customer.address}</p>}
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-2">Bill To</p>
+              <p className="font-semibold text-gray-800 dark:text-slate-100">{invoice.customerName}</p>
+              {customer?.email && <p className="text-sm text-gray-500 dark:text-slate-400">{customer.email}</p>}
+              {customer?.phone && <p className="text-sm text-gray-500 dark:text-slate-400">{customer.phone}</p>}
+              {customer?.taxId && <p className="text-sm text-gray-500 dark:text-slate-400">Tax ID: {customer.taxId}</p>}
+              {customer?.address && <p className="text-sm text-gray-400 dark:text-slate-500 mt-1 whitespace-pre-line">{customer.address}</p>}
             </div>
             <div className="text-right space-y-2">
               <div>
-                <p className="text-xs text-gray-400">{t('Invoice Date')}</p>
-                <p className="font-medium text-gray-800">{fmtDate(invoice.date)}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t('Invoice Date')}</p>
+                <p className="font-medium text-gray-800 dark:text-slate-100">{fmtDate(invoice.date)}</p>
               </div>
               <div>
-                <p className="text-xs text-gray-400">{t('Due Date')}</p>
-                <p className="font-medium text-gray-800">{fmtDate(invoice.dueDate)}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{t('Due Date')}</p>
+                <p className="font-medium text-gray-800 dark:text-slate-100">{fmtDate(invoice.dueDate)}</p>
               </div>
             </div>
           </div>
@@ -161,22 +161,22 @@ export default function InvoiceView() {
           {/* Items table */}
           <table className="w-full text-sm mb-6">
             <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="text-left py-2 text-xs font-semibold text-gray-500 uppercase">{t('Description')}</th>
-                <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">Qty</th>
-                <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">{t('Unit Price')}</th>
-                {showTaxCol && <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">{t('VAT')}</th>}
-                <th className="text-right py-2 text-xs font-semibold text-gray-500 uppercase">{t('Amount')}</th>
+              <tr className="border-b-2 border-gray-200 dark:border-surface-700">
+                <th className="text-left py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Description')}</th>
+                <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Qty</th>
+                <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Unit Price')}</th>
+                {showTaxCol && <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('VAT')}</th>}
+                <th className="text-right py-2 text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Amount')}</th>
               </tr>
             </thead>
             <tbody>
               {invoice.items.map((item) => (
-                <tr key={item.id} className="border-b border-gray-100">
-                  <td className="py-3 text-gray-700">{item.description}</td>
-                  <td className="py-3 text-right text-gray-600">{item.quantity}</td>
-                  <td className="py-3 text-right text-gray-600">{fmtMoney(item.unitPrice, sym)}</td>
-                  {showTaxCol && <td className="py-3 text-right text-gray-400">{lineTaxLabel(item)}</td>}
-                  <td className="py-3 text-right font-medium text-gray-800">{fmtMoney(item.subtotal, sym)}</td>
+                <tr key={item.id} className="border-b border-gray-100 dark:border-surface-750">
+                  <td className="py-3 text-gray-700 dark:text-slate-200">{item.description}</td>
+                  <td className="py-3 text-right text-gray-600 dark:text-slate-300">{item.quantity}</td>
+                  <td className="py-3 text-right text-gray-600 dark:text-slate-300">{fmtMoney(item.unitPrice, sym)}</td>
+                  {showTaxCol && <td className="py-3 text-right text-gray-400 dark:text-slate-500">{lineTaxLabel(item)}</td>}
+                  <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(item.subtotal, sym)}</td>
                 </tr>
               ))}
             </tbody>
@@ -185,12 +185,12 @@ export default function InvoiceView() {
           {/* Totals */}
           <div className="flex justify-end">
             <div className="w-56 space-y-2 text-sm">
-              <div className="flex justify-between text-gray-600">
+              <div className="flex justify-between text-gray-600 dark:text-slate-300">
                 <span>Subtotal</span>
                 <span>{fmtMoney(invoice.subtotal, sym)}</span>
               </div>
               {invoice.taxAmount > 0 && (
-                <div className="flex justify-between text-gray-600">
+                <div className="flex justify-between text-gray-600 dark:text-slate-300">
                   <span>{settings.tax.name}</span>
                   <span>{fmtMoney(invoice.taxAmount, sym)}</span>
                 </div>
@@ -201,11 +201,11 @@ export default function InvoiceView() {
               </div>
               {invoice.amountPaid > 0 && (
                 <>
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-green-600 dark:text-green-400">
                     <span>{t('Amount Paid')}</span>
                     <span>({fmtMoney(invoice.amountPaid, sym)})</span>
                   </div>
-                  <div className="flex justify-between font-bold text-orange-600 border-t pt-2">
+                  <div className="flex justify-between font-bold text-orange-600 dark:text-orange-400 border-t pt-2">
                     <span>{t('Balance Due')}</span>
                     <span>{fmtMoney(amountDue, sym)}</span>
                   </div>
@@ -215,19 +215,19 @@ export default function InvoiceView() {
           </div>
 
           {/* Amount in words */}
-          <div className="mt-4 pt-3 border-t border-gray-100">
-            <p className="text-xs text-gray-500">
+          <div className="mt-4 pt-3 border-t border-gray-100 dark:border-surface-750">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
               <span className="font-semibold">Amount in words:</span> {numberToWords(invoice.total)} {company.currency} only
             </p>
           </div>
 
           {/* ZATCA QR code */}
           {zatcaOn && qrUrl && (
-            <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-surface-750 flex items-center justify-between">
               <div className="text-sm">
-                <p className="font-semibold text-gray-700">{t('ZATCA Compliant E-Invoice')}</p>
-                <p className="text-gray-500" dir="rtl">فاتورة إلكترونية متوافقة مع هيئة الزكاة والضريبة والجمارك</p>
-                <p className="text-xs text-gray-400 mt-1">{t('Scan the QR code to verify this tax invoice.')}</p>
+                <p className="font-semibold text-gray-700 dark:text-slate-200">{t('ZATCA Compliant E-Invoice')}</p>
+                <p className="text-gray-500 dark:text-slate-400" dir="rtl">فاتورة إلكترونية متوافقة مع هيئة الزكاة والضريبة والجمارك</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{t('Scan the QR code to verify this tax invoice.')}</p>
               </div>
               <img src={qrUrl} alt="ZATCA QR" className="w-28 h-28" />
             </div>
@@ -235,29 +235,29 @@ export default function InvoiceView() {
 
           {/* Notes */}
           {invoice.notes && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">Notes</p>
-              <p className="text-sm text-gray-600">{invoice.notes}</p>
+            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-surface-750">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">Notes</p>
+              <p className="text-sm text-gray-600 dark:text-slate-300">{invoice.notes}</p>
             </div>
           )}
 
           {/* Bank details / payment instructions */}
           {settings.invoice?.bankDetails && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-1">{t('Payment Details')}</p>
-              <p className="text-sm text-gray-600 whitespace-pre-line">{settings.invoice.bankDetails}</p>
+            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-surface-750">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{t('Payment Details')}</p>
+              <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-line">{settings.invoice.bankDetails}</p>
             </div>
           )}
 
           {/* Payment history */}
           {invoice.payments?.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <p className="text-xs font-semibold text-gray-400 uppercase mb-3">{t('Payment History')}</p>
+            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-surface-750">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-3">{t('Payment History')}</p>
               <div className="space-y-2">
                 {invoice.payments.map((p) => (
                   <div key={p.id} className="flex justify-between text-sm">
-                    <span className="text-gray-500">{fmtDate(p.date)} — {p.number}</span>
-                    <span className="font-medium text-green-600">{fmtMoney(p.amount, sym)}</span>
+                    <span className="text-gray-500 dark:text-slate-400">{fmtDate(p.date)} — {p.number}</span>
+                    <span className="font-medium text-green-600 dark:text-green-400">{fmtMoney(p.amount, sym)}</span>
                   </div>
                 ))}
               </div>
@@ -269,8 +269,8 @@ export default function InvoiceView() {
       {/* Payment Modal */}
       <Modal open={payModal} onClose={() => setPayModal(false)} title="Record Payment">
         <div className="space-y-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-sm">
-            <span className="text-blue-700 font-medium">Balance Due: {fmtMoney(amountDue, sym)}</span>
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm">
+            <span className="text-blue-700 dark:text-blue-400 font-medium">Balance Due: {fmtMoney(amountDue, sym)}</span>
           </div>
           <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
           <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} placeholder={`Max: ${fmtMoney(amountDue, sym)}`} />

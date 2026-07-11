@@ -94,7 +94,7 @@ export default function Budgets() {
               </td>
             </tr>
           ))}
-          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 text-sm">{t('No accounts')}</td></tr>}
+          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No accounts')}</td></tr>}
         </tbody>
       </table>
     </Card>
