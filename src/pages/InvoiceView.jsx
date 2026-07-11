@@ -179,6 +179,12 @@ export default function InvoiceView() {
                 <p className="text-xs text-gray-400 dark:text-slate-500">{t('Due Date')}</p>
                 <p className="font-medium text-gray-800 dark:text-slate-100">{fmtDate(invoice.dueDate)}</p>
               </div>
+              {invoice.salesRepId && (settings.salesReps || []).find((r) => r.id === invoice.salesRepId) && (
+                <div>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">{t('Sales Rep')}</p>
+                  <p className="font-medium text-gray-800 dark:text-slate-100">{(settings.salesReps || []).find((r) => r.id === invoice.salesRepId).name}</p>
+                </div>
+              )}
             </div>
           </div>
 

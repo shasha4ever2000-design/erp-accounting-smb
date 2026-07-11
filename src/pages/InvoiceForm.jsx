@@ -17,6 +17,7 @@ export default function InvoiceForm() {
   const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
+  const salesReps = settings.salesReps || []
   const taxEnabled = settings.tax.enabled
   const defaultTaxRate = settings.tax.rate
 
@@ -29,6 +30,7 @@ export default function InvoiceForm() {
     dueDate: addDays(today(), settings.invoice.dueDays || 30),
     notes: settings.invoice.notes || '',
     departmentId: '',
+    salesRepId: '',
     docDiscount: 0,
     shipping: 0,
     shippingTaxable: false,
@@ -150,6 +152,12 @@ export default function InvoiceForm() {
                   {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </Select>
               ) : <div />}
+              {salesReps.length > 0 && (
+                <Select label={t('Sales Rep')} value={form.salesRepId} onChange={(e) => setField('salesRepId', e.target.value)}>
+                  <option value="">{t('— Unassigned —')}</option>
+                  {salesReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </Select>
+              )}
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
               <Input label="Due Date" type="date" value={form.dueDate} onChange={(e) => setField('dueDate', e.target.value)} />
               {currencies.length > 0 && (

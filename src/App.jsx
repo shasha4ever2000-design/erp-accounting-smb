@@ -56,6 +56,7 @@ const Currencies = lazy(() => import('./pages/Currencies'))
 const Revaluation = lazy(() => import('./pages/Revaluation'))
 const Analytics = lazy(() => import('./pages/Analytics'))
 const TradeAnalytics = lazy(() => import('./pages/TradeAnalytics'))
+const Commissions = lazy(() => import('./pages/Commissions'))
 const FinancialHealth = lazy(() => import('./pages/FinancialHealth'))
 const Consolidation = lazy(() => import('./pages/Consolidation'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
@@ -145,6 +146,7 @@ export default function App() {
         <Route path="/invoices/new" element={<InvoiceForm />} />
         <Route path="/invoices/:id" element={<InvoiceView />} />
         <Route path="/recurring-invoices" element={<RecurringInvoices />} />
+        <Route path="/commissions" element={<Commissions />} />
         <Route path="/payment-reminders" element={<PaymentReminders />} />
         <Route path="/delivery-notes" element={<DeliveryNotes />} />
         <Route path="/credit-notes" element={<CreditNotes />} />
