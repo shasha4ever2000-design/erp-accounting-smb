@@ -43,7 +43,7 @@ export default class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div className="min-h-[60vh] flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-8 text-center">
+          <div className="max-w-md w-full bg-white dark:bg-surface-850 rounded-2xl shadow-elevated ring-1 ring-black/5 dark:ring-white/10 p-8 text-center">
             <div className="text-5xl mb-4">⚠️</div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">{tr('Something went wrong on this screen')}</h1>
             <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">

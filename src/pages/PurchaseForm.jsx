@@ -161,7 +161,7 @@ export default function PurchaseForm() {
             <div className="border-t border-gray-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
               <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
               {taxEnabled && taxTotal > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
+              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t border-slate-200 dark:border-surface-700 pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
             </div>
           </Card>
 
@@ -176,7 +176,7 @@ export default function PurchaseForm() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
               {taxEnabled && <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2"><span>Total</span><span className="text-orange-600 dark:text-orange-400">{fmtMoney(total, sym)}</span></div>
+              <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2"><span>Total</span><span className="text-orange-600 dark:text-orange-400">{fmtMoney(total, sym)}</span></div>
             </div>
             <div className="mt-5 space-y-2">
               <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Invoice')}</Btn>

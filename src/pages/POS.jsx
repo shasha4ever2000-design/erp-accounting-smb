@@ -89,13 +89,13 @@ export default function POS() {
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
               {filtered.map((item) => (
                 <button key={item.id} onClick={() => addToCart(item)}
-                  className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3 text-left hover:border-blue-400 hover:shadow-md transition-all">
-                  <div className="w-full h-12 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 flex items-center justify-center mb-2">
-                    <Package size={18} className="text-blue-400" />
+                  className="bg-white dark:bg-surface-850/90 border border-slate-200/80 dark:border-surface-750 rounded-xl p-3 text-start shadow-card dark:shadow-none hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card-hover hover:-translate-y-px active:scale-[.98] transition-all duration-150 ease-spring">
+                  <div className="w-full h-12 rounded-lg bg-gradient-to-br from-brand-50 to-accent-50 dark:from-brand-500/[0.08] dark:to-accent-500/[0.08] ring-1 ring-inset ring-brand-600/[0.06] dark:ring-brand-400/10 flex items-center justify-center mb-2">
+                    <Package size={18} className="text-brand-400 dark:text-brand-500" />
                   </div>
                   <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">{item.name}</p>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{fmtMoney(item.salePrice || 0, sym)}</span>
+                    <span className="text-sm font-bold tabular text-brand-600 dark:text-brand-400">{fmtMoney(item.salePrice || 0, sym)}</span>
                     <span className="text-[10px] text-gray-400 dark:text-slate-500">{item.quantity || 0} {item.unit}</span>
                   </div>
                 </button>
@@ -133,9 +133,9 @@ export default function POS() {
                     <p className="text-xs text-gray-400 dark:text-slate-500">{fmtMoney(c.price, sym)} × {c.qty}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setQty(c.itemId, -1)} className="w-6 h-6 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center"><Minus size={12} /></button>
-                    <span className="w-6 text-center">{c.qty}</span>
-                    <button onClick={() => setQty(c.itemId, 1)} className="w-6 h-6 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center"><Plus size={12} /></button>
+                    <button onClick={() => setQty(c.itemId, -1)} className="w-6 h-6 rounded-md bg-slate-100 dark:bg-white/[0.07] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12] transition-colors flex items-center justify-center"><Minus size={12} /></button>
+                    <span className="w-6 text-center tabular">{c.qty}</span>
+                    <button onClick={() => setQty(c.itemId, 1)} className="w-6 h-6 rounded-md bg-slate-100 dark:bg-white/[0.07] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12] transition-colors flex items-center justify-center"><Plus size={12} /></button>
                   </div>
                   <span className="w-16 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(c.qty * c.price, sym)}</span>
                   <button onClick={() => removeLine(c.itemId)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>

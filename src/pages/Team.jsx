@@ -53,7 +53,7 @@ export default function Team() {
               <tr key={u.id} className="border-b border-gray-50 dark:border-slate-700/50">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-accent-600 text-white text-xs font-bold flex items-center justify-center">
                       {(u.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
                     <div>

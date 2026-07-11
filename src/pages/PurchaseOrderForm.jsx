@@ -147,7 +147,7 @@ export default function PurchaseOrderForm() {
             <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide mb-3">Summary</h3>
             <div className="flex justify-between text-sm text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
             {taxEnabled && <div className="flex justify-between text-sm text-gray-600 dark:text-slate-300"><span>Tax</span><span>{sym}{taxAmount.toFixed(2)}</span></div>}
-            <div className="border-t pt-2 flex justify-between font-bold text-gray-900 dark:text-slate-100"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
+            <div className="border-t border-slate-200 dark:border-surface-700 pt-2 flex justify-between font-bold text-gray-900 dark:text-slate-100"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
           </Card>
 
           <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Order')}</Btn>

@@ -263,7 +263,7 @@ export default function Settings() {
         {/* AI Assistant */}
         <Card className="p-6">
           <div className="flex items-center gap-2.5 mb-4">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-blue-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-accent-500 to-brand-600 flex items-center justify-center">
               <Sparkles size={14} className="text-white" />
             </div>
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('AI Assistant')}</h2>

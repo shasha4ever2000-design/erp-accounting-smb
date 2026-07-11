@@ -27,7 +27,7 @@ export default function CompanyScreen() {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
       <header className="h-16 bg-white/85 dark:bg-slate-900/85 backdrop-blur border-b border-gray-200/70 dark:border-slate-800 flex items-center justify-between px-4 sm:px-6 sticky top-0 z-10">
         <div className="flex items-center gap-2.5">
-          <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-btn-primary">
+          <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-accent-600 rounded-xl flex items-center justify-center text-white shadow-btn-primary">
             <TrendingUp size={18} strokeWidth={2.25} />
           </div>
           <span className="font-bold tracking-tight text-gray-800 dark:text-slate-100">{t('ERP Accounting')}</span>

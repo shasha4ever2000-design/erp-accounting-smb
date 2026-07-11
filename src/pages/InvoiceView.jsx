@@ -195,7 +195,7 @@ export default function InvoiceView() {
                   <span>{fmtMoney(invoice.taxAmount, sym)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-base border-t pt-2">
+              <div className="flex justify-between font-bold text-base border-t border-slate-200 dark:border-surface-700 pt-2">
                 <span>Total</span>
                 <span>{fmtMoney(invoice.total, sym)}</span>
               </div>
@@ -205,7 +205,7 @@ export default function InvoiceView() {
                     <span>{t('Amount Paid')}</span>
                     <span>({fmtMoney(invoice.amountPaid, sym)})</span>
                   </div>
-                  <div className="flex justify-between font-bold text-orange-600 dark:text-orange-400 border-t pt-2">
+                  <div className="flex justify-between font-bold text-orange-600 dark:text-orange-400 border-t border-slate-200 dark:border-surface-700 pt-2">
                     <span>{t('Balance Due')}</span>
                     <span>{fmtMoney(amountDue, sym)}</span>
                   </div>

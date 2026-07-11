@@ -40,7 +40,7 @@ export default function InstallButton() {
     <>
       <button
         onClick={handleClick}
-        className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-white bg-gradient-to-br from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg px-3 py-1.5 transition-colors"
+        className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-white bg-gradient-to-br from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 rounded-lg px-3 py-1.5 transition-colors"
         title="Install ERP as a desktop app"
       >
         <Download size={15} /> {t('Install app')}
@@ -49,10 +49,10 @@ export default function InstallButton() {
       {showHelp && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" onClick={() => setShowHelp(false)}>
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md p-6" onClick={(e) => e.stopPropagation()}>
+          <div className="relative bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 w-full max-w-md p-6 animate-scale-in" onClick={(e) => e.stopPropagation()}>
             <button onClick={() => setShowHelp(false)} className="absolute top-4 right-4 text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300"><X size={18} /></button>
             <div className="flex items-center gap-2.5 mb-3">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center">
                 <Download size={18} className="text-white" />
               </div>
               <h2 className="text-lg font-semibold text-gray-900 dark:text-slate-100">{t('Install the desktop app')}</h2>

@@ -33,7 +33,7 @@ export default function ExportMenu({ filename, rows, columns, title, subtitle, s
         <Download size={15} /> {t('Export')} <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute z-30 mt-1 end-0 right-0 w-44 bg-white dark:bg-slate-800 rounded-lg shadow-lg border border-gray-100 dark:border-slate-700 py-1">
+        <div className="absolute z-30 mt-1 end-0 right-0 w-44 bg-white dark:bg-surface-800 rounded-lg shadow-elevated ring-1 ring-black/5 dark:ring-white/10 py-1 animate-fade-in">
           <MenuItem icon={<FileText size={15} className="text-gray-500 dark:text-slate-400" />} label={t('CSV (.csv)')} onClick={() => run(() => exportCSV(filename, rows, columns))} />
           <MenuItem icon={<FileSpreadsheet size={15} className="text-green-600 dark:text-green-400" />} label={t('Excel (.xlsx)')} onClick={() => run(() => exportExcel(filename, rows, columns, title))} />
           <MenuItem icon={<FileDown size={15} className="text-red-500 dark:text-red-400" />} label={t('PDF (.pdf)')} onClick={() => run(() => exportPDF(rows, columns, meta))} />

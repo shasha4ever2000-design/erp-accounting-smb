@@ -126,7 +126,7 @@ export default function Consolidation() {
         {[
           { label: 'Group Revenue', value: data.totals.revenue, tone: 'from-emerald-500 to-green-600' },
           { label: 'Group Expenses', value: data.totals.expense, tone: 'from-rose-500 to-red-600' },
-          { label: 'Group Net Profit', value: data.totals.net, tone: 'from-blue-500 to-indigo-600' },
+          { label: 'Group Net Profit', value: data.totals.net, tone: 'from-brand-500 to-accent-600' },
           { label: 'Group Assets', value: data.totals.assets, tone: 'from-violet-500 to-purple-600' },
         ].map((k) => (
           <Card key={k.label} className="p-5">

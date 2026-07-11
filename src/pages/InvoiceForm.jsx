@@ -233,7 +233,7 @@ export default function InvoiceForm() {
                   <span>{fmtMoney(taxTotal, sym)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-lg border-t pt-2 mt-2">
+              <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2">
                 <span>Total</span>
                 <span className="text-blue-600 dark:text-blue-400">{fmtMoney(total, sym)}</span>
               </div>

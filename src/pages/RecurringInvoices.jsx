@@ -186,7 +186,7 @@ export default function RecurringInvoices() {
       </Modal>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium z-50">
+        <div className="fixed bottom-6 end-6 bg-gradient-to-b from-success-500 to-success-600 text-white px-4 py-2.5 rounded-xl shadow-elevated text-sm font-semibold z-50 animate-slide-up">
           {toast}
         </div>
       )}

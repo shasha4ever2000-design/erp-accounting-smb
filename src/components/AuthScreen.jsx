@@ -84,7 +84,7 @@ export default function AuthScreen() {
 
         <div className="relative w-full max-w-md animate-scale-in">
           <div className="lg:hidden flex items-center gap-2.5 mb-8 justify-center">
-            <div className="w-11 h-11 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center text-white shadow-btn-primary">
+            <div className="w-11 h-11 bg-gradient-to-br from-brand-500 to-accent-600 rounded-xl flex items-center justify-center text-white shadow-btn-primary">
               <TrendingUp size={22} strokeWidth={2.25} />
             </div>
             <span className="text-lg font-bold tracking-tight text-gray-800 dark:text-slate-100">{t('ERP Accounting')}</span>
