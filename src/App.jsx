@@ -1,7 +1,9 @@
-import { useEffect, lazy, Suspense } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useStore } from './store'
 import { useAuth } from './auth'
+import { useT } from './i18n'
+import { CalendarClock, X } from 'lucide-react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard' // eager: default landing route
 
@@ -70,12 +72,27 @@ export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
   const companyName = useStore((s) => s.settings.company.name)
   const updateCompany = useStore((s) => s.updateCompany)
+  const t = useT()
+  const [schedulerResult, setSchedulerResult] = useState(null)
 
   useEffect(() => {
     const root = document.documentElement
     if (theme === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
   }, [theme])
+
+  // Boot-time scheduler: catch up any due recurring invoices/journals once the
+  // company's data has hydrated (App only mounts post-hydration). Runs at most
+  // once per day; surfaces a dismissible toast when it actually posts something.
+  useEffect(() => {
+    const res = useStore.getState().runScheduler()
+    if (res?.ran) {
+      setSchedulerResult(res)
+      const timer = setTimeout(() => setSchedulerResult(null), 8000)
+      return () => clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // A freshly created company inherits its name from the company picker label
   useEffect(() => {
@@ -176,6 +193,26 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
       </Routes>
       </Suspense>
+
+      {schedulerResult?.ran && (
+        <div className="fixed bottom-6 end-6 z-50 max-w-sm animate-slide-up">
+          <div className="flex items-start gap-3 rounded-xl bg-gradient-to-b from-success-500 to-success-600 text-white shadow-elevated ring-1 ring-black/5 ps-4 pe-3 py-3">
+            <CalendarClock size={18} className="mt-0.5 flex-shrink-0" />
+            <div className="text-sm leading-snug">
+              <p className="font-semibold">{t('Scheduled entries posted')}</p>
+              <p className="text-white/85">
+                {[
+                  schedulerResult.invoices > 0 && `${schedulerResult.invoices} ${t('recurring invoice(s)')}`,
+                  schedulerResult.journals > 0 && `${schedulerResult.journals} ${t('recurring journal(s)')}`,
+                ].filter(Boolean).join(' · ')}
+              </p>
+            </div>
+            <button onClick={() => setSchedulerResult(null)} className="ms-1 -me-1 p-1 rounded-lg hover:bg-white/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60" aria-label={t('Dismiss')}>
+              <X size={15} />
+            </button>
+          </div>
+        </div>
+      )}
     </Layout>
   )
 }

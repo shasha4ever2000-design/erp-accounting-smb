@@ -3,7 +3,7 @@ import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
-import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock } from 'lucide-react'
+import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock } from 'lucide-react'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -20,7 +20,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, exportData, importData } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, setAutoPostRecurring, exportData, importData } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -446,6 +446,30 @@ export default function Settings() {
           ) : (
             <span className="text-xs text-gray-400 dark:text-slate-500">{t('Owners / Admins only')}</span>
           )}
+        </Card>
+
+        {/* Automation / scheduler */}
+        <Card className="p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center">
+              <CalendarClock size={14} className="text-white" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Automation')}</h2>
+          </div>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-slate-600"
+              checked={settings.accounting?.autoPostRecurring !== false}
+              onChange={(e) => setAutoPostRecurring(e.target.checked)}
+            />
+            <span className="text-sm">
+              <span className="font-medium text-gray-800 dark:text-slate-100">{t('Auto-post recurring entries on start-up')}</span>
+              <span className="block text-gray-500 dark:text-slate-400 mt-0.5">
+                {t('When you open the app, any due recurring invoices and journals are posted automatically (catching up missed periods, skipping locked ones). Turn off to post them manually from their pages.')}
+              </span>
+            </span>
+          </label>
         </Card>
 
         <Card className="p-6">

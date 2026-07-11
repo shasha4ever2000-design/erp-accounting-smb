@@ -103,7 +103,7 @@ const DEFAULT_SETTINGS = {
   creditNote:    { prefix: 'CN-',   next: 1 },
   debitNote:     { prefix: 'DN-',   next: 1 },
   ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
-  accounting:    { lockDate: '', lockedBy: '', lockedAt: '' }, // period close: no postings on/before lockDate
+  accounting:    { lockDate: '', lockedBy: '', lockedAt: '', autoPostRecurring: true }, // period close + auto-post scheduler
   payroll:       { prefix: 'PR-',    next: 1 },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
@@ -164,6 +164,12 @@ export const useStore = create(
         set((s) => ({ settings: { ...s.settings, accounting: {
           ...(s.settings.accounting || {}), lockDate: lockDate || '',
           lockedBy: lockDate ? (lockedBy || '') : '', lockedAt: lockDate ? new Date().toISOString() : '',
+        } } })),
+
+      // Toggle the boot-time auto-posting of due recurring invoices/journals.
+      setAutoPostRecurring: (enabled) =>
+        set((s) => ({ settings: { ...s.settings, accounting: {
+          ...(s.settings.accounting || {}), autoPostRecurring: !!enabled,
         } } })),
 
       // true when `date` (YYYY-MM-DD) falls in a closed period
@@ -1731,6 +1737,28 @@ export const useStore = create(
         return count
       },
 
+      // Boot-time scheduler: on app load, catch up any due recurring journals and
+      // recurring invoices automatically, at most once per calendar day per company.
+      // Both underlying actions already bound their catch-up and skip locked periods,
+      // so this is safe to run unattended; depreciation stays manual (a deliberate
+      // month-end posting). Returns what it posted so the UI can confirm it.
+      schedulerLastRun: null,
+      runScheduler: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        if (get().schedulerLastRun === today) return { journals: 0, invoices: 0, ran: false }
+        if (get().settings?.accounting?.autoPostRecurring === false) {
+          set({ schedulerLastRun: today })
+          return { journals: 0, invoices: 0, ran: false }
+        }
+        let journals = 0, invoices = 0
+        try { journals = get().generateDueRecurringJournals() } catch { /* never block boot */ }
+        try { invoices = get().generateDueRecurring() } catch { /* never block boot */ }
+        set({ schedulerLastRun: today })
+        if (journals || invoices)
+          get().logActivity('Auto-posted scheduled entries', `${invoices} invoice(s), ${journals} journal(s)`)
+        return { journals, invoices, ran: journals > 0 || invoices > 0 }
+      },
+
       // Generate real invoices for every active schedule whose nextDate has arrived
       generateDueRecurring: () => {
         const today = new Date().toISOString().slice(0, 10)
@@ -1996,7 +2024,7 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 15, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 16, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -2051,7 +2079,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 15,
+      version: 16,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -2167,6 +2195,10 @@ export const useStore = create(
           if (!persisted.recurringJournals) persisted.recurringJournals = []
           if (persisted.settings && !persisted.settings.accounting)
             persisted.settings.accounting = { lockDate: '', lockedBy: '', lockedAt: '' }
+        }
+        if (version < 16) {
+          if (persisted.settings?.accounting && persisted.settings.accounting.autoPostRecurring === undefined)
+            persisted.settings.accounting.autoPostRecurring = true
         }
         return persisted
        } catch (e) {
