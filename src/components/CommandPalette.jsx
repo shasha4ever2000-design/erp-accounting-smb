@@ -106,41 +106,47 @@ export default function CommandPalette() {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-4" onClick={() => setOpen(false)}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-          <Search size={18} className="text-gray-400 dark:text-slate-500 flex-shrink-0" />
+      <div className="absolute inset-0 bg-surface-950/55 backdrop-blur-[3px] animate-fade-in" />
+      <div className="relative w-full max-w-xl bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-surface-750">
+          <Search size={17} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={t('Search modules or actions…')}
-            className="flex-1 bg-transparent outline-none text-sm text-gray-800 dark:text-slate-100 placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-[15px] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
-          <kbd className="hidden sm:inline-block text-[10px] text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</kbd>
+          <kbd className="hidden sm:inline-block text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/[0.05] border border-slate-200/90 dark:border-surface-700 rounded-md px-1.5 py-0.5">ESC</kbd>
         </div>
-        <div className="max-h-80 overflow-y-auto py-2">
-          {results.length === 0 && <p className="px-4 py-6 text-center text-sm text-gray-400 dark:text-slate-500">{t('No matches')}</p>}
+        <div className="max-h-80 overflow-y-auto py-2 px-2">
+          {results.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">{t('No matches')}</p>}
           {results.map((cmd, i) => {
             const showGroup = cmd.group !== lastGroup
             lastGroup = cmd.group
             return (
               <div key={cmd.path + cmd.label}>
-                {showGroup && <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">{t(cmd.group)}</p>}
+                {showGroup && <p className="px-3 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">{t(cmd.group)}</p>}
                 <button
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(cmd)}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-sm text-left ${
-                    active === i ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700'
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-start rounded-lg transition-colors duration-100 ${
+                    active === i
+                      ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/[0.12] dark:text-brand-300'
+                      : 'text-slate-700 dark:text-slate-200'
                   }`}
                 >
-                  <span>{t(cmd.label)}</span>
-                  {active === i && <CornerDownLeft size={14} className="opacity-80" />}
+                  <span className="truncate">{t(cmd.label)}</span>
+                  {active === i && <CornerDownLeft size={14} className="flex-shrink-0 opacity-70 rtl:-scale-x-100" />}
                 </button>
               </div>
             )
           })}
+        </div>
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-slate-100 dark:border-surface-750 bg-slate-50/60 dark:bg-surface-900/40 text-[11px] text-slate-400 dark:text-slate-500">
+          <span className="inline-flex items-center gap-1.5"><kbd className="font-sans font-semibold bg-white dark:bg-white/[0.06] border border-slate-200/90 dark:border-surface-700 rounded px-1 py-px">↑↓</kbd> {t('Navigate')}</span>
+          <span className="inline-flex items-center gap-1.5"><kbd className="font-sans font-semibold bg-white dark:bg-white/[0.06] border border-slate-200/90 dark:border-surface-700 rounded px-1 py-px">↵</kbd> {t('Open')}</span>
         </div>
       </div>
     </div>
