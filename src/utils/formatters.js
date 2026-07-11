@@ -39,21 +39,32 @@ export function addDays(dateStr, days) {
   return format(d, 'yyyy-MM-dd')
 }
 
+// Semantic, theme-aware chip recipes — one voice for state colors in light AND dark mode.
+export const tone = {
+  neutral: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
+  muted:   'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
+  brand:   'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+  accent:  'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300',
+  success: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  warning: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  danger:  'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
+}
+
 export function statusColor(status) {
   const map = {
-    draft:    'bg-gray-100 text-gray-700',
-    sent:     'bg-blue-100 text-blue-700',
-    partial:  'bg-yellow-100 text-yellow-700',
-    paid:     'bg-green-100 text-green-700',
-    overdue:  'bg-red-100 text-red-700',
-    received: 'bg-blue-100 text-blue-700',
-    cancelled:'bg-gray-100 text-gray-500',
-    void:     'bg-rose-100 text-rose-700 line-through',
-    money_in: 'bg-green-100 text-green-700',
-    money_out:'bg-red-100 text-red-700',
-    manual:   'bg-purple-100 text-purple-700',
+    draft:    tone.neutral,
+    sent:     tone.brand,
+    partial:  tone.warning,
+    paid:     tone.success,
+    overdue:  tone.danger,
+    received: tone.brand,
+    cancelled: tone.muted,
+    void:     `${tone.danger} line-through`,
+    money_in: tone.success,
+    money_out: tone.danger,
+    manual:   tone.accent,
   }
-  return map[status] || 'bg-gray-100 text-gray-600'
+  return map[status] || tone.neutral
 }
 
 export function accountTypeLabel(type) {
@@ -69,11 +80,11 @@ export function accountTypeLabel(type) {
 
 export function accountTypeColor(type) {
   const map = {
-    asset:     'text-blue-700 bg-blue-50',
-    liability: 'text-orange-700 bg-orange-50',
-    equity:    'text-purple-700 bg-purple-50',
-    revenue:   'text-green-700 bg-green-50',
-    expense:   'text-red-700 bg-red-50',
+    asset:     tone.brand,
+    liability: tone.warning,
+    equity:    tone.accent,
+    revenue:   tone.success,
+    expense:   tone.danger,
   }
-  return map[type] || 'text-gray-700 bg-gray-50'
+  return map[type] || tone.neutral
 }
