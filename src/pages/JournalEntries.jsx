@@ -4,7 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Ban, Eye, Search } from 'lucide-react'
+import { Plus, Ban, Eye, Search, Trash2 } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
