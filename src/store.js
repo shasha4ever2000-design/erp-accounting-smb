@@ -2413,7 +2413,7 @@ export const useStore = create(
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
-          'recurringJournals', 'goodsReceipts',
+          'recurringJournals', 'goodsReceipts', 'landedCosts',
         ]
         const out = { _app: 'erp-accounting-smb', _version: 19, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
@@ -2434,6 +2434,64 @@ export const useStore = create(
           .then((m) => m.idbKvStorage.removeItem(key))
           .catch(() => {})
           .finally(() => { if (typeof window !== 'undefined') window.location.reload() })
+      },
+
+      // ─── Local snapshots (automatic + on-demand) ───────────────────
+      // Rolling in-browser restore points, kept in IndexedDB alongside the live
+      // store. These guard against accidental data loss between off-device backups;
+      // for true off-device safety the user still downloads (optionally encrypted)
+      // backup files. At most 8 snapshots are retained (oldest dropped first).
+      _readBackups: async () => {
+        try { const raw = await idbKvStorage.getItem(currentCompanyKey() + '::backups'); const s = raw ? JSON.parse(raw) : null; if (s && Array.isArray(s.items)) return s } catch { /* ignore */ }
+        return { items: [], lastAutoAt: null }
+      },
+      _writeBackups: async (store) => { await idbKvStorage.setItem(currentCompanyKey() + '::backups', JSON.stringify(store)) },
+
+      snapshotNow: async (label = 'Manual') => {
+        const data = get().exportData()
+        const store = await get()._readBackups()
+        const entry = { id: uuid(), at: new Date().toISOString(), label, data }
+        store.items = [...store.items, entry].slice(-8)
+        if (label === 'Auto') store.lastAutoAt = entry.at
+        await get()._writeBackups(store)
+        return { id: entry.id, at: entry.at, label }
+      },
+
+      listSnapshots: async () => {
+        const store = await get()._readBackups()
+        return store.items
+          .map((e) => ({ id: e.id, at: e.at, label: e.label, bytes: JSON.stringify(e.data).length }))
+          .sort((a, b) => b.at.localeCompare(a.at))
+      },
+
+      restoreSnapshot: async (id) => {
+        const store = await get()._readBackups()
+        const entry = store.items.find((e) => e.id === id)
+        if (!entry) throw new Error('Snapshot not found')
+        get().importData(entry.data)
+        // Give the persist middleware a moment to flush the restored state, then reload.
+        if (typeof window !== 'undefined') setTimeout(() => window.location.reload(), 400)
+        return true
+      },
+
+      deleteSnapshot: async (id) => {
+        const store = await get()._readBackups()
+        store.items = store.items.filter((e) => e.id !== id)
+        await get()._writeBackups(store)
+      },
+
+      // Boot-time: take one automatic snapshot per day (only if there is data).
+      runBackupScheduler: async () => {
+        try {
+          const s = get()
+          const hasData = (s.journalEntries?.length || 0) > 0 || (s.invoices?.length || 0) > 0 || (s.customers?.length || 0) > 0
+          if (!hasData) return { ran: false }
+          const store = await s._readBackups()
+          const last = store.lastAutoAt ? new Date(store.lastAutoAt).getTime() : 0
+          if (Date.now() - last < 24 * 60 * 60 * 1000) return { ran: false }
+          const e = await s.snapshotNow('Auto')
+          return { ran: true, at: e.at }
+        } catch { return { ran: false } }
       },
 
       // ─── COMPUTED ──────────────────────────────────────────────────

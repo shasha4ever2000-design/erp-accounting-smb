@@ -98,6 +98,12 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Daily auto-snapshot: one browser-local restore point per day.
+  useEffect(() => {
+    useStore.getState().runBackupScheduler()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // A freshly created company inherits its name from the company picker label
   useEffect(() => {
     const auth = useAuth.getState()

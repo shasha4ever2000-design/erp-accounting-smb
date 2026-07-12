@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
-import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock } from 'lucide-react'
+import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock, Shield, ShieldCheck, Clock, Trash2, RotateCcw, KeyRound } from 'lucide-react'
+import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -20,7 +21,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, setAutoPostRecurring, exportData, importData } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, setAutoPostRecurring, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -87,15 +88,45 @@ export default function Settings() {
     setZatca((z) => ({ ...z, enabled: true, showQr: true }))
   }
 
-  const handleExport = () => {
+  const [encryptExport, setEncryptExport] = useState(false)
+  const [exportPass, setExportPass] = useState('')
+  const [exportBusy, setExportBusy] = useState(false)
+  const [importModal, setImportModal] = useState(null) // { envelope } when encrypted file needs passphrase
+  const [importPass, setImportPass] = useState('')
+  const [importBusy, setImportBusy] = useState(false)
+  const [importErr, setImportErr] = useState('')
+  const [snapshots, setSnapshots] = useState([])
+  const [snapshotsOpen, setSnapshotsOpen] = useState(false)
+  const [snapBusy, setSnapBusy] = useState(false)
+
+  const loadSnapshots = useCallback(async () => { setSnapshots(await listSnapshots()) }, [listSnapshots])
+  useEffect(() => { if (snapshotsOpen) loadSnapshots() }, [snapshotsOpen, loadSnapshots])
+
+  const handleExport = async () => {
     const data = exportData()
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `erp-backup-${new Date().toISOString().slice(0, 10)}.json`
-    a.click()
-    URL.revokeObjectURL(url)
+    setExportBusy(true)
+    try {
+      let payload, filename
+      if (encryptExport && exportPass) {
+        payload = await encryptBackup(data, exportPass)
+        filename = `erp-backup-${new Date().toISOString().slice(0, 10)}-encrypted.json`
+      } else {
+        payload = data
+        filename = `erp-backup-${new Date().toISOString().slice(0, 10)}.json`
+      }
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+      setExportPass('')
+    } catch (err) {
+      alert(t('Export failed') + ': ' + err.message)
+    } finally {
+      setExportBusy(false)
+    }
   }
 
   const handleImportFile = (e) => {
@@ -104,17 +135,57 @@ export default function Settings() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
-        const data = JSON.parse(ev.target.result)
-        if (!confirm('Restoring will REPLACE all current data with the backup. Continue?')) return
-        importData(data)
-        alert('Backup restored successfully! The page will reload.')
-        window.location.reload()
+        const parsed = parseBackupText(ev.target.result)
+        if (parsed.encrypted) {
+          setImportModal({ envelope: parsed.envelope })
+          setImportPass('')
+          setImportErr('')
+        } else {
+          if (!confirm(t('Restoring will REPLACE all current data with the backup. Continue?'))) return
+          importData(parsed.data)
+          alert(t('Backup restored successfully! The page will reload.'))
+          window.location.reload()
+        }
       } catch (err) {
-        alert('Could not read this backup file: ' + err.message)
+        alert(t('Could not read this backup file') + ': ' + err.message)
       }
     }
     reader.readAsText(file)
     e.target.value = ''
+  }
+
+  const handleDecryptImport = async () => {
+    if (!importModal || !importPass) return
+    setImportBusy(true)
+    setImportErr('')
+    try {
+      const data = await decryptBackup(importModal.envelope, importPass)
+      if (!confirm(t('Restoring will REPLACE all current data with the backup. Continue?'))) { setImportBusy(false); return }
+      importData(data)
+      setImportModal(null)
+      alert(t('Backup restored successfully! The page will reload.'))
+      window.location.reload()
+    } catch (err) {
+      setImportErr(err.message === 'WRONG_PASSWORD' ? t('Wrong passphrase — please try again.') : err.message)
+    } finally {
+      setImportBusy(false)
+    }
+  }
+
+  const handleSnapshot = async () => {
+    setSnapBusy(true)
+    try { await snapshotNow('Manual'); await loadSnapshots() } finally { setSnapBusy(false) }
+  }
+
+  const handleRestoreSnap = async (id) => {
+    if (!confirm(t('Restoring will REPLACE all current data with this snapshot. Continue?'))) return
+    await restoreSnapshot(id)
+  }
+
+  const handleDeleteSnap = async (id) => {
+    if (!confirm(t('Delete this snapshot?'))) return
+    await deleteSnapshot(id)
+    await loadSnapshots()
   }
 
   const setCompanyField = (k, v) => setCompany((c) => ({ ...c, [k]: v }))
@@ -477,18 +548,81 @@ export default function Settings() {
             <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
               <Database size={14} className="text-white" />
             </div>
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">Backup &amp; Restore</h2>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Backup & Restore')}</h2>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-            Your data lives in this browser. Download a backup regularly so you never lose it — and restore it on any device or browser.
+            {t('Your data lives in this browser. Download a backup regularly so you never lose it — and restore it on any device or browser.')}
           </p>
+
+          {/* Encrypt toggle */}
+          <label className="flex items-center gap-2.5 mb-3 cursor-pointer select-none">
+            <input type="checkbox" checked={encryptExport} onChange={(e) => setEncryptExport(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500" />
+            <Shield size={14} className="text-brand-500" />
+            <span className="text-sm font-medium text-gray-700 dark:text-slate-200">{t('Encrypt backup with passphrase')}</span>
+          </label>
+          {encryptExport && (
+            <div className="mb-4 flex items-end gap-3">
+              <div className="flex-1">
+                <Input label={t('Passphrase')} type="password" value={exportPass} onChange={(e) => setExportPass(e.target.value)} placeholder={t('Enter a strong passphrase…')} />
+              </div>
+              <p className="text-xs text-amber-600 dark:text-amber-400 mb-1 max-w-xs">{t('If you forget the passphrase, the backup cannot be recovered.')}</p>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-3">
-            <Btn variant="success" onClick={handleExport}><Download size={15} /> {t('Download Backup')}</Btn>
+            <Btn variant="success" onClick={handleExport} disabled={exportBusy || (encryptExport && !exportPass)}>
+              {encryptExport ? <ShieldCheck size={15} /> : <Download size={15} />}
+              {exportBusy ? t('Encrypting…') : encryptExport ? t('Download Encrypted Backup') : t('Download Backup')}
+            </Btn>
             <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Restore from File')}</Btn>
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
           </div>
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">Backup files contain all invoices, transactions, customers, settings and more in one portable file.</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{t('Backup files contain all data in one portable file. Encrypted backups use AES-256-GCM.')}</p>
 
+          {/* Local snapshots */}
+          <div className="mt-5 pt-4 border-t border-gray-100 dark:border-slate-700">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Clock size={14} className="text-gray-400 dark:text-slate-500" />
+                <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t('Local Snapshots')}</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500">({t('auto-saved daily, max 8')})</span>
+              </div>
+              <div className="flex gap-2">
+                <Btn size="sm" variant="secondary" onClick={handleSnapshot} disabled={snapBusy}>
+                  <RotateCcw size={13} /> {snapBusy ? t('Saving…') : t('Snapshot Now')}
+                </Btn>
+                <Btn size="sm" variant="secondary" onClick={() => setSnapshotsOpen(!snapshotsOpen)}>
+                  {snapshotsOpen ? t('Hide') : t('Show')} ({snapshots.length || '…'})
+                </Btn>
+              </div>
+            </div>
+
+            {snapshotsOpen && (
+              <div className="space-y-2">
+                {snapshots.length === 0 && <p className="text-xs text-gray-400 dark:text-slate-500">{t('No snapshots yet — one will be created automatically tomorrow.')}</p>}
+                {snapshots.map((s) => (
+                  <div key={s.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-slate-800/60 border border-gray-200 dark:border-slate-700 px-3 py-2 text-sm">
+                    <div>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase me-2 ${s.label === 'Auto' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300'}`}>{s.label}</span>
+                      <span className="text-gray-600 dark:text-slate-300">{new Date(s.at).toLocaleString()}</span>
+                      <span className="text-gray-400 dark:text-slate-500 ms-2 text-xs">~{Math.round(s.bytes / 1024)} KB</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => handleRestoreSnap(s.id)} className="px-2 py-1 rounded text-xs font-medium text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-900/30 transition-colors" title={t('Restore')}>
+                        <RotateCcw size={13} />
+                      </button>
+                      <button onClick={() => handleDeleteSnap(s.id)} className="px-2 py-1 rounded text-xs font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 transition-colors" title={t('Delete')}>
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Storage indicator */}
           <div className="mt-4 pt-4 border-t border-gray-100 dark:border-slate-700">
             <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
               <span>{t('Browser storage used')} <span className="text-gray-400 dark:text-slate-500">({t('IndexedDB')})</span></span>
@@ -497,9 +631,31 @@ export default function Settings() {
             <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
               <div className={`h-full ${storagePct > 85 ? 'bg-red-500' : storagePct > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${storagePct}%` }} />
             </div>
-            {storagePct > 85 && <p className="text-xs text-red-500 dark:text-red-400 mt-1">Storage is nearly full — download a backup and consider removing your logo or old data.</p>}
+            {storagePct > 85 && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{t('Storage is nearly full — download a backup and consider removing your logo or old data.')}</p>}
           </div>
         </Card>
+
+        {/* Encrypted import modal */}
+        {importModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => { setImportModal(null); setImportPass(''); setImportErr('') }}>
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-elevated w-full max-w-sm mx-4 p-6" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-2 mb-4">
+                <KeyRound size={18} className="text-brand-500" />
+                <h3 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Encrypted Backup')}</h3>
+              </div>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">{t('This backup is encrypted. Enter the passphrase to restore it.')}</p>
+              <Input label={t('Passphrase')} type="password" value={importPass} onChange={(e) => { setImportPass(e.target.value); setImportErr('') }}
+                onKeyDown={(e) => e.key === 'Enter' && handleDecryptImport()} autoFocus />
+              {importErr && <p className="text-sm text-red-500 mt-2">{importErr}</p>}
+              <div className="flex justify-end gap-2 mt-5">
+                <Btn variant="secondary" onClick={() => { setImportModal(null); setImportPass(''); setImportErr('') }}>{t('Cancel')}</Btn>
+                <Btn onClick={handleDecryptImport} disabled={importBusy || !importPass}>
+                  {importBusy ? t('Decrypting…') : t('Unlock & Restore')}
+                </Btn>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Danger Zone */}
         <Card className="p-6 border-danger-200/70 dark:border-danger-500/25">
