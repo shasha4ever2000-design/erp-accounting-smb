@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { vatBreakdown } from '../utils/vat'
+import { buildVatReturn, yearQuarters } from '../utils/vatReturn'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -31,7 +32,7 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, journalEntries, invoices, purchases, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settings } = useStore()
+  const { accounts, journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -577,59 +578,163 @@ export default function Reports() {
   }
 
   // ─── VAT Return (ZATCA / KSA) ─────────────────────────────────
+  // Filing-grade layout mirroring the ZATCA portal form: three columns
+  // (Amount | Adjustment | VAT) with credit / debit notes in the adjustment
+  // column, a ledger reconciliation check, and one-click settlement posting.
   const VATReport = () => {
-    const inRange = (d) => d && d >= startDate && d <= endDate
-    const salesDocs = invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date))
-    const purchDocs = purchases.filter((p) => p.status !== 'cancelled' && p.status !== 'void' && inRange(p.date))
-    const sales = vatBreakdown(salesDocs)
-    const purch = vatBreakdown(purchDocs)
-    const outputVat = accountBalance('acc-vatout', balances)
-    const inputVat = accountBalance('acc-vatin', balances)
-    const netVat = outputVat - inputVat
+    const ret = buildVatReturn({ invoices, creditNotes, purchases, debitNotes }, { from: startDate, to: endDate })
 
-    const Row = ({ n, label, ar, amount, bold, strong }) => (
+    // Ledger cross-check: the return is built from documents; the ledgers were
+    // posted by the same documents. Any difference means a manual JE touched
+    // the VAT accounts and deserves a look before filing.
+    let outMove = 0, inMove = 0
+    journalEntries.forEach((je) => {
+      if (je.type === 'vat_settlement') return
+      if (je.date < startDate || je.date > endDate) return
+      je.lines.forEach((l) => {
+        if (l.accountId === 'acc-vatout') outMove += (l.credit || 0) - (l.debit || 0)
+        if (l.accountId === 'acc-vatin') inMove += (l.debit || 0) - (l.credit || 0)
+      })
+    })
+    const outDiff = Math.round((outMove - ret.outputVat) * 100) / 100
+    const inDiff = Math.round((inMove - ret.inputVat) * 100) / 100
+    const reconciled = Math.abs(outDiff) < 0.02 && Math.abs(inDiff) < 0.02
+
+    const settlement = journalEntries.find((je) => je.type === 'vat_settlement' && je.reference === `VAT ${startDate}..${endDate}`)
+
+    const quarters = yearQuarters(Number(endDate.slice(0, 4)) || new Date().getFullYear())
+
+    const cell = 'px-3 py-2.5 text-right font-mono tabular-nums'
+    const Row = ({ n, label, ar, line, bold, strong, na }) => (
       <tr className={`border-b border-gray-100 dark:border-slate-700/50 ${strong ? 'bg-gray-50 dark:bg-slate-800/60' : ''}`}>
         <td className="px-4 py-2.5 text-gray-400 dark:text-slate-500 text-xs w-10">{n}</td>
         <td className={`px-2 py-2.5 ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>
           {label}<span className="block text-xs text-gray-400 dark:text-slate-500" dir="rtl">{ar}</span>
         </td>
-        <td className={`px-4 py-2.5 text-right font-mono ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>{fmtMoney(amount, sym)}</td>
+        {na ? (
+          <td colSpan={3} className={`${cell} text-gray-300 dark:text-slate-600`}>—</td>
+        ) : (
+          <>
+            <td className={`${cell} ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>{fmtMoney(line.amount, sym)}</td>
+            <td className={`${cell} ${line.adjustment ? 'text-amber-600 dark:text-amber-400' : 'text-gray-400 dark:text-slate-500'}`}>{line.adjustment ? fmtMoney(line.adjustment, sym) : '—'}</td>
+            <td className={`${cell} ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>{line.vat ? fmtMoney(line.vat, sym) : '—'}</td>
+          </>
+        )}
+      </tr>
+    )
+    const SectionHead = ({ label, ar }) => (
+      <tr className="bg-brand-50/60 dark:bg-brand-500/[0.08]">
+        <td colSpan={5} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
+          {label} <span className="font-normal text-brand-400 dark:text-brand-500 ms-2" dir="rtl">{ar}</span>
+        </td>
       </tr>
     )
 
+    const [settleOpen, setSettleOpen] = useState(false)
+    const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10))
+    const [settleBank, setSettleBank] = useState(bankAccounts.find((b) => b.isDefault)?.accountId || bankAccounts[0]?.accountId || 'acc-bank1')
+    const doSettle = () => {
+      try {
+        settleVat({ date: settleDate, from: startDate, to: endDate, bankAccountId: settleBank, outputVat: ret.outputVat, inputVat: ret.inputVat })
+        setSettleOpen(false)
+      } catch (e) {
+        alert(e.message === 'VAT_NOTHING_TO_SETTLE' ? t('There is no VAT to settle in this period.') : e.message)
+      }
+    }
+
     return (
       <Card>
-        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400">VAT Return · إقرار ضريبة القيمة المضافة — {fmtDate(startDate)} to {fmtDate(endDate)}</p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">VAT Return · <span dir="rtl">إقرار ضريبة القيمة المضافة</span> — <span dir="ltr" className="inline-block">{fmtDate(startDate)} {t('to')} {fmtDate(endDate)}</span></p>
+            <div className="flex gap-1.5 mt-3 print:hidden">
+              {quarters.map((q) => {
+                const activeQ = startDate === q.from && endDate === q.to
+                return (
+                  <button key={q.id} onClick={() => { setStartDate(q.from); setEndDate(q.to) }}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-colors ${activeQ ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'}`}>
+                    {q.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
           <div className="text-right text-xs text-gray-400 dark:text-slate-500">
-            {settings.zatca?.vatNumber && <p>VAT No: {settings.zatca.vatNumber}</p>}
-            <p>Rate: {settings.tax?.rate ?? 15}%</p>
+            {settings.zatca?.vatNumber && <p className="font-mono">{t('VAT No')}: {settings.zatca.vatNumber}</p>}
+            <p>{t('Standard rate')}: {settings.tax?.rate ?? 15}%</p>
+            {settlement && (
+              <p className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 font-semibold">
+                {t('Settled')} · {fmtDate(settlement.date)}
+              </p>
+            )}
           </div>
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-slate-800/60">
-            <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
-              <th className="px-4 py-2 text-left">#</th>
-              <th className="px-2 py-2 text-left">{t('Description')}</th>
-              <th className="px-4 py-2 text-right">Amount ({sym})</th>
-            </tr>
-          </thead>
-          <tbody>
-            <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" amount={sales.standard} />
-            <Row n="2" label="Output VAT" ar="ضريبة المخرجات" amount={outputVat} bold />
-            <Row n="3" label="Zero-rated sales" ar="مبيعات خاضعة لنسبة صفرية" amount={sales.zero} />
-            <Row n="4" label="Exempt sales" ar="مبيعات معفاة" amount={sales.exempt} />
-            <Row n="5" label="Standard rated purchases" ar="المشتريات الخاضعة للضريبة" amount={purch.standard} />
-            <Row n="6" label="Input VAT (recoverable)" ar="ضريبة المدخلات" amount={inputVat} bold />
-            <Row n="7" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة" amount={netVat} bold strong />
-          </tbody>
-        </table>
-        <div className={`p-5 flex items-center justify-between ${netVat >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
-          <span className="font-bold text-gray-800 dark:text-slate-100">{netVat >= 0 ? 'VAT Payable to ZATCA' : 'VAT Reclaimable from ZATCA'}</span>
-          <span className={`text-xl font-black ${netVat >= 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>{fmtMoney(Math.abs(netVat), sym)}</span>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
+            <thead className="bg-gray-50 dark:bg-slate-800/60">
+              <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+                <th className="px-4 py-2 text-left">#</th>
+                <th className="px-2 py-2 text-left">{t('Description')}</th>
+                <th className="px-3 py-2 text-right">{t('Amount')} ({sym})</th>
+                <th className="px-3 py-2 text-right">{t('Adjustment')}</th>
+                <th className="px-3 py-2 text-right">VAT ({sym})</th>
+              </tr>
+            </thead>
+            <tbody>
+              <SectionHead label="VAT on Sales" ar="ضريبة القيمة المضافة على المبيعات" />
+              <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" line={ret.sales.standard} />
+              <Row n="2" label="Zero-rated domestic sales" ar="المبيعات المحلية الخاضعة لنسبة الصفر" line={ret.sales.zero} />
+              <Row n="3" label="Exports" ar="الصادرات" na />
+              <Row n="4" label="Exempt sales" ar="المبيعات المعفاة" line={ret.sales.exempt} />
+              <Row n="5" label="Total sales" ar="إجمالي المبيعات" line={ret.sales.total} bold strong />
+              <SectionHead label="VAT on Purchases" ar="ضريبة القيمة المضافة على المشتريات" />
+              <Row n="6" label="Standard rated domestic purchases" ar="المشتريات المحلية الخاضعة للنسبة الأساسية" line={ret.purchases.standard} />
+              <Row n="7" label="Imports subject to VAT (paid at customs)" ar="الاستيرادات الخاضعة للضريبة المدفوعة في الجمارك" na />
+              <Row n="8" label="Imports subject to reverse charge" ar="الاستيرادات الخاضعة لآلية الاحتساب العكسي" na />
+              <Row n="9" label="Zero-rated purchases" ar="المشتريات الخاضعة لنسبة الصفر" line={ret.purchases.zero} />
+              <Row n="10" label="Exempt purchases" ar="المشتريات المعفاة" line={ret.purchases.exempt} />
+              <Row n="11" label="Total purchases" ar="إجمالي المشتريات" line={ret.purchases.total} bold strong />
+              <SectionHead label="Summary" ar="الملخص" />
+              <Row n="12" label="Total VAT due for current period" ar="إجمالي الضريبة المستحقة عن الفترة الحالية" line={{ amount: ret.outputVat, adjustment: 0, vat: 0 }} bold />
+              <Row n="13" label="Recoverable input VAT" ar="ضريبة المدخلات القابلة للخصم" line={{ amount: ret.inputVat, adjustment: 0, vat: 0 }} bold />
+              <Row n="14" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة (أو القابلة للاسترداد)" line={{ amount: ret.netVat, adjustment: 0, vat: 0 }} bold strong />
+            </tbody>
+          </table>
+        </div>
+
+        {/* Ledger reconciliation check */}
+        <div className={`mx-6 my-4 px-4 py-3 rounded-xl text-sm flex items-start gap-2.5 ${reconciled ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+          <span className="font-bold">{reconciled ? '✓' : '⚠'}</span>
+          <span>
+            {reconciled
+              ? t('Ledger check passed — the VAT control accounts agree with this return.')
+              : <>{t('Ledger check: the VAT control accounts differ from this return')} (
+                  {outDiff !== 0 && <>Output {fmtMoney(outDiff, sym)}</>}{outDiff !== 0 && inDiff !== 0 && ' · '}{inDiff !== 0 && <>Input {fmtMoney(inDiff, sym)}</>}
+                ). {t('A manual journal probably touched the VAT accounts — review before filing.')}</>}
+          </span>
+        </div>
+
+        <div className={`p-5 flex flex-wrap items-center justify-between gap-3 ${ret.netVat >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
+          <div>
+            <span className="font-bold text-gray-800 dark:text-slate-100">{ret.netVat >= 0 ? t('VAT Payable to ZATCA') : t('VAT Reclaimable from ZATCA')}</span>
+            <span className={`block sm:inline sm:ms-4 text-xl font-black ${ret.netVat >= 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>{fmtMoney(Math.abs(ret.netVat), sym)}</span>
+          </div>
+          {!settlement && (ret.outputVat !== 0 || ret.inputVat !== 0) && (
+            settleOpen ? (
+              <div className="flex flex-wrap items-end gap-2 print:hidden">
+                <Input label={t('Settlement date')} type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} className="w-40" />
+                <Select label={t('Bank account')} value={settleBank} onChange={(e) => setSettleBank(e.target.value)} className="w-48">
+                  {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
+                </Select>
+                <Btn onClick={doSettle}>{t('Post settlement')}</Btn>
+                <Btn variant="secondary" onClick={() => setSettleOpen(false)}>{t('Cancel')}</Btn>
+              </div>
+            ) : (
+              <Btn variant="secondary" className="print:hidden" onClick={() => setSettleOpen(true)}>{t('Record settlement')}</Btn>
+            )
+          )}
         </div>
       </Card>
     )

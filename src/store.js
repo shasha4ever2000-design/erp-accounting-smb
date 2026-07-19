@@ -2494,6 +2494,29 @@ export const useStore = create(
         } catch { return { ran: false } }
       },
 
+      // ─── VAT SETTLEMENT ────────────────────────────────────────────
+      // Close a filing period: clear Output VAT (liability) against Input VAT
+      // (asset) and pay/receive the net through a bank account.
+      //   net > 0 → payment to ZATCA (Cr bank), net < 0 → refund (Dr bank).
+      settleVat: ({ date, from, to, bankAccountId, outputVat, inputVat }) => {
+        const out = Math.round((Number(outputVat) || 0) * 100) / 100
+        const inp = Math.round((Number(inputVat) || 0) * 100) / 100
+        const net = Math.round((out - inp) * 100) / 100
+        if (out === 0 && inp === 0) throw new Error('VAT_NOTHING_TO_SETTLE')
+        const lines = []
+        if (out > 0) lines.push({ accountId: 'acc-vatout', debit: out, credit: 0, description: 'Output VAT settled' })
+        if (inp > 0) lines.push({ accountId: 'acc-vatin', debit: 0, credit: inp, description: 'Input VAT recovered' })
+        if (net > 0) lines.push({ accountId: bankAccountId, debit: 0, credit: net, description: 'VAT paid to ZATCA' })
+        else if (net < 0) lines.push({ accountId: bankAccountId, debit: -net, credit: 0, description: 'VAT refund from ZATCA' })
+        return get().addJournalEntry({
+          date,
+          description: `VAT settlement ${from} → ${to}`,
+          reference: `VAT ${from}..${to}`,
+          type: 'vat_settlement',
+          lines,
+        })
+      },
+
       // ─── COMPUTED ──────────────────────────────────────────────────
       getAccountBalance: (accountId, startDate, endDate) => {
         const s = get()
