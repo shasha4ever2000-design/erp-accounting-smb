@@ -175,7 +175,8 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">{label}{onClick && <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity" />}</p>
-          <p className="text-[1.7rem] leading-tight font-bold tracking-tightest text-slate-900 dark:text-white mt-2 tabular truncate">{value}</p>
+          {/* Long amounts shrink instead of truncating — money must stay fully readable. */}
+          <p className={`${String(value ?? '').length > 15 ? 'text-lg' : String(value ?? '').length > 11 ? 'text-[1.35rem]' : 'text-[1.7rem]'} leading-tight font-bold tracking-tightest text-slate-900 dark:text-white mt-2 tabular whitespace-nowrap`}>{value}</p>
           <div className="flex items-center gap-2 mt-1.5">
             {trend != null && (
               <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${trendUp ? 'text-success-700 bg-success-50 ring-success-600/10 dark:text-success-300 dark:bg-success-500/10 dark:ring-success-400/20' : 'text-danger-600 bg-danger-50 ring-danger-600/10 dark:text-danger-300 dark:bg-danger-500/10 dark:ring-danger-400/20'}`}>

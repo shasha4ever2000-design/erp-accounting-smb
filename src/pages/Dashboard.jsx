@@ -147,7 +147,9 @@ export default function Dashboard() {
 
   // Month-over-month trend chips for the headline KPIs
   const pctTrend = (cur, prev) => {
-    if (!prev) return null
+    // Compare only when BOTH months have activity — a month with no postings
+    // yet would otherwise always read "▼100%".
+    if (!prev || !cur) return null
     const p = ((cur - prev) / Math.abs(prev)) * 100
     return { label: `${Math.abs(p).toFixed(0)}%`, up: p >= 0 }
   }

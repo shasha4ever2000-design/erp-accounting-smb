@@ -4,7 +4,10 @@ import { useI18n, localizeDigits } from '../i18n'
 
 export function fmtMoney(amount, symbol = '$') {
   const n = Number(amount) || 0
-  return localizeDigits(`${symbol}${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`)
+  // Sign goes before the currency symbol (−$3,870.00, not $-3,870.00) — also
+  // keeps the sign attached to the amount in RTL layouts.
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  return localizeDigits(`${n < 0 ? '-' : ''}${symbol}${abs}`)
 }
 
 export function fmtDate(dateStr) {

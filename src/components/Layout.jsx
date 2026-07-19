@@ -215,7 +215,8 @@ export default function Layout({ children }) {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="min-h-full p-6 lg:p-8">
+          {/* Extra bottom padding keeps the floating AI button clear of page content */}
+          <div className="min-h-full p-6 lg:p-8 pb-24 lg:pb-24">
             <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
           </div>
         </main>

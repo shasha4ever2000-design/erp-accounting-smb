@@ -212,9 +212,8 @@ export default function Settings() {
   }
 
   const handleReset = () => {
-    if (confirm('This will permanently erase ALL data (invoices, customers, transactions, etc.). Are you absolutely sure?')) {
-      localStorage.removeItem('erp-v1')
-      window.location.reload()
+    if (confirm(t('This will permanently erase ALL data (invoices, customers, transactions, etc.). Are you absolutely sure?'))) {
+      useStore.getState().resetAllData()
     }
   }
 

@@ -2470,7 +2470,7 @@ export const useStore = create(
         if (!entry) throw new Error('Snapshot not found')
         get().importData(entry.data)
         // Give the persist middleware a moment to flush the restored state, then reload.
-        if (typeof window !== 'undefined') setTimeout(() => window.location.reload(), 400)
+        if (typeof window !== 'undefined') setTimeout(() => window.location.reload(), 900)
         return true
       },
 
