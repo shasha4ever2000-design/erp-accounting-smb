@@ -39,6 +39,7 @@ const COMMANDS = [
   { label: 'Business Analytics', path: '/analytics', group: 'Go to' },
   { label: 'Currencies & Exchange Rates', path: '/currencies', group: 'Go to' },
   { label: 'Statements of Account', path: '/statements', group: 'Go to' },
+  { label: 'Year-End Close', path: '/year-end', group: 'Go to' },
   { label: 'Audit Log', path: '/audit-log', group: 'Go to' },
   { label: 'Team & Roles', path: '/team', group: 'Go to' },
   { label: 'Reports', path: '/reports', group: 'Go to' },

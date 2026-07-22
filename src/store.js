@@ -175,6 +175,36 @@ export const useStore = create(
           lockedBy: lockDate ? (lockedBy || '') : '', lockedAt: lockDate ? new Date().toISOString() : '',
         } } })),
 
+      // ─── YEAR-END CLOSE ────────────────────────────────────────────
+      // Record a fiscal year as closed and lock the books through its end.
+      // No closing journal is posted: retained earnings is computed on the
+      // balance sheet, so profit rolls forward automatically.
+      closeFiscalYear: ({ label, start, end, netIncome, by }) =>
+        set((s) => {
+          const acc = s.settings.accounting || {}
+          const closedYears = (acc.closedYears || []).filter((c) => c.label !== label)
+          closedYears.push({ label, start, end, netIncome, closedAt: new Date().toISOString(), by: by || '' })
+          closedYears.sort((a, b) => a.end.localeCompare(b.end))
+          const lockDate = !acc.lockDate || acc.lockDate < end ? end : acc.lockDate
+          return { settings: { ...s.settings, accounting: {
+            ...acc, closedYears, lockDate, lockedBy: by || acc.lockedBy || '', lockedAt: new Date().toISOString(),
+          } } }
+        }),
+
+      reopenFiscalYear: (label) =>
+        set((s) => {
+          const acc = s.settings.accounting || {}
+          const target = (acc.closedYears || []).find((c) => c.label === label)
+          const closedYears = (acc.closedYears || []).filter((c) => c.label !== label)
+          // If the lock sat exactly at this year's end, fall back to the latest
+          // remaining closed year (or clear it).
+          let lockDate = acc.lockDate
+          if (target && acc.lockDate === target.end) {
+            lockDate = closedYears.length ? closedYears[closedYears.length - 1].end : ''
+          }
+          return { settings: { ...s.settings, accounting: { ...acc, closedYears, lockDate } } }
+        }),
+
       // Toggle the boot-time auto-posting of due recurring invoices/journals.
       setAutoPostRecurring: (enabled) =>
         set((s) => ({ settings: { ...s.settings, accounting: {
