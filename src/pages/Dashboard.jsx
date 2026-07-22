@@ -4,10 +4,11 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { StatCard, Card, Badge } from '../components/UI'
 import AccountLedgerModal from '../components/AccountLedgerModal'
+import { seedDemoData, isCompanyEmpty } from '../utils/demoData'
 import { useT } from '../i18n'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
-  FileText, ShoppingCart, Clock, DollarSign, ArrowRight,
+  FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -23,7 +24,9 @@ export default function Dashboard() {
   const [drill, setDrill] = useState(null)
   const today = new Date().toISOString().slice(0, 10)
 
-  const balances = useMemo(() => getAllBalances(), [getAllBalances])
+  // journalEntries must be a dep: getAllBalances is a stable reference, so
+  // without it the KPIs freeze until the page remounts.
+  const balances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
 
   const accountBalance = (id) => {
     const b = balances[id]
@@ -218,6 +221,33 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* First-run: offer sample data while the books are empty */}
+      {isCompanyEmpty(useStore.getState()) && (
+        <div className="mb-6 rounded-2xl border-2 border-dashed border-brand-200 dark:border-brand-500/30 bg-brand-50/50 dark:bg-brand-500/[0.06] p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center flex-shrink-0">
+              <Sparkles size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 dark:text-slate-100">{t('New here? Explore with sample data')}</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 max-w-lg">
+                {t('Load a realistic demo company — customers, stock, invoices in every state, and four months of activity. Erase it anytime from Settings.')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => { try { seedDemoData(useStore.getState) } catch { /* already has data */ } }}
+              className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-700 active:scale-[.98] transition-all shadow-card">
+              <Sparkles size={15} /> {t('Load sample data')}
+            </button>
+            <button onClick={() => navigate('/invoices/new')} className="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+              {t('or start from scratch')}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">

@@ -14,9 +14,9 @@ const PIE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '
 
 export default function Analytics() {
   const t = useT()
-  const { invoices, purchases, accounts, customers, bankAccounts, getAllBalances, settings } = useStore()
+  const { invoices, purchases, accounts, customers, bankAccounts, journalEntries, getAllBalances, settings } = useStore()
   const sym = settings.company.currencySymbol
-  const balances = useMemo(() => getAllBalances(), [getAllBalances])
+  const balances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
 
   const bal = (id) => {
     const b = balances[id]; if (!b) return 0
