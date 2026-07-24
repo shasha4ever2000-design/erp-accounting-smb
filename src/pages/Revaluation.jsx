@@ -65,7 +65,7 @@ export default function Revaluation() {
           rate: r.rate, currentBase: r.currentBase, revaluedBase: r.revaluedBase,
         })),
       })
-      if (rec) alert(t('FX revaluation posted.'))
+      if (rec) alert(t('FX revaluation posted, and reversed automatically on {d} — the restatement is for reporting only and must not survive into the next period.').replace('{d}', rec.reversalDate))
     } catch (e) {
       if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.'))
       throw e
@@ -86,6 +86,13 @@ export default function Revaluation() {
           </p>
         </div>
         <Btn onClick={post} disabled={!hasChanges}><RefreshCw size={15} /> {t('Post Revaluation')}</Btn>
+      </Card>
+
+      <Card className="p-4 mb-6 flex items-start gap-3 bg-brand-50/50 dark:bg-brand-500/[0.07] ring-1 ring-inset ring-brand-500/15">
+        <Info size={17} className="text-brand-600 dark:text-brand-400 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-brand-900/80 dark:text-brand-200/90">
+          {t('A revaluation restates carrying values for the closing balance sheet only — it does not change what anyone owes. It is therefore reversed automatically on the next day, so when the invoice or bill finally settles the difference is booked once, as a realized gain or loss, at the rate the cash actually moved.')}
+        </p>
       </Card>
 
       {fxAccounts.length === 0 ? (
@@ -148,6 +155,7 @@ export default function Revaluation() {
               <tr className="border-b border-gray-100 dark:border-slate-700 text-gray-500 dark:text-slate-400 text-xs uppercase">
                 <th className="py-2 px-3 text-start font-semibold">{t('Date')}</th>
                 <th className="py-2 px-3 text-start font-semibold">{t('Note')}</th>
+                <th className="py-2 px-3 text-start font-semibold">{t('Reverses on')}</th>
                 <th className="py-2 px-3 text-end font-semibold">{t('Accounts')}</th>
                 <th className="py-2 px-3 text-end font-semibold">{t('Gain / (Loss)')}</th>
               </tr>
@@ -157,6 +165,7 @@ export default function Revaluation() {
                 <tr key={r.id} className="border-b border-gray-50 dark:border-slate-700/50">
                   <td className="py-2 px-3 text-gray-600 dark:text-slate-300">{fmtDate(r.date)}</td>
                   <td className="py-2 px-3 text-gray-600 dark:text-slate-300">{r.note || '—'}</td>
+                  <td className="py-2 px-3 text-gray-500 dark:text-slate-400">{r.reversalDate ? fmtDate(r.reversalDate) : '—'}</td>
                   <td className="py-2 px-3 text-end text-gray-600 dark:text-slate-300">{r.entries.length}</td>
                   <td className={`py-2 px-3 text-end font-semibold ${r.gainLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{r.gainLoss >= 0 ? '' : '('}{fmtMoney(Math.abs(r.gainLoss), sym)}{r.gainLoss >= 0 ? '' : ')'}</td>
                 </tr>

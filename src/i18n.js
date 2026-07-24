@@ -553,6 +553,10 @@ const AR = {
   'Applies to new documents only — anything already posted is unaffected.': 'ينطبق على المستندات الجديدة فقط — لا يتأثر ما تم ترحيله مسبقاً.',
   'Segregation of duties. Turn this off only if you are the sole manager — a threshold you can wave through yourself is not a control.': 'الفصل بين المهام. عطّل هذا فقط إذا كنت المدير الوحيد — الحد الذي يمكنك تجاوزه بنفسك ليس رقابة.',
   'Approval settings apply immediately — no need to press Save.': 'إعدادات الاعتماد تُطبق فوراً — لا حاجة للضغط على حفظ.',
+  // FX revaluation auto-reversal
+  'Reverses on': 'يُعكس في',
+  'FX revaluation posted, and reversed automatically on {d} — the restatement is for reporting only and must not survive into the next period.': 'تم ترحيل إعادة تقييم العملة، وسيتم عكسها تلقائياً في {d} — إعادة التقييم لأغراض التقارير فقط ولا يجوز أن تمتد للفترة التالية.',
+  'A revaluation restates carrying values for the closing balance sheet only — it does not change what anyone owes. It is therefore reversed automatically on the next day, so when the invoice or bill finally settles the difference is booked once, as a realized gain or loss, at the rate the cash actually moved.': 'إعادة التقييم تعيد بيان القيم الدفترية لقائمة المركز المالي الختامية فقط — ولا تغيّر ما هو مستحق فعلياً. لذلك تُعكس تلقائياً في اليوم التالي، حتى إذا سُدّدت الفاتورة لاحقاً يُسجّل الفرق مرة واحدة كربح أو خسارة محققة بسعر الصرف الفعلي للنقد.',
   'As at': 'كما في',
   // Prior-period comparatives on the P&L / Balance Sheet
   'Compare with': 'المقارنة مع',

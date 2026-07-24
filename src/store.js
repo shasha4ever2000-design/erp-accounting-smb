@@ -138,6 +138,13 @@ function nextNum(prefix, n) {
   return `${prefix}${String(n).padStart(4, '0')}`
 }
 
+/** Shift an ISO date by whole days. UTC, so a timezone can't move the boundary. */
+function addDaysISO(iso, days) {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
+
 export const useStore = create(
   persist(
     (set, get) => ({
@@ -2596,7 +2603,34 @@ export const useStore = create(
         const je = get().addJournalEntry({
           date, description: `FX Revaluation${note ? ' – ' + note : ''}`, reference: '', type: 'fx_reval', lines,
         })
-        const rec = { id: uuid(), date, journalEntryId: je.id, note: note || '', entries: rows, gainLoss: net, createdAt: new Date().toISOString() }
+
+        // Auto-reverse on the first day of the next period.
+        //
+        // A revaluation restates the *carrying value* of AR/AP for reporting at
+        // the period-end rate; it does not change what the customer owes. When
+        // the invoice later settles, recordInvoicePayment relieves AR at the
+        // original document rate — so without this reversal the restatement is
+        // stranded in AR forever and the same movement is counted twice, once
+        // unrealized and again as a realized gain on settlement.
+        //
+        // Reversing is also what makes the split honest: acc-fxgl holds only
+        // estimates that have since been undone, acc-fxreal holds only cash
+        // differences that actually happened.
+        // The reversal is always postable: the period lock rejects any date at or
+        // before it, so a revaluation that posted at all has a next day that is
+        // open too.
+        const revDate = addDaysISO(date, 1)
+        const revJe = get().addJournalEntry({
+          date: revDate,
+          description: `FX Revaluation reversal${note ? ' – ' + note : ''}`,
+          reference: '', type: 'fx_reval', reverses: je.id,
+          lines: lines.map((l) => ({ ...l, debit: l.credit, credit: l.debit, description: `Reversal – ${l.description}` })),
+        })
+
+        const rec = {
+          id: uuid(), date, journalEntryId: je.id, reversalJEId: revJe.id, reversalDate: revDate,
+          note: note || '', entries: rows, gainLoss: net, createdAt: new Date().toISOString(),
+        }
         set((s) => ({ fxRevaluations: [...s.fxRevaluations, rec] }))
         return rec
       },
