@@ -8,7 +8,7 @@ import { seedDemoData, isCompanyEmpty } from '../utils/demoData'
 import { useT } from '../i18n'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
-  FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles,
+  FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles, ChevronRight,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -322,9 +322,9 @@ export default function Dashboard() {
             <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
-            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" />
-            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" />
-            <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" />
+            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" onOpen={setDrill} />
+            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" onOpen={setDrill} />
+            <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" onOpen={setDrill} />
             <div className="flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-bold text-gray-900 dark:text-slate-100">
               <span>{t('Liabilities + Equity')}</span>
               <span className={balanced ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
@@ -338,8 +338,8 @@ export default function Dashboard() {
             <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
-            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" />
-            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" />
+            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" onOpen={setDrill} />
+            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" onOpen={setDrill} />
             <div className={`flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-black text-base ${netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
               <span className="text-gray-900 dark:text-slate-100">{netProfit >= 0 ? t('Net Profit') : t('Net Loss')}</span>
               <span>{fmtMoney(Math.abs(netProfit), sym)}</span>
@@ -496,19 +496,42 @@ export default function Dashboard() {
   )
 }
 
-function BSPLSection({ title, rows, total, sym, color }) {
+function BSPLSection({ title, rows, total, sym, color, onOpen }) {
   const t = useT()
   return (
     <div className="mb-4">
       <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{t(title)}</p>
       {rows.length === 0 ? (
         <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">{t('None')}</p>
-      ) : rows.map((a) => (
-        <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
-          <span className="truncate pe-2">{a.name}</span>
-          <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
-        </div>
-      ))}
+      ) : rows.map((a) => {
+        // Synthetic aggregate rows (e.g. the injected "Net Profit (to date)"
+        // equity line) carry no account code and aren't a real ledger — leave
+        // those as plain text instead of drilling into a non-existent account.
+        const clickable = !!(onOpen && a.code)
+        const body = (
+          <>
+            <span className="truncate pe-2 flex items-center gap-1">
+              {a.name}
+              {clickable && <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity flex-shrink-0" />}
+            </span>
+            <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
+          </>
+        )
+        return clickable ? (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onOpen(a)}
+            className="group w-full flex justify-between items-center py-0.5 text-gray-600 dark:text-slate-300 text-start rounded-md hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] hover:text-brand-700 dark:hover:text-brand-300 transition-colors -mx-1.5 px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
+          >
+            {body}
+          </button>
+        ) : (
+          <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
+            {body}
+          </div>
+        )
+      })}
       <div className="flex justify-between border-t border-gray-100 dark:border-slate-700 mt-1 pt-1 font-semibold text-gray-800 dark:text-slate-100">
         <span>{t('Total')} {t(title)}</span><span>{fmtMoney(total, sym)}</span>
       </div>
