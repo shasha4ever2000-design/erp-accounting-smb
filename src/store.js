@@ -6,6 +6,7 @@ import { useAuth } from './auth'
 import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
+import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -223,11 +224,17 @@ export const useStore = create(
       addAccount: (a) =>
         set((s) => ({ accounts: [...s.accounts, { ...a, id: uuid() }] })),
 
-      updateAccount: (id, patch) =>
-        set((s) => ({ accounts: s.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) })),
+      updateAccount: (id, patch) => {
+        const before = get().accounts.find((a) => a.id === id)
+        set((s) => ({ accounts: s.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) }))
+        get().logChange('Updated account', before, get().accounts.find((a) => a.id === id), { entity: 'account' })
+      },
 
-      deleteAccount: (id) =>
-        set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) })),
+      deleteAccount: (id) => {
+        const gone = get().accounts.find((a) => a.id === id)
+        set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) }))
+        if (gone) get().logActivity('Deleted account', `${gone.code} – ${gone.name}`, { entity: 'account', entityId: id, entityRef: gone.code })
+      },
 
       // ─── BANK ACCOUNTS (Cash & Cash Equivalents) ───────────────────
       bankAccounts: DEFAULT_BANK_ACCOUNTS,
@@ -262,11 +269,17 @@ export const useStore = create(
         return newC
       },
 
-      updateCustomer: (id, patch) =>
-        set((s) => ({ customers: s.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)) })),
+      updateCustomer: (id, patch) => {
+        const before = get().customers.find((c) => c.id === id)
+        set((s) => ({ customers: s.customers.map((c) => (c.id === id ? { ...c, ...patch } : c)) }))
+        get().logChange('Updated customer', before, get().customers.find((c) => c.id === id), { entity: 'customer' })
+      },
 
-      deleteCustomer: (id) =>
-        set((s) => ({ customers: s.customers.filter((c) => c.id !== id) })),
+      deleteCustomer: (id) => {
+        const gone = get().customers.find((c) => c.id === id)
+        set((s) => ({ customers: s.customers.filter((c) => c.id !== id) }))
+        if (gone) get().logActivity('Deleted customer', gone.name || '', { entity: 'customer', entityId: id, entityRef: gone.name })
+      },
 
       // ─── SUPPLIERS ─────────────────────────────────────────────────
       suppliers: [],
@@ -274,11 +287,17 @@ export const useStore = create(
       addSupplier: (sup) =>
         set((s) => ({ suppliers: [...s.suppliers, { ...sup, id: uuid(), createdAt: new Date().toISOString() }] })),
 
-      updateSupplier: (id, patch) =>
-        set((s) => ({ suppliers: s.suppliers.map((s2) => (s2.id === id ? { ...s2, ...patch } : s2)) })),
+      updateSupplier: (id, patch) => {
+        const before = get().suppliers.find((x) => x.id === id)
+        set((s) => ({ suppliers: s.suppliers.map((s2) => (s2.id === id ? { ...s2, ...patch } : s2)) }))
+        get().logChange('Updated supplier', before, get().suppliers.find((x) => x.id === id), { entity: 'supplier' })
+      },
 
-      deleteSupplier: (id) =>
-        set((s) => ({ suppliers: s.suppliers.filter((s2) => s2.id !== id) })),
+      deleteSupplier: (id) => {
+        const gone = get().suppliers.find((x) => x.id === id)
+        set((s) => ({ suppliers: s.suppliers.filter((s2) => s2.id !== id) }))
+        if (gone) get().logActivity('Deleted supplier', gone.name || '', { entity: 'supplier', entityId: id, entityRef: gone.name })
+      },
 
       // ─── INVENTORY ITEMS ───────────────────────────────────────────
       inventoryItems: [],
@@ -286,21 +305,56 @@ export const useStore = create(
       addInventoryItem: (item) =>
         set((s) => ({ inventoryItems: [...s.inventoryItems, { ...item, id: uuid() }] })),
 
-      updateInventoryItem: (id, patch) =>
-        set((s) => ({ inventoryItems: s.inventoryItems.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
+      updateInventoryItem: (id, patch) => {
+        const before = get().inventoryItems.find((i) => i.id === id)
+        set((s) => ({ inventoryItems: s.inventoryItems.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+        // Cost/quantity move constantly through normal trading; only log the
+        // master-data edits a human actually made.
+        get().logChange('Updated item', before, get().inventoryItems.find((i) => i.id === id), { entity: 'item', ignore: ['quantity', 'costPrice'] })
+      },
 
-      deleteInventoryItem: (id) =>
-        set((s) => ({ inventoryItems: s.inventoryItems.filter((i) => i.id !== id) })),
+      deleteInventoryItem: (id) => {
+        const gone = get().inventoryItems.find((i) => i.id === id)
+        set((s) => ({ inventoryItems: s.inventoryItems.filter((i) => i.id !== id) }))
+        if (gone) get().logActivity('Deleted item', `${gone.code || ''} ${gone.name || ''}`.trim(), { entity: 'item', entityId: id, entityRef: gone.code || gone.name })
+      },
 
       // ─── AUDIT / ACTIVITY LOG ──────────────────────────────────────
       auditLog: [],
 
-      logActivity: (action, detail) => {
-        let user = 'System'
-        try { user = useAuth.getState().users.find((u) => u.id === useAuth.getState().currentUserId)?.name || 'System' } catch { /* ignore */ }
-        const entry = { id: uuid(), ts: new Date().toISOString(), user, action, detail: detail || '' }
+      logActivity: (action, detail, meta = {}) => {
+        let user = 'System', userId = ''
+        try {
+          const auth = useAuth.getState()
+          const u = auth.users.find((x) => x.id === auth.currentUserId)
+          user = u?.name || 'System'; userId = u?.id || ''
+        } catch { /* ignore */ }
+        const entry = {
+          id: uuid(), ts: new Date().toISOString(), user, userId,
+          action, detail: detail || '',
+          // Structured fields make the trail filterable and answer "what
+          // exactly changed", which a free-text detail string cannot.
+          entity: meta.entity || '', entityId: meta.entityId || '', entityRef: meta.entityRef || '',
+          changes: meta.changes || [],
+          severity: meta.severity || severityFor(action),
+        }
         // Append-only audit trail (retain up to 20k events; never wiped — immutability)
         set((st) => ({ auditLog: [...(st.auditLog || []).slice(-19999), entry] }))
+      },
+
+      /**
+       * Log an edit with a field-level diff. Silently records nothing when the
+       * save changed no audited field, so the trail stays signal, not noise.
+       */
+      logChange: (action, before, after, meta = {}) => {
+        const changes = diffRecord(before, after, { ignore: meta.ignore })
+        if (changes.length === 0) return
+        get().logActivity(action, describeChanges(changes), {
+          ...meta,
+          changes,
+          entityRef: meta.entityRef || after?.number || after?.name || before?.number || before?.name || '',
+          entityId: meta.entityId || after?.id || before?.id || '',
+        })
       },
 
       // Audit trail is immutable — this remains only for API compatibility and no
@@ -1237,11 +1291,17 @@ export const useStore = create(
       addEmployee: (emp) =>
         set((s) => ({ employees: [...s.employees, { ...emp, id: uuid(), createdAt: new Date().toISOString() }] })),
 
-      updateEmployee: (id, patch) =>
-        set((s) => ({ employees: s.employees.map((e) => (e.id === id ? { ...e, ...patch } : e)) })),
+      updateEmployee: (id, patch) => {
+        const before = get().employees.find((e) => e.id === id)
+        set((s) => ({ employees: s.employees.map((e) => (e.id === id ? { ...e, ...patch } : e)) }))
+        get().logChange('Updated employee', before, get().employees.find((e) => e.id === id), { entity: 'employee' })
+      },
 
-      deleteEmployee: (id) =>
-        set((s) => ({ employees: s.employees.filter((e) => e.id !== id) })),
+      deleteEmployee: (id) => {
+        const gone = get().employees.find((e) => e.id === id)
+        set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }))
+        if (gone) get().logActivity('Deleted employee', gone.name || '', { entity: 'employee', entityId: id, entityRef: gone.name })
+      },
 
       // ─── PAYROLL RUNS ──────────────────────────────────────────────
       payrollRuns: [],
