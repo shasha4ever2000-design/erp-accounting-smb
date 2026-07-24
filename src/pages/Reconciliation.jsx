@@ -4,12 +4,13 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Select, Input, Btn, Modal } from '../components/UI'
 import { parseCSV, detectStatementColumns } from '../utils/csv'
-import { CheckCircle2, Circle, Landmark, Upload, AlertCircle, Filter } from 'lucide-react'
+import { matchRule, suggestRules } from '../utils/bankRules'
+import { CheckCircle2, Circle, Landmark, Upload, AlertCircle, Filter, Sparkles, Zap, Plus } from 'lucide-react'
 
 export default function Reconciliation() {
   const t = useT()
   const { bankAccounts, accounts, journalEntries, reconciliations, toggleReconciled, getAccountBalance,
-    matchRules, addMatchRule, deleteMatchRule, addBankTransaction, settings } = useStore()
+    matchRules, addMatchRule, deleteMatchRule, addBankTransaction, bankTransactions, settings } = useStore()
   const sym = settings.company.currencySymbol
 
   const [accId, setAccId] = useState(bankAccounts[0]?.accountId || '')
@@ -21,10 +22,18 @@ export default function Reconciliation() {
   // category accounts to book statement lines against (exclude bank/cash accounts themselves)
   const bankAcctIds = new Set(bankAccounts.map((b) => b.accountId))
   const categoryAccounts = accounts.filter((a) => !bankAcctIds.has(a.id) && ['revenue', 'expense', 'liability', 'asset', 'equity'].includes(a.type))
-  const ruleFor = (desc) => {
-    const d = (desc || '').toLowerCase()
-    return matchRules.find((r) => r.contains && d.includes(r.contains.toLowerCase())) || null
-  }
+  // Delegates to the shared engine so a rule's direction and amount bounds are
+  // honoured (the previous inline matcher ignored the stored flow entirely) and
+  // the most specific rule wins rather than merely the first declared.
+  const ruleFor = (desc, amount = 0) => matchRule(matchRules, { description: desc, amount })
+
+  // Rules mined from already-categorised bank history, so the app learns from
+  // what has been booked before instead of relying only on hand-written rules.
+  const suggestions = useMemo(
+    () => suggestRules(bankTransactions, matchRules).slice(0, 5),
+    [bankTransactions, matchRules]
+  )
+  const acctName = (id) => accounts.find((a) => a.id === id)?.name || id
 
   const movements = useMemo(() => {
     const rows = []
@@ -76,7 +85,7 @@ export default function Reconciliation() {
             && Math.abs(m.amount - sl.amount) < 0.01
             && Math.abs((new Date(m.date) - new Date(sl.date)) / 86400000) <= 5)
           if (hit) { used.add(hit.id); matched.push({ ...sl, jeId: hit.id }) }
-          else unmatched.push({ ...sl, catAccountId: ruleFor(sl.desc)?.accountId || '' })
+          else unmatched.push({ ...sl, catAccountId: ruleFor(sl.desc, sl.amount)?.accountId || '' })
         })
         setImportResult({ matched, unmatched })
       } catch (err) {
@@ -118,6 +127,37 @@ export default function Reconciliation() {
     addMatchRule(newRule)
     setNewRule({ contains: '', accountId: '' })
   }
+
+  const acceptSuggestion = (s) => addMatchRule({ contains: s.contains, accountId: s.accountId, flow: s.flow })
+
+  // Book every unmatched line that already has a category, in one pass —
+  // otherwise a 40-line statement means 40 individual clicks.
+  const bookAllCategorised = () => {
+    const ready = (importResult?.unmatched || []).filter((u) => u.catAccountId)
+    if (!ready.length) return
+    if (!confirm(t('Book {n} categorised line(s) now?').replace('{n}', ready.length))) return
+    let booked = 0, failed = 0
+    const remaining = []
+    ;(importResult.unmatched || []).forEach((u) => {
+      if (!u.catAccountId) { remaining.push(u); return }
+      try {
+        const tx = addBankTransaction({
+          type: u.amount >= 0 ? 'money_in' : 'money_out',
+          bankAccountId: accId, accountId: u.catAccountId,
+          amount: Math.abs(u.amount), date: u.date || new Date().toISOString().slice(0, 10),
+          description: u.desc || t('Bank statement line'), reference: 'STMT',
+        })
+        if (tx?.journalEntryId) toggleReconciled(accId, tx.journalEntryId)
+        booked++
+      } catch {
+        // A locked period (or any other rejection) shouldn't lose the rest —
+        // keep the line so the user can see and retry it.
+        failed++; remaining.push(u)
+      }
+    })
+    setImportResult((r) => ({ ...r, unmatched: remaining }))
+    if (failed) alert(t('Booked {n}, but {f} could not be posted (check for a locked period).').replace('{n}', booked).replace('{f}', failed))
+  }
   const clearedBalance = movements.filter((m) => isRec(m.id)).reduce((s, m) => s + m.amount, 0)
   const bookBalance = getAccountBalance(accId)
   const stmt = parseFloat(stmtBalance)
@@ -157,6 +197,28 @@ export default function Reconciliation() {
           </Select>
           <Btn onClick={saveRule}>{t('Add Rule')}</Btn>
         </div>
+
+        {/* Rules learned from how past bank lines were actually categorised. */}
+        {suggestions.length > 0 && (
+          <div className="mb-3 rounded-xl bg-violet-50/70 dark:bg-violet-500/[0.08] p-3">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-violet-700 dark:text-violet-300 mb-2">
+              <Sparkles size={12} /> {t('Suggested from your history')}
+            </p>
+            <div className="space-y-1.5">
+              {suggestions.map((s) => (
+                <div key={s.contains} className="flex items-center justify-between gap-3 text-sm">
+                  <span className="min-w-0 text-gray-700 dark:text-slate-200 truncate">
+                    "<span className="font-medium">{s.contains}</span>" → {acctName(s.accountId)}
+                    <span className="text-xs text-gray-400 dark:text-slate-500 ms-1.5">
+                      {t('seen {n}×').replace('{n}', s.occurrences)}{s.flow !== 'auto' ? ` · ${t(s.flow === 'in' ? 'money in' : 'money out')}` : ''}
+                    </span>
+                  </span>
+                  <Btn size="sm" variant="secondary" onClick={() => acceptSuggestion(s)}><Plus size={12} /> {t('Add')}</Btn>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
         {matchRules.length === 0 ? (
           <p className="text-xs text-gray-400 dark:text-slate-500">{t('No rules yet.')}</p>
         ) : (
@@ -194,7 +256,14 @@ export default function Reconciliation() {
 
             {importResult.unmatched.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1.5">{t('Unmatched statement lines')}</p>
+                <div className="flex items-center justify-between mb-1.5">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Unmatched statement lines')}</p>
+                  {importResult.unmatched.some((u) => u.catAccountId) && (
+                    <Btn size="sm" variant="secondary" onClick={bookAllCategorised}>
+                      <Zap size={13} /> {t('Book all {n} categorised').replace('{n}', importResult.unmatched.filter((u) => u.catAccountId).length)}
+                    </Btn>
+                  )}
+                </div>
                 <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-slate-700 rounded-lg divide-y divide-gray-50 dark:divide-slate-700/50">
                   {importResult.unmatched.map((u, i) => (
                     <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm">

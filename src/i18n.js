@@ -878,6 +878,14 @@ const AR = {
   'collected': 'المحصّلة',
   'due to remit': 'مستحقة التوريد',
   'Sales-tax model: tax collected on sales only — this app does not track input-tax recovery on purchases under this system, unlike VAT/GST.': 'نموذج ضريبة المبيعات: تُحصّل الضريبة على المبيعات فقط — لا يتتبّع هذا النظام استرداد ضريبة المدخلات على المشتريات، بخلاف VAT/GST.',
+  // ── Bank rules ──
+  'Suggested from your history': 'مقترحة من سجلك',
+  'seen {n}×': 'ظهرت {n}×',
+  'money in': 'وارد',
+  'money out': 'صادر',
+  'Book all {n} categorised': 'ترحيل جميع الـ{n} المصنّفة',
+  'Book {n} categorised line(s) now?': 'ترحيل {n} سطر مصنّف الآن؟',
+  'Booked {n}, but {f} could not be posted (check for a locked period).': 'تم ترحيل {n}، لكن تعذّر ترحيل {f} (تحقق من وجود فترة مقفلة).',
   // ── Recurring expenses ──
   'Recurring Expenses': 'المصروفات المتكررة',
   'New Recurring Expense': 'مصروف متكرر جديد',
