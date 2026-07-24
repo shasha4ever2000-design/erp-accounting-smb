@@ -7,6 +7,7 @@ import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database,
 import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
 import CloudSyncCard from '../components/CloudSyncCard'
+import IntegrityCheckCard from '../components/IntegrityCheckCard'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -681,6 +682,8 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        <IntegrityCheckCard />
 
         <CloudSyncCard />
 
