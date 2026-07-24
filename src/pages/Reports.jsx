@@ -4,6 +4,7 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { vatBreakdown } from '../utils/vat'
 import { buildVatReturn, yearQuarters } from '../utils/vatReturn'
 import { buildSalesTaxReturn } from '../utils/salesTaxReturn'
+import { priorPeriod, variancePct, varianceTone } from '../utils/priorPeriod'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -47,12 +48,15 @@ export default function Reports() {
   // Drill-down: click any Balance Sheet / P&L line to open its Statement of Account.
   // mode 'period' → P&L (movements in the range); 'todate' → Balance Sheet (cumulative).
   const [drill, setDrill] = useState(null)
+  // Prior-period comparison for the P&L: off by default so the plain report
+  // stays uncluttered, then adds a comparative + variance column on demand.
+  const [compareBasis, setCompareBasis] = useState('none') // 'none' | 'previous' | 'lastYear'
   const openDrill = (accountId, mode) => setDrill({ accountId, mode })
   const drillAccount = drill ? accounts.find((a) => a.id === drill.accountId) : null
 
   // One clickable Balance-Sheet / P&L line → drills into that ledger's Statement
   // of Account. Non-real (aggregate) rows like Retained Earnings pass clickable=false.
-  const LedgerLine = ({ account, mode, clickable = true, indent = false }) => {
+  const LedgerLine = ({ account, mode, clickable = true, indent = false, prior = null }) => {
     const body = (
       <>
         <span className={`flex items-center gap-2 text-gray-600 dark:text-slate-300 ${indent ? 'ps-3' : ''}`}>
@@ -60,7 +64,10 @@ export default function Reports() {
           <span className="group-hover:text-brand-600 dark:group-hover:text-brand-400 transition-colors">{account.name}</span>
           {clickable && <ChevronRight size={13} className="opacity-0 group-hover:opacity-100 -ms-1 text-brand-400 transition-opacity print:hidden" />}
         </span>
-        <span className="font-medium text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(account.balance, sym)}</span>
+        <span className="flex items-center gap-4 flex-shrink-0">
+          {prior != null && <VarianceCells value={account.balance} prior={prior} type={account.type} />}
+          <span className="w-32 text-end font-medium text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(account.balance, sym)}</span>
+        </span>
       </>
     )
     if (!clickable)
@@ -93,6 +100,41 @@ export default function Reports() {
   // balance sheet (assets, liabilities, equity and retained earnings to date)
   const balancesToEnd = useMemo(() => getAllBalances(undefined, endDate), [getAllBalances, endDate, journalEntries])
 
+  const priorRange = useMemo(
+    () => (compareBasis === 'none' ? null : priorPeriod(startDate, endDate, compareBasis)),
+    [compareBasis, startDate, endDate]
+  )
+  const priorBalances = useMemo(
+    () => (priorRange ? getAllBalances(priorRange.start, priorRange.end) : null),
+    [getAllBalances, priorRange, journalEntries]
+  )
+  // Balance sheet comparatives are cumulative-to-date, so the comparison point
+  // is "as at the prior period's end date", not "movements within it".
+  const priorBalancesToEnd = useMemo(
+    () => (priorRange ? getAllBalances(undefined, priorRange.end) : null),
+    [getAllBalances, priorRange, journalEntries]
+  )
+  const compareLabel = compareBasis === 'lastYear' ? t('Last year') : t('Prior period')
+
+  // The prior value + variance % pair, shared by every comparative row so the
+  // columns line up and the colour rule is applied in exactly one place.
+  const VarianceCells = ({ value, prior, type }) => {
+    const pct = variancePct(value, prior)
+    // Tone follows the *displayed* percentage, not the raw delta: a 20-riyal
+    // move on a 44,000 balance rounds to 0% and colouring that red reads as a
+    // bug, not a signal.
+    const tone = pct === null || pct === 0 ? 'flat' : varianceTone(value - prior, type)
+    const cls = tone === 'good' ? 'text-success-600 dark:text-success-400'
+      : tone === 'bad' ? 'text-rose-600 dark:text-rose-400'
+      : 'text-gray-400 dark:text-slate-500'
+    return (
+      <>
+        <span className="w-28 text-end text-gray-400 dark:text-slate-500 tabular-nums text-sm">{fmtMoney(prior, sym)}</span>
+        <span className={`w-24 text-end tabular-nums text-xs ${cls}`}>{pct === null ? '—' : `${pct > 0 ? '+' : ''}${pct}%`}</span>
+      </>
+    )
+  }
+
   const accountBalance = (id, bals) => {
     const b = bals[id]
     if (!b) return 0
@@ -101,13 +143,46 @@ export default function Reports() {
     return ['asset', 'expense'].includes(acc.type) ? b.dr - b.cr : b.cr - b.dr
   }
 
+  // Header strip naming the comparison columns, so "1,200 / +14%" is readable.
+  const CompareHead = ({ label = '', compare = compareLabel, current = t('This period') }) => (
+    <div className="flex items-center justify-between px-3 pb-1 text-[10px] uppercase tracking-wider text-gray-400 dark:text-slate-500">
+      <span>{label}</span>
+      <span className="flex items-center gap-4 flex-shrink-0">
+        <span className="w-28 text-end">{compare}</span>
+        <span className="w-24 text-end">{t('Var')}</span>
+        <span className="w-32 text-end">{current}</span>
+      </span>
+    </div>
+  )
+
+  // A bolded subtotal that carries the same prior / variance columns as the
+  // lines above it, so the eye can run straight down each column.
+  const TotalRow = ({ label, value, prior, type, className = '', valueClass = '' }) => (
+    <div className={`flex items-center justify-between ${className}`}>
+      <span className={`font-bold text-sm ${valueClass || 'text-gray-800 dark:text-slate-100'}`}>{label}</span>
+      <span className="flex items-center gap-4 flex-shrink-0">
+        {prior != null && <VarianceCells value={value} prior={prior} type={type} />}
+        <span className={`w-32 text-end font-bold tabular-nums ${valueClass || 'text-gray-800 dark:text-slate-100'}`}>{fmtMoney(value, sym)}</span>
+      </span>
+    </div>
+  )
+
   // ─── P&L ───────────────────────────────────────────────────────────
   const PLReport = () => {
-    const revenueAccs = accounts.filter((a) => a.type === 'revenue').map((a) => ({ ...a, balance: accountBalance(a.id, balances) })).filter((a) => a.balance !== 0)
-    const expenseAccs = accounts.filter((a) => a.type === 'expense').map((a) => ({ ...a, balance: accountBalance(a.id, balances) })).filter((a) => a.balance !== 0)
+    const withPrior = (a) => (priorBalances ? { ...a, prior: accountBalance(a.id, priorBalances) } : a)
+    // A line worth showing is one with a balance in either period — an account
+    // that ran to zero this month is exactly what a comparative should reveal.
+    const pick = (type) => accounts.filter((a) => a.type === type)
+      .map((a) => withPrior({ ...a, balance: accountBalance(a.id, balances) }))
+      .filter((a) => a.balance !== 0 || (a.prior || 0) !== 0)
+    const revenueAccs = pick('revenue')
+    const expenseAccs = pick('expense')
     const totalRevenue = revenueAccs.reduce((s, a) => s + a.balance, 0)
     const totalExpenses = expenseAccs.reduce((s, a) => s + a.balance, 0)
     const netProfit = totalRevenue - totalExpenses
+    const priorRevenue = priorBalances ? revenueAccs.reduce((s, a) => s + (a.prior || 0), 0) : null
+    const priorExpenses = priorBalances ? expenseAccs.reduce((s, a) => s + (a.prior || 0), 0) : null
+    const priorNet = priorBalances ? priorRevenue - priorExpenses : null
 
     return (
       <div className="space-y-6">
@@ -126,6 +201,7 @@ export default function Reports() {
             <div>
               <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg tracking-tight">{company.name}</h3>
               <p className="text-sm text-gray-500 dark:text-slate-400">{t('Income Statement')} · {fmtDate(startDate)} — {fmtDate(endDate)}</p>
+              {priorRange && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{t('Compared with')} {fmtDate(priorRange.start)} — {fmtDate(priorRange.end)}</p>}
             </div>
             <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-surface-800 rounded-full px-2.5 py-1 print:hidden">
               <ChevronRight size={12} /> {t('Click any line for its ledger')}
@@ -136,11 +212,11 @@ export default function Reports() {
             <div className="flex items-center gap-2 mb-1"><span className="w-1.5 h-1.5 rounded-full bg-success-500" /><h4 className="font-bold text-success-700 dark:text-success-400 text-xs uppercase tracking-wider">{t('Revenue')}</h4></div>
             {revenueAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No revenue for this period')}</p> : (
               <div className="mb-2">
-                {revenueAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" />)}
-                <div className="flex items-center justify-between mt-1 rounded-lg bg-success-50/60 dark:bg-success-500/[0.08] px-3 py-2">
-                  <span className="font-bold text-success-800 dark:text-success-300 text-sm">{t('Total Revenue')}</span>
-                  <span className="font-bold text-success-800 dark:text-success-300 tabular-nums">{fmtMoney(totalRevenue, sym)}</span>
-                </div>
+                {priorBalances && <CompareHead label={t('Account')} />}
+                {revenueAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" prior={priorBalances ? a.prior : null} />)}
+                <TotalRow label={t('Total Revenue')} value={totalRevenue} prior={priorRevenue} type="revenue"
+                  className="mt-1 rounded-lg bg-success-50/60 dark:bg-success-500/[0.08] px-3 py-2"
+                  valueClass="text-success-800 dark:text-success-300" />
               </div>
             )}
 
@@ -148,18 +224,21 @@ export default function Reports() {
             <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><h4 className="font-bold text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wider">{t('Expenses')}</h4></div>
             {expenseAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No expenses for this period')}</p> : (
               <div className="mb-2">
-                {expenseAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" />)}
-                <div className="flex items-center justify-between mt-1 rounded-lg bg-rose-50/60 dark:bg-rose-500/[0.08] px-3 py-2">
-                  <span className="font-bold text-rose-800 dark:text-rose-300 text-sm">{t('Total Expenses')}</span>
-                  <span className="font-bold text-rose-800 dark:text-rose-300 tabular-nums">{fmtMoney(totalExpenses, sym)}</span>
-                </div>
+                {priorBalances && <CompareHead label={t('Account')} />}
+                {expenseAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" prior={priorBalances ? a.prior : null} />)}
+                <TotalRow label={t('Total Expenses')} value={totalExpenses} prior={priorExpenses} type="expense"
+                  className="mt-1 rounded-lg bg-rose-50/60 dark:bg-rose-500/[0.08] px-3 py-2"
+                  valueClass="text-rose-800 dark:text-rose-300" />
               </div>
             )}
 
             {/* Net */}
             <div className="border-t-2 border-gray-200 dark:border-surface-700 mt-5 pt-4 flex justify-between items-center">
               <span className="text-lg font-black text-gray-900 dark:text-slate-100 tracking-tight">{t('Net')} {netProfit >= 0 ? t('Profit') : t('Loss')}</span>
-              <span className={`text-2xl font-black tabular-nums tracking-tight ${netProfit >= 0 ? 'text-success-600 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(Math.abs(netProfit), sym)}</span>
+              <span className="flex items-center gap-4 flex-shrink-0">
+                {priorNet != null && <VarianceCells value={netProfit} prior={priorNet} type="revenue" />}
+                <span className={`w-32 text-end text-2xl font-black tabular-nums tracking-tight ${netProfit >= 0 ? 'text-success-600 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(Math.abs(netProfit), sym)}</span>
+              </span>
             </div>
           </div>
         </Card>
@@ -170,29 +249,38 @@ export default function Reports() {
   // ─── Balance Sheet ──────────────────────────────────────────────
   const BSReport = () => {
     // as at the end date, cumulative from inception (not the selected period)
-    const assetAccs = accounts.filter((a) => a.type === 'asset').map((a) => ({ ...a, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance !== 0)
-    const liabAccs = accounts.filter((a) => a.type === 'liability').map((a) => ({ ...a, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance !== 0)
-    const equityAccs = accounts.filter((a) => a.type === 'equity').map((a) => ({ ...a, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance !== 0)
+    const pick = (type) => accounts.filter((a) => a.type === type)
+      .map((a) => ({
+        ...a,
+        balance: accountBalance(a.id, balancesToEnd),
+        prior: priorBalancesToEnd ? accountBalance(a.id, priorBalancesToEnd) : null,
+      }))
+      .filter((a) => a.balance !== 0 || (a.prior || 0) !== 0)
+    const assetAccs = pick('asset')
+    const liabAccs = pick('liability')
+    const equityAccs = pick('equity')
 
-    const totalAssets = assetAccs.reduce((s, a) => s + a.balance, 0)
-    const totalLiabs = liabAccs.reduce((s, a) => s + a.balance, 0)
-    const totalEquity = equityAccs.reduce((s, a) => s + a.balance, 0)
+    const sum = (rows, key) => rows.reduce((s, a) => s + (a[key] || 0), 0)
+    const totalAssets = sum(assetAccs, 'balance')
+    const totalLiabs = sum(liabAccs, 'balance')
+    const totalEquity = sum(equityAccs, 'balance')
 
     // Retained earnings = all net income from inception through the end date, so
     // Assets = Liabilities + Equity + Retained Earnings always holds.
-    const netProfit = accounts.filter((a) => a.type === 'revenue').reduce((s, a) => s + accountBalance(a.id, balancesToEnd), 0)
-                    - accounts.filter((a) => a.type === 'expense').reduce((s, a) => s + accountBalance(a.id, balancesToEnd), 0)
+    const netAt = (bals) => accounts.filter((a) => a.type === 'revenue').reduce((s, a) => s + accountBalance(a.id, bals), 0)
+                           - accounts.filter((a) => a.type === 'expense').reduce((s, a) => s + accountBalance(a.id, bals), 0)
+    const netProfit = netAt(balancesToEnd)
+    const priorNetProfit = priorBalancesToEnd ? netAt(priorBalancesToEnd) : null
     const totalEquityAndProfit = totalEquity + netProfit
 
-    const Section = ({ title, items, total, dot }) => (
+    const Section = ({ title, items, total, prior, type, dot }) => (
       <div className="mb-6">
         <div className="flex items-center gap-2 mb-1.5"><span className={`w-1.5 h-1.5 rounded-full ${dot}`} /><h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-slate-400">{title}</h4></div>
+        {priorBalancesToEnd && items.length > 0 && <CompareHead compare={fmtDate(priorRange.end)} current={fmtDate(endDate)} />}
         {items.length === 0 && <p className="py-1.5 ps-3 text-gray-400 dark:text-slate-500 text-sm">—</p>}
-        {items.map((a) => <LedgerLine key={a.id} account={a} mode="todate" clickable={a.id !== 'net'} indent />)}
-        <div className="flex items-center justify-between border-t border-gray-200 dark:border-surface-700 mt-1.5 pt-2 px-3">
-          <span className="font-bold text-gray-800 dark:text-slate-100 text-sm">{t('Total')} {title}</span>
-          <span className="font-bold text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(total, sym)}</span>
-        </div>
+        {items.map((a) => <LedgerLine key={a.id} account={a} mode="todate" clickable={a.id !== 'net'} indent prior={priorBalancesToEnd ? (a.prior || 0) : null} />)}
+        <TotalRow label={`${t('Total')} ${title}`} value={total} prior={prior} type={type}
+          className="border-t border-gray-200 dark:border-surface-700 mt-1.5 pt-2 px-3" />
       </div>
     )
 
@@ -202,6 +290,7 @@ export default function Reports() {
           <div>
             <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg tracking-tight">{company.name}</h3>
             <p className="text-sm text-gray-500 dark:text-slate-400">{t('Balance Sheet')} · {t('As at')} {fmtDate(endDate)}</p>
+            {priorRange && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{t('Compared with')} {fmtDate(priorRange.end)}</p>}
           </div>
           <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-surface-800 rounded-full px-2.5 py-1 print:hidden">
             <ChevronRight size={12} /> {t('Click any line for its ledger')}
@@ -213,15 +302,20 @@ export default function Reports() {
               <span className="text-sm font-bold text-brand-700 dark:text-brand-300 uppercase tracking-wide">{t('Total Assets')}</span>
               <span className="text-lg font-black text-brand-700 dark:text-brand-300 tabular-nums">{fmtMoney(totalAssets, sym)}</span>
             </div>
-            <Section title="Assets" items={assetAccs} total={totalAssets} dot="bg-brand-500" />
+            <Section title="Assets" items={assetAccs} total={totalAssets} type="asset" dot="bg-brand-500"
+              prior={priorBalancesToEnd ? sum(assetAccs, 'prior') : null} />
           </div>
           <div>
             <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-4 ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'bg-success-50/60 dark:bg-success-500/[0.08]' : 'bg-rose-50/60 dark:bg-rose-500/[0.08]'}`}>
               <span className={`text-sm font-bold uppercase tracking-wide ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-700 dark:text-rose-300'}`}>{t('Liabilities + Equity')}</span>
               <span className={`text-lg font-black tabular-nums ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(totalLiabs + totalEquityAndProfit, sym)}</span>
             </div>
-            <Section title="Liabilities" items={liabAccs} total={totalLiabs} dot="bg-orange-500" />
-            <Section title="Equity" items={[...equityAccs, netProfit !== 0 && { id: 'net', code: '', name: t('Retained Earnings (to date)'), balance: netProfit }].filter(Boolean)} total={totalEquityAndProfit} dot="bg-violet-500" />
+            <Section title="Liabilities" items={liabAccs} total={totalLiabs} type="liability" dot="bg-orange-500"
+              prior={priorBalancesToEnd ? sum(liabAccs, 'prior') : null} />
+            <Section title="Equity" dot="bg-violet-500" type="equity"
+              items={[...equityAccs, (netProfit !== 0 || priorNetProfit) && { id: 'net', code: '', name: t('Retained Earnings (to date)'), type: 'equity', balance: netProfit, prior: priorNetProfit }].filter(Boolean)}
+              total={totalEquityAndProfit}
+              prior={priorBalancesToEnd ? sum(equityAccs, 'prior') + priorNetProfit : null} />
             {Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) > 0.01 && (
               <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 flex items-center gap-1">⚠ {t('Balance sheet is out of balance by')} {fmtMoney(Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)), sym)}</p>
             )}
@@ -1325,6 +1419,17 @@ export default function Reports() {
           </div>
           <Input label="From" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40" />
           <Input label="To" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40" />
+          {(report === 'pl' || report === 'bs') && (
+            <div className="print:hidden">
+              <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('Compare with')}</label>
+              <select className="border border-slate-300/90 dark:border-surface-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 shadow-input dark:shadow-none focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 cursor-pointer transition-all duration-150"
+                value={compareBasis} onChange={(e) => setCompareBasis(e.target.value)}>
+                <option value="none">{t('No comparison')}</option>
+                <option value="previous">{t('Previous period')}</option>
+                <option value="lastYear">{t('Same period last year')}</option>
+              </select>
+            </div>
+          )}
           {rx && <ExportMenu filename={rx.filename} title={t(reportTitle)} subtitle={`${fmtDate(startDate)} — ${fmtDate(endDate)}`} rows={rx.rows} columns={rx.columns} />}
           <Btn variant="secondary" onClick={() => window.print()}>{t('Print / Export')}</Btn>
         </div>
