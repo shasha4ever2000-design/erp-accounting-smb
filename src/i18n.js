@@ -878,6 +878,11 @@ const AR = {
   'collected': 'المحصّلة',
   'due to remit': 'مستحقة التوريد',
   'Sales-tax model: tax collected on sales only — this app does not track input-tax recovery on purchases under this system, unlike VAT/GST.': 'نموذج ضريبة المبيعات: تُحصّل الضريبة على المبيعات فقط — لا يتتبّع هذا النظام استرداد ضريبة المدخلات على المشتريات، بخلاف VAT/GST.',
+  'Difference': 'الفرق',
+  'Could not post this entry': 'تعذّر ترحيل هذا القيد',
+  'Debits and credits must be equal.': 'يجب أن يتساوى المدين والدائن.',
+  'One line has an amount but no account selected — it will not be posted.': 'يوجد سطر بمبلغ دون تحديد حساب — لن يتم ترحيله.',
+  '{n} lines have an amount but no account selected — they will not be posted.': 'يوجد {n} أسطر بمبالغ دون تحديد حساب — لن يتم ترحيلها.',
   'End Date': 'تاريخ الانتهاء',
   'Reference': 'المرجع',
   // ── Cloud sync ──

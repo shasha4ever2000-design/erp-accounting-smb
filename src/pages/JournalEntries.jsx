@@ -28,9 +28,15 @@ export default function JournalEntries() {
   const addLine = () => setForm((f) => ({ ...f, lines: [...f.lines, emptyLine()] }))
   const removeLine = (id) => setForm((f) => ({ ...f, lines: f.lines.filter((l) => l.id !== id) }))
 
-  const totalDr = form.lines.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0)
-  const totalCr = form.lines.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)
+  // Only lines that will actually be posted count toward the balance. A line
+  // carrying an amount but no account is dropped on save, so including it here
+  // would light up "Post Entry" for an entry the ledger then rejects.
+  const postable = form.lines.filter((l) => l.accountId && (parseFloat(l.debit) || parseFloat(l.credit)))
+  const totalDr = postable.reduce((s, l) => s + (parseFloat(l.debit) || 0), 0)
+  const totalCr = postable.reduce((s, l) => s + (parseFloat(l.credit) || 0), 0)
   const balanced = Math.abs(totalDr - totalCr) < 0.001 && totalDr > 0
+  // Amount typed but account still blank — surfaced so the line isn't silently dropped.
+  const orphanLines = form.lines.filter((l) => !l.accountId && (parseFloat(l.debit) || parseFloat(l.credit))).length
 
   const lockDate = settings?.accounting?.lockDate
   const dateLocked = !!(lockDate && form.date && String(form.date) <= String(lockDate))
@@ -45,8 +51,13 @@ export default function JournalEntries() {
     try {
       addJournalEntry({ ...form, lines, type: 'manual' })
     } catch (e) {
-      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate))
-      throw e
+      const msg = String(e.message || '')
+      if (msg.startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate))
+      // Never let a posting rejection escape as an uncaught error — that leaves
+      // the modal open with no feedback at all.
+      if (msg.startsWith('JE_UNBALANCED')) return alert(t('Debits must equal credits.'))
+      alert(t('Could not post this entry') + ': ' + msg)
+      return
     }
     setModal(false)
     setForm({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
@@ -204,8 +215,15 @@ export default function JournalEntries() {
               </tbody>
             </table>
           </div>
+          {orphanLines > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400">
+              {orphanLines === 1
+                ? t('One line has an amount but no account selected — it will not be posted.')
+                : t('{n} lines have an amount but no account selected — they will not be posted.').replace('{n}', orphanLines)}
+            </p>
+          )}
           {!balanced && totalDr > 0 && (
-            <p className="text-xs text-red-600 dark:text-red-400">Debits and credits must be equal. Difference: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
+            <p className="text-xs text-red-600 dark:text-red-400">{t('Debits and credits must be equal.')} {t('Difference')}: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
           )}
           <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add Line')}</Btn>
           <div className="flex justify-end gap-2 pt-1">
