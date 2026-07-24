@@ -845,6 +845,7 @@ const AR = {
   'Could not read this backup file': 'تعذر قراءة ملف النسخة الاحتياطية',
   'Delete this snapshot?': 'حذف هذه اللقطة؟',
   'Storage is nearly full — download a backup and consider removing your logo or old data.': 'التخزين ممتلئ تقريباً — قم بتنزيل نسخة احتياطية وفكر في إزالة الشعار أو البيانات القديمة.',
+  'Items': 'الأصناف',
   // ── Demo data ──
   'New here? Explore with sample data': 'جديد هنا؟ استكشف باستخدام بيانات تجريبية',
   'Load a realistic demo company — customers, stock, invoices in every state, and four months of activity. Erase it anytime from Settings.': 'حمّل شركة تجريبية واقعية — عملاء ومخزون وفواتير بجميع الحالات وأربعة أشهر من النشاط. يمكنك مسحها في أي وقت من الإعدادات.',

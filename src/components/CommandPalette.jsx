@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, CornerDownLeft } from 'lucide-react'
+import { useStore } from '../store'
+import { fmtMoney } from '../utils/formatters'
 import { useT } from '../i18n'
 
 const COMMANDS = [
@@ -81,11 +83,47 @@ export default function CommandPalette() {
     }
   }, [open])
 
+  const { invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, settings } = useStore()
+  const sym = settings.company.currencySymbol
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return COMMANDS
-    return COMMANDS.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
-  }, [query])
+    const nav = COMMANDS.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
+    if (q.length < 2) return nav
+
+    // Live document search across the books. Amounts match on their digits,
+    // so "1437" finds the $1,437.50 invoice.
+    const qDigits = q.replace(/[^0-9.]/g, '')
+    const amtHit = (n) => qDigits.length >= 3 && String(Math.round((n || 0) * 100) / 100).includes(qDigits)
+    const txtHit = (...fields) => fields.some((f) => (f || '').toLowerCase().includes(q))
+    const take = (arr, n = 5) => arr.slice(0, n)
+
+    const docs = [
+      ...take(invoices.filter((i) => txtHit(i.number, i.customerName) || amtHit(i.total))).map((i) => ({
+        label: `${i.number} · ${i.customerName || '—'} · ${fmtMoney(i.total, sym)}`, path: `/invoices/${i.id}`, group: 'Invoices', raw: true,
+      })),
+      ...take(quotations.filter((d) => txtHit(d.number, d.customerName) || amtHit(d.total))).map((d) => ({
+        label: `${d.number} · ${d.customerName || '—'} · ${fmtMoney(d.total, sym)}`, path: '/quotations', group: 'Quotations', raw: true,
+      })),
+      ...take(purchases.filter((p) => txtHit(p.number, p.supplierName) || amtHit(p.total))).map((p) => ({
+        label: `${p.number} · ${p.supplierName || '—'} · ${fmtMoney(p.total, sym)}`, path: '/purchases', group: 'Purchases', raw: true,
+      })),
+      ...take(creditNotes.filter((c) => txtHit(c.number, c.customerName) || amtHit(c.total)), 3).map((c) => ({
+        label: `${c.number} · ${c.customerName || '—'} · ${fmtMoney(c.total, sym)}`, path: '/credit-notes', group: 'Credit Notes', raw: true,
+      })),
+      ...take(customers.filter((c) => txtHit(c.name, c.email, c.phone))).map((c) => ({
+        label: c.name, path: '/customers', group: 'Customers', raw: true,
+      })),
+      ...take(suppliers.filter((s) => txtHit(s.name, s.email)), 3).map((s) => ({
+        label: s.name, path: '/suppliers', group: 'Suppliers', raw: true,
+      })),
+      ...take(inventoryItems.filter((it) => txtHit(it.name, it.code)), 3).map((it) => ({
+        label: `${it.code ? it.code + ' · ' : ''}${it.name}`, path: '/inventory', group: 'Items', raw: true,
+      })),
+    ]
+    return [...docs, ...nav]
+  }, [query, invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, sym])
 
   useEffect(() => { setActive(0) }, [query])
 
@@ -138,7 +176,7 @@ export default function CommandPalette() {
                       : 'text-slate-700 dark:text-slate-200'
                   }`}
                 >
-                  <span className="truncate">{t(cmd.label)}</span>
+                  <span className="truncate">{cmd.raw ? cmd.label : t(cmd.label)}</span>
                   {active === i && <CornerDownLeft size={14} className="flex-shrink-0 opacity-70 rtl:-scale-x-100" />}
                 </button>
               </div>
