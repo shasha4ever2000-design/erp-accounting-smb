@@ -39,7 +39,7 @@ export default function ExpenseClaims() {
   const pickEmployee = (id) => {
     const emp = employees.find((e) => e.id === id)
     setField('employeeId', id)
-    setField('employeeName', emp ? `${emp.firstName} ${emp.lastName}` : '')
+    setField('employeeName', emp ? emp.name : '')
   }
 
   const filtered = filter === 'all' ? expenseClaims : expenseClaims.filter((c) => c.status === filter)
@@ -147,7 +147,7 @@ export default function ExpenseClaims() {
               <Select label="Employee" value={form.employeeId} onChange={(e) => pickEmployee(e.target.value)}>
                 <option value="">— Select employee —</option>
                 {employees.map((e) => (
-                  <option key={e.id} value={e.id}>{e.firstName} {e.lastName}</option>
+                  <option key={e.id} value={e.id}>{e.name}</option>
                 ))}
               </Select>
             ) : (
