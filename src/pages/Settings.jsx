@@ -6,6 +6,7 @@ import { useT, useI18n } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock, Shield, ShieldCheck, Clock, Trash2, RotateCcw, KeyRound } from 'lucide-react'
 import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
+import { APPROVAL_KINDS, defaultApprovalSettings } from '../utils/approvals'
 import CloudSyncCard from '../components/CloudSyncCard'
 import IntegrityCheckCard from '../components/IntegrityCheckCard'
 
@@ -24,7 +25,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, setAutoPostRecurring, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -47,6 +48,7 @@ export default function Settings() {
   const removeCf = (entity, label) => setCustomFields((c) => ({ ...c, [entity]: c[entity].filter((l) => l !== label) }))
   const [showKey, setShowKey] = useState(false)
   const [lockInput, setLockInput] = useState(settings.accounting?.lockDate || '')
+  const approvals = { ...defaultApprovalSettings(), ...(settings.approvals || {}) }
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
   const logoRef = useRef(null)
@@ -540,6 +542,66 @@ export default function Settings() {
                 </Btn>
               )}
             </div>
+          ) : (
+            <span className="text-xs text-gray-400 dark:text-slate-500">{t('Owners / Admins only')}</span>
+          )}
+        </Card>
+
+        {/* Approval thresholds */}
+        <Card className="p-6">
+          <div className="flex items-center gap-2.5 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center">
+              <ShieldCheck size={14} className="text-white" />
+            </div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Approvals')}</h2>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            {t('Hold large documents for a second pair of eyes. Anything at or above a threshold is parked in Approvals and does not touch the ledger until an owner or admin approves it. Leave a threshold at 0 to never gate that type.')}
+          </p>
+
+          {isManager ? (
+            <>
+              <label className="flex items-start gap-3 cursor-pointer mb-4">
+                <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-slate-600"
+                  checked={!!approvals.enabled}
+                  onChange={(e) => updateApprovals({ enabled: e.target.checked })} />
+                <span className="text-sm">
+                  <span className="font-medium text-gray-800 dark:text-slate-100">{t('Require approval above a threshold')}</span>
+                  <span className="block text-gray-500 dark:text-slate-400 mt-0.5">{t('Applies to new documents only — anything already posted is unaffected.')}</span>
+                </span>
+              </label>
+
+              <div className={`space-y-3 ${approvals.enabled ? '' : 'opacity-50 pointer-events-none'}`}>
+                {Object.entries(APPROVAL_KINDS).map(([kind, cfg]) => (
+                  <div key={kind} className="flex flex-wrap items-center gap-3 justify-between">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 dark:text-slate-100">{t(cfg.label)}</p>
+                      <p className="text-xs text-gray-400 dark:text-slate-500">{t(cfg.hint)}</p>
+                    </div>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-xs text-gray-400 dark:text-slate-500">{settings.company.currencySymbol}</span>
+                      <Input type="number" min="0" step="any" className="w-36"
+                        id={`approval-threshold-${kind}`} aria-label={t(cfg.label)}
+                        value={approvals.thresholds?.[kind] ?? 0}
+                        onChange={(e) => updateApprovals({ thresholds: { [kind]: e.target.value === '' ? 0 : Number(e.target.value) } })} />
+                    </div>
+                  </div>
+                ))}
+
+                <label className="flex items-start gap-3 cursor-pointer pt-2 border-t border-gray-100 dark:border-surface-750">
+                  <input type="checkbox" className="mt-0.5 h-4 w-4 rounded border-gray-300 dark:border-slate-600"
+                    checked={approvals.requireDifferentUser !== false}
+                    onChange={(e) => updateApprovals({ requireDifferentUser: e.target.checked })} />
+                  <span className="text-sm">
+                    <span className="font-medium text-gray-800 dark:text-slate-100">{t('The submitter cannot approve their own request')}</span>
+                    <span className="block text-gray-500 dark:text-slate-400 mt-0.5">
+                      {t('Segregation of duties. Turn this off only if you are the sole manager — a threshold you can wave through yourself is not a control.')}
+                    </span>
+                  </span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{t('Approval settings apply immediately — no need to press Save.')}</p>
+            </>
           ) : (
             <span className="text-xs text-gray-400 dark:text-slate-500">{t('Owners / Admins only')}</span>
           )}

@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { useI18n, useT } from '../i18n'
+import { actionableFor } from '../utils/approvals'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
 import InstallButton from './InstallButton'
@@ -16,7 +17,7 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
-  Cloud, CloudOff, RefreshCw, AlertTriangle,
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck
 } from 'lucide-react'
 
 const NAV = [
@@ -84,6 +85,7 @@ const NAV = [
   { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
   { label: 'Year-End Close',     path: '/year-end',          icon: CalendarCheck },
+  { label: 'Approvals',          path: '/approvals',         icon: ShieldCheck, badge: 'approvals' },
   { label: 'Audit Log',          path: '/audit-log',         icon: History },
   { label: 'Team & Roles',       path: '/team',              icon: UsersRound },
   { label: 'Settings',           path: '/settings',          icon: Settings },
@@ -97,6 +99,13 @@ export default function Layout({ children }) {
   const lang = useI18n((s) => s.lang)
   const toggleLang = useI18n((s) => s.toggle)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Nav badge: only requests this user can actually decide, so an approver is
+  // nudged and everyone else isn't nagged about work that isn't theirs.
+  const approvalRequests = useStore((s) => s.approvalRequests)
+  const approvalSettings = useStore((s) => s.settings.approvals)
+  const me = useAuth((s) => s.currentUser())
+  const allUsers = useAuth((s) => s.users)
+  const badges = { approvals: actionableFor(approvalRequests, me, approvalSettings, allUsers).length }
   const [storageWarn, setStorageWarn] = useState(false)
   const location = useLocation()
 
@@ -157,6 +166,11 @@ export default function Layout({ children }) {
                     {isActive && <span className="absolute inset-y-[7px] start-0 w-[3px] rounded-full bg-gradient-to-b from-brand-400 to-accent-500" />}
                     <Icon size={16} strokeWidth={isActive ? 2.25 : 2} className={`flex-shrink-0 transition-colors ${isActive ? 'text-brand-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-300'}`} />
                     <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
+                    {item.badge && badges[item.badge] > 0 && (
+                      <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-warning-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {badges[item.badge]}
+                      </span>
+                    )}
                   </>
                 )}
               </NavLink>

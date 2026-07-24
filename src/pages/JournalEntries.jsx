@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
@@ -11,6 +12,7 @@ const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', des
 
 export default function JournalEntries() {
   const t = useT()
+  const navigate = useNavigate()
   const { journalEntries, accounts, departments, addJournalEntry, voidJournalEntry, settings } = useStore()
   const sym = settings.company.currencySymbol
   const [modal, setModal] = useState(false)
@@ -48,8 +50,9 @@ export default function JournalEntries() {
     const lines = form.lines
       .filter((l) => l.accountId && (parseFloat(l.debit) || parseFloat(l.credit)))
       .map((l) => ({ ...l, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
+    let res
     try {
-      addJournalEntry({ ...form, lines, type: 'manual' })
+      res = addJournalEntry({ ...form, lines, type: 'manual' })
     } catch (e) {
       const msg = String(e.message || '')
       if (msg.startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate))
@@ -61,6 +64,10 @@ export default function JournalEntries() {
     }
     setModal(false)
     setForm({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
+    if (res?.pendingApproval) {
+      alert(t('This entry is over the approval threshold and has been sent for approval. It will post to the ledger once approved.'))
+      navigate('/approvals')
+    }
   }
 
   // Entries are never deleted — they are voided by posting a reversal (immutable ledger).

@@ -95,11 +95,19 @@ export default function PurchaseForm() {
     if (form.items.length === 0 || form.items.some((l) => !l.description)) return alert('All line items must have a description.')
     const lock = settings?.accounting?.lockDate
     if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+    let res
     try {
-      addPurchase({ ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping })
+      res = addPurchase({ ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping })
     } catch (e) {
       if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
       throw e
+    }
+    // Over the approval threshold this bill is parked, not posted — say so
+    // plainly rather than dropping the user on a list where it isn't there.
+    if (res?.pendingApproval) {
+      alert(t('This bill is over the approval threshold and has been sent for approval. It will post to the ledger once approved.'))
+      navigate('/approvals')
+      return
     }
     navigate('/purchases')
   }

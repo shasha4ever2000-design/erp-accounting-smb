@@ -7,6 +7,7 @@ import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
+import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -114,6 +115,7 @@ const DEFAULT_SETTINGS = {
   debitNote:     { prefix: 'DN-',   next: 1 },
   ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
   accounting:    { lockDate: '', lockedBy: '', lockedAt: '', autoPostRecurring: true }, // period close + auto-post scheduler
+  approvals:     defaultApprovalSettings(), // threshold-based maker-checker
   payroll:       { prefix: 'PR-',    next: 1 },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
@@ -166,6 +168,12 @@ export const useStore = create(
 
       updateWht: (patch) =>
         set((s) => ({ settings: { ...s.settings, wht: { ...(s.settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }), ...patch } } })),
+
+      updateApprovals: (patch) =>
+        set((s) => ({ settings: { ...s.settings, approvals: {
+          ...defaultApprovalSettings(), ...(s.settings.approvals || {}), ...patch,
+          thresholds: { ...defaultApprovalSettings().thresholds, ...(s.settings.approvals?.thresholds || {}), ...(patch.thresholds || {}) },
+        } } })),
 
       // ─── PERIOD CLOSE / POSTING-DATE LOCK ──────────────────────────
       // A locked period bars any journal posting dated on or before lockDate,
@@ -319,6 +327,111 @@ export const useStore = create(
         if (gone) get().logActivity('Deleted item', `${gone.code || ''} ${gone.name || ''}`.trim(), { entity: 'item', entityId: id, entityRef: gone.code || gone.name })
       },
 
+      // ─── APPROVAL WORKFLOW ─────────────────────────────────────────
+      // A request parks the *draft payload* a posting action would have
+      // received. Nothing reaches the ledger until someone else approves, at
+      // which point the payload is replayed through the ordinary posting path
+      // — so an approved bill posts through exactly the same code as any
+      // other, VAT, freight, FX and inventory included.
+      approvalRequests: [],
+
+      currentUser: () => {
+        try {
+          const auth = useAuth.getState()
+          return auth.users.find((x) => x.id === auth.currentUserId) || null
+        } catch { return null }
+      },
+
+      allUsers: () => {
+        try { return useAuth.getState().users || [] } catch { return [] }
+      },
+
+      /** Park a draft for approval. Returns the created request. */
+      submitForApproval: (kind, payload, meta = {}) => {
+        const u = get().currentUser()
+        const req = {
+          id: uuid(), kind, payload, status: 'pending',
+          amount: amountOf(kind, payload),
+          submittedBy: u?.id || null, submittedByName: u?.name || 'Unknown',
+          submittedAt: new Date().toISOString(),
+          note: meta.note || '',
+          decidedBy: null, decidedByName: '', decidedAt: null, decisionReason: '',
+          resultId: null, resultRef: '',
+        }
+        set((st) => ({ approvalRequests: [...(st.approvalRequests || []), req] }))
+        get().logActivity('Submitted for approval', `${kind} · ${req.amount}`, {
+          entity: 'approval', entityId: req.id, severity: 'notable',
+        })
+        return req
+      },
+
+      /**
+       * Approve and post. Replays the payload through the real posting action,
+       * bypassing the threshold gate so it cannot loop.
+       */
+      approveRequest: (id, reason) => {
+        const st = get()
+        const req = (st.approvalRequests || []).find((r) => r.id === id)
+        const user = st.currentUser()
+        const check = canApprove(req, user, st.settings?.approvals, get().allUsers())
+        if (!check.ok) throw new Error(`APPROVAL_DENIED:${check.reason}`)
+
+        let result = null
+        if (req.kind === 'purchase') result = st.addPurchase(req.payload, { approved: true })
+        else if (req.kind === 'journal') result = st.addJournalEntry(req.payload, { approved: true })
+        else if (req.kind === 'payment') {
+          st.recordPurchasePayment(req.payload.purchaseId, req.payload.payment, { approved: true })
+          result = { number: req.payload.targetRef || '' }
+        }
+        else throw new Error(`APPROVAL_UNKNOWN_KIND:${req.kind}`)
+
+        set((s) => ({
+          approvalRequests: s.approvalRequests.map((r) =>
+            r.id === id ? {
+              ...r, status: 'approved',
+              decidedBy: user?.id || null, decidedByName: user?.name || '',
+              decidedAt: new Date().toISOString(), decisionReason: reason || '',
+              resultId: result?.id || null, resultRef: result?.number || '',
+            } : r
+          ),
+        }))
+        get().logActivity('Approved ' + req.kind, `${result?.number || ''} · ${req.amount}`.trim(), {
+          entity: 'approval', entityId: id, entityRef: result?.number || '', severity: 'notable',
+        })
+        return result
+      },
+
+      rejectRequest: (id, reason) => {
+        const st = get()
+        const req = (st.approvalRequests || []).find((r) => r.id === id)
+        const user = st.currentUser()
+        const check = canApprove(req, user, st.settings?.approvals, get().allUsers())
+        if (!check.ok) throw new Error(`APPROVAL_DENIED:${check.reason}`)
+        set((s) => ({
+          approvalRequests: s.approvalRequests.map((r) =>
+            r.id === id ? {
+              ...r, status: 'rejected',
+              decidedBy: user?.id || null, decidedByName: user?.name || '',
+              decidedAt: new Date().toISOString(), decisionReason: reason || '',
+            } : r
+          ),
+        }))
+        get().logActivity('Rejected ' + req.kind, reason || '', {
+          entity: 'approval', entityId: id, severity: 'notable',
+        })
+      },
+
+      /** The submitter can pull their own request back while it is still pending. */
+      withdrawRequest: (id) => {
+        const st = get()
+        const req = (st.approvalRequests || []).find((r) => r.id === id)
+        const user = st.currentUser()
+        if (!req || req.status !== 'pending') return
+        if (req.submittedBy && user?.id && req.submittedBy !== user.id) return
+        set((s) => ({ approvalRequests: s.approvalRequests.filter((r) => r.id !== id) }))
+        get().logActivity('Withdrew approval request', req.kind, { entity: 'approval', entityId: id })
+      },
+
       // ─── AUDIT / ACTIVITY LOG ──────────────────────────────────────
       auditLog: [],
 
@@ -364,11 +477,19 @@ export const useStore = create(
       // ─── JOURNAL ENTRIES ───────────────────────────────────────────
       journalEntries: [],
 
-      addJournalEntry: (entry) => {
+      addJournalEntry: (entry, opts = {}) => {
         const s = get()
         // Integrity guards: every entry must be dated and balanced. This stops any
         // caller bug from silently corrupting the ledger / trial balance.
         if (!entry?.date) throw new Error('JE_NO_DATE')
+        // Threshold approval applies to *manual* entries only. System-generated
+        // entries (an invoice's own posting, a payment, a depreciation run) are
+        // consequences of a document that was itself gated, and blocking them
+        // here would tear a half-posted document apart.
+        if (!opts.approved && (entry.type || 'manual') === 'manual'
+            && needsApproval(s.settings?.approvals, 'journal', amountOf('journal', entry))) {
+          return { pendingApproval: true, request: get().submitForApproval('journal', entry) }
+        }
         const _dr = (entry.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
         const _cr = (entry.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
         if (Math.abs(_dr - _cr) > 0.05) throw new Error(`JE_UNBALANCED:${(_dr - _cr).toFixed(2)}`)
@@ -1046,8 +1167,11 @@ export const useStore = create(
       // ─── PURCHASE INVOICES ─────────────────────────────────────────
       purchases: [],
 
-      addPurchase: (purchase) => {
+      addPurchase: (purchase, opts = {}) => {
         const s = get()
+        if (!opts.approved && needsApproval(s.settings?.approvals, 'purchase', amountOf('purchase', purchase))) {
+          return { pendingApproval: true, request: get().submitForApproval('purchase', purchase) }
+        }
         const { prefix, next } = s.settings.purchase
         const number = nextNum(prefix, next)
         // Foreign-currency bills are entered in their own currency; convert every
@@ -1122,7 +1246,7 @@ export const useStore = create(
         return newPurchase
       },
 
-      recordPurchasePayment: (purchaseId, payment) => {
+      recordPurchasePayment: (purchaseId, payment, opts = {}) => {
         const s = get()
         const purchase = s.purchases.find((p) => p.id === purchaseId)
         if (!purchase) return
@@ -1130,6 +1254,11 @@ export const useStore = create(
         const remaining = Math.max(0, (purchase.total || 0) - (purchase.amountPaid || 0))
         const amount = Math.min(Number(payment.amount) || 0, remaining)
         if (amount <= 0) return
+        // Money leaving the business is the sharpest edge of all — gate it on the
+        // capped amount, so an overpayment attempt can't clear a lower threshold.
+        if (!opts.approved && needsApproval(s.settings?.approvals, 'payment', amount)) {
+          return { pendingApproval: true, request: get().submitForApproval('payment', { purchaseId, payment: { ...payment, amount }, targetRef: purchase.number }) }
+        }
         const { prefix, next } = s.settings.payment
         const number = nextNum(prefix, next)
         const newAmountPaid = purchase.amountPaid + amount
@@ -2579,7 +2708,7 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 19, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 20, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -2767,7 +2896,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 19,
+      version: 20,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -2784,6 +2913,7 @@ export const useStore = create(
             company:    { ...DEFAULT_SETTINGS.company,    ...(persisted.settings?.company    || {}) },
             tax:        { ...DEFAULT_SETTINGS.tax,        ...(persisted.settings?.tax        || {}) },
             accounting: { ...DEFAULT_SETTINGS.accounting, ...(persisted.settings?.accounting || {}) },
+            approvals:  { ...defaultApprovalSettings(),   ...(persisted.settings?.approvals  || {}) },
           }
           // Upgrading companies that already had ZATCA switched on were Saudi
           // VAT filers in every case that mattered — tag them so the VAT
@@ -2913,6 +3043,13 @@ export const useStore = create(
             { id: 'acc-freightin', code: '5031', name: 'Freight-In / Delivery', type: 'expense', subtype: 'expense', isSystem: false },
           ]
           if (Array.isArray(persisted.accounts)) add.forEach((a) => { if (!persisted.accounts.some((x) => x.id === a.id)) persisted.accounts.push(a) })
+        }
+        if (version < 20) {
+          // Threshold approvals: off by default, so an upgrade never suddenly
+          // blocks a company from posting bills it could post yesterday.
+          if (persisted.settings)
+            persisted.settings.approvals = { ...defaultApprovalSettings(), ...(persisted.settings.approvals || {}) }
+          if (!persisted.approvalRequests) persisted.approvalRequests = []
         }
         return persisted
        } catch (e) {

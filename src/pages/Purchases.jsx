@@ -64,9 +64,12 @@ export default function Purchases() {
     if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, paySym)})`)
     const wht = parseFloat(payForm.wht) || 0
     if (wht > amount) return alert('Withholding tax cannot exceed the payment amount.')
-    try { recordPurchasePayment(payModal.id, { ...payForm, amount, wht }) }
+    let res
+    try { res = recordPurchasePayment(payModal.id, { ...payForm, amount, wht }) }
     catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setPayModal(null)
+    if (res?.pendingApproval)
+      alert(t('This payment is over the approval threshold and has been sent for approval. Nothing has left the bank yet.'))
   }
 
   const handleVoid = (p) => {
