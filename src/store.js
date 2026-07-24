@@ -2158,6 +2158,79 @@ export const useStore = create(
         return count
       },
 
+      // ─── RECURRING EXPENSES / BILLS ────────────────────────────────
+      // Rent, utilities, subscriptions — the payables side of recurring
+      // invoices. Each posting creates a real supplier bill so it lands in AP
+      // and flows through the normal payment workflow, rather than a bare
+      // journal that could never be "paid".
+      recurringExpenses: [],
+
+      addRecurringExpense: (r) =>
+        set((s) => ({ recurringExpenses: [...s.recurringExpenses, {
+          id: uuid(),
+          name: r.name || 'Recurring expense',
+          supplierId: r.supplierId || '', supplierName: r.supplierName || '',
+          frequency: r.frequency || 'monthly',
+          nextDate: r.nextDate, endDate: r.endDate || '',
+          amount: Number(r.amount) || 0,
+          taxRate: Number(r.taxRate) || 0,
+          expenseAccountId: r.expenseAccountId || 'acc-admin',
+          notes: r.notes || '',
+          status: 'active', lastPosted: null, generatedCount: 0,
+          createdAt: new Date().toISOString(),
+        }] })),
+
+      updateRecurringExpense: (id, patch) =>
+        set((s) => ({ recurringExpenses: s.recurringExpenses.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
+
+      deleteRecurringExpense: (id) =>
+        set((s) => ({ recurringExpenses: s.recurringExpenses.filter((x) => x.id !== id) })),
+
+      postRecurringExpense: (id, { onDate } = {}) => {
+        const r = get().recurringExpenses.find((x) => x.id === id)
+        if (!r) return null
+        const date = onDate || r.nextDate
+        const subtotal = Math.round((Number(r.amount) || 0) * 100) / 100
+        const taxAmount = Math.round(subtotal * ((Number(r.taxRate) || 0) / 100) * 100) / 100
+        const bill = get().addPurchase({
+          supplierId: r.supplierId, supplierName: r.supplierName || r.name,
+          date, dueDate: date,
+          items: [{
+            description: r.name, quantity: 1, unitPrice: subtotal,
+            taxRate: Number(r.taxRate) || 0, subtotal,
+            accountId: r.expenseAccountId || 'acc-admin',
+          }],
+          subtotal, taxAmount, total: Math.round((subtotal + taxAmount) * 100) / 100,
+          notes: (r.notes ? r.notes + ' ' : '') + '(Recurring)',
+        })
+        const nextDate = get().advanceDate(date, r.frequency)
+        set((s) => ({ recurringExpenses: s.recurringExpenses.map((x) =>
+          (x.id === id ? { ...x, nextDate, lastPosted: date, generatedCount: (x.generatedCount || 0) + 1 } : x)) }))
+        return bill
+      },
+
+      // Post every active recurring expense whose nextDate has arrived, catching
+      // up missed periods. Bounded, honours endDate, and stops on any posting
+      // error (e.g. a locked period) so one bad schedule can't block the rest.
+      generateDueRecurringExpenses: () => {
+        const today = new Date().toISOString().slice(0, 10)
+        let count = 0
+        get().recurringExpenses.filter((r) => r.status === 'active' && r.nextDate <= today).forEach((r) => {
+          let guard = 0
+          while (guard++ < 60) {
+            const cur = get().recurringExpenses.find((x) => x.id === r.id)
+            if (!cur || cur.status !== 'active' || cur.nextDate > today) break
+            if (cur.endDate && cur.nextDate > cur.endDate) {
+              set((s) => ({ recurringExpenses: s.recurringExpenses.map((x) => (x.id === r.id ? { ...x, status: 'ended' } : x)) }))
+              break
+            }
+            try { get().postRecurringExpense(r.id, { onDate: cur.nextDate }); count += 1 }
+            catch { break }
+          }
+        })
+        return count
+      },
+
       // Boot-time scheduler: on app load, catch up any due recurring journals and
       // recurring invoices automatically, at most once per calendar day per company.
       // Both underlying actions already bound their catch-up and skip locked periods,
@@ -2166,18 +2239,19 @@ export const useStore = create(
       schedulerLastRun: null,
       runScheduler: () => {
         const today = new Date().toISOString().slice(0, 10)
-        if (get().schedulerLastRun === today) return { journals: 0, invoices: 0, ran: false }
+        if (get().schedulerLastRun === today) return { journals: 0, invoices: 0, expenses: 0, ran: false }
         if (get().settings?.accounting?.autoPostRecurring === false) {
           set({ schedulerLastRun: today })
-          return { journals: 0, invoices: 0, ran: false }
+          return { journals: 0, invoices: 0, expenses: 0, ran: false }
         }
-        let journals = 0, invoices = 0
+        let journals = 0, invoices = 0, expenses = 0
         try { journals = get().generateDueRecurringJournals() } catch { /* never block boot */ }
         try { invoices = get().generateDueRecurring() } catch { /* never block boot */ }
+        try { expenses = get().generateDueRecurringExpenses() } catch { /* never block boot */ }
         set({ schedulerLastRun: today })
-        if (journals || invoices)
-          get().logActivity('Auto-posted scheduled entries', `${invoices} invoice(s), ${journals} journal(s)`)
-        return { journals, invoices, ran: journals > 0 || invoices > 0 }
+        if (journals || invoices || expenses)
+          get().logActivity('Auto-posted scheduled entries', `${invoices} invoice(s), ${journals} journal(s), ${expenses} bill(s)`)
+        return { journals, invoices, expenses, ran: journals > 0 || invoices > 0 || expenses > 0 }
       },
 
       // Generate real invoices for every active schedule whose nextDate has arrived
@@ -2443,7 +2517,7 @@ export const useStore = create(
           'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
-          'recurringJournals', 'goodsReceipts', 'landedCosts',
+          'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
         ]
         const out = { _app: 'erp-accounting-smb', _version: 19, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })

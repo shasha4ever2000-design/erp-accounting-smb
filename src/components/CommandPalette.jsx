@@ -25,6 +25,7 @@ const COMMANDS = [
   { label: 'Purchase Orders', path: '/purchase-orders', group: 'Go to' },
   { label: 'Purchase Invoices', path: '/purchases', group: 'Go to' },
   { label: 'Debit Notes', path: '/debit-notes', group: 'Go to' },
+  { label: 'Recurring Expenses', path: '/recurring-expenses', group: 'Go to' },
   { label: 'Inventory Items', path: '/inventory', group: 'Go to' },
   { label: 'Warehouses & Stock Transfers', path: '/warehouses', group: 'Go to' },
   { label: 'Stock Adjustments', path: '/stock-adjustments', group: 'Go to' },

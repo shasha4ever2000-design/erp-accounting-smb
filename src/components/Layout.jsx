@@ -50,6 +50,7 @@ const NAV = [
   { label: 'Purchase Invoices',  path: '/purchases',        icon: ShoppingCart },
   { label: 'Debit Notes',        path: '/debit-notes',      icon: FilePlus },
   { label: 'Landed Costs',       path: '/landed-costs',     icon: Ship },
+  { label: 'Recurring Expenses', path: '/recurring-expenses', icon: Repeat },
 
   { divider: 'Inventory & Production' },
   { label: 'Inventory Items',    path: '/inventory',        icon: Package },
