@@ -79,7 +79,7 @@ export default function PurchaseOrderForm() {
     <div>
       <PageHeader title="New Purchase Order" subtitle="Create a purchase order for your supplier" />
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Supplier')}</h3>
@@ -87,7 +87,7 @@ export default function PurchaseOrderForm() {
               <option value="">— Enter manually below —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </Select>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Supplier Name *" value={form.supplierName} onChange={(e) => setField('supplierName', e.target.value)} />
               <Input label="Supplier Email" type="email" value={form.supplierEmail} onChange={(e) => setField('supplierEmail', e.target.value)} />
             </div>
@@ -101,7 +101,7 @@ export default function PurchaseOrderForm() {
             </div>
             {lines.map((line) => (
               <div key={line.id} className="border border-slate-200/70 dark:border-surface-700 rounded-xl p-3 space-y-2 bg-slate-50 dark:bg-surface-800/60">
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   <div className="col-span-2">
                     <Select label="Product (optional)" value="" onChange={(e) => pickItem(line.id, e.target.value)}>
                       <option value="">{t('Pick from inventory...')}</option>

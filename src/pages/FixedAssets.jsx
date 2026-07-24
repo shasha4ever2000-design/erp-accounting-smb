@@ -92,7 +92,7 @@ export default function FixedAssets() {
         }
       />
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Total Cost"         value={fmtMoney(totalCost,    sym)} color="blue"   icon={<Package size={18} />} />
         <StatCard label="Accumulated Dep."   value={fmtMoney(totalAccDep,  sym)} color="orange" icon={<TrendingDown size={18} />} />
         <StatCard label="Net Book Value"     value={fmtMoney(totalBookVal, sym)} color="green"  icon={<Calculator size={18} />} />
@@ -160,7 +160,7 @@ export default function FixedAssets() {
       <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('Run Monthly Depreciation')}>
         <div className="space-y-4">
           <p className="text-sm text-gray-500 dark:text-slate-400">{t('Posts one month of straight-line depreciation for every active asset that has not been depreciated for this period.')}</p>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={t('Period label')} value={schedForm.period} onChange={(e) => setSchedForm((f) => ({ ...f, period: e.target.value }))} placeholder="Jul 2026" />
             <Input label={t('Posting date')} type="date" value={schedForm.date} onChange={(e) => setSchedForm((f) => ({ ...f, date: e.target.value }))} />
           </div>
@@ -184,7 +184,7 @@ export default function FixedAssets() {
             <p>Straight-line annual: <strong>{fmtMoney(((deprModal?.purchaseCost||0)-(deprModal?.salvageValue||0))/(deprModal?.usefulLifeYears||5), sym)}</strong></p>
           </div>
           <Input label="Period *" value={deprForm.period} onChange={(e) => setDeprForm((f)=>({...f,period:e.target.value}))} placeholder="e.g. Q2 2026, June 2026" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={deprForm.date} onChange={(e) => setDeprForm((f)=>({...f,date:e.target.value}))} />
             <Input label={`Amount (${sym}) *`} type="number" min="0" step="0.01" value={deprForm.amount} onChange={(e) => setDeprForm((f)=>({...f,amount:e.target.value}))} />
           </div>

@@ -240,7 +240,7 @@ export default function Projects() {
       {/* Transaction modal */}
       <Modal open={!!txModal} onClose={() => setTxModal(null)} title={txForm.type === 'money_in' ? 'Record Project Income' : 'Record Project Cost'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Amount *" type="number" min="0" step="0.01" value={txForm.amount} onChange={(e) => setT('amount', e.target.value)} />
             <Input label="Date" type="date" value={txForm.date} onChange={(e) => setT('date', e.target.value)} />
           </div>

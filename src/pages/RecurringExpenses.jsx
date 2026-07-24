@@ -162,7 +162,7 @@ export default function RecurringExpenses() {
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Recurring Expense' : 'New Recurring Expense'} width="max-w-xl">
         <div className="space-y-4">
           <Input label="Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Office rent" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('Supplier')} value={form.supplierId} onChange={(e) => setField('supplierId', e.target.value)}>
               <option value="">{t('— None —')}</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -172,11 +172,11 @@ export default function RecurringExpenses() {
               {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Amount (excl. tax) *" type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} placeholder="0.00" />
             <Input label={`${settings.tax?.name || 'Tax'} %`} type="number" min="0" step="0.1" value={form.taxRate} onChange={(e) => setField('taxRate', e.target.value)} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label={t('Frequency')} value={form.frequency} onChange={(e) => setField('frequency', e.target.value)}>
               {FREQ.map((f) => <option key={f} value={f}>{t(f)}</option>)}
             </Select>

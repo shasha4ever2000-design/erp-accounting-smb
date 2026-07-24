@@ -110,15 +110,15 @@ export default function Pipeline() {
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Lead' : 'New Lead'} width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Contact Name *" value={form.name} onChange={(e) => setF('name', e.target.value)} />
             <Input label="Company" value={form.company} onChange={(e) => setF('company', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Email" type="email" value={form.email} onChange={(e) => setF('email', e.target.value)} />
             <Input label="Phone" value={form.phone} onChange={(e) => setF('phone', e.target.value)} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label={`Deal Value (${sym})`} type="number" min="0" value={form.value} onChange={(e) => setF('value', e.target.value)} />
             <Input label="Source" value={form.source} onChange={(e) => setF('source', e.target.value)} placeholder="Referral, web…" />
             <Select label="Stage" value={form.stage} onChange={(e) => setF('stage', e.target.value)}>

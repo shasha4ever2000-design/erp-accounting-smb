@@ -243,7 +243,7 @@ export default function Reconciliation() {
           </div>
         ) : importResult && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
                 <p className="text-2xl font-bold text-green-700 dark:text-green-300">{importResult.matched.length}</p>
                 <p className="text-xs text-green-600 dark:text-green-400">{t('matched to your ledger')}</p>

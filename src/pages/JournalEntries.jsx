@@ -151,7 +151,7 @@ export default function JournalEntries() {
       {/* New Manual Entry Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title="New Journal Entry" width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Reference" value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder="e.g. ADJ-001" />
           </div>
@@ -244,7 +244,7 @@ export default function JournalEntries() {
       <Modal open={!!viewEntry} onClose={() => setViewEntry(null)} title={`Journal Entry ${viewEntry?.number}`} width="max-w-xl">
         {viewEntry && (
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div><p className="text-gray-400 dark:text-slate-500">Date</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
               <div><p className="text-gray-400 dark:text-slate-500">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
               <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>

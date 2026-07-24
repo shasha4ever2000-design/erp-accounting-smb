@@ -122,7 +122,7 @@ export default function Consolidation() {
       )}
 
       {/* Group KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Group Revenue', value: data.totals.revenue, tone: 'from-emerald-500 to-green-600' },
           { label: 'Group Expenses', value: data.totals.expense, tone: 'from-rose-500 to-red-600' },

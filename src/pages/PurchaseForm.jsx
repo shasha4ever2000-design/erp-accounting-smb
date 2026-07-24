@@ -12,6 +12,10 @@ import { computeLine, invoiceTotals } from '../utils/lineMath'
 const EXPENSE_TYPES = ['asset', 'expense']
 const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-admin', subtotal: 0, taxAmount: 0, total: 0 })
 
+// Field labels exist only on the stacked mobile layout — from lg up the grid's
+// column headers do that job and repeating them would double the row height.
+const MOBILE_LABEL = 'lg:[&>label]:hidden'
+
 export default function PurchaseForm() {
   const navigate = useNavigate()
   const { suppliers, accounts, inventoryItems, departments, currencies, settings, addPurchase } = useStore()
@@ -123,7 +127,7 @@ export default function PurchaseForm() {
         <div className="xl:col-span-2 space-y-5">
           <Card className="p-6">
             <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Purchase Details')}</h2>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select label="Supplier *" value={form.supplierId} onChange={(e) => setSupplier(e.target.value)}>
                 <option value="">Select supplier…</option>
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -156,7 +160,9 @@ export default function PurchaseForm() {
           <Card className="p-6">
             <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
-              <div className={`grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
+              {/* Column headers belong to the desktop grid; on a phone each field
+                  carries its own label instead. */}
+              <div className={`hidden lg:grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Cost')}</span>
@@ -166,8 +172,8 @@ export default function PurchaseForm() {
                 <span />
               </div>
               {form.items.map((line) => (
-                <div key={line.id} className={`grid gap-2 items-start ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
-                  <div className="space-y-1">
+                <div key={line.id} className={`grid gap-2 items-start grid-cols-2 rounded-xl border border-slate-200/70 dark:border-surface-700 bg-slate-50/60 dark:bg-surface-800/40 p-3 lg:border-0 lg:bg-transparent lg:dark:bg-transparent lg:p-0 lg:rounded-none ${taxEnabled ? 'lg:grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'lg:grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
+                  <div className="col-span-2 lg:col-span-1 space-y-1">
                     <Input value={line.description} onChange={(e) => updateLine(line.id, 'description', e.target.value)} placeholder="Item or expense description" />
                     {inventoryItems.length > 0 && (
                       <Select value={line.itemId} onChange={(e) => updateLine(line.id, 'itemId', e.target.value)}>
@@ -181,18 +187,21 @@ export default function PurchaseForm() {
                           {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
                         </Select>}
                   </div>
-                  <Input type="number" min="0" step="0.01" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', e.target.value)} />
-                  <Input type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(line.id, 'unitPrice', e.target.value)} />
-                  <Input type="number" min="0" max="100" step="0.1" value={line.discount} onChange={(e) => updateLine(line.id, 'discount', e.target.value)} />
+                  <Input label="Qty" className={MOBILE_LABEL} type="number" min="0" step="0.01" value={line.quantity} onChange={(e) => updateLine(line.id, 'quantity', e.target.value)} />
+                  <Input label="Unit Cost" className={MOBILE_LABEL} type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => updateLine(line.id, 'unitPrice', e.target.value)} />
+                  <Input label="Disc %" className={MOBILE_LABEL} type="number" min="0" max="100" step="0.1" value={line.discount} onChange={(e) => updateLine(line.id, 'discount', e.target.value)} />
                   {taxEnabled && (
-                    <Select value={line.taxCategory || 'standard'} onChange={(e) => updateLine(line.id, 'taxCategory', e.target.value)}>
+                    <Select label="VAT" className={`col-span-2 lg:col-span-1 ${MOBILE_LABEL}`} value={line.taxCategory || 'standard'} onChange={(e) => updateLine(line.id, 'taxCategory', e.target.value)}>
                       {VAT_CATEGORIES.map((c) => (
                         <option key={c.id} value={c.id}>{t(c.label)}{c.id === 'standard' ? ` ${defaultTaxRate}%` : ''}</option>
                       ))}
                     </Select>
                   )}
-                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100 text-right pt-2">{fmtMoney(line.subtotal, sym)}</div>
-                  <button onClick={() => removeLine(line.id)} className="mt-2 text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
+                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100 text-right pt-2 self-center lg:self-start">
+                    <span className="lg:hidden text-xs font-normal text-gray-400 dark:text-slate-500 me-2">{t('Amount')}</span>
+                    {fmtMoney(line.subtotal, sym)}
+                  </div>
+                  <button onClick={() => removeLine(line.id)} aria-label={t('Remove line')} className="mt-2 justify-self-end self-center lg:self-start text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
                 </div>
               ))}
               <Btn variant="ghost" onClick={addLine} size="sm"><Plus size={14} /> {t('Add Line')}</Btn>

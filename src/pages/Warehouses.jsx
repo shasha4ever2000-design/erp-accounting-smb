@@ -93,7 +93,7 @@ export default function Warehouses() {
                   {!w.isDefault && <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete warehouse "${w.name}"?`)) deleteWarehouse(w.id) }}><Trash2 size={13} className="text-red-400" /></Btn>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
                 <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Items</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{itemsHere}</p></div>
                 <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Stock Value')}</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value.toLocaleString()}</p></div>
               </div>
@@ -178,7 +178,7 @@ export default function Warehouses() {
           <Select label="Item" value={trForm.itemId} onChange={(e) => setT('itemId', e.target.value)}>
             {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
           </Select>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="From" value={trForm.fromWarehouseId} onChange={(e) => setT('fromWarehouseId', e.target.value)}>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
             </Select>
@@ -191,7 +191,7 @@ export default function Warehouses() {
               Available in source: {getItemStock(inventoryItems.find((i) => i.id === trForm.itemId), trForm.fromWarehouseId)}
             </p>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Quantity *" type="number" min="0" step="0.01" value={trForm.quantity} onChange={(e) => setT('quantity', e.target.value)} />
             <Input label="Date" type="date" value={trForm.date} onChange={(e) => setT('date', e.target.value)} />
           </div>

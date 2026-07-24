@@ -187,7 +187,7 @@ export default function Reports() {
     return (
       <div className="space-y-6">
         {/* Summary cards */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-success-50 dark:bg-success-500/10 ring-1 ring-inset ring-success-600/10 dark:ring-success-400/15 rounded-xl p-4"><p className="text-sm text-success-600 dark:text-success-400">{t('Total Revenue')}</p><p className="text-2xl font-bold tracking-tightest tabular text-success-700 dark:text-success-300">{fmtMoney(totalRevenue, sym)}</p></div>
           <div className="bg-danger-50 dark:bg-danger-500/10 ring-1 ring-inset ring-danger-600/10 dark:ring-danger-400/15 rounded-xl p-4"><p className="text-sm text-danger-600 dark:text-danger-400">{t('Total Expenses')}</p><p className="text-2xl font-bold tracking-tightest tabular text-danger-700 dark:text-danger-300">{fmtMoney(totalExpenses, sym)}</p></div>
           <div className={`${netProfit >= 0 ? 'bg-brand-50 dark:bg-brand-500/10 ring-brand-600/10 dark:ring-brand-400/15' : 'bg-warning-50 dark:bg-warning-500/10 ring-warning-600/10 dark:ring-warning-400/15'} ring-1 ring-inset rounded-xl p-4`}>
@@ -1127,7 +1127,7 @@ export default function Reports() {
           </p>
         </div>
         <div className="p-6">
-          <div className="grid grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
             <div className="bg-indigo-50 dark:bg-indigo-900/30 rounded-xl p-4"><p className="text-xs text-indigo-600 dark:text-indigo-300">{t('Net Budgeted')}</p><p className="text-xl font-bold text-indigo-700 dark:text-indigo-200">{fmtMoney(netBudget, sym)}</p></div>
             <div className={`${netActual >= 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-red-50 dark:bg-red-900/30'} rounded-xl p-4`}><p className="text-xs text-gray-500 dark:text-slate-400">{t('Net Actual')}</p><p className={`text-xl font-bold ${netActual >= 0 ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}`}>{fmtMoney(netActual, sym)}</p></div>
             <div className={`${(netActual - netBudget) >= 0 ? 'bg-green-50 dark:bg-green-900/30' : 'bg-amber-50 dark:bg-amber-900/30'} rounded-xl p-4`}><p className="text-xs text-gray-500 dark:text-slate-400">{t('Net Variance')}</p><p className={`text-xl font-bold ${(netActual - netBudget) >= 0 ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>{fmtMoney(netActual - netBudget, sym)}</p></div>

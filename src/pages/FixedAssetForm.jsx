@@ -45,11 +45,11 @@ export default function FixedAssetForm() {
     <div>
       <PageHeader title="Add Fixed Asset" subtitle="Record a new long-term asset in the asset register" />
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Asset Information')}</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Asset Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Delivery Truck, MacBook Pro" />
               <Select label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)}>
                 {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -60,7 +60,7 @@ export default function FixedAssetForm() {
 
           <Card className="p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Purchase Details')}</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Purchase Date *" type="date" value={form.purchaseDate} onChange={(e) => setField('purchaseDate', e.target.value)} />
               <Input label={`Purchase Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(e) => setField('purchaseCost', e.target.value)} />
             </div>
@@ -77,7 +77,7 @@ export default function FixedAssetForm() {
 
           <Card className="p-5 space-y-4">
             <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">Depreciation</h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Select label="Method" value={form.depreciationMethod} onChange={(e) => setField('depreciationMethod', e.target.value)}>
                 <option value="straight_line">Straight-Line</option>
               </Select>

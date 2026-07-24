@@ -142,7 +142,7 @@ export default function CashFlow() {
         <div className="flex flex-wrap gap-4 items-end">
           <Input label={t('From')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
           <Input label={t('To')} type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
-          <div className="ml-auto grid grid-cols-3 gap-4">
+          <div className="ml-auto grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="text-right">
               <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{t('Cash In')}</p>
               <p className="text-lg font-bold text-green-600 dark:text-green-400 flex items-center gap-1 justify-end"><TrendingUp size={15} /> {fmtMoney(cashIn, sym)}</p>
@@ -258,7 +258,7 @@ export default function CashFlow() {
       {/* Transfer modal */}
       <Modal open={modal} onClose={() => setModal(false)} title={t('Transfer Between Accounts')}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('From Account')} value={form.fromAccountId} onChange={(e) => setField('fromAccountId', e.target.value)}>
               {accountOptions}
             </Select>
@@ -270,11 +270,11 @@ export default function CashFlow() {
             <span>{t('Available in source')}</span>
             <strong className={fromBal >= 0 ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(fromBal, sym)}</strong>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />
             <Input label={t('Date')} type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Bank Fee')} (${sym})`} type="number" min="0" step="0.01" value={form.fee} onChange={(e) => setField('fee', e.target.value)} placeholder="0.00" />
             {parseFloat(form.fee) > 0 && (
               <Select label={t('Fee Account')} value={form.feeAccountId} onChange={(e) => setField('feeAccountId', e.target.value)}>
@@ -301,7 +301,7 @@ export default function CashFlow() {
       {/* Scheduled transfer modal */}
       <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('New Scheduled Transfer')}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('From Account')} value={schedForm.fromAccountId} onChange={(e) => setSched('fromAccountId', e.target.value)}>
               {accountOptions}
             </Select>
@@ -309,11 +309,11 @@ export default function CashFlow() {
               {accountOptions}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={schedForm.amount} onChange={(e) => setSched('amount', e.target.value)} />
             <Input label={`${t('Bank Fee')} (${sym})`} type="number" min="0" step="0.01" value={schedForm.fee} onChange={(e) => setSched('fee', e.target.value)} placeholder="0.00" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('Frequency')} value={schedForm.frequency} onChange={(e) => setSched('frequency', e.target.value)}>
               {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
             </Select>

@@ -150,7 +150,7 @@ export default function POS() {
             <div className="flex justify-between font-bold text-base text-gray-900 dark:text-slate-100"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
             <Select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
               <option value="">{t('Walk-in Customer')}</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

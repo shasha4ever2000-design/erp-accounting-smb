@@ -251,7 +251,7 @@ export default function Dashboard() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
           label={t('Total Revenue')}
           value={fmtMoney(totalRevenue, sym)}
@@ -283,7 +283,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
           label={t('Accounts Receivable')}
           value={fmtMoney(arBalance, sym)}

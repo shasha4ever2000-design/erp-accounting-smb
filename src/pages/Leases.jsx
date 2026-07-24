@@ -77,7 +77,7 @@ export default function Leases() {
         action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Lease')}</Btn>}
       />
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Active Leases"     value={activeLeases.length}         color="blue"   icon={<Home size={18} />}       sub="current obligations" />
         <StatCard label="Monthly Commitment" value={fmtMoney(monthlyTotal, sym)} color="orange" icon={<CreditCard size={18} />}  sub="total monthly rent" />
         <StatCard label="Total Paid"         value={fmtMoney(totalPayments, sym)} color="green"  icon={<CreditCard size={18} />}  sub="all time payments" />
@@ -147,11 +147,11 @@ export default function Leases() {
       {/* Add Lease Modal */}
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Lease" width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Lease Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Office – Level 3, Suite A" />
             <Input label="Landlord / Lessor" value={form.landlord} onChange={(e) => setField('landlord', e.target.value)} placeholder="Company or person name" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label="Lease Type" value={form.leaseType} onChange={(e) => setField('leaseType', e.target.value)}>
               <option value="operating">{t('Operating Lease')}</option>
               <option value="finance">{t('Finance Lease')}</option>
@@ -159,7 +159,7 @@ export default function Leases() {
             <Input label="Start Date *" type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} />
             <Input label="End Date" type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Monthly Rent (${sym}) *`} type="number" min="0" step="0.01" value={form.monthlyRent} onChange={(e) => setField('monthlyRent', e.target.value)} />
             <Select label="Default Pay From" value={form.bankAccountId} onChange={(e) => setField('bankAccountId', e.target.value)}>
               {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -181,7 +181,7 @@ export default function Leases() {
             <p className="text-xs mt-0.5 text-blue-500">Posts: Dr Rent Expense → Cr Bank</p>
           </div>
           <Input label="Period *" value={payForm.period} onChange={(e) => setPayForm((f) => ({ ...f, period: e.target.value }))} placeholder="e.g. June 2026" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${sym}) *`} type="number" min="0" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
           </div>

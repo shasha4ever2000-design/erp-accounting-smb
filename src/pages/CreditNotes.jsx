@@ -86,12 +86,12 @@ export default function CreditNotes() {
           {!form.customerId && (
             <Input label="Or enter name manually" value={form.customerName} onChange={(e) => setField('customerName', e.target.value)} placeholder="Customer name" />
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Related Invoice #" value={form.invoiceRef} onChange={(e) => setField('invoiceRef', e.target.value)} placeholder="INV-0001" />
           </div>
           <Input label="Reason" value={form.reason} onChange={(e) => setField('reason', e.target.value)} placeholder="e.g. Returned goods, overcharge, quality issue" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Subtotal (${sym}) *`} type="number" min="0" step="0.01" value={form.subtotal} onChange={(e) => setField('subtotal', e.target.value)} />
             {!taxEnabled && (
               <Input label={`Tax Amount (${sym})`} type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setField('taxAmount', e.target.value)} />

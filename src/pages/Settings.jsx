@@ -331,7 +331,7 @@ export default function Settings() {
         <Card className="p-6">
           <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Invoice Settings')}</h2>
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Invoice Prefix" value={invoice.prefix} onChange={(e) => setInvoiceField('prefix', e.target.value)} placeholder="INV-" />
               <Input label="Next Invoice Number" type="number" min="1" value={invoice.next} onChange={(e) => setInvoiceField('next', parseInt(e.target.value) || 1)} />
             </div>
@@ -446,7 +446,7 @@ export default function Settings() {
             </div>
             {zatca.enabled && (
               <>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Input label="VAT Registration Number" value={zatca.vatNumber} onChange={(e) => setZatcaField('vatNumber', e.target.value)} placeholder="3xxxxxxxxxxxxx3" />
                   <Input label="Commercial Registration (CR)" value={zatca.crNumber} onChange={(e) => setZatcaField('crNumber', e.target.value)} placeholder="10xxxxxxxx" />
                 </div>
@@ -474,7 +474,7 @@ export default function Settings() {
               <label htmlFor="whtEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable withholding tax on payments')}</label>
             </div>
             {wht.enabled && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input label="WHT Name" value={wht.name} onChange={(e) => setWhtField('name', e.target.value)} placeholder="Withholding Tax" />
                 <Input label="Default Rate (%)" type="number" min="0" max="100" step="0.5" value={wht.rate} onChange={(e) => setWhtField('rate', parseFloat(e.target.value) || 0)} />
               </div>

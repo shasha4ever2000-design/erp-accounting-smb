@@ -108,7 +108,7 @@ export default function RecurringJournals() {
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? t('Edit Recurring Entry') : t('New Recurring Entry')} width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label={t('Name')} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('e.g. Monthly rent accrual')} />
             <Select label={t('Frequency')} value={form.frequency} onChange={(e) => setField('frequency', e.target.value)}>
               {FREQ.map((f) => <option key={f} value={f}>{t(f)}</option>)}

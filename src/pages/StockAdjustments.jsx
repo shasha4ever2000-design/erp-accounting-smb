@@ -135,7 +135,7 @@ export default function StockAdjustments() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Stock Adjustment" width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Select label="Adjustment Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
               <option value="increase">Increase (Stock In)</option>
@@ -153,7 +153,7 @@ export default function StockAdjustments() {
             <Input label="Or enter item name" value={form.itemName} onChange={(e) => setField('itemName', e.target.value)} placeholder="Item name" />
           )}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Quantity *" type="number" min="0" step="any" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label={`Unit Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.unitCost} onChange={(e) => setField('unitCost', e.target.value)} />
             <div>

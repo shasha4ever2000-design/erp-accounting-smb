@@ -61,7 +61,7 @@ export default function TradeAnalytics() {
 
       {/* Sales KPIs */}
       <h2 className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-3">{t('Sales')}</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('Net Sales')} value={money(a.sales.netSales)} sub={`${t('Gross')} ${money(a.sales.grossSales)}`} color="green" icon={<TrendingUp size={18} />} />
         <StatCard label={t('Gross Margin')} value={`${a.grossMargin}%`} sub={money(a.grossProfit)} color="blue" icon={<Percent size={18} />} />
         <StatCard label={t('Discounts Given')} value={money(a.sales.totalDiscount)} sub={`${t('Returns')} ${money(a.sales.returns)}`} color="orange" icon={<Percent size={18} />} />
@@ -74,7 +74,7 @@ export default function TradeAnalytics() {
 
       {/* Purchasing KPIs */}
       <h2 className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-3">{t('Purchasing')}</h2>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('Net Purchases')} value={money(a.purch.netPurchases)} sub={`${t('Gross')} ${money(a.purch.grossPurchases)}`} color="orange" icon={<ShoppingCart size={18} />} />
         <StatCard label={t('Payable')} value={money(a.purch.payable)} color="red" icon={<ShoppingCart size={18} />} />
         <StatCard label={t('Discounts Received')} value={money(a.purch.discount)} sub={`${t('Freight')} ${money(a.purch.freight)}`} color="green" icon={<Percent size={18} />} />

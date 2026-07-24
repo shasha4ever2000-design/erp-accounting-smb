@@ -161,7 +161,7 @@ export default function InvoiceView() {
           </div>
 
           {/* Billing & Dates */}
-          <div className="grid grid-cols-2 gap-8 mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
             <div>
               <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-2">Bill To</p>
               <p className="font-semibold text-gray-800 dark:text-slate-100">{invoice.customerName}</p>

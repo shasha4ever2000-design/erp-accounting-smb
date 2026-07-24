@@ -131,7 +131,7 @@ export default function ChartOfAccounts() {
       {/* Modal */}
       <Modal open={modal} onClose={close} title={editing ? 'Edit Account' : 'New Account'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Account Code" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="e.g. 1001" />
             <Select label="Type" value={form.type} onChange={(e) => { setField('type', e.target.value); setField('subtype', SUBTYPES[e.target.value][0]) }}>
               {TYPES.map((t) => <option key={t} value={t}>{accountTypeLabel(t)}</option>)}

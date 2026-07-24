@@ -142,7 +142,7 @@ export default function Banking() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Bank Transaction">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
               <option value="money_in">Money In (Receipt)</option>
               <option value="money_out">Money Out (Payment)</option>
@@ -150,7 +150,7 @@ export default function Banking() {
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
           </div>
           <Input label="Description *" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="e.g. Office rent payment, Customer cash receipt" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />
             <Input label="Reference" value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder="Cheque #, ref..." />
           </div>

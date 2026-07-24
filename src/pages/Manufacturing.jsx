@@ -106,7 +106,7 @@ export default function Manufacturing() {
         }
       />
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Bills of Materials" value={billsOfMaterials.length} color="blue"   icon={<ListOrdered size={18} />} sub="production recipes" />
         <StatCard label="Active Work Orders"  value={activeWOs}               color="amber"  icon={<Factory size={18} />}    sub="in production" />
         <StatCard label="Completed Orders"    value={completedWOs}            color="green"  icon={<CheckCircle size={18} />} sub={`${fmtMoney(totalOutput, sym)} ${t('total cost')}`} />
@@ -219,9 +219,9 @@ export default function Manufacturing() {
       {/* BOM Modal */}
       <Modal open={bomModal} onClose={() => setBomModal(false)} title={editBOM ? `Edit BOM – ${editBOM.name}` : 'New Bill of Materials'} width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Product Name *" value={bomForm.name} onChange={(e) => setBomField('name', e.target.value)} placeholder="e.g. Dining Chair – Oak" />
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <Select label="Output Item" value={bomForm.outputItemId} onChange={(e) => setBomField('outputItemId', e.target.value)}>
                 <option value="">— Select inventory item —</option>
                 {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
@@ -288,7 +288,7 @@ export default function Manufacturing() {
       {/* Work Order Modal */}
       <Modal open={woModal} onClose={() => setWoModal(false)} title="New Work Order" width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="From BOM" value={woForm.bomId} onChange={(e) => pickBOM(e.target.value)}>
               <option value="">— Select BOM or enter manually —</option>
               {billsOfMaterials.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -303,7 +303,7 @@ export default function Manufacturing() {
               </div>
             )}
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Production Quantity *" type="number" min="1" step="1" value={woForm.targetQuantity} onChange={(e) => setWoField('targetQuantity', parseFloat(e.target.value) || 1)} />
             <Input label="Scheduled Date" type="date" value={woForm.scheduledDate} onChange={(e) => setWoField('scheduledDate', e.target.value)} />
           </div>

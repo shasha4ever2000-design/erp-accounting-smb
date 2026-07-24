@@ -133,7 +133,7 @@ export default function Currencies() {
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Currency' : 'Add Currency'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Code *" value={form.code} onChange={(e) => setF('code', e.target.value)} placeholder="USD" maxLength={3} />
             <Input label={`Rate per 1 ${base}`} type="number" step="0.0001" value={form.rate} onChange={(e) => setF('rate', e.target.value)} placeholder="3.75" />
           </div>

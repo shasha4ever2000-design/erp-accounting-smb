@@ -139,7 +139,7 @@ export default function Customers() {
             <Input label="Phone" value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+1 234 567 890" />
           </div>
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} placeholder="Tax registration number" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Credit limit')} (${sym})`} type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setField('creditLimit', e.target.value)} placeholder={t('0 = no limit')} />
             <Input label={`${t('Price level')} (%)`} type="number" step="0.1" value={form.priceListPct} onChange={(e) => setField('priceListPct', e.target.value)} placeholder={t('e.g. -10 = 10% off')} />
           </div>

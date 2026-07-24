@@ -70,7 +70,7 @@ export default function PrepaidExpenses() {
         action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Prepaid')}</Btn>}
       />
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Remaining Prepaid Balance" value={fmtMoney(totalPrepaid, sym)}   color="blue"   icon={<Clock size={18} />}       sub={`${activeCount} active`} />
         <StatCard label="Total Amortized"            value={fmtMoney(totalAmortized, sym)} color="green"  icon={<CheckCircle size={18} />}  sub="recognized as expense" />
         <StatCard label="Total Records"              value={prepaidExpenses.length}         color="purple" icon={<RefreshCw size={18} />}   sub="prepaid items" />
@@ -127,18 +127,18 @@ export default function PrepaidExpenses() {
       {/* Add Modal */}
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Prepaid Expense" width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Annual Insurance Premium" />
             <Select label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)}>
               {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label={`Total Amount (${sym}) *`} type="number" min="0" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />
             <Input label="Start Date *" type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} />
             <Input label="End Date" type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Paid From (Bank)" value={form.bankAccountId} onChange={(e) => setField('bankAccountId', e.target.value)}>
               {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
@@ -167,7 +167,7 @@ export default function PrepaidExpenses() {
             )}
           </div>
           <Input label="Period *" value={amortForm.period} onChange={(e) => setAmortForm((f) => ({ ...f, period: e.target.value }))} placeholder="e.g. June 2026, Q2 2026" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={amortForm.date} onChange={(e) => setAmortForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${sym}) *`} type="number" min="0" step="0.01" value={amortForm.amount} onChange={(e) => setAmortForm((f) => ({ ...f, amount: e.target.value }))} />
           </div>

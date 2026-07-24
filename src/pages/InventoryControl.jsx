@@ -185,7 +185,7 @@ export default function InventoryControl() {
       {/* ─── ABC Analysis ─── */}
       {tab === 'abc' && (
         <>
-          <div className="grid grid-cols-3 gap-4 mb-5">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4"><p className="text-xs font-semibold text-green-700 dark:text-green-300">{t('Class A')} · {t('top ~80% of value')}</p><p className="text-2xl font-bold text-green-700 dark:text-green-300">{abcCounts.A}</p></div>
             <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4"><p className="text-xs font-semibold text-amber-700 dark:text-amber-300">{t('Class B')} · {t('next ~15%')}</p><p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{abcCounts.B}</p></div>
             <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4"><p className="text-xs font-semibold text-gray-600 dark:text-slate-300">{t('Class C')} · {t('remaining ~5%')}</p><p className="text-2xl font-bold text-gray-600 dark:text-slate-300">{abcCounts.C}</p></div>

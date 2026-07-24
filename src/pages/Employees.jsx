@@ -188,7 +188,7 @@ export default function Employees() {
                 {t('GOSI / Social Insurance')}
               </label>
               {form.gosiApplicable && (
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   <Input label="Employee %" type="number" min="0" step="0.01" value={form.gosiEmployeeRate} onChange={(e) => setField('gosiEmployeeRate', e.target.value)} />
                   <Input label="Employer %" type="number" min="0" step="0.01" value={form.gosiEmployerRate} onChange={(e) => setField('gosiEmployerRate', e.target.value)} />
                 </div>

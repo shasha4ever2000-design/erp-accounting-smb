@@ -73,7 +73,7 @@ export default function Commissions() {
       </Card>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('Total Commission')} value={money(report.totalCommission)} color="green" icon={<Wallet size={18} />} />
         <StatCard label={t('Commissionable Base')} value={money(report.totalBase)} color="blue" icon={<BadgePercent size={18} />} />
         <StatCard label={t('Active Reps')} value={String(salesReps.length)} color="purple" icon={<Users size={18} />} />

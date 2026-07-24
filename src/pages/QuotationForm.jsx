@@ -79,7 +79,7 @@ export default function QuotationForm() {
     <div>
       <PageHeader title="New Quotation / Estimate" subtitle="Create a price quote for your customer" />
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Left: Form */}
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
@@ -88,7 +88,7 @@ export default function QuotationForm() {
               <option value="">— Enter manually below —</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Customer Name *" value={form.customerName} onChange={(e) => setField('customerName', e.target.value)} />
               <Input label="Customer Email" type="email" value={form.customerEmail} onChange={(e) => setField('customerEmail', e.target.value)} />
             </div>
@@ -103,7 +103,7 @@ export default function QuotationForm() {
             <div className="space-y-3">
               {lines.map((line) => (
                 <div key={line.id} className="border border-slate-200/70 dark:border-surface-700 rounded-xl p-3 space-y-2 bg-slate-50 dark:bg-surface-800/60">
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                     <div className="col-span-2">
                       <Select label="Product (optional)" value="" onChange={(e) => pickItem(line.id, e.target.value)}>
                         <option value="">{t('Pick from inventory...')}</option>

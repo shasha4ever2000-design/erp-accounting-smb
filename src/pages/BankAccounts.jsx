@@ -155,7 +155,7 @@ export default function BankAccounts() {
             <option value="cash">{t('Cash Account')}</option>
             <option value="credit_card">{t('Credit Card')}</option>
           </Select>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Bank Name" value={form.bankName} onChange={(e) => setField('bankName', e.target.value)} placeholder="e.g. HSBC" />
             <Input label="Account Number" value={form.accountNumber} onChange={(e) => setField('accountNumber', e.target.value)} placeholder="Last 4 digits" />
           </div>

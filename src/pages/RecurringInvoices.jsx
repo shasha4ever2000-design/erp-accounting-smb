@@ -132,7 +132,7 @@ export default function RecurringInvoices() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Subscription" width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Customer *" value={form.customerId} onChange={(e) => setField('customerId', e.target.value)}>
               <option value="">— Select customer —</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -141,7 +141,7 @@ export default function RecurringInvoices() {
               {Object.entries(FREQ).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="First Invoice Date" type="date" value={form.nextDate} onChange={(e) => setField('nextDate', e.target.value)} />
             <Input label="End Date (optional)" type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} />
           </div>

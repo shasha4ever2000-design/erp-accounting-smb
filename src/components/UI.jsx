@@ -28,12 +28,14 @@ export function Card({ children, className = '', ...rest }) {
 export function PageHeader({ title, subtitle, action }) {
   const t = useT()
   return (
-    <div className="flex items-start justify-between mb-7 gap-4 animate-slide-up">
+    // On a phone the action drops below the heading: side by side, a two-word
+    // title and a pair of buttons fight for 390px and both lose.
+    <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-7 gap-3 sm:gap-4 animate-slide-up">
       <div className="min-w-0">
-        <h1 className="text-2xl font-bold tracking-tightest text-slate-900 dark:text-slate-50">{typeof title === 'string' ? t(title) : title}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tightest text-slate-900 dark:text-slate-50">{typeof title === 'string' ? t(title) : title}</h1>
         {subtitle && <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">{typeof subtitle === 'string' ? t(subtitle) : subtitle}</p>}
       </div>
-      {action && <div className="flex-shrink-0">{action}</div>}
+      {action && <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">{action}</div>}
     </div>
   )
 }
@@ -171,19 +173,26 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
     purple: 'bg-accent-50 text-accent-600 ring-accent-600/10 dark:bg-accent-500/10 dark:text-accent-400 dark:ring-accent-400/20',
   }
   return (
-    <Card {...clickProps} className={`group p-5 transition-all duration-200 ease-spring hover:shadow-card-hover hover:-translate-y-px ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40' : ''}`}>
+    <Card {...clickProps} className={`group p-4 sm:p-5 transition-all duration-200 ease-spring hover:shadow-card-hover hover:-translate-y-px ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">{label}{onClick && <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity" />}</p>
-          {/* Long amounts shrink instead of truncating — money must stay fully readable. */}
-          <p className={`${String(value ?? '').length > 15 ? 'text-lg' : String(value ?? '').length > 11 ? 'text-[1.35rem]' : 'text-[1.7rem]'} leading-tight font-bold tracking-tightest text-slate-900 dark:text-white mt-2 tabular whitespace-nowrap`}>{value}</p>
-          <div className="flex items-center gap-2 mt-1.5">
+          {/* Long amounts shrink instead of truncating — money must stay fully
+              readable. The step-down is per-breakpoint because the card itself
+              is far narrower on a phone: a value sized for a 300px desktop card
+              overflows a 160px one. */}
+          <p className={`${
+            String(value ?? '').length > 15 ? 'text-sm sm:text-lg'
+            : String(value ?? '').length > 11 ? 'text-lg sm:text-[1.35rem]'
+            : 'text-[1.35rem] sm:text-[1.7rem]'
+          } leading-tight font-bold tracking-tightest text-slate-900 dark:text-white mt-2 tabular whitespace-nowrap`}>{value}</p>
+          <div className="flex items-center gap-2 mt-1.5 min-w-0">
             {trend != null && (
-              <span className={`inline-flex items-center gap-0.5 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${trendUp ? 'text-success-700 bg-success-50 ring-success-600/10 dark:text-success-300 dark:bg-success-500/10 dark:ring-success-400/20' : 'text-danger-600 bg-danger-50 ring-danger-600/10 dark:text-danger-300 dark:bg-danger-500/10 dark:ring-danger-400/20'}`}>
+              <span className={`inline-flex items-center gap-0.5 flex-shrink-0 text-[11px] font-semibold px-1.5 py-0.5 rounded-md ring-1 ring-inset ${trendUp ? 'text-success-700 bg-success-50 ring-success-600/10 dark:text-success-300 dark:bg-success-500/10 dark:ring-success-400/20' : 'text-danger-600 bg-danger-50 ring-danger-600/10 dark:text-danger-300 dark:bg-danger-500/10 dark:ring-danger-400/20'}`}>
                 {trendUp ? '▲' : '▼'} {trend}
               </span>
             )}
-            {sub && <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{sub}</p>}
+            {sub && <p className="text-xs text-slate-400 dark:text-slate-500 truncate min-w-0">{sub}</p>}
           </div>
         </div>
         {icon && (
@@ -199,7 +208,9 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
 export function Table({ headers, children, empty }) {
   const t = useT()
   return (
-    <div className="overflow-x-auto">
+    // Wide tables scroll rather than squeezing money into an unreadable
+    // column. -webkit-overflow-scrolling keeps the swipe smooth on iOS.
+    <div className="overflow-x-auto -mx-px [-webkit-overflow-scrolling:touch]">
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-slate-200/90 dark:border-surface-700 bg-slate-50/80 dark:bg-surface-900/40">
@@ -208,7 +219,7 @@ export function Table({ headers, children, empty }) {
               return (
               <th
                 key={i}
-                className={`px-4 py-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em] ${
+                className={`px-2.5 sm:px-4 py-2.5 text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.08em] whitespace-nowrap ${
                   h.right ? 'text-right' : 'text-left'
                 }`}
               >
@@ -239,7 +250,7 @@ export function Tr({ children, onClick, className = '' }) {
 
 export function Td({ children, right = false, className = '', colSpan }) {
   return (
-    <td colSpan={colSpan} className={`px-4 py-3 text-slate-700 dark:text-slate-300 ${right ? 'text-right' : ''} ${className}`}>
+    <td colSpan={colSpan} className={`px-2.5 sm:px-4 py-3 text-slate-700 dark:text-slate-300 ${right ? 'text-right' : ''} ${className}`}>
       {children}
     </td>
   )

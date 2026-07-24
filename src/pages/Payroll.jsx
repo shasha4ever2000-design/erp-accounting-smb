@@ -136,7 +136,7 @@ export default function Payroll() {
       {/* Run Payroll — editable grid */}
       <Modal open={newModal} onClose={() => setNewModal(false)} title="Run Payroll" width="max-w-6xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 max-w-md">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
             <Input label="Pay Period *" value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="e.g. June 2026" />
             <Input label="Pay Date" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
           </div>

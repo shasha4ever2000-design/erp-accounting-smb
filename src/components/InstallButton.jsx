@@ -40,10 +40,10 @@ export default function InstallButton() {
     <>
       <button
         onClick={handleClick}
-        className="hidden sm:inline-flex items-center gap-1.5 text-sm font-medium text-white bg-gradient-to-br from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 rounded-lg px-3 py-1.5 transition-colors"
+        className="hidden sm:inline-flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-white bg-gradient-to-br from-brand-600 to-accent-600 hover:from-brand-700 hover:to-accent-700 rounded-lg px-3 py-1.5 transition-colors"
         title="Install ERP as a desktop app"
       >
-        <Download size={15} /> {t('Install app')}
+        <Download size={15} /> <span className="hidden lg:inline">{t('Install app')}</span>
       </button>
 
       {showHelp && (

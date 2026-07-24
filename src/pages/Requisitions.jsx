@@ -103,11 +103,11 @@ export default function Requisitions() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Purchase Requisition" width="max-w-xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Requested By" value={form.requestedBy} onChange={(e) => setF('requestedBy', e.target.value)} />
             <Input label="Department" value={form.department} onChange={(e) => setF('department', e.target.value)} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Preferred Supplier" value={form.supplierName} onChange={(e) => setF('supplierName', e.target.value)} />
             <Input label="Date" type="date" value={form.date} onChange={(e) => setF('date', e.target.value)} />
             <Input label="Needed By" type="date" value={form.neededBy} onChange={(e) => setF('neededBy', e.target.value)} />

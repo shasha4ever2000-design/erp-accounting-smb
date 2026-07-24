@@ -72,7 +72,7 @@ export default function DeliveryNotes() {
                 <p className="text-lg font-bold text-gray-800 dark:text-slate-100 mt-1">{dn.number}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
               <div>
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{t('Deliver To')}</p>
                 <p className="font-semibold text-gray-800 dark:text-slate-100">{dn.customerName}</p>
@@ -98,7 +98,7 @@ export default function DeliveryNotes() {
               </tbody>
             </table>
             {dn.notes && <p className="text-sm text-gray-600 dark:text-slate-300 border-t border-gray-100 dark:border-slate-700 pt-4">{dn.notes}</p>}
-            <div className="grid grid-cols-2 gap-8 mt-12 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-12 text-sm">
               <div className="border-t border-gray-300 dark:border-slate-600 pt-2 text-gray-500 dark:text-slate-400">Received by · المستلم</div>
               <div className="border-t border-gray-300 dark:border-slate-600 pt-2 text-gray-500 dark:text-slate-400 text-right">Authorized signature · التوقيع</div>
             </div>
@@ -140,7 +140,7 @@ export default function DeliveryNotes() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Delivery Note" width="max-w-xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Customer" value={form.customerId} onChange={(e) => setF('customerId', e.target.value)}>
               <option value="">— Select / walk-in —</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

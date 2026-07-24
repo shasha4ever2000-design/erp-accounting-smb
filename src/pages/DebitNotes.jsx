@@ -86,12 +86,12 @@ export default function DebitNotes() {
           {!form.supplierId && (
             <Input label="Or enter name manually" value={form.supplierName} onChange={(e) => setField('supplierName', e.target.value)} placeholder="Supplier name" />
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Related Purchase #" value={form.purchaseRef} onChange={(e) => setField('purchaseRef', e.target.value)} placeholder="PUR-0001" />
           </div>
           <Input label="Reason" value={form.reason} onChange={(e) => setField('reason', e.target.value)} placeholder="e.g. Returned damaged goods, overcharge correction" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Subtotal (${sym}) *`} type="number" min="0" step="0.01" value={form.subtotal} onChange={(e) => setField('subtotal', e.target.value)} />
             {!taxEnabled && (
               <Input label={`Tax Amount (${sym})`} type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setField('taxAmount', e.target.value)} />
