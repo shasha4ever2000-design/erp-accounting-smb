@@ -5,6 +5,7 @@ import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock, Shield, ShieldCheck, Clock, Trash2, RotateCcw, KeyRound } from 'lucide-react'
 import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
+import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -82,10 +83,16 @@ export default function Settings() {
 
   const setZatcaField = (k, v) => setZatca((z) => ({ ...z, [k]: v }))
 
-  const applySaudiPreset = () => {
-    setCompany((c) => ({ ...c, currency: 'SAR', currencySymbol: 'SAR' }))
-    setTax((t) => ({ ...t, enabled: true, name: 'VAT', rate: 15 }))
-    setZatca((z) => ({ ...z, enabled: true, showQr: true }))
+  // Applying a region preset fills tax name/rate/system and, only for Saudi
+  // Arabia, offers to switch on ZATCA e-invoicing — it never turns ZATCA on
+  // for any other region.
+  const applyTaxRegion = (id) => {
+    const r = findTaxRegion(id)
+    if (!r) return
+    setTax((t) => ({ ...t, enabled: r.system !== 'none', name: r.taxName, rate: r.rate, system: r.system, country: r.id }))
+    if (r.currency) setCompany((c) => ({ ...c, currency: r.currency, currencySymbol: CURRENCIES.find((cu) => cu.code === r.currency)?.symbol || r.currency }))
+    if (r.zatca) setZatca((z) => ({ ...z, enabled: true, showQr: true }))
+    else if (tax.country && tax.country !== id) setZatca((z) => ({ ...z, enabled: false }))
   }
 
   const [encryptExport, setEncryptExport] = useState(false)
@@ -278,6 +285,15 @@ export default function Settings() {
           <Card className="p-6">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Tax Settings')}</h2>
             <div className="space-y-4">
+              <div>
+                <Select label={t('Tax region')} value={tax.country || 'XX'} onChange={(e) => applyTaxRegion(e.target.value)}>
+                  {TAX_REGIONS.map((r) => <option key={r.id} value={r.id}>{r.country}{r.system === 'vat' ? ` — ${r.taxName} ${r.rate}%` : r.system === 'sales_tax' ? ` — ${r.taxName}` : ''}</option>)}
+                </Select>
+                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">{t('Fills in the tax name, rate and currency below — every field stays editable after.')}</p>
+                {findTaxRegion(tax.country)?.note && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 bg-amber-50 dark:bg-amber-900/20 rounded-lg px-2.5 py-1.5">{t(findTaxRegion(tax.country).note)}</p>
+                )}
+              </div>
               <div className="flex items-center gap-3">
                 <input
                   type="checkbox"
@@ -286,12 +302,21 @@ export default function Settings() {
                   onChange={(e) => setTaxField('enabled', e.target.checked)}
                   className="w-4 h-4 rounded text-blue-600 dark:text-blue-400 focus:ring-blue-500"
                 />
-                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable Tax (VAT / GST)')}</label>
+                <label htmlFor="taxEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable Tax (VAT / GST / Sales Tax)')}</label>
               </div>
               {tax.enabled && (
                 <>
-                  <Input label="Tax Name" value={tax.name} onChange={(e) => setTaxField('name', e.target.value)} placeholder="VAT, GST, Sales Tax..." />
-                  <Input label="Default Tax Rate (%)" type="number" min="0" max="100" step="0.1" value={tax.rate} onChange={(e) => setTaxField('rate', parseFloat(e.target.value) || 0)} />
+                  <Input label={t('Tax Name')} value={tax.name} onChange={(e) => setTaxField('name', e.target.value)} placeholder="VAT, GST, Sales Tax..." />
+                  <Input label={t('Default Tax Rate (%)')} type="number" min="0" max="100" step="0.1" value={tax.rate} onChange={(e) => setTaxField('rate', parseFloat(e.target.value) || 0)} />
+                  <Select label={t('Tax system')} value={tax.system || 'vat'} onChange={(e) => setTaxField('system', e.target.value)}>
+                    <option value="vat">{t('VAT / GST — input tax recoverable')}</option>
+                    <option value="sales_tax">{t('Sales tax — collected on final sale only')}</option>
+                  </Select>
+                  <p className="text-xs text-gray-400 dark:text-slate-500">
+                    {tax.system === 'sales_tax'
+                      ? t('Reports show a Sales Tax Report: tax collected on sales, due to remit. No input-tax recovery on purchases.')
+                      : t('Reports show a VAT/GST Return with recoverable input tax on purchases, matching how most countries outside the US work.')}
+                  </p>
                 </>
               )}
             </div>
@@ -398,17 +423,17 @@ export default function Settings() {
           </div>
         </Card>
 
-        {/* Saudi Arabia · ZATCA E-Invoicing */}
+        {/* Saudi Arabia · ZATCA E-Invoicing — optional, only relevant to Saudi filers */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2.5">
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-green-600 to-emerald-700 flex items-center justify-center text-white text-xs font-bold">KSA</div>
               <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Saudi Arabia · ZATCA E-Invoicing')}</h2>
             </div>
-            <Btn size="sm" variant="secondary" onClick={applySaudiPreset}>{t('Apply Saudi preset')}</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => applyTaxRegion('SA')}>{t('Apply Saudi preset')}</Btn>
           </div>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
-            Generate ZATCA (Fatoorah) compliant simplified tax invoices with a scannable QR code, bilingual Arabic/English layout, and 15% VAT.
+            {t('Generate ZATCA (Fatoorah) compliant simplified tax invoices with a scannable QR code and a bilingual Arabic/English layout. Only relevant if you file VAT in Saudi Arabia — every other tax region above ignores this section.')}
           </p>
           <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -426,9 +451,9 @@ export default function Settings() {
                   <label htmlFor="zatcaQr" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Show ZATCA QR code on invoices')}</label>
                 </div>
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3 text-xs text-green-700 dark:text-green-300 space-y-1">
-                  <p className="font-medium">The QR code encodes (per ZATCA Phase 1):</p>
-                  <p>• Seller name &amp; VAT number · Invoice timestamp · Total with VAT · VAT amount</p>
-                  <p>Set currency to SAR and VAT to 15% using “Apply Saudi preset”, then Save.</p>
+                  <p className="font-medium">{t('The QR code encodes (per ZATCA Phase 1):')}</p>
+                  <p>{t('• Seller name & VAT number · Invoice timestamp · Total with VAT · VAT amount')}</p>
+                  <p>{t('Use the "Apply Saudi preset" button above to set SAR, 15% VAT and this section together, then Save.')}</p>
                 </div>
               </>
             )}

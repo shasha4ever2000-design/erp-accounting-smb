@@ -86,10 +86,21 @@ export default function CommandPalette() {
   const { invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, settings } = useStore()
   const sym = settings.company.currencySymbol
 
+  // The tax-return entry's wording follows the company's configured tax
+  // system, same rule as the Reports page picker.
+  const taxReportLabel = !settings.tax?.enabled ? null
+    : settings.tax?.system === 'sales_tax' ? 'Sales Tax Report'
+    : settings.tax?.country === 'SA' ? 'VAT Return (ZATCA)'
+    : 'VAT / GST Return'
+  const COMMANDS_LIST = useMemo(
+    () => COMMANDS.filter((c) => c.label !== 'VAT Return (ZATCA)' || taxReportLabel).map((c) => (c.label === 'VAT Return (ZATCA)' ? { ...c, label: taxReportLabel } : c)),
+    [taxReportLabel]
+  )
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return COMMANDS
-    const nav = COMMANDS.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
+    if (!q) return COMMANDS_LIST
+    const nav = COMMANDS_LIST.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
     if (q.length < 2) return nav
 
     // Live document search across the books. Amounts match on their digits,
@@ -123,7 +134,7 @@ export default function CommandPalette() {
       })),
     ]
     return [...docs, ...nav]
-  }, [query, invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, sym])
+  }, [query, invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, sym, COMMANDS_LIST])
 
   useEffect(() => { setActive(0) }, [query])
 

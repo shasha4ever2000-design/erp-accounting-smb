@@ -97,7 +97,7 @@ const DEFAULT_BANK_ACCOUNTS = [
 
 const DEFAULT_SETTINGS = {
   company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
-  tax:           { enabled: false, rate: 15, name: 'VAT' },
+  tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
   customFields:  { customer: [], supplier: [] },
@@ -2598,6 +2598,12 @@ export const useStore = create(
             company:    { ...DEFAULT_SETTINGS.company,    ...(persisted.settings?.company    || {}) },
             tax:        { ...DEFAULT_SETTINGS.tax,        ...(persisted.settings?.tax        || {}) },
             accounting: { ...DEFAULT_SETTINGS.accounting, ...(persisted.settings?.accounting || {}) },
+          }
+          // Upgrading companies that already had ZATCA switched on were Saudi
+          // VAT filers in every case that mattered — tag them so the VAT
+          // return keeps its bilingual ZATCA box layout after this upgrade.
+          if (!persisted.settings.tax.country && persisted.settings.zatca?.enabled) {
+            persisted.settings.tax.country = 'SA'
           }
 
           if (!persisted.bankAccounts)       persisted.bankAccounts       = DEFAULT_BANK_ACCOUNTS

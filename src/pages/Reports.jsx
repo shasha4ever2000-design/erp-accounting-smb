@@ -3,6 +3,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { vatBreakdown } from '../utils/vat'
 import { buildVatReturn, yearQuarters } from '../utils/vatReturn'
+import { buildSalesTaxReturn } from '../utils/salesTaxReturn'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -71,6 +72,20 @@ export default function Reports() {
       </button>
     )
   }
+
+  // The tax report's label/id in the picker follows the company's configured
+  // tax system — ZATCA-styled for Saudi VAT filers, generic VAT/GST return
+  // elsewhere, or a Sales Tax Report for US-style non-recoverable sales tax.
+  const taxSystem = settings.tax?.system || 'vat'
+  const taxCountry = settings.tax?.country || ''
+  const taxReportLabel = !settings.tax?.enabled ? null
+    : taxSystem === 'sales_tax' ? 'Sales Tax Report'
+    : taxCountry === 'SA' ? 'VAT Return (ZATCA)'
+    : 'VAT / GST Return'
+  const REPORTS_LIST = useMemo(
+    () => REPORTS.filter((r) => r.id !== 'vat' || taxReportLabel).map((r) => (r.id === 'vat' ? { ...r, label: taxReportLabel } : r)),
+    [taxReportLabel]
+  )
 
   const balances = useMemo(() => getAllBalances(startDate, endDate), [getAllBalances, startDate, endDate, journalEntries])
   const allBalances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
@@ -583,6 +598,10 @@ export default function Reports() {
   // column, a ledger reconciliation check, and one-click settlement posting.
   const VATReport = () => {
     const ret = buildVatReturn({ invoices, creditNotes, purchases, debitNotes }, { from: startDate, to: endDate })
+    // Bilingual ZATCA-styled boxes only make sense for Saudi filers — every
+    // other VAT/GST country gets the same box logic in plain English.
+    const bilingual = taxCountry === 'SA'
+    const taxName = settings.tax?.name || 'VAT'
 
     // Ledger cross-check: the return is built from documents; the ledgers were
     // posted by the same documents. Any difference means a manual JE touched
@@ -609,7 +628,7 @@ export default function Reports() {
       <tr className={`border-b border-gray-100 dark:border-slate-700/50 ${strong ? 'bg-gray-50 dark:bg-slate-800/60' : ''}`}>
         <td className="px-4 py-2.5 text-gray-400 dark:text-slate-500 text-xs w-10">{n}</td>
         <td className={`px-2 py-2.5 ${bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-700 dark:text-slate-200'}`}>
-          {label}<span className="block text-xs text-gray-400 dark:text-slate-500" dir="rtl">{ar}</span>
+          {label}{bilingual && <span className="block text-xs text-gray-400 dark:text-slate-500" dir="rtl">{ar}</span>}
         </td>
         {na ? (
           <td colSpan={3} className={`${cell} text-gray-300 dark:text-slate-600`}>—</td>
@@ -625,7 +644,7 @@ export default function Reports() {
     const SectionHead = ({ label, ar }) => (
       <tr className="bg-brand-50/60 dark:bg-brand-500/[0.08]">
         <td colSpan={5} className="px-4 py-2 text-xs font-bold uppercase tracking-wide text-brand-700 dark:text-brand-300">
-          {label} <span className="font-normal text-brand-400 dark:text-brand-500 ms-2" dir="rtl">{ar}</span>
+          {label} {bilingual && <span className="font-normal text-brand-400 dark:text-brand-500 ms-2" dir="rtl">{ar}</span>}
         </td>
       </tr>
     )
@@ -647,7 +666,9 @@ export default function Reports() {
         <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex flex-wrap items-start justify-between gap-3">
           <div>
             <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-            <p className="text-sm text-gray-500 dark:text-slate-400">VAT Return · <span dir="rtl">إقرار ضريبة القيمة المضافة</span> — <span dir="ltr" className="inline-block">{fmtDate(startDate)} {t('to')} {fmtDate(endDate)}</span></p>
+            <p className="text-sm text-gray-500 dark:text-slate-400">
+              {taxName} {t('Return')}{bilingual && <> · <span dir="rtl">إقرار ضريبة القيمة المضافة</span></>} — <span dir="ltr" className="inline-block">{fmtDate(startDate)} {t('to')} {fmtDate(endDate)}</span>
+            </p>
             <div className="flex gap-1.5 mt-3 print:hidden">
               {quarters.map((q) => {
                 const activeQ = startDate === q.from && endDate === q.to
@@ -661,7 +682,8 @@ export default function Reports() {
             </div>
           </div>
           <div className="text-right text-xs text-gray-400 dark:text-slate-500">
-            {settings.zatca?.vatNumber && <p className="font-mono">{t('VAT No')}: {settings.zatca.vatNumber}</p>}
+            {bilingual && settings.zatca?.vatNumber && <p className="font-mono">{t('VAT No')}: {settings.zatca.vatNumber}</p>}
+            {!bilingual && settings.company.taxId && <p className="font-mono">{t('Tax Registration Number')}: {settings.company.taxId}</p>}
             <p>{t('Standard rate')}: {settings.tax?.rate ?? 15}%</p>
             {settlement && (
               <p className="mt-1 inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 font-semibold">
@@ -679,27 +701,27 @@ export default function Reports() {
                 <th className="px-2 py-2 text-left">{t('Description')}</th>
                 <th className="px-3 py-2 text-right">{t('Amount')} ({sym})</th>
                 <th className="px-3 py-2 text-right">{t('Adjustment')}</th>
-                <th className="px-3 py-2 text-right">VAT ({sym})</th>
+                <th className="px-3 py-2 text-right">{taxName} ({sym})</th>
               </tr>
             </thead>
             <tbody>
-              <SectionHead label="VAT on Sales" ar="ضريبة القيمة المضافة على المبيعات" />
+              <SectionHead label={`${taxName} on Sales`} ar="ضريبة القيمة المضافة على المبيعات" />
               <Row n="1" label="Standard rated sales" ar="المبيعات الخاضعة للنسبة الأساسية" line={ret.sales.standard} />
               <Row n="2" label="Zero-rated domestic sales" ar="المبيعات المحلية الخاضعة لنسبة الصفر" line={ret.sales.zero} />
               <Row n="3" label="Exports" ar="الصادرات" na />
               <Row n="4" label="Exempt sales" ar="المبيعات المعفاة" line={ret.sales.exempt} />
               <Row n="5" label="Total sales" ar="إجمالي المبيعات" line={ret.sales.total} bold strong />
-              <SectionHead label="VAT on Purchases" ar="ضريبة القيمة المضافة على المشتريات" />
+              <SectionHead label={`${taxName} on Purchases`} ar="ضريبة القيمة المضافة على المشتريات" />
               <Row n="6" label="Standard rated domestic purchases" ar="المشتريات المحلية الخاضعة للنسبة الأساسية" line={ret.purchases.standard} />
-              <Row n="7" label="Imports subject to VAT (paid at customs)" ar="الاستيرادات الخاضعة للضريبة المدفوعة في الجمارك" na />
+              <Row n="7" label={`Imports subject to ${taxName} (paid at customs)`} ar="الاستيرادات الخاضعة للضريبة المدفوعة في الجمارك" na />
               <Row n="8" label="Imports subject to reverse charge" ar="الاستيرادات الخاضعة لآلية الاحتساب العكسي" na />
               <Row n="9" label="Zero-rated purchases" ar="المشتريات الخاضعة لنسبة الصفر" line={ret.purchases.zero} />
               <Row n="10" label="Exempt purchases" ar="المشتريات المعفاة" line={ret.purchases.exempt} />
               <Row n="11" label="Total purchases" ar="إجمالي المشتريات" line={ret.purchases.total} bold strong />
               <SectionHead label="Summary" ar="الملخص" />
-              <Row n="12" label="Total VAT due for current period" ar="إجمالي الضريبة المستحقة عن الفترة الحالية" line={{ amount: ret.outputVat, adjustment: 0, vat: 0 }} bold />
-              <Row n="13" label="Recoverable input VAT" ar="ضريبة المدخلات القابلة للخصم" line={{ amount: ret.inputVat, adjustment: 0, vat: 0 }} bold />
-              <Row n="14" label="Net VAT due / (reclaimable)" ar="صافي الضريبة المستحقة (أو القابلة للاسترداد)" line={{ amount: ret.netVat, adjustment: 0, vat: 0 }} bold strong />
+              <Row n="12" label={`Total ${taxName} due for current period`} ar="إجمالي الضريبة المستحقة عن الفترة الحالية" line={{ amount: ret.outputVat, adjustment: 0, vat: 0 }} bold />
+              <Row n="13" label={`Recoverable input ${taxName}`} ar="ضريبة المدخلات القابلة للخصم" line={{ amount: ret.inputVat, adjustment: 0, vat: 0 }} bold />
+              <Row n="14" label={`Net ${taxName} due / (reclaimable)`} ar="صافي الضريبة المستحقة (أو القابلة للاسترداد)" line={{ amount: ret.netVat, adjustment: 0, vat: 0 }} bold strong />
             </tbody>
           </table>
         </div>
@@ -718,10 +740,81 @@ export default function Reports() {
 
         <div className={`p-5 flex flex-wrap items-center justify-between gap-3 ${ret.netVat >= 0 ? 'bg-red-50 dark:bg-red-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
           <div>
-            <span className="font-bold text-gray-800 dark:text-slate-100">{ret.netVat >= 0 ? t('VAT Payable to ZATCA') : t('VAT Reclaimable from ZATCA')}</span>
+            <span className="font-bold text-gray-800 dark:text-slate-100">
+              {bilingual
+                ? (ret.netVat >= 0 ? t('VAT Payable to ZATCA') : t('VAT Reclaimable from ZATCA'))
+                : (ret.netVat >= 0 ? `${taxName} ${t('Payable')}` : `${taxName} ${t('Reclaimable')}`)}
+            </span>
             <span className={`block sm:inline sm:ms-4 text-xl font-black ${ret.netVat >= 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300'}`}>{fmtMoney(Math.abs(ret.netVat), sym)}</span>
           </div>
           {!settlement && (ret.outputVat !== 0 || ret.inputVat !== 0) && (
+            settleOpen ? (
+              <div className="flex flex-wrap items-end gap-2 print:hidden">
+                <Input label={t('Settlement date')} type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} className="w-40" />
+                <Select label={t('Bank account')} value={settleBank} onChange={(e) => setSettleBank(e.target.value)} className="w-48">
+                  {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
+                </Select>
+                <Btn onClick={doSettle}>{t('Post settlement')}</Btn>
+                <Btn variant="secondary" onClick={() => setSettleOpen(false)}>{t('Cancel')}</Btn>
+              </div>
+            ) : (
+              <Btn variant="secondary" className="print:hidden" onClick={() => setSettleOpen(true)}>{t('Record settlement')}</Btn>
+            )
+          )}
+        </div>
+      </Card>
+    )
+  }
+
+  // ─── Sales Tax Report (US-style: collected on sales, no input recovery) ──
+  const SalesTaxReport = () => {
+    const ret = buildSalesTaxReturn({ invoices, creditNotes }, { from: startDate, to: endDate })
+    const taxName = settings.tax?.name || 'Sales Tax'
+    const settlement = journalEntries.find((je) => je.type === 'vat_settlement' && je.reference === `VAT ${startDate}..${endDate}`)
+    const [settleOpen, setSettleOpen] = useState(false)
+    const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10))
+    const [settleBank, setSettleBank] = useState(bankAccounts.find((b) => b.isDefault)?.accountId || bankAccounts[0]?.accountId || 'acc-bank1')
+    const doSettle = () => {
+      try {
+        settleVat({ date: settleDate, from: startDate, to: endDate, bankAccountId: settleBank, outputVat: ret.collected, inputVat: 0 })
+        setSettleOpen(false)
+      } catch (e) {
+        alert(e.message === 'VAT_NOTHING_TO_SETTLE' ? t('There is no tax to settle in this period.') : e.message)
+      }
+    }
+    const Row = ({ label, value, bold }) => (
+      <div className={`flex items-center justify-between py-2.5 ${bold ? 'border-t-2 border-gray-300 dark:border-slate-600 mt-1 pt-3' : 'border-b border-gray-100 dark:border-slate-700/60'}`}>
+        <span className={bold ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-600 dark:text-slate-300'}>{label}</span>
+        <span className={`font-mono tabular-nums ${bold ? 'font-bold text-lg' : 'font-medium'} text-gray-800 dark:text-slate-100`}>{fmtMoney(value, sym)}</span>
+      </div>
+    )
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">{taxName} {t('Report')} — {fmtDate(startDate)} {t('to')} {fmtDate(endDate)}</p>
+        </div>
+        <div className="p-6">
+          <Row label={t('Taxable sales')} value={ret.taxable} />
+          <Row label={t('Exempt / zero-rated sales')} value={ret.exempt} />
+          <Row label={t('Total sales')} value={ret.totalSales} bold />
+          <div className="mt-5 rounded-xl bg-amber-50/70 dark:bg-amber-500/[0.08] p-4">
+            <Row label={`${taxName} ${t('collected')}`} value={ret.collected} bold />
+          </div>
+          <p className="text-xs text-gray-400 dark:text-slate-500 mt-4">
+            {t('Sales-tax model: tax collected on sales only — this app does not track input-tax recovery on purchases under this system, unlike VAT/GST.')}
+          </p>
+        </div>
+        <div className="p-5 flex flex-wrap items-center justify-between gap-3 bg-red-50 dark:bg-red-900/20">
+          <div>
+            <span className="font-bold text-gray-800 dark:text-slate-100">{taxName} {t('due to remit')}</span>
+            <span className="block sm:inline sm:ms-4 text-xl font-black text-red-700 dark:text-red-300">{fmtMoney(ret.collected, sym)}</span>
+          </div>
+          {settlement ? (
+            <p className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 font-semibold text-sm">
+              {t('Settled')} · {fmtDate(settlement.date)}
+            </p>
+          ) : ret.collected !== 0 && (
             settleOpen ? (
               <div className="flex flex-wrap items-end gap-2 print:hidden">
                 <Input label={t('Settlement date')} type="date" value={settleDate} onChange={(e) => setSettleDate(e.target.value)} className="w-40" />
@@ -1101,7 +1194,7 @@ export default function Reports() {
 
   const canExport = ['pl', 'bs', 'tb', 'ar', 'ap', 'sales-cust', 'sales-item', 'purch-supp', 'exp-cat', 'budget-var', 'pl-comp', 'dept-pl'].includes(report)
 
-  const reportTitle = REPORTS.find((r) => r.id === report)?.label || 'Report'
+  const reportTitle = REPORTS_LIST.find((r) => r.id === report)?.label || 'Report'
   const buildReportExport = () => {
     if (report === 'tb') {
       const rows = accounts.map((a) => {
@@ -1221,9 +1314,9 @@ export default function Reports() {
             <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('Report')}</label>
             <select className="border border-slate-300/90 dark:border-surface-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 shadow-input dark:shadow-none focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 cursor-pointer transition-all duration-150"
               value={report} onChange={(e) => setReport(e.target.value)}>
-              {[...new Set(REPORTS.map((r) => r.group || 'Reports'))].map((g) => (
+              {[...new Set(REPORTS_LIST.map((r) => r.group || 'Reports'))].map((g) => (
                 <optgroup key={g} label={t(g)}>
-                  {REPORTS.filter((r) => (r.group || 'Reports') === g).map((r) => (
+                  {REPORTS_LIST.filter((r) => (r.group || 'Reports') === g).map((r) => (
                     <option key={r.id} value={r.id}>{t(r.label)}</option>
                   ))}
                 </optgroup>
@@ -1241,7 +1334,7 @@ export default function Reports() {
         {report === 'pl' && <PLReport />}
         {report === 'bs' && <BSReport />}
         {report === 'cf' && <CFReport />}
-        {report === 'vat' && <VATReport />}
+        {report === 'vat' && (taxSystem === 'sales_tax' ? <SalesTaxReport /> : <VATReport />)}
         {report === 'tb' && <TBReport />}
         {report === 'gl' && <GLReport />}
         {report === 'ar' && <ARReport />}

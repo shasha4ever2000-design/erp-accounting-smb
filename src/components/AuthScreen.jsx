@@ -55,12 +55,12 @@ export default function AuthScreen() {
 
         <div className="relative max-w-lg">
           <h1 className="text-4xl xl:text-[2.75rem] font-black leading-[1.12] tracking-tight mb-5">{t('Run your whole business in one place.')}</h1>
-          <p className="text-blue-100/90 text-lg leading-relaxed">Double-entry accounting, invoicing, inventory, payroll, projects, POS and ZATCA e-invoicing — built for small &amp; medium businesses in Saudi Arabia and beyond.</p>
+          <p className="text-blue-100/90 text-lg leading-relaxed">{t('Double-entry accounting, invoicing, inventory, payroll, projects and POS — with VAT/GST, sales tax, and Saudi ZATCA e-invoicing built in. Built for small & medium businesses anywhere.')}</p>
           <div className="mt-9 space-y-3.5 text-sm">
             {[
-              'ZATCA-compliant tax invoices with QR',
-              'Multiple companies in one app',
-              'Works offline · installable on desktop',
+              t('VAT/GST, sales tax & ZATCA e-invoicing built in'),
+              t('Multiple companies in one app'),
+              t('Works offline · installable on desktop'),
             ].map((f) => (
               <p key={f} className="flex items-center gap-3 text-blue-50/95">
                 <span className="w-5 h-5 rounded-full bg-white/15 ring-1 ring-white/25 flex items-center justify-center flex-shrink-0">
