@@ -878,6 +878,12 @@ const AR = {
   'collected': 'المحصّلة',
   'due to remit': 'مستحقة التوريد',
   'Sales-tax model: tax collected on sales only — this app does not track input-tax recovery on purchases under this system, unlike VAT/GST.': 'نموذج ضريبة المبيعات: تُحصّل الضريبة على المبيعات فقط — لا يتتبّع هذا النظام استرداد ضريبة المدخلات على المشتريات، بخلاف VAT/GST.',
+  // ── Budget alerts ──
+  'Budget alerts': 'تنبيهات الموازنة',
+  'Over budget': 'تجاوز الموازنة',
+  'Spending fast': 'إنفاق متسارع',
+  'Behind target': 'متأخر عن المستهدف',
+  '+{n} more': '+{n} أخرى',
   // ── Data integrity check ──
   'Data Integrity Check': 'فحص سلامة البيانات',
   'Verifies your books obey double-entry: every entry balances, the trial balance nets to zero, and the balance sheet equation holds. Read-only — it never changes your data.': 'يتحقق من التزام دفاترك بالقيد المزدوج: توازن كل قيد، وتصفير ميزان المراجعة، وصحة معادلة الميزانية. للقراءة فقط — لا يغيّر بياناتك أبداً.',

@@ -3,6 +3,7 @@ import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
+import BudgetAlertStrip from '../components/BudgetAlertStrip'
 import { format } from 'date-fns'
 import { Target, Save } from 'lucide-react'
 
@@ -117,6 +118,9 @@ export default function Budgets() {
           </div>
         }
       />
+
+      {/* Alerts for the year being viewed — silent when everything is on pace */}
+      <BudgetAlertStrip year={year} max={6} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <SummaryCard label="Net Budgeted" value={fmtMoney(netBudget, sym)} icon={<Target size={18} />} tone="indigo" />

@@ -5,6 +5,7 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { StatCard, Card, Badge } from '../components/UI'
 import AccountLedgerModal from '../components/AccountLedgerModal'
 import { seedDemoData, isCompanyEmpty } from '../utils/demoData'
+import BudgetAlertStrip from '../components/BudgetAlertStrip'
 import { useT } from '../i18n'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
@@ -313,6 +314,9 @@ export default function Dashboard() {
           icon={<CheckCircle2 size={18} />}
         />
       </div>
+
+      {/* Budget warnings — renders nothing when everything is on pace */}
+      <BudgetAlertStrip />
 
       {/* Balance Sheet (left) & Profit and Loss (right) — Manager-style summaries */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
