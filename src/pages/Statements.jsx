@@ -3,8 +3,10 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input } from '../components/UI'
+import ExportMenu from '../components/ExportMenu'
+import { buildStatementMessage, mailtoLink, whatsappLink, resolveRegion } from '../utils/shareStatement'
 import { format } from 'date-fns'
-import { Printer, FileText } from 'lucide-react'
+import { Printer, FileText, Mail, MessageCircle, Copy, Check } from 'lucide-react'
 
 export default function Statements() {
   const t = useT()
@@ -50,13 +52,74 @@ export default function Statements() {
   const closing = running
   const label = type === 'customer' ? 'owed by customer' : 'owed to supplier'
 
+  // ── Sharing ────────────────────────────────────────────────────────
+  const [copied, setCopied] = useState(false)
+  const shareMessage = useMemo(() => (entity ? buildStatementMessage({
+    entityName: entity.name,
+    companyName: company.name,
+    startDate, endDate, closing,
+    isCustomer: type === 'customer',
+    bankDetails: settings.invoice?.bankDetails,
+    money: (v) => fmtMoney(v, sym),
+    date: (d) => fmtDate(d),
+    t,
+  }) : ''), [entity, company.name, startDate, endDate, closing, type, settings.invoice, sym, t])
+
+  const shareSubject = entity ? `${t('Statement of Account')} — ${company.name} (${fmtDate(startDate)} — ${fmtDate(endDate)})` : ''
+
+  const openLink = (url) => window.open(url, '_blank', 'noopener')
+  const copyMessage = async () => {
+    try { await navigator.clipboard.writeText(shareMessage); setCopied(true); setTimeout(() => setCopied(false), 1600) }
+    catch { window.prompt(t('Copy the statement message:'), shareMessage) }
+  }
+
+  // Statement lines for CSV/Excel/PDF export, bracketed by opening and closing
+  // balance so the export stands on its own.
+  const exportRows = entity ? [
+    { date: fmtDate(startDate), type: t('Opening balance'), ref: '', debit: '', credit: '', balance: opening },
+    ...rows.map((r) => ({ date: fmtDate(r.date), type: r.type, ref: r.ref || '', debit: r.debit || '', credit: r.credit || '', balance: r.balance })),
+    { date: fmtDate(endDate), type: t('Closing balance'), ref: '', debit: '', credit: '', balance: closing },
+  ] : []
+  const exportColumns = [
+    { key: 'date', label: t('Date') },
+    { key: 'type', label: t('Type') },
+    { key: 'ref', label: t('Reference') },
+    { key: 'debit', label: t('Debit'), right: true, map: (v) => (v === '' ? '' : Number(v).toFixed(2)) },
+    { key: 'credit', label: t('Credit'), right: true, map: (v) => (v === '' ? '' : Number(v).toFixed(2)) },
+    { key: 'balance', label: t('Balance'), right: true, map: (v) => Number(v).toFixed(2) },
+  ]
+
   return (
     <div>
       <div className="no-print">
         <PageHeader
           title="Statements of Account"
           subtitle="Printable customer & supplier account statements"
-          action={entity && <Btn variant="secondary" onClick={() => window.print()}><Printer size={14} /> {t('Download PDF')}</Btn>}
+          action={entity && (
+            <div className="flex flex-wrap items-center gap-2">
+              {entity.email && (
+                <Btn variant="secondary" size="sm" onClick={() => openLink(mailtoLink({ email: entity.email, subject: shareSubject, body: shareMessage }))}>
+                  <Mail size={14} /> {t('Email')}
+                </Btn>
+              )}
+              {entity.phone && (
+                <Btn variant="secondary" size="sm" onClick={() => openLink(whatsappLink({ phone: entity.phone, body: shareMessage, countryId: resolveRegion(settings.tax?.country, company.currency) }))}>
+                  <MessageCircle size={14} /> {t('WhatsApp')}
+                </Btn>
+              )}
+              <Btn variant="secondary" size="sm" onClick={copyMessage}>
+                {copied ? <Check size={14} /> : <Copy size={14} />} {copied ? t('Copied') : t('Copy message')}
+              </Btn>
+              <ExportMenu
+                filename={`statement-${(entity.name || '').replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-')}-${startDate}_to_${endDate}`}
+                rows={exportRows} columns={exportColumns}
+                title={`${t('Statement of Account')} — ${entity.name}`}
+                subtitle={`${company.name} · ${fmtDate(startDate)} — ${fmtDate(endDate)}`}
+                size="sm"
+              />
+              <Btn variant="secondary" size="sm" onClick={() => window.print()}><Printer size={14} /> {t('Print')}</Btn>
+            </div>
+          )}
         />
       </div>
 
