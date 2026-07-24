@@ -84,6 +84,16 @@ export const useAuth = create(
       renameCompany: (id, name) =>
         set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, name: (name || '').trim() || c.name } : c)) })),
 
+      // Cloud sync is opt-in per local company. Linking just remembers which
+      // Supabase `companies` row this local company syncs with — the local
+      // storage key (erp-co-<local id>) never changes, so this is safe to
+      // toggle without disturbing anything already on disk.
+      linkCompanyCloud: (id, cloudCompanyId) =>
+        set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, cloudCompanyId } : c)) })),
+
+      unlinkCompanyCloud: (id) =>
+        set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, cloudCompanyId: undefined } : c)) })),
+
       deleteCompany: (id) => {
         // purge the company's persisted data from both localStorage and IndexedDB
         try { localStorage.removeItem(`erp-co-${id}`) } catch { /* ignore */ }

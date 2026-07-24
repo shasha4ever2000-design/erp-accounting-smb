@@ -105,6 +105,22 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Cloud sync (only does anything for companies that opted in — syncNow()
+  // itself no-ops instantly for local-only companies without importing any
+  // sync code). Runs on boot, every 2 minutes while the tab is open, and
+  // immediately when the browser regains connectivity.
+  useEffect(() => {
+    const auth = useAuth.getState()
+    const company = auth.companies.find((c) => c.id === auth.currentCompanyId)
+    if (!company?.cloudCompanyId) return
+    useStore.getState().syncNow()
+    const interval = setInterval(() => useStore.getState().syncNow(), 120000)
+    const onOnline = () => useStore.getState().syncNow()
+    window.addEventListener('online', onOnline)
+    return () => { clearInterval(interval); window.removeEventListener('online', onOnline) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // A freshly created company inherits its name from the company picker label
   useEffect(() => {
     const auth = useAuth.getState()

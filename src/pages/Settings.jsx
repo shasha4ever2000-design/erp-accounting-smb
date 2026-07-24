@@ -6,6 +6,7 @@ import { useT, useI18n } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock, Shield, ShieldCheck, Clock, Trash2, RotateCcw, KeyRound } from 'lucide-react'
 import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
+import CloudSyncCard from '../components/CloudSyncCard'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -680,6 +681,8 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        <CloudSyncCard />
 
         {/* Danger Zone */}
         <Card className="p-6 border-danger-200/70 dark:border-danger-500/25">

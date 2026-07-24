@@ -2524,6 +2524,58 @@ export const useStore = create(
         } catch { return { ran: false } }
       },
 
+      // ─── CLOUD SYNC (opt-in) ───────────────────────────────────────
+      // Everything here is loaded on demand (dynamic imports) so companies
+      // that never opt into cloud sync never pull @supabase/supabase-js —
+      // or any of its network calls — into their bundle or runtime at all.
+      syncStatus: 'idle', // 'idle' | 'syncing' | 'error'
+      lastSyncAt: null,
+      lastSyncError: null,
+
+      _readSyncMeta: async () => {
+        try {
+          const raw = await idbKvStorage.getItem(currentCompanyKey() + '::syncMeta')
+          const m = raw ? JSON.parse(raw) : null
+          if (m) return m
+        } catch { /* ignore */ }
+        return { snapshot: null, pulledAt: null }
+      },
+      _writeSyncMeta: async (meta) => { await idbKvStorage.setItem(currentCompanyKey() + '::syncMeta', JSON.stringify(meta)) },
+
+      syncNow: async () => {
+        const { useAuth } = await import('./auth')
+        const auth = useAuth.getState()
+        const company = auth.companies.find((c) => c.id === auth.currentCompanyId)
+        if (!company?.cloudCompanyId) return { skipped: true, reason: 'NOT_LINKED' }
+
+        const { getSupabase, isOnline } = await import('./lib/supabase')
+        if (!isOnline()) return { skipped: true, reason: 'OFFLINE' }
+        const client = getSupabase()
+        const { data: sessionData } = await client.auth.getSession()
+        if (!sessionData?.session) return { skipped: true, reason: 'NOT_SIGNED_IN' }
+
+        const s = get()
+        set({ syncStatus: 'syncing' })
+        try {
+          const { runSync } = await import('./cloudSync')
+          const meta = await s._readSyncMeta()
+          const localSnapshot = s.exportData()
+          const entities = Object.keys(localSnapshot).filter((k) => !k.startsWith('_'))
+          const { merged, newPulledAt, pushed, pulled } = await runSync({
+            client, companyId: company.cloudCompanyId, userId: sessionData.session.user.id, entities,
+            localSnapshot, lastSyncedSnapshot: meta.snapshot, lastPulledAt: meta.pulledAt,
+          })
+          get().importData(merged)
+          await get()._writeSyncMeta({ snapshot: merged, pulledAt: newPulledAt })
+          const now = new Date().toISOString()
+          set({ syncStatus: 'idle', lastSyncAt: now, lastSyncError: null })
+          return { ok: true, pushed, pulled }
+        } catch (e) {
+          set({ syncStatus: 'error', lastSyncError: e.message })
+          return { error: e.message }
+        }
+      },
+
       // ─── VAT SETTLEMENT ────────────────────────────────────────────
       // Close a filing period: clear Output VAT (liability) against Input VAT
       // (asset) and pay/receive the net through a bank account.

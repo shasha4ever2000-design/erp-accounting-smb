@@ -16,6 +16,7 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
+  Cloud, CloudOff, RefreshCw, AlertTriangle,
 } from 'lucide-react'
 
 const NAV = [
@@ -188,6 +189,7 @@ export default function Layout({ children }) {
           </button>
           <CompanySwitcher />
           <div className="flex-1" />
+          <SyncStatusIndicator />
           <InstallButton />
           <button
             onClick={toggleLang}
@@ -238,6 +240,38 @@ function useOutside(onClose) {
     return () => document.removeEventListener('mousedown', h)
   }, [onClose])
   return ref
+}
+
+function SyncStatusIndicator() {
+  const t = useT()
+  const companies = useAuth((s) => s.companies)
+  const currentCompanyId = useAuth((s) => s.currentCompanyId)
+  const company = companies.find((c) => c.id === currentCompanyId)
+  const syncStatus = useStore((s) => s.syncStatus)
+  const lastSyncAt = useStore((s) => s.lastSyncAt)
+  const lastSyncError = useStore((s) => s.lastSyncError)
+
+  if (!company?.cloudCompanyId) return null // local-only company — no indicator, no sync code loaded
+
+  const label = syncStatus === 'syncing' ? t('Syncing…')
+    : syncStatus === 'error' ? `${t('Sync error')}: ${lastSyncError || ''}`
+    : lastSyncAt ? `${t('Synced')} · ${new Date(lastSyncAt).toLocaleTimeString()}`
+    : t('Not yet synced')
+
+  return (
+    <button
+      onClick={() => useStore.getState().syncNow()}
+      title={label}
+      className={`p-2 rounded-lg transition-colors ${
+        syncStatus === 'error' ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:hover:bg-white/[0.06] dark:hover:text-slate-200'
+      }`}
+    >
+      {syncStatus === 'syncing' ? <RefreshCw size={18} className="animate-spin" />
+        : syncStatus === 'error' ? <AlertTriangle size={18} />
+        : <Cloud size={18} />}
+    </button>
+  )
 }
 
 function CompanySwitcher() {
