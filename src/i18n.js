@@ -682,6 +682,18 @@ const AR = {
   'Delivery note': 'إشعار تسليم',
   'Time entry': 'قيد وقت',
   'Scheduled transfer': 'تحويل مجدول',
+  // Inventory kits
+  'This item is a kit': 'هذا الصنف عبارة عن حزمة',
+  'Sold as one line, but made of other items. It holds no stock of its own — selling one takes its components off the shelf and costs them to sales.': 'يُباع كبند واحد لكنه مكوَّن من أصناف أخرى. لا يحمل رصيدًا خاصًا به — فبيعه يخصم مكوّناته من المخزون ويحمّلها على تكلفة المبيعات.',
+  '— Choose an item —': '— اختر صنفًا —',
+  'Add component': 'إضافة مكوّن',
+  'Cost of one kit': 'تكلفة الحزمة الواحدة',
+  'Can build': 'يمكن تجميع',
+  'can build': 'يمكن تجميع',
+  'from stock': 'من المخزون المتاح',
+  'kit': 'حزمة',
+  'Qty': 'الكمية',
+  'Remove': 'إزالة',
   // Custom control accounts
   'Use as a control account for': 'استخدامه كحساب مراقبة لـ',
   '— Ordinary account —': '— حساب عادي —',

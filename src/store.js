@@ -6,6 +6,7 @@ import { useAuth } from './auth'
 import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
+import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
@@ -641,11 +642,26 @@ export const useStore = create(
       // ─── INVENTORY ITEMS ───────────────────────────────────────────
       inventoryItems: [],
 
-      addInventoryItem: (item) =>
-        set((s) => ({ inventoryItems: [...s.inventoryItems, { ...item, id: uuid() }] })),
+      addInventoryItem: (item) => {
+        const id = uuid()
+        if (item?.isKit) {
+          const check = validateKit(id, item.components || [], get().inventoryItems)
+          if (!check.ok) throw new Error(`KIT_INVALID:${check.errors.join(' ')}`)
+        }
+        set((s) => ({ inventoryItems: [...s.inventoryItems, { ...item, id }] }))
+        return { id }
+      },
 
       updateInventoryItem: (id, patch) => {
         const before = get().inventoryItems.find((i) => i.id === id)
+        // A kit that contains itself would recurse for ever the next time
+        // something is sold, so the cycle is refused at save time rather than
+        // relied on being caught during a posting.
+        const merged = { ...(before || {}), ...patch }
+        if (merged.isKit) {
+          const check = validateKit(id, merged.components || [], get().inventoryItems)
+          if (!check.ok) throw new Error(`KIT_INVALID:${check.errors.join(' ')}`)
+        }
         set((s) => ({ inventoryItems: s.inventoryItems.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
         // Cost/quantity move constantly through normal trading; only log the
         // master-data edits a human actually made.
@@ -1157,16 +1173,15 @@ export const useStore = create(
 
         // Perpetual issue: reduce stock + post COGS at weighted-average cost for tracked lines.
         // COGS/inventory relief respect each item's own COGS and inventory accounts.
-        const issue = {} // itemId -> qty
+        // Kits explode into their components first: a bundle is one line on
+        // the invoice but there is no bundle on a shelf, so stock and cost of
+        // sales have to follow the parts that actually left it.
+        const issue = explodeLines(invoice.items, get().inventoryItems) // itemId -> qty
         const cogsByAcc = {}, invByAcc = {}
         let cogs = 0
-        invoice.items.forEach((line) => {
-          if (!line.itemId) return
-          const q = parseFloat(line.quantity) || 0
-          if (q <= 0) return
-          const it = get().inventoryItems.find((i) => i.id === line.itemId)
+        Object.entries(issue).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
           if (!it) return
-          issue[line.itemId] = (issue[line.itemId] || 0) + q
           const amt = q * (it.costPrice || 0)
           cogs += amt
           const cAcc = it.cogsAccountId || 'acc-cogs'
@@ -1432,16 +1447,17 @@ export const useStore = create(
         // Restock returned stock + reverse COGS at current average cost.
         const cogsByAcc = {}, invByAcc = {}, restock = {}
         let cogs = 0
-        items.forEach((l) => {
-          if (!l.itemId) return
-          const it = get().inventoryItems.find((i) => i.id === l.itemId); if (!it) return
-          const amt = Math.round(l.quantity * (it.costPrice || 0) * 100) / 100
-          if (amt <= 0) { restock[l.itemId] = (restock[l.itemId] || 0) + l.quantity; return }
+        // A returned kit puts its components back, not the kit — the same
+        // explosion the sale used, so what comes back matches what went out.
+        Object.entries(explodeLines(items, get().inventoryItems)).forEach(([itemId, qty]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId); if (!it) return
+          restock[itemId] = (restock[itemId] || 0) + qty
+          const amt = Math.round(qty * (it.costPrice || 0) * 100) / 100
+          if (amt <= 0) return
           cogs += amt
           const cAcc = it.cogsAccountId || 'acc-cogs', iAcc = it.inventoryAccountId || 'acc-inv'
           invByAcc[iAcc] = (invByAcc[iAcc] || 0) + amt
           cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
-          restock[l.itemId] = (restock[l.itemId] || 0) + l.quantity
         })
         let cogsJeId = null
         if (cogs > 0) {
