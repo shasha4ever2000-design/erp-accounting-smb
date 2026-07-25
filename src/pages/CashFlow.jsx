@@ -142,7 +142,7 @@ export default function CashFlow() {
         <div className="flex flex-wrap gap-4 items-end">
           <Input label={t('From')} type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="w-40" />
           <Input label={t('To')} type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
-          <div className="ml-auto grid grid-cols-3 gap-4">
+          <div className="ml-auto grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="text-right">
               <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{t('Cash In')}</p>
               <p className="text-lg font-bold text-green-600 dark:text-green-400 flex items-center gap-1 justify-end"><TrendingUp size={15} /> {fmtMoney(cashIn, sym)}</p>
@@ -176,8 +176,8 @@ export default function CashFlow() {
                 <Td className="text-gray-300 dark:text-slate-600"><ArrowRight size={14} /></Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(tf.toAccountId)}</Td>
                 <Td right className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(tf.amount, sym)}</Td>
-                <Td right className="text-gray-400">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
-                <Td className="text-gray-400 text-xs font-mono">{tf.reference || '—'}</Td>
+                <Td right className="text-gray-400 dark:text-slate-500">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
+                <Td className="text-gray-400 dark:text-slate-500 text-xs font-mono">{tf.reference || '—'}</Td>
                 <Td right><div className="flex items-center justify-end gap-1"><AttachmentButton entityType="transfer" entityId={tf.id} /><Btn size="sm" variant="ghost" onClick={() => handleDelete(tf)}><Trash2 size={13} className="text-red-400" /></Btn></div></Td>
               </Tr>
             ))}
@@ -207,8 +207,8 @@ export default function CashFlow() {
                   <Td>
                     <span className="flex items-center gap-2">
                       <span className={due ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}>{fmtDate(sc.nextDate)}</span>
-                      {due && <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300">{t('Due')}</Badge>}
-                      {!sc.active && <Badge className="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">{t('Paused')}</Badge>}
+                      {due && <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Due')}</Badge>}
+                      {!sc.active && <Badge className="bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{t('Paused')}</Badge>}
                     </span>
                   </Td>
                   <Td right>
@@ -219,7 +219,7 @@ export default function CashFlow() {
                         </Btn>
                       )}
                       <Btn size="sm" variant="ghost" onClick={() => updateScheduledTransfer(sc.id, { active: !sc.active })} title={sc.active ? t('Pause') : t('Resume')}>
-                        {sc.active ? <Pause size={13} className="text-amber-500" /> : <Play size={13} className="text-green-600" />}
+                        {sc.active ? <Pause size={13} className="text-amber-500" /> : <Play size={13} className="text-green-600 dark:text-green-400" />}
                       </Btn>
                       <Btn size="sm" variant="ghost" onClick={() => handleDeleteSchedule(sc)}><Trash2 size={13} className="text-red-400" /></Btn>
                     </div>
@@ -246,7 +246,7 @@ export default function CashFlow() {
                 <Td className="text-gray-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
                 <Td className="text-gray-800 dark:text-slate-200">{m.desc}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm">{m.account}</Td>
-                <Td className="text-gray-400 text-xs font-mono">{m.ref || '—'}</Td>
+                <Td className="text-gray-400 dark:text-slate-500 text-xs font-mono">{m.ref || '—'}</Td>
                 <Td right className="font-medium text-green-600 dark:text-green-400">{m.amount > 0 ? fmtMoney(m.amount, sym) : ''}</Td>
                 <Td right className="font-medium text-red-500 dark:text-red-400">{m.amount < 0 ? fmtMoney(Math.abs(m.amount), sym) : ''}</Td>
               </Tr>
@@ -258,7 +258,7 @@ export default function CashFlow() {
       {/* Transfer modal */}
       <Modal open={modal} onClose={() => setModal(false)} title={t('Transfer Between Accounts')}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('From Account')} value={form.fromAccountId} onChange={(e) => setField('fromAccountId', e.target.value)}>
               {accountOptions}
             </Select>
@@ -268,13 +268,13 @@ export default function CashFlow() {
           </div>
           <div className="bg-gray-50 dark:bg-slate-700/40 rounded-lg p-2.5 text-sm text-gray-600 dark:text-slate-300 flex justify-between">
             <span>{t('Available in source')}</span>
-            <strong className={fromBal >= 0 ? '' : 'text-red-600'}>{fmtMoney(fromBal, sym)}</strong>
+            <strong className={fromBal >= 0 ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(fromBal, sym)}</strong>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />
             <Input label={t('Date')} type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Bank Fee')} (${sym})`} type="number" min="0" step="0.01" value={form.fee} onChange={(e) => setField('fee', e.target.value)} placeholder="0.00" />
             {parseFloat(form.fee) > 0 && (
               <Select label={t('Fee Account')} value={form.feeAccountId} onChange={(e) => setField('feeAccountId', e.target.value)}>
@@ -301,7 +301,7 @@ export default function CashFlow() {
       {/* Scheduled transfer modal */}
       <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('New Scheduled Transfer')}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('From Account')} value={schedForm.fromAccountId} onChange={(e) => setSched('fromAccountId', e.target.value)}>
               {accountOptions}
             </Select>
@@ -309,11 +309,11 @@ export default function CashFlow() {
               {accountOptions}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={schedForm.amount} onChange={(e) => setSched('amount', e.target.value)} />
             <Input label={`${t('Bank Fee')} (${sym})`} type="number" min="0" step="0.01" value={schedForm.fee} onChange={(e) => setSched('fee', e.target.value)} placeholder="0.00" />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('Frequency')} value={schedForm.frequency} onChange={(e) => setSched('frequency', e.target.value)}>
               {Object.entries(FREQ_LABELS).map(([k, v]) => <option key={k} value={k}>{t(v)}</option>)}
             </Select>

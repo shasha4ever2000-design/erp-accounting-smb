@@ -11,10 +11,10 @@ const emptyTx      = { type: 'money_out', amount: '', date: today(), accountId: 
 const emptyTime    = { employeeName: '', date: today(), hours: '', rate: '', billable: true, description: '' }
 
 const STATUS_CLR = {
-  active:    'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  on_hold:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300',
-  completed: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
-  cancelled: 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400',
+  active:    'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  on_hold:   'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  completed: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+  cancelled: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
 }
 
 export default function Projects() {
@@ -112,7 +112,7 @@ export default function Projects() {
               return (
                 <div key={p.id}>
                   <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => setExpanded(open ? null : p.id)}>
-                    <button className="text-gray-400">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
+                    <button className="text-gray-400 dark:text-slate-500">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
                     <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
                       <Briefcase size={16} className="text-indigo-600 dark:text-indigo-300" />
                     </div>
@@ -123,10 +123,10 @@ export default function Projects() {
                       </div>
                       <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">{p.number}{p.client ? ` · ${p.client}` : ''}</p>
                     </div>
-                    <div className="hidden md:flex items-center gap-6 text-right">
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Income')}</p><p className="text-sm font-semibold text-green-600 dark:text-green-400">{fmtMoney(s.income, sym)}</p></div>
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Cost</p><p className="text-sm font-semibold text-red-500 dark:text-red-400">{fmtMoney(s.cost, sym)}</p></div>
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Profit</p><p className={`text-sm font-bold ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(s.profit, sym)}</p></div>
+                    <div className="hidden md:flex items-center gap-6 text-end">
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">{t('Income')}</p><p className="text-sm font-semibold text-green-600 dark:text-green-400 tabular-nums">{fmtMoney(s.income, sym)}</p></div>
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">Cost</p><p className="text-sm font-semibold text-red-500 dark:text-red-400 tabular-nums">{fmtMoney(s.cost, sym)}</p></div>
+                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">Profit</p><p className={`text-sm font-bold tabular-nums ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(s.profit, sym)}</p></div>
                     </div>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <AttachmentButton entityType="project" entityId={p.id} />
@@ -151,7 +151,7 @@ export default function Projects() {
                             <span>{t('Budget used')}</span><span>{fmtMoney(s.cost, sym)} / {fmtMoney(p.budget, sym)}</span>
                           </div>
                           <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
-                            <div className={`h-full ${budgetUsed >= 100 ? 'bg-red-500' : budgetUsed > 80 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${budgetUsed}%` }} />
+                            <div className={`h-full rounded-full transition-all ${budgetUsed >= 100 ? 'bg-red-500' : budgetUsed > 80 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${budgetUsed}%` }} />
                           </div>
                         </div>
                       )}
@@ -192,11 +192,11 @@ export default function Projects() {
                                 <div className="flex items-center gap-2">
                                   <span className="text-gray-400 dark:text-slate-500 text-xs w-20">{fmtDate(t.date)}</span>
                                   <span className="text-gray-700 dark:text-slate-200">{t.employeeName || 'Staff'} — {t.description || 'work'}</span>
-                                  {t.billable && <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300">billable</Badge>}
+                                  {t.billable && <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">billable</Badge>}
                                 </div>
                                 <div className="flex items-center gap-3">
                                   <span className="text-gray-600 dark:text-slate-300">{t.hours} hrs{t.rate ? ` @ ${fmtMoney(t.rate, sym)}` : ''}</span>
-                                  <button onClick={() => deleteTimeEntry(t.id)} className="text-red-400 hover:text-red-600"><Trash2 size={12} /></button>
+                                  <button onClick={() => deleteTimeEntry(t.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={12} /></button>
                                 </div>
                               </div>
                             ))}
@@ -216,11 +216,11 @@ export default function Projects() {
       <Modal open={projModal} onClose={() => setProjModal(false)} title={editing ? 'Edit Project' : 'New Project'}>
         <div className="space-y-4">
           <Input label="Project Name *" value={pForm.name} onChange={(e) => setP('name', e.target.value)} placeholder="e.g. Website Redesign" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Client / Customer" value={pForm.client} onChange={(e) => setP('client', e.target.value)} />
             <Input label="Budget" type="number" min="0" step="0.01" value={pForm.budget} onChange={(e) => setP('budget', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Start Date" type="date" value={pForm.startDate} onChange={(e) => setP('startDate', e.target.value)} />
             <Select label="Status" value={pForm.status} onChange={(e) => setP('status', e.target.value)}>
               <option value="active">{t('Active')}</option>
@@ -230,7 +230,7 @@ export default function Projects() {
             </Select>
           </div>
           <Textarea label="Notes" rows={2} value={pForm.notes} onChange={(e) => setP('notes', e.target.value)} />
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setProjModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveProject}>{editing ? 'Save Changes' : 'Create Project'}</Btn>
           </div>
@@ -240,7 +240,7 @@ export default function Projects() {
       {/* Transaction modal */}
       <Modal open={!!txModal} onClose={() => setTxModal(null)} title={txForm.type === 'money_in' ? 'Record Project Income' : 'Record Project Cost'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Amount *" type="number" min="0" step="0.01" value={txForm.amount} onChange={(e) => setT('amount', e.target.value)} />
             <Input label="Date" type="date" value={txForm.date} onChange={(e) => setT('date', e.target.value)} />
           </div>
@@ -253,7 +253,7 @@ export default function Projects() {
             {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
           </Select>
           <Input label="Description" value={txForm.description} onChange={(e) => setT('description', e.target.value)} />
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTxModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={saveTx}>{t('Record')}</Btn>
           </div>
@@ -263,20 +263,20 @@ export default function Projects() {
       {/* Time modal */}
       <Modal open={!!timeModal} onClose={() => setTimeModal(null)} title="Log Billable Time">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Employee / Staff" value={tForm.employeeName} onChange={(e) => setTime('employeeName', e.target.value)} />
             <Input label="Date" type="date" value={tForm.date} onChange={(e) => setTime('date', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Hours *" type="number" min="0" step="0.25" value={tForm.hours} onChange={(e) => setTime('hours', e.target.value)} />
             <Input label="Rate / hour" type="number" min="0" step="0.01" value={tForm.rate} onChange={(e) => setTime('rate', e.target.value)} />
           </div>
           <Input label="Description" value={tForm.description} onChange={(e) => setTime('description', e.target.value)} />
           <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-            <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-blue-600" />
+            <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
             Billable
           </label>
-          <div className="flex justify-end gap-2 pt-2">
+          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTimeModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={saveTime}>{t('Log Time')}</Btn>
           </div>

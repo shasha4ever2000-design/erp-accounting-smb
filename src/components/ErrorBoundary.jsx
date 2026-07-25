@@ -43,7 +43,7 @@ export default class ErrorBoundary extends React.Component {
     if (this.state.error) {
       return (
         <div className="min-h-[60vh] flex items-center justify-center p-6">
-          <div className="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-gray-100 dark:border-slate-700 p-8 text-center">
+          <div className="max-w-md w-full bg-white dark:bg-surface-850 rounded-2xl shadow-elevated ring-1 ring-black/5 dark:ring-white/10 p-8 text-center">
             <div className="text-5xl mb-4">⚠️</div>
             <h1 className="text-xl font-bold text-gray-900 dark:text-slate-100 mb-2">{tr('Something went wrong on this screen')}</h1>
             <p className="text-sm text-gray-500 dark:text-slate-400 mb-1">
@@ -51,7 +51,7 @@ export default class ErrorBoundary extends React.Component {
             </p>
             <p className="text-xs text-gray-400 dark:text-slate-500 mb-6 break-words font-mono">{String(this.state.error?.message || this.state.error)}</p>
             <div className="flex flex-col gap-2">
-              <button onClick={() => this.setState({ error: null })} className="w-full bg-blue-600 text-white rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-blue-700">
+              <button onClick={() => this.setState({ error: null })} className="w-full bg-gradient-to-b from-brand-500 to-brand-600 text-white rounded-lg px-4 py-2.5 text-sm font-semibold shadow-btn-primary hover:from-brand-600 hover:to-brand-700 transition-all">
                 {tr('Try again')}
               </button>
               <button onClick={() => { window.location.hash = ''; window.location.reload() }} className="w-full bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-lg px-4 py-2.5 text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600">

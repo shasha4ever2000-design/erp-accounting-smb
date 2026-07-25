@@ -4,14 +4,15 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
+import { alertIfLocked } from '../utils/periodLock'
 import { Plus, Minus, Trash2, ShoppingCart, Search, CheckCircle2, Package } from 'lucide-react'
 
 export default function POS() {
   const t = useT()
   const navigate = useNavigate()
   const {
-    inventoryItems, customers, bankAccounts, warehouses, settings,
-    addInvoice, recordInvoicePayment, addJournalEntry, updateInventoryItem, logStockMovement,
+    inventoryItems, customers, bankAccounts, settings,
+    addInvoice, recordInvoicePayment, logStockMovement,
   } = useStore()
   const sym = settings.company.currencySymbol
   const taxOn = settings.tax.enabled
@@ -45,39 +46,23 @@ export default function POS() {
     const customer = customers.find((c) => c.id === customerId)
     const items = cart.map((c) => ({
       description: c.name, quantity: c.qty, unitPrice: c.price, taxRate: taxOn ? rate : 0,
-      subtotal: c.qty * c.price, accountId: 'acc-sales',
+      subtotal: c.qty * c.price, itemId: c.itemId, accountId: 'acc-sales',
     }))
-    const inv = addInvoice({
-      customerId: customerId || null, customerName: customer?.name || 'Walk-in Customer',
-      date: today(), dueDate: today(), items, subtotal, taxAmount, total, notes: 'POS Sale',
-    })
-    recordInvoicePayment(inv.id, { date: today(), amount: total, bankAccountId: payAcc, notes: 'POS payment' })
+    let inv
+    try {
+      inv = addInvoice({
+        customerId: customerId || null, customerName: customer?.name || 'Walk-in Customer',
+        date: today(), dueDate: today(), items, subtotal, taxAmount, total, notes: 'POS Sale',
+      })
+      recordInvoicePayment(inv.id, { date: today(), amount: total, bankAccountId: payAcc, notes: 'POS payment' })
+    } catch (e) { if (alertIfLocked(e, t)) return; throw e }
 
-    // COGS + stock reduction
-    let cogs = 0
-    const defWh = warehouses.find((w) => w.isDefault)?.id || 'wh-main'
+    // addInvoice already relieved stock and posted COGS for these tracked lines
+    // (so the sale can be safely deleted later). Just log the movements.
     cart.forEach((c) => {
       const it = inventoryItems.find((i) => i.id === c.itemId)
-      if (!it) return
-      cogs += c.qty * (it.costPrice || 0)
-      const patch = { quantity: (it.quantity || 0) - c.qty }
-      if (it.stockByWarehouse) {
-        const map = { ...it.stockByWarehouse }
-        map[defWh] = (map[defWh] || 0) - c.qty
-        patch.stockByWarehouse = map
-      }
-      updateInventoryItem(it.id, patch)
-      logStockMovement({ itemId: it.id, itemName: it.name, date: today(), type: 'sale', qtyChange: -c.qty, ref: inv.number, note: 'POS sale' })
+      if (it) logStockMovement({ itemId: it.id, itemName: it.name, date: today(), type: 'sale', qtyChange: -c.qty, ref: inv.number, note: 'POS sale' })
     })
-    if (cogs > 0) {
-      addJournalEntry({
-        date: today(), description: `POS Cost of Sale – ${inv.number}`, reference: inv.number, type: 'cogs',
-        lines: [
-          { accountId: 'acc-cogs', debit: cogs, credit: 0, description: 'Cost of goods sold' },
-          { accountId: 'acc-inv', debit: 0, credit: cogs, description: 'Inventory reduction' },
-        ],
-      })
-    }
 
     setLastSale({ number: inv.number, id: inv.id, total })
     setCart([])
@@ -91,8 +76,8 @@ export default function POS() {
         {/* Products */}
         <div className="lg:col-span-2">
           <div className="relative mb-4">
-            <Search size={15} className="absolute left-3 top-3 text-gray-400" />
-            <input className="w-full pl-9 pr-3 py-2.5 text-sm border border-gray-200 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+            <input className="w-full ps-9 pe-3 py-2.5 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
               placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           {inventoryItems.length === 0 ? (
@@ -104,13 +89,13 @@ export default function POS() {
             <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
               {filtered.map((item) => (
                 <button key={item.id} onClick={() => addToCart(item)}
-                  className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3 text-left hover:border-blue-400 hover:shadow-md transition-all">
-                  <div className="w-full h-12 rounded-lg bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-700 dark:to-slate-700 flex items-center justify-center mb-2">
-                    <Package size={18} className="text-blue-400" />
+                  className="bg-white dark:bg-surface-850/90 border border-slate-200/80 dark:border-surface-750 rounded-xl p-3 text-start shadow-card dark:shadow-none hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card-hover hover:-translate-y-px active:scale-[.98] transition-all duration-150 ease-spring">
+                  <div className="w-full h-12 rounded-lg bg-gradient-to-br from-brand-50 to-accent-50 dark:from-brand-500/[0.08] dark:to-accent-500/[0.08] ring-1 ring-inset ring-brand-600/[0.06] dark:ring-brand-400/10 flex items-center justify-center mb-2">
+                    <Package size={18} className="text-brand-400 dark:text-brand-500" />
                   </div>
                   <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">{item.name}</p>
                   <div className="flex items-center justify-between mt-1">
-                    <span className="text-sm font-bold text-blue-600 dark:text-blue-400">{fmtMoney(item.salePrice || 0, sym)}</span>
+                    <span className="text-sm font-bold tabular text-brand-600 dark:text-brand-400">{fmtMoney(item.salePrice || 0, sym)}</span>
                     <span className="text-[10px] text-gray-400 dark:text-slate-500">{item.quantity || 0} {item.unit}</span>
                   </div>
                 </button>
@@ -124,7 +109,7 @@ export default function POS() {
           <div className="flex items-center gap-2 mb-3">
             <ShoppingCart size={17} className="text-gray-500 dark:text-slate-400" />
             <h2 className="font-semibold text-gray-800 dark:text-slate-100">{t('Current Sale')}</h2>
-            {cart.length > 0 && <span className="ml-auto text-xs text-gray-400">{cart.length} item(s)</span>}
+            {cart.length > 0 && <span className="ml-auto text-xs text-gray-400 dark:text-slate-500">{cart.length} item(s)</span>}
           </div>
 
           {lastSale && (
@@ -145,15 +130,15 @@ export default function POS() {
                 <div key={c.itemId} className="flex items-center gap-2 text-sm">
                   <div className="flex-1 min-w-0">
                     <p className="font-medium text-gray-800 dark:text-slate-100 truncate">{c.name}</p>
-                    <p className="text-xs text-gray-400">{fmtMoney(c.price, sym)} × {c.qty}</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">{fmtMoney(c.price, sym)} × {c.qty}</p>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setQty(c.itemId, -1)} className="w-6 h-6 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center"><Minus size={12} /></button>
-                    <span className="w-6 text-center">{c.qty}</span>
-                    <button onClick={() => setQty(c.itemId, 1)} className="w-6 h-6 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center"><Plus size={12} /></button>
+                    <button onClick={() => setQty(c.itemId, -1)} className="w-6 h-6 rounded-md bg-slate-100 dark:bg-white/[0.07] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12] transition-colors flex items-center justify-center"><Minus size={12} /></button>
+                    <span className="w-6 text-center tabular">{c.qty}</span>
+                    <button onClick={() => setQty(c.itemId, 1)} className="w-6 h-6 rounded-md bg-slate-100 dark:bg-white/[0.07] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12] transition-colors flex items-center justify-center"><Plus size={12} /></button>
                   </div>
                   <span className="w-16 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(c.qty * c.price, sym)}</span>
-                  <button onClick={() => removeLine(c.itemId)} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                  <button onClick={() => removeLine(c.itemId)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>
@@ -165,7 +150,7 @@ export default function POS() {
             <div className="flex justify-between font-bold text-base text-gray-900 dark:text-slate-100"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mt-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
             <Select value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
               <option value="">{t('Walk-in Customer')}</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

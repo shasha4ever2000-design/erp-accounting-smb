@@ -65,7 +65,7 @@ export default function Currencies() {
       {/* Converter */}
       <Card className="p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <ArrowRightLeft size={16} className="text-gray-400" />
+          <ArrowRightLeft size={16} className="text-gray-400 dark:text-slate-500" />
           <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Quick Converter')}</h3>
         </div>
         <div className="flex flex-wrap items-end gap-3">
@@ -133,7 +133,7 @@ export default function Currencies() {
 
       <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Currency' : 'Add Currency'}>
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Code *" value={form.code} onChange={(e) => setF('code', e.target.value)} placeholder="USD" maxLength={3} />
             <Input label={`Rate per 1 ${base}`} type="number" step="0.0001" value={form.rate} onChange={(e) => setF('rate', e.target.value)} placeholder="3.75" />
           </div>

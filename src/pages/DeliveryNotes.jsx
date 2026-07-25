@@ -10,8 +10,8 @@ const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1
 const emptyForm = { customerId: '', customerName: '', date: today(), reference: '', address: '', notes: '', lines: [blankLine()] }
 
 const STATUS = {
-  pending:   'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  delivered: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
+  pending:   'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  delivered: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
 }
 
 export default function DeliveryNotes() {
@@ -72,7 +72,7 @@ export default function DeliveryNotes() {
                 <p className="text-lg font-bold text-gray-800 dark:text-slate-100 mt-1">{dn.number}</p>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-8 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
               <div>
                 <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{t('Deliver To')}</p>
                 <p className="font-semibold text-gray-800 dark:text-slate-100">{dn.customerName}</p>
@@ -84,13 +84,13 @@ export default function DeliveryNotes() {
               </div>
             </div>
             <table className="w-full text-sm mb-6">
-              <thead><tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
+              <thead className="bg-gray-50/70 dark:bg-slate-800/50"><tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
                 <th className="text-left py-2">#</th><th className="text-left py-2">Description · الوصف</th><th className="text-right py-2">Qty · الكمية</th>
               </tr></thead>
               <tbody>
                 {dn.items.map((it, i) => (
                   <tr key={i} className="border-b border-gray-100 dark:border-slate-700/50">
-                    <td className="py-3 text-gray-400">{i + 1}</td>
+                    <td className="py-3 text-gray-400 dark:text-slate-500">{i + 1}</td>
                     <td className="py-3 text-gray-700 dark:text-slate-200">{it.description}</td>
                     <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{it.quantity}</td>
                   </tr>
@@ -98,7 +98,7 @@ export default function DeliveryNotes() {
               </tbody>
             </table>
             {dn.notes && <p className="text-sm text-gray-600 dark:text-slate-300 border-t border-gray-100 dark:border-slate-700 pt-4">{dn.notes}</p>}
-            <div className="grid grid-cols-2 gap-8 mt-12 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-12 text-sm">
               <div className="border-t border-gray-300 dark:border-slate-600 pt-2 text-gray-500 dark:text-slate-400">Received by · المستلم</div>
               <div className="border-t border-gray-300 dark:border-slate-600 pt-2 text-gray-500 dark:text-slate-400 text-right">Authorized signature · التوقيع</div>
             </div>
@@ -130,7 +130,7 @@ export default function DeliveryNotes() {
                 <Td className="text-gray-400 dark:text-slate-500">{dn.reference || '—'}</Td>
                 <Td><Badge className={STATUS[dn.status] || STATUS.pending}>{dn.status}</Badge></Td>
                 <Td right>
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this delivery note?')) deleteDeliveryNote(dn.id) }} className="text-red-400 hover:text-red-600"><Trash2 size={14} /></button>
+                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this delivery note?')) deleteDeliveryNote(dn.id) }} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={14} /></button>
                 </Td>
               </Tr>
             ))}
@@ -140,7 +140,7 @@ export default function DeliveryNotes() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Delivery Note" width="max-w-xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Customer" value={form.customerId} onChange={(e) => setF('customerId', e.target.value)}>
               <option value="">— Select / walk-in —</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -158,7 +158,7 @@ export default function DeliveryNotes() {
                     value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
                   <input className="w-20 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty"
                     value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>

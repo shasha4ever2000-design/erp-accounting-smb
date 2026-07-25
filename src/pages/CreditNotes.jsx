@@ -57,13 +57,13 @@ export default function CreditNotes() {
           <Table headers={['Number', 'Customer', 'Date', 'Invoice Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((cn) => (
               <Tr key={cn.id}>
-                <Td><span className="font-mono text-sm font-medium text-purple-600">{cn.number}</span></Td>
-                <Td className="font-medium text-gray-800">{cn.customerName}</Td>
-                <Td className="text-gray-500 text-sm">{fmtDate(cn.date)}</Td>
-                <Td className="text-gray-500 text-sm font-mono">{cn.invoiceRef || '—'}</Td>
-                <Td className="text-gray-600 text-sm max-w-[200px] truncate">{cn.reason || '—'}</Td>
+                <Td><span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400">{cn.number}</span></Td>
+                <Td className="font-medium text-gray-800 dark:text-slate-100">{cn.customerName}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(cn.date)}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{cn.invoiceRef || '—'}</Td>
+                <Td className="text-gray-600 dark:text-slate-300 text-sm max-w-[200px] truncate">{cn.reason || '—'}</Td>
                 <Td right>
-                  <span className="font-semibold text-red-600">({fmtMoney(cn.total, sym)})</span>
+                  <span className="font-semibold text-red-600 dark:text-red-400">({fmtMoney(cn.total, sym)})</span>
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="creditnote" entityId={cn.id} />
@@ -86,23 +86,23 @@ export default function CreditNotes() {
           {!form.customerId && (
             <Input label="Or enter name manually" value={form.customerName} onChange={(e) => setField('customerName', e.target.value)} placeholder="Customer name" />
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Related Invoice #" value={form.invoiceRef} onChange={(e) => setField('invoiceRef', e.target.value)} placeholder="INV-0001" />
           </div>
           <Input label="Reason" value={form.reason} onChange={(e) => setField('reason', e.target.value)} placeholder="e.g. Returned goods, overcharge, quality issue" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Subtotal (${sym}) *`} type="number" min="0" step="0.01" value={form.subtotal} onChange={(e) => setField('subtotal', e.target.value)} />
             {!taxEnabled && (
               <Input label={`Tax Amount (${sym})`} type="number" min="0" step="0.01" value={form.taxAmount} onChange={(e) => setField('taxAmount', e.target.value)} />
             )}
           </div>
-          <div className="bg-gray-50 rounded-lg p-3 text-sm">
-            <div className="flex justify-between text-gray-600"><span>Subtotal:</span><span>{fmtMoney(subtotal, sym)}</span></div>
-            {taxEnabled && <div className="flex justify-between text-gray-600"><span>Tax ({taxRate}%):</span><span>{fmtMoney(taxAmt, sym)}</span></div>}
-            <div className="flex justify-between font-bold text-gray-900 border-t border-gray-200 mt-1 pt-1"><span>Total Credit:</span><span>{fmtMoney(total, sym)}</span></div>
+          <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-sm">
+            <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal:</span><span>{fmtMoney(subtotal, sym)}</span></div>
+            {taxEnabled && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Tax ({taxRate}%):</span><span>{fmtMoney(taxAmt, sym)}</span></div>}
+            <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 border-t border-gray-200 dark:border-surface-700 mt-1 pt-1"><span>Total Credit:</span><span>{fmtMoney(total, sym)}</span></div>
           </div>
-          <p className="text-xs text-blue-600 bg-blue-50 rounded p-2">
+          <p className="text-xs bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 rounded p-2">
             Journal Entry: Dr Sales Returns ({fmtMoney(subtotal, sym)}){taxEnabled ? ` + Dr Tax Payable (${fmtMoney(taxAmt, sym)})` : ''} → Cr Accounts Receivable ({fmtMoney(total, sym)})
           </p>
           <div className="flex justify-end gap-2 pt-1">

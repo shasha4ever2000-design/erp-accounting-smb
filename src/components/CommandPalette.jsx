@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, CornerDownLeft } from 'lucide-react'
+import { useStore } from '../store'
+import { fmtMoney } from '../utils/formatters'
 import { useT } from '../i18n'
 
 const COMMANDS = [
@@ -23,6 +25,7 @@ const COMMANDS = [
   { label: 'Purchase Orders', path: '/purchase-orders', group: 'Go to' },
   { label: 'Purchase Invoices', path: '/purchases', group: 'Go to' },
   { label: 'Debit Notes', path: '/debit-notes', group: 'Go to' },
+  { label: 'Recurring Expenses', path: '/recurring-expenses', group: 'Go to' },
   { label: 'Inventory Items', path: '/inventory', group: 'Go to' },
   { label: 'Warehouses & Stock Transfers', path: '/warehouses', group: 'Go to' },
   { label: 'Stock Adjustments', path: '/stock-adjustments', group: 'Go to' },
@@ -39,6 +42,7 @@ const COMMANDS = [
   { label: 'Business Analytics', path: '/analytics', group: 'Go to' },
   { label: 'Currencies & Exchange Rates', path: '/currencies', group: 'Go to' },
   { label: 'Statements of Account', path: '/statements', group: 'Go to' },
+  { label: 'Year-End Close', path: '/year-end', group: 'Go to' },
   { label: 'Audit Log', path: '/audit-log', group: 'Go to' },
   { label: 'Team & Roles', path: '/team', group: 'Go to' },
   { label: 'Reports', path: '/reports', group: 'Go to' },
@@ -80,11 +84,58 @@ export default function CommandPalette() {
     }
   }, [open])
 
+  const { invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, settings } = useStore()
+  const sym = settings.company.currencySymbol
+
+  // The tax-return entry's wording follows the company's configured tax
+  // system, same rule as the Reports page picker.
+  const taxReportLabel = !settings.tax?.enabled ? null
+    : settings.tax?.system === 'sales_tax' ? 'Sales Tax Report'
+    : settings.tax?.country === 'SA' ? 'VAT Return (ZATCA)'
+    : 'VAT / GST Return'
+  const COMMANDS_LIST = useMemo(
+    () => COMMANDS.filter((c) => c.label !== 'VAT Return (ZATCA)' || taxReportLabel).map((c) => (c.label === 'VAT Return (ZATCA)' ? { ...c, label: taxReportLabel } : c)),
+    [taxReportLabel]
+  )
+
   const results = useMemo(() => {
     const q = query.trim().toLowerCase()
-    if (!q) return COMMANDS
-    return COMMANDS.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
-  }, [query])
+    if (!q) return COMMANDS_LIST
+    const nav = COMMANDS_LIST.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
+    if (q.length < 2) return nav
+
+    // Live document search across the books. Amounts match on their digits,
+    // so "1437" finds the $1,437.50 invoice.
+    const qDigits = q.replace(/[^0-9.]/g, '')
+    const amtHit = (n) => qDigits.length >= 3 && String(Math.round((n || 0) * 100) / 100).includes(qDigits)
+    const txtHit = (...fields) => fields.some((f) => (f || '').toLowerCase().includes(q))
+    const take = (arr, n = 5) => arr.slice(0, n)
+
+    const docs = [
+      ...take(invoices.filter((i) => txtHit(i.number, i.customerName) || amtHit(i.total))).map((i) => ({
+        label: `${i.number} · ${i.customerName || '—'} · ${fmtMoney(i.total, sym)}`, path: `/invoices/${i.id}`, group: 'Invoices', raw: true,
+      })),
+      ...take(quotations.filter((d) => txtHit(d.number, d.customerName) || amtHit(d.total))).map((d) => ({
+        label: `${d.number} · ${d.customerName || '—'} · ${fmtMoney(d.total, sym)}`, path: '/quotations', group: 'Quotations', raw: true,
+      })),
+      ...take(purchases.filter((p) => txtHit(p.number, p.supplierName) || amtHit(p.total))).map((p) => ({
+        label: `${p.number} · ${p.supplierName || '—'} · ${fmtMoney(p.total, sym)}`, path: '/purchases', group: 'Purchases', raw: true,
+      })),
+      ...take(creditNotes.filter((c) => txtHit(c.number, c.customerName) || amtHit(c.total)), 3).map((c) => ({
+        label: `${c.number} · ${c.customerName || '—'} · ${fmtMoney(c.total, sym)}`, path: '/credit-notes', group: 'Credit Notes', raw: true,
+      })),
+      ...take(customers.filter((c) => txtHit(c.name, c.email, c.phone))).map((c) => ({
+        label: c.name, path: '/customers', group: 'Customers', raw: true,
+      })),
+      ...take(suppliers.filter((s) => txtHit(s.name, s.email)), 3).map((s) => ({
+        label: s.name, path: '/suppliers', group: 'Suppliers', raw: true,
+      })),
+      ...take(inventoryItems.filter((it) => txtHit(it.name, it.code)), 3).map((it) => ({
+        label: `${it.code ? it.code + ' · ' : ''}${it.name}`, path: '/inventory', group: 'Items', raw: true,
+      })),
+    ]
+    return [...docs, ...nav]
+  }, [query, invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, sym, COMMANDS_LIST])
 
   useEffect(() => { setActive(0) }, [query])
 
@@ -106,41 +157,47 @@ export default function CommandPalette() {
 
   return (
     <div className="fixed inset-0 z-[60] flex items-start justify-center pt-[12vh] px-4" onClick={() => setOpen(false)}>
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-      <div className="relative w-full max-w-xl bg-white dark:bg-slate-800 rounded-2xl shadow-2xl border border-gray-100 dark:border-slate-700 overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-gray-100 dark:border-slate-700">
-          <Search size={18} className="text-gray-400 flex-shrink-0" />
+      <div className="absolute inset-0 bg-surface-950/55 backdrop-blur-[3px] animate-fade-in" />
+      <div className="relative w-full max-w-xl bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-surface-750">
+          <Search size={17} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={t('Search modules or actions…')}
-            className="flex-1 bg-transparent outline-none text-sm text-gray-800 dark:text-slate-100 placeholder-gray-400"
+            className="flex-1 bg-transparent outline-none text-[15px] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
-          <kbd className="hidden sm:inline-block text-[10px] text-gray-400 dark:text-slate-500 border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">ESC</kbd>
+          <kbd className="hidden sm:inline-block text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/[0.05] border border-slate-200/90 dark:border-surface-700 rounded-md px-1.5 py-0.5">ESC</kbd>
         </div>
-        <div className="max-h-80 overflow-y-auto py-2">
-          {results.length === 0 && <p className="px-4 py-6 text-center text-sm text-gray-400">{t('No matches')}</p>}
+        <div className="max-h-80 overflow-y-auto py-2 px-2">
+          {results.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">{t('No matches')}</p>}
           {results.map((cmd, i) => {
             const showGroup = cmd.group !== lastGroup
             lastGroup = cmd.group
             return (
               <div key={cmd.path + cmd.label}>
-                {showGroup && <p className="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">{t(cmd.group)}</p>}
+                {showGroup && <p className="px-3 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">{t(cmd.group)}</p>}
                 <button
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(cmd)}
-                  className={`w-full flex items-center justify-between px-4 py-2 text-sm text-left ${
-                    active === i ? 'bg-blue-600 text-white' : 'text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700'
+                  className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-start rounded-lg transition-colors duration-100 ${
+                    active === i
+                      ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/[0.12] dark:text-brand-300'
+                      : 'text-slate-700 dark:text-slate-200'
                   }`}
                 >
-                  <span>{t(cmd.label)}</span>
-                  {active === i && <CornerDownLeft size={14} className="opacity-80" />}
+                  <span className="truncate">{cmd.raw ? cmd.label : t(cmd.label)}</span>
+                  {active === i && <CornerDownLeft size={14} className="flex-shrink-0 opacity-70 rtl:-scale-x-100" />}
                 </button>
               </div>
             )
           })}
+        </div>
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-slate-100 dark:border-surface-750 bg-slate-50/60 dark:bg-surface-900/40 text-[11px] text-slate-400 dark:text-slate-500">
+          <span className="inline-flex items-center gap-1.5"><kbd className="font-sans font-semibold bg-white dark:bg-white/[0.06] border border-slate-200/90 dark:border-surface-700 rounded px-1 py-px">↑↓</kbd> {t('Navigate')}</span>
+          <span className="inline-flex items-center gap-1.5"><kbd className="font-sans font-semibold bg-white dark:bg-white/[0.06] border border-slate-200/90 dark:border-surface-700 rounded px-1 py-px">↵</kbd> {t('Open')}</span>
         </div>
       </div>
     </div>

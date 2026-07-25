@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
+import { alertIfLocked } from '../utils/periodLock'
 import { Plus, Trash2, ArrowUpRight, ArrowDownLeft, Landmark } from 'lucide-react'
 
 const BANK_IDS = ['acc-cash', 'acc-bank1']
@@ -16,11 +17,12 @@ const emptyForm = () => ({
   bankAccountId: 'acc-cash',
   accountId: 'acc-sales',
   reference: '',
+  departmentId: '',
 })
 
 export default function Banking() {
   const t = useT()
-  const { accounts, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore()
+  const { accounts, departments, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore()
   const sym = settings.company.currencySymbol
 
   const [modal, setModal] = useState(false)
@@ -44,13 +46,16 @@ export default function Banking() {
     const amount = parseFloat(form.amount)
     if (!amount || amount <= 0) return alert('Enter a valid amount.')
     if (!form.description.trim()) return alert('Enter a description.')
-    addBankTransaction({ ...form, amount })
+    try { addBankTransaction({ ...form, amount }) }
+    catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setModal(false)
     setForm(emptyForm())
   }
 
   const handleDelete = (tx) => {
-    if (confirm('Delete this transaction?')) deleteBankTransaction(tx.id)
+    if (confirm('Delete this transaction?')) {
+      try { deleteBankTransaction(tx.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
+    }
   }
 
   // Enrich bank transactions with account name
@@ -86,11 +91,11 @@ export default function Banking() {
 
       {/* Filter by account */}
       <div className="flex gap-2 mb-4 flex-wrap">
-        <button onClick={() => setSelectedBank('all')} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedBank === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+        <button onClick={() => setSelectedBank('all')} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === 'all' ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
           {t('All Accounts')}
         </button>
         {bankAccounts.map((a) => (
-          <button key={a.id} onClick={() => setSelectedBank(a.id)} className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${selectedBank === a.id ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+          <button key={a.id} onClick={() => setSelectedBank(a.id)} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === a.id ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
             {a.name}
           </button>
         ))}
@@ -103,21 +108,21 @@ export default function Banking() {
           <Table headers={['Date', 'Description', 'Account', 'Bank Account', 'Type', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((tx) => (
               <Tr key={tx.id}>
-                <Td className="text-gray-500">{fmtDate(tx.date)}</Td>
-                <Td className="font-medium text-gray-800">
+                <Td className="text-gray-500 dark:text-slate-400">{fmtDate(tx.date)}</Td>
+                <Td className="font-medium text-gray-800 dark:text-slate-100">
                   {tx.description}
-                  {tx.reference && <span className="text-xs text-gray-400 ml-2">({tx.reference})</span>}
+                  {tx.reference && <span className="text-xs text-gray-400 dark:text-slate-500 ml-2">({tx.reference})</span>}
                 </Td>
-                <Td className="text-gray-500 text-sm">{tx.accountName}</Td>
-                <Td className="text-gray-500 text-sm">{tx.bankName}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{tx.accountName}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{tx.bankName}</Td>
                 <Td>
                   {tx.type === 'money_in'
-                    ? <span className="inline-flex items-center gap-1 text-green-600 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
-                    : <span className="inline-flex items-center gap-1 text-red-600 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
+                    ? <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
+                    : <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
                   }
                 </Td>
                 <Td right>
-                  <span className={`font-semibold ${tx.type === 'money_in' ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`font-semibold ${tx.type === 'money_in' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {tx.type === 'money_in' ? '+' : '-'}{fmtMoney(tx.amount, sym)}
                   </span>
                 </Td>
@@ -137,7 +142,7 @@ export default function Banking() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Bank Transaction">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
               <option value="money_in">Money In (Receipt)</option>
               <option value="money_out">Money Out (Payment)</option>
@@ -145,7 +150,7 @@ export default function Banking() {
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
           </div>
           <Input label="Description *" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="e.g. Office rent payment, Customer cash receipt" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Amount (${sym})`} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />
             <Input label="Reference" value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder="Cheque #, ref..." />
           </div>
@@ -155,6 +160,12 @@ export default function Banking() {
           <Select label={form.type === 'money_in' ? 'Income Account' : 'Expense Account'} value={form.accountId} onChange={(e) => setField('accountId', e.target.value)}>
             {nonBankAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
           </Select>
+          {departments.length > 0 && (
+            <Select label={t('Department / Cost Center')} value={form.departmentId} onChange={(e) => setField('departmentId', e.target.value)}>
+              <option value="">{t('— Unassigned —')}</option>
+              {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+            </Select>
+          )}
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{t('Save Transaction')}</Btn>

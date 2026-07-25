@@ -11,10 +11,10 @@ const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1
 const emptyForm = { requestedBy: '', department: '', supplierName: '', date: today(), neededBy: '', notes: '', lines: [blankLine()] }
 
 const STATUS = {
-  pending:  'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
-  approved: 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300',
-  rejected: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
-  ordered:  'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+  pending:  'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+  approved: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+  rejected: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
+  ordered:  'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
 }
 const TABS = ['all', 'pending', 'approved', 'ordered', 'rejected']
 
@@ -62,7 +62,7 @@ export default function Requisitions() {
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-lg text-sm capitalize ${tab === t ? 'bg-blue-600 text-white' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>
+          <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-lg text-sm capitalize ${tab === t ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>
             {t}{t === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         ))}
@@ -103,11 +103,11 @@ export default function Requisitions() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Purchase Requisition" width="max-w-xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Requested By" value={form.requestedBy} onChange={(e) => setF('requestedBy', e.target.value)} />
             <Input label="Department" value={form.department} onChange={(e) => setF('department', e.target.value)} />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Preferred Supplier" value={form.supplierName} onChange={(e) => setF('supplierName', e.target.value)} />
             <Input label="Date" type="date" value={form.date} onChange={(e) => setF('date', e.target.value)} />
             <Input label="Needed By" type="date" value={form.neededBy} onChange={(e) => setF('neededBy', e.target.value)} />
@@ -120,7 +120,7 @@ export default function Requisitions() {
                   <input className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" placeholder="What's needed" value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
                   <input className="w-16 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty" value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
                   <input className="w-24 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" step="0.01" placeholder="Est. price" value={l.estPrice} onChange={(e) => setLine(l.id, 'estPrice', e.target.value)} />
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>
