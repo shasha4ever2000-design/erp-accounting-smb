@@ -11,6 +11,10 @@ import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
+import {
+  CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
+  movementLines, allocateProfit, profitAllocationLines,
+} from './utils/capitalAccounts'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -65,6 +69,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-capital', code: '3001', name: "Owner's Capital",           type: 'equity',    subtype: 'equity',      isSystem: false },
   { id: 'acc-retained',code: '3002', name: 'Retained Earnings',         type: 'equity',    subtype: 'equity',      isSystem: true  },
   { id: 'acc-drawings',code: '3003', name: "Owner's Drawings",          type: 'equity',    subtype: 'equity',      isSystem: false },
+  { id: 'acc-capital-ctl', code: '3005', name: 'Capital Accounts',      type: 'equity',    subtype: 'equity',      isSystem: true  },
   { id: 'acc-obe',    code: '3009', name: 'Opening Balance Equity',      type: 'equity',    subtype: 'equity',      isSystem: true  },
   // REVENUE
   { id: 'acc-sales',  code: '4001', name: 'Sales Revenue',              type: 'revenue',   subtype: 'revenue',     isSystem: false },
@@ -332,6 +337,116 @@ export const useStore = create(
             throw new Error('GROUP_TYPE_MISMATCH')
         }
         set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, groupId: groupId || '' } : a)) }))
+      },
+
+      // ─── CAPITAL ACCOUNTS ──────────────────────────────────────────
+      // A subledger over acc-capital-ctl, one row per owner or partner. See
+      // utils/capitalAccounts.js for why the detail cannot live in the chart
+      // of accounts itself.
+      capitalAccounts: [],
+      capitalSubaccounts: DEFAULT_SUBACCOUNTS.map((s) => ({ ...s })),
+
+      addCapitalAccount: (a) => {
+        const check = validateCapitalAccount(a, get().capitalAccounts)
+        if (!check.ok) throw new Error(`CAPITAL_INVALID:${check.errors.join(' ')}`)
+        const id = uuid()
+        set((s) => ({
+          capitalAccounts: [...s.capitalAccounts, {
+            id,
+            name: String(a.name).trim(),
+            code: a.code || '',
+            share: a.share === '' || a.share == null ? 0 : Number(a.share),
+            notes: a.notes || '',
+            active: a.active !== false,
+            createdAt: new Date().toISOString(),
+          }],
+        }))
+        get().logActivity('Created capital account', String(a.name).trim(), { entity: 'capitalAccount', entityId: id })
+        return id
+      },
+
+      updateCapitalAccount: (id, patch) => {
+        const before = get().capitalAccounts.find((a) => a.id === id)
+        if (!before) throw new Error('CAPITAL_NOT_FOUND')
+        const check = validateCapitalAccount({ ...before, ...patch }, get().capitalAccounts, { id })
+        if (!check.ok) throw new Error(`CAPITAL_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({ capitalAccounts: s.capitalAccounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) }))
+        get().logChange('Updated capital account', before, get().capitalAccounts.find((a) => a.id === id), { entity: 'capitalAccount' })
+      },
+
+      /**
+       * A capital account with history cannot be deleted — its ledger lines
+       * would point at nothing and the report would show them as unallocated.
+       * Deactivating keeps the history readable and takes it out of new
+       * pickers and profit splits.
+       */
+      deleteCapitalAccount: (id) => {
+        const used = get().journalEntries.some((je) =>
+          (je.lines || []).some((l) => l.capitalAccountId === id))
+        if (used) throw new Error('CAPITAL_HAS_ACTIVITY')
+        get().recycleRecord('capitalAccounts', id)
+        const gone = get().capitalAccounts.find((a) => a.id === id)
+        set((s) => ({ capitalAccounts: s.capitalAccounts.filter((a) => a.id !== id) }))
+        if (gone) get().logActivity('Deleted capital account', gone.name, { entity: 'capitalAccount', entityId: id })
+      },
+
+      addCapitalSubaccount: (name) => {
+        const clean = String(name || '').trim()
+        if (!clean) throw new Error('CAPITAL_SUB_NAME_REQUIRED')
+        const dup = get().capitalSubaccounts.some((s) => s.name.toLowerCase() === clean.toLowerCase())
+        if (dup) throw new Error('CAPITAL_SUB_DUPLICATE')
+        const id = uuid()
+        set((s) => ({
+          capitalSubaccounts: [...s.capitalSubaccounts, { id, name: clean, sort: 100 + s.capitalSubaccounts.length, isSystem: false }],
+        }))
+        return id
+      },
+
+      deleteCapitalSubaccount: (id) => {
+        const sub = get().capitalSubaccounts.find((s) => s.id === id)
+        if (!sub) return
+        if (sub.isSystem) throw new Error('CAPITAL_SUB_IS_SYSTEM')
+        const used = get().journalEntries.some((je) => (je.lines || []).some((l) => l.subaccountId === id))
+        if (used) throw new Error('CAPITAL_SUB_HAS_ACTIVITY')
+        set((s) => ({ capitalSubaccounts: s.capitalSubaccounts.filter((x) => x.id !== id) }))
+      },
+
+      /**
+       * Money in from an owner, or money out to one.
+       * `kind` is 'contribution' or 'drawing'.
+       */
+      recordCapitalMovement: (kind, payload) => {
+        const acc = get().capitalAccounts.find((a) => a.id === payload.capitalAccountId)
+        if (!acc) throw new Error('CAPITAL_NOT_FOUND')
+        const lines = movementLines(kind, { ...payload, name: acc.name })
+        const je = get().addJournalEntry({
+          date: payload.date,
+          description: payload.description || `${kind === 'contribution' ? 'Funds contributed' : 'Drawings'} — ${acc.name}`,
+          type: 'capital',
+          lines,
+        })
+        return je
+      },
+
+      /**
+       * Split a profit between the partners by their shares.
+       *
+       * Moves profit from retained earnings to each partner's share-of-profit
+       * subaccount. Total equity does not change by a cent — the money simply
+       * stops being "kept in the business" and becomes "owed to a named owner".
+       */
+      allocateProfitToPartners: ({ date, amount, description } = {}) => {
+        const active = get().capitalAccounts.filter((a) => a.active !== false)
+        if (!active.length) throw new Error('CAPITAL_NO_ACCOUNTS')
+        const split = allocateProfit(amount, active)
+        const lines = profitAllocationLines(split)
+        if (!lines.length) throw new Error('CAPITAL_NOTHING_TO_ALLOCATE')
+        return get().addJournalEntry({
+          date,
+          description: description || 'Allocation of profit to partners',
+          type: 'capital',
+          lines,
+        })
       },
 
       /** Put the tree back to the shipped structure, keeping custom groups. */
@@ -799,6 +914,15 @@ export const useStore = create(
         const _dr = (entry.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
         const _cr = (entry.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
         if (Math.abs(_dr - _cr) > 0.05) throw new Error(`JE_UNBALANCED:${(_dr - _cr).toFixed(2)}`)
+        // The capital control account is a subledger: its balance must always
+        // be the sum of the partner accounts underneath it. A line that hits it
+        // without naming a partner would break that quietly — the balance sheet
+        // would still balance while the capital accounts report disagreed with
+        // it, and nothing on screen would say why. Refuse it at the door.
+        const _stray = (entry.lines || []).find(
+          (l) => l?.accountId === CAPITAL_CONTROL && !l?.capitalAccountId
+        )
+        if (_stray) throw new Error('CAPITAL_LINE_UNATTRIBUTED')
         const lock = s.settings?.accounting?.lockDate
         if (lock && String(entry.date) <= String(lock))
           throw new Error(`PERIOD_LOCKED:${lock}`)
@@ -3076,9 +3200,9 @@ export const useStore = create(
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
-          'approvalRequests', 'recycleBin', 'accountGroups',
+          'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 23, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 24, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3266,7 +3390,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 23,
+      version: 24,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3438,6 +3562,20 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 24) {
+          // Capital accounts start empty — a sole trader needs none, and
+          // inventing partners for them would be worse than useless. The
+          // control account is added regardless so the subledger has somewhere
+          // to post the moment they add their first one.
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-capital-ctl'))
+            persisted.accounts.push({
+              id: 'acc-capital-ctl', code: '3005', name: 'Capital Accounts',
+              type: 'equity', subtype: 'equity', isSystem: true, groupId: 'grp-eq',
+            })
+          if (!persisted.capitalAccounts) persisted.capitalAccounts = []
+          if (!persisted.capitalSubaccounts?.length)
+            persisted.capitalSubaccounts = DEFAULT_SUBACCOUNTS.map((s) => ({ ...s }))
         }
         return persisted
        } catch (e) {

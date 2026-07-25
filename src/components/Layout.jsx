@@ -17,12 +17,13 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
-  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2
 } from 'lucide-react'
 
 const NAV = [
   { label: 'Dashboard',          path: '/',                icon: LayoutDashboard },
   { label: 'Chart of Accounts',  path: '/accounts',        icon: BookOpen },
+  { label: 'Capital Accounts',   path: '/capital-accounts', icon: Users2 },
 
   { divider: 'Cash & Banking' },
   { label: 'Cash & Bank Accounts', path: '/bank-accounts', icon: Wallet },

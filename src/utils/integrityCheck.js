@@ -206,11 +206,57 @@ function checkOpeningBalanceEquityCleared(journalEntries, settings) {
 }
 
 /**
+ * The capital subledger must equal its control account.
+ *
+ * The store refuses to post an unattributed capital line, so a break can only
+ * arrive through imported or hand-edited data. It is still worth checking: the
+ * balance sheet would go on balancing while the capital accounts report quietly
+ * disagreed with it, and that is exactly the kind of error nobody notices until
+ * a partner queries their own balance.
+ */
+function checkCapitalSubledgerAgrees(journalEntries, capitalAccounts) {
+  const label = 'Capital accounts agree with the ledger'
+  if (!(capitalAccounts || []).length)
+    return { id: 'capital-subledger', label, ok: true, detail: 'No capital accounts in use', items: [] }
+
+  const known = new Set(capitalAccounts.map((a) => a.id))
+  let control = 0
+  let attributed = 0
+  const strays = []
+
+  ;(journalEntries || []).forEach((je) => {
+    if (je?.void) return
+    ;(je.lines || []).forEach((l) => {
+      if (l?.accountId !== 'acc-capital-ctl') return
+      const amount = (+l.credit || 0) - (+l.debit || 0)
+      control += amount
+      if (l.capitalAccountId && known.has(l.capitalAccountId)) attributed += amount
+      else strays.push({
+        ref: je.number || je.id,
+        detail: `${Math.abs(amount).toFixed(2)} names no valid capital account`,
+      })
+    })
+  })
+
+  const difference = Math.round((control - attributed) * 100) / 100
+  const ok = Math.abs(difference) < 0.01
+  return {
+    id: 'capital-subledger',
+    label,
+    ok,
+    detail: ok
+      ? 'Every capital movement is attributed'
+      : `${Math.abs(difference).toFixed(2)} on the control account belongs to no capital account`,
+    items: ok ? [] : strays.slice(0, 20),
+  }
+}
+
+/**
  * Run every check against a store snapshot.
  * @returns { ok, passed, failed, checks[], ranAt }
  */
 export function runIntegrityCheck(state) {
-  const { accounts, journalEntries, inventoryItems, invoices, purchases, settings } = state || {}
+  const { accounts, journalEntries, inventoryItems, invoices, purchases, settings, capitalAccounts } = state || {}
   const checks = [
     checkEntriesBalance(journalEntries),
     checkLedgerNetsZero(journalEntries),
@@ -222,6 +268,7 @@ export function runIntegrityCheck(state) {
     checkNoOverpayments(invoices, purchases),
     checkLockRespected(journalEntries, settings?.accounting?.lockDate),
     checkOpeningBalanceEquityCleared(journalEntries, settings),
+    checkCapitalSubledgerAgrees(journalEntries, capitalAccounts),
   ]
   const failed = checks.filter((c) => !c.ok).length
   return { ok: failed === 0, passed: checks.length - failed, failed, checks, ranAt: new Date().toISOString() }
