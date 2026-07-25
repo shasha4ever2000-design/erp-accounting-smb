@@ -17,7 +17,7 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
-  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2, Tag
 } from 'lucide-react'
 
 const NAV = [
@@ -59,6 +59,7 @@ const NAV = [
   { label: 'Inventory Control',  path: '/inventory-control',icon: BarChart3 },
   { label: 'Warehouses',         path: '/warehouses',       icon: Warehouse },
   { label: 'Stock Adjustments',  path: '/stock-adjustments',icon: Sliders },
+  { label: 'Asset & Item Labels',path: '/labels',           icon: Tag },
   { label: 'Manufacturing',      path: '/manufacturing',    icon: Factory },
 
   { divider: 'Projects & Financials' },

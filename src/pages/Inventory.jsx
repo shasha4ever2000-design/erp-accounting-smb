@@ -1,8 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { isKit, kitCost, kitAvailability, describeKit } from '../utils/kits'
+import ItemImages from '../components/ItemImages'
+import { primaryThumbs, deleteImagesFor } from '../utils/itemImages'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -23,6 +25,18 @@ export default function Inventory() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [search, setSearch] = useState('')
+  const [thumbs, setThumbs] = useState({})
+
+  // Thumbnails come from IndexedDB, not the store: full images would bloat
+  // every store write, and a list of two hundred items should render from two
+  // hundred small pictures rather than two hundred large ones.
+  useEffect(() => {
+    let alive = true
+    primaryThumbs(inventoryItems.map((i) => i.id))
+      .then((m) => { if (alive) setThumbs(m) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [inventoryItems])
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
   const openEdit = (item) => { setEditing(item); setForm({ ...emptyForm, ...item }); setModal(true) }
@@ -56,7 +70,10 @@ export default function Inventory() {
   }
 
   const handleDelete = (item) => {
-    if (confirm(`Delete "${item.name}"?`)) deleteInventoryItem(item.id)
+    if (!confirm(`Delete "${item.name}"?`)) return
+    deleteInventoryItem(item.id)
+    // Otherwise the photos linger in IndexedDB with nothing pointing at them.
+    deleteImagesFor(item.id).catch(() => {})
   }
 
   const revenueAccounts = accounts.filter((a) => a.type === 'revenue')
@@ -126,7 +143,11 @@ export default function Inventory() {
                 <Tr key={item.id}>
                   <Td className="font-mono text-gray-500 dark:text-slate-400 text-xs">{item.code || '—'}</Td>
                   <Td>
-                    <p className="font-medium text-gray-900 dark:text-slate-100">
+                    <p className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                      {thumbs[item.id] && (
+                        <img src={thumbs[item.id]} alt="" loading="lazy"
+                          className="w-8 h-8 rounded object-cover ring-1 ring-gray-200 dark:ring-surface-700 flex-shrink-0" />
+                      )}
                       {item.name}
                       {isKit(item) && (
                         <span className="ms-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold align-middle">
@@ -197,6 +218,12 @@ export default function Inventory() {
               {revenueAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
           </div>
+          {/* Pictures */}
+          <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
+            <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-2">{t('Pictures')}</p>
+            <ItemImages itemId={editing?.id} />
+          </div>
+
           {/* Kit builder */}
           <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
             <label className="flex items-start gap-2.5 text-sm cursor-pointer">
