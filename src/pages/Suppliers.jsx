@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
-import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { controlAccountsFor, defaultFor } from '../utils/controlAccounts'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', customFields: {} }
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', controlAccountId: '', customFields: {} }
 
 export default function Suppliers() {
-  const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings } = useStore()
+  const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount } = useStore()
+  const controlOptions = controlAccountsFor(accounts, 'suppliers')
   const sym = settings.company.currencySymbol
   const customDefs = settings.customFields?.supplier || []
   const t = useT()
@@ -20,15 +22,32 @@ export default function Suppliers() {
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (s) => { setEditing(s); setForm({ name: s.name, email: s.email || '', phone: s.phone || '', address: s.address || '', taxId: s.taxId || '', notes: s.notes || '', customFields: s.customFields || {} }); setModal(true) }
+  const openEdit = (s) => { setEditing(s); setForm({ name: s.name, email: s.email || '', phone: s.phone || '', address: s.address || '', taxId: s.taxId || '', notes: s.notes || '', controlAccountId: s.controlAccountId || '', customFields: s.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
-    if (editing) updateSupplier(editing.id, form)
-    else addSupplier(form)
+    const { controlAccountId, ...rest } = form
+    if (editing) {
+      updateSupplier(editing.id, rest)
+      // Routed through the store action rather than saved as a plain field: a
+      // supplier still owed money takes that balance with them, as a
+      // reclassification entry.
+      if ((controlAccountId || '') !== (editing.controlAccountId || '')) {
+        try {
+          const res = setRecordControlAccount('suppliers', editing.id, controlAccountId)
+          if (res.moved) alert(t('Moved {a} of outstanding balance to the new control account.').replace('{a}', res.moved.toFixed(2)))
+        } catch (err) { alert(String(err.message || err).replace('CONTROL_INVALID:', '').trim()) }
+      }
+    } else {
+      const created = addSupplier(rest)
+      if (controlAccountId) {
+        const id = created?.id || (useStore.getState().suppliers.slice(-1)[0] || {}).id
+        if (id) { try { setRecordControlAccount('suppliers', id, controlAccountId) } catch { /* keeps the default */ } }
+      }
+    }
     close()
   }
 
@@ -137,6 +156,13 @@ export default function Suppliers() {
             <Input label="Phone" value={form.phone} onChange={(e) => setField('phone', e.target.value)} />
           </div>
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} />
+          {controlOptions.length > 1 && (
+            <Select label={t('Payables account')} value={form.controlAccountId} onChange={(e) => setField('controlAccountId', e.target.value)}>
+              {controlOptions.map((a) => (
+                <option key={a.id} value={a.id === defaultFor('suppliers') ? '' : a.id}>{a.code} — {a.name}</option>
+              ))}
+            </Select>
+          )}
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} />
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} />
           {customDefs.length > 0 && (

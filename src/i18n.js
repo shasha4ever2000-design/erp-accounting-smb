@@ -682,6 +682,14 @@ const AR = {
   'Delivery note': 'إشعار تسليم',
   'Time entry': 'قيد وقت',
   'Scheduled transfer': 'تحويل مجدول',
+  // Custom control accounts
+  'Use as a control account for': 'استخدامه كحساب مراقبة لـ',
+  '— Ordinary account —': '— حساب عادي —',
+  'A control account holds balances for a group of customers, suppliers or items — so you can show, say, local and export receivables as separate lines on the balance sheet.': 'حساب المراقبة يجمع أرصدة مجموعة من العملاء أو الموردين أو الأصناف — بحيث يمكنك إظهار الذمم المحلية وذمم التصدير كبندين منفصلين في الميزانية.',
+  'Receivables account': 'حساب الذمم المدينة',
+  'Payables account': 'حساب الذمم الدائنة',
+  'Moved {a} of outstanding balance to the new control account.': 'تم نقل رصيد قائم بمقدار {a} إلى حساب المراقبة الجديد.',
+  'control': 'مراقبة',
   // Capital accounts — the owners' subledger
   'Capital Accounts': 'حسابات الشركاء',
   'new capital account': 'حساب شريك جديد',

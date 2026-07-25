@@ -1,16 +1,18 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { controlAccountsFor, defaultFor } from '../utils/controlAccounts'
 import { fmtMoney, fmtDate } from '../utils/formatters'
-import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', customFields: {} }
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', customFields: {} }
 
 export default function Customers() {
-  const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings } = useStore()
+  const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount } = useStore()
+  const controlOptions = controlAccountsFor(accounts, 'customers')
   const sym = settings.company.currencySymbol
   const customDefs = settings.customFields?.customer || []
   const t = useT()
@@ -20,16 +22,34 @@ export default function Customers() {
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', customFields: c.customFields || {} }); setModal(true) }
+  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', controlAccountId: c.controlAccountId || '', customFields: c.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
-    const data = { ...form, creditLimit: parseFloat(form.creditLimit) || 0, priceListPct: parseFloat(form.priceListPct) || 0 }
-    if (editing) updateCustomer(editing.id, data)
-    else addCustomer(data)
+    const { controlAccountId, ...rest } = form
+    const data = { ...rest, creditLimit: parseFloat(form.creditLimit) || 0, priceListPct: parseFloat(form.priceListPct) || 0 }
+    if (editing) {
+      updateCustomer(editing.id, data)
+      // Routed through the store action rather than saved as a plain field:
+      // a customer who still owes money takes that balance with them, as a
+      // reclassification entry.
+      const current = editing.controlAccountId || ''
+      if ((controlAccountId || '') !== current) {
+        try {
+          const res = setRecordControlAccount('customers', editing.id, controlAccountId)
+          if (res.moved) alert(t('Moved {a} of outstanding balance to the new control account.').replace('{a}', res.moved.toFixed(2)))
+        } catch (err) { alert(String(err.message || err).replace('CONTROL_INVALID:', '').trim()) }
+      }
+    } else {
+      const created = addCustomer(data)
+      if (controlAccountId) {
+        const id = created?.id || (useStore.getState().customers.slice(-1)[0] || {}).id
+        if (id) { try { setRecordControlAccount('customers', id, controlAccountId) } catch { /* keeps the default */ } }
+      }
+    }
     close()
   }
 
@@ -141,6 +161,13 @@ export default function Customers() {
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} placeholder="Tax registration number" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Credit limit')} (${sym})`} type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setField('creditLimit', e.target.value)} placeholder={t('0 = no limit')} />
+            {controlOptions.length > 1 && (
+              <Select label={t('Receivables account')} value={form.controlAccountId} onChange={(e) => setField('controlAccountId', e.target.value)}>
+                {controlOptions.map((a) => (
+                  <option key={a.id} value={a.id === defaultFor('customers') ? '' : a.id}>{a.code} — {a.name}</option>
+                ))}
+              </Select>
+            )}
             <Input label={`${t('Price level')} (%)`} type="number" step="0.1" value={form.priceListPct} onChange={(e) => setField('priceListPct', e.target.value)} placeholder={t('e.g. -10 = 10% off')} />
           </div>
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} placeholder="Street, City, Country" />

@@ -15,6 +15,10 @@ import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
   movementLines, allocateProfit, profitAllocationLines,
 } from './utils/capitalAccounts'
+import {
+  CONTROL_KINDS, resolveControl, validateControlAccount, controlAccountsFor,
+  reclassLines, fieldFor, defaultFor,
+} from './utils/controlAccounts'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -40,9 +44,9 @@ const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
   { id: 'acc-cash',    code: '1001', name: 'Cash on Hand',              type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-bank1',  code: '1002', name: 'Main Bank Account',          type: 'asset',     subtype: 'current',     isSystem: false },
-  { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true  },
+  { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true, controlFor: 'customers'  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
-  { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false },
+  { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false, controlFor: 'inventoryItems' },
   { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-wip',    code: '1420', name: 'Work-in-Progress',            type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-fingoods',code:'1430', name: 'Finished Goods',              type: 'asset',     subtype: 'current',     isSystem: false },
@@ -52,7 +56,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-depr',   code: '1610', name: 'Accumulated Depreciation',   type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
   // LIABILITIES – Current
-  { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
@@ -337,6 +341,113 @@ export const useStore = create(
             throw new Error('GROUP_TYPE_MISMATCH')
         }
         set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, groupId: groupId || '' } : a)) }))
+      },
+
+      // ─── CONTROL ACCOUNTS ──────────────────────────────────────────
+      // Receivables, payables and inventory can each be split across several
+      // control accounts. Nothing posts to a record's stored pointer directly —
+      // it goes through here, which falls back to the default whenever that
+      // pointer no longer names a usable control account. See
+      // utils/controlAccounts.js for why that matters.
+
+      /** The account a customer / supplier / item actually posts through. */
+      controlAccountFor: (kind, recordId) => {
+        const st = get()
+        const record = (st[CONTROL_KINDS[kind]?.slice] || []).find((r) => r.id === recordId)
+        return resolveControl(record, kind, st.accounts)
+      },
+
+      /** Every account usable as a control account of this kind. */
+      controlAccountOptions: (kind) => controlAccountsFor(get().accounts, kind),
+
+      /** Nominate an account as a control account, or stand it down. */
+      setAccountControlKind: (accountId, kind) => {
+        const account = get().accounts.find((a) => a.id === accountId)
+        if (!account) throw new Error('ACCOUNT_NOT_FOUND')
+
+        if (!kind) {
+          // Standing an account down while records still point at it would
+          // silently redirect their postings to the default — the balance
+          // sheet would go on balancing while two accounts quietly went wrong.
+          const slice = CONTROL_KINDS[account.controlFor]?.slice
+          const inUse = slice
+            ? (get()[slice] || []).filter((r) => r[fieldFor(account.controlFor)] === accountId).length
+            : 0
+          if (inUse) throw new Error(`CONTROL_IN_USE:${inUse}`)
+          set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, controlFor: '' } : a)) }))
+          return
+        }
+
+        const check = validateControlAccount(account, kind)
+        if (!check.ok) throw new Error(`CONTROL_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, controlFor: kind } : a)) }))
+        get().logActivity('Made a control account', `${account.code} – ${account.name}`, { entity: 'account', entityId: accountId })
+      },
+
+      /**
+       * Point a customer, supplier or item at a different control account.
+       *
+       * An outstanding balance is moved with a reclassification entry rather
+       * than by rewriting history. Leaving the old debt where it was while new
+       * receipts credit the new account would make both accounts wrong, and
+       * the customer's own statement would reconcile to neither.
+       */
+      setRecordControlAccount: (kind, recordId, accountId, { date } = {}) => {
+        const cfg = CONTROL_KINDS[kind]
+        if (!cfg) throw new Error('CONTROL_KIND_UNKNOWN')
+        const st = get()
+        const record = (st[cfg.slice] || []).find((r) => r.id === recordId)
+        if (!record) throw new Error('RECORD_NOT_FOUND')
+
+        const from = resolveControl(record, kind, st.accounts)
+        const target = accountId || defaultFor(kind)
+        if (target !== defaultFor(kind)) {
+          const account = st.accounts.find((a) => a.id === target)
+          const check = validateControlAccount(account, kind)
+          if (!check.ok) throw new Error(`CONTROL_INVALID:${check.errors.join(' ')}`)
+        }
+
+        const field = fieldFor(kind)
+        if (from === target) {
+          set((s) => ({ [cfg.slice]: s[cfg.slice].map((r) => (r.id === recordId ? { ...r, [field]: accountId || '' } : r)) }))
+          return { moved: 0, journalEntryId: null }
+        }
+
+        // What this record still owes, read from the documents rather than the
+        // ledger: invoice and bill postings carry no customer or supplier id,
+        // so the ledger cannot be filtered by party. The open document balance
+        // is the right figure regardless — it is what the aging reports and
+        // customer statements are built from.
+        const openDocs = kind === 'customers' ? st.invoices : kind === 'suppliers' ? st.purchases : []
+        const partyField = kind === 'customers' ? 'customerId' : 'supplierId'
+        let balance = openDocs.reduce((sum, d) => {
+          if (d[partyField] !== recordId) return sum
+          if (['cancelled', 'void', 'draft'].includes(d.status)) return sum
+          return sum + ((+d.total || 0) - (+d.amountPaid || 0))
+        }, 0)
+        balance = Math.round(balance * 100) / 100
+
+        let entry = null
+        if (balance !== 0) {
+          // `balance` is what the party owes (or is owed), already expressed in
+          // the control account's own natural direction — a receivable as a
+          // debit, a payable as a credit. reclassLines works in those same
+          // terms, so it is passed through unchanged; negating it here would
+          // move payables the wrong way.
+          entry = get().addJournalEntry({
+            date: date || new Date().toISOString().slice(0, 10),
+            description: `Reclassified ${record.name || cfg.noun} to a different control account`,
+            type: 'reclass',
+            ...(kind === 'customers' ? { customerId: recordId } : {}),
+            ...(kind === 'suppliers' ? { supplierId: recordId } : {}),
+            lines: reclassLines(kind, {
+              fromAccountId: from, toAccountId: target, amount: balance, name: record.name || "",
+            }),
+          })
+        }
+
+        set((s) => ({ [cfg.slice]: s[cfg.slice].map((r) => (r.id === recordId ? { ...r, [field]: accountId || '' } : r)) }))
+        return { moved: balance, journalEntryId: entry?.id || null }
       },
 
       // ─── CAPITAL ACCOUNTS ──────────────────────────────────────────
@@ -1031,7 +1142,8 @@ export const useStore = create(
         const shipBase = toBase(invoice.shipping || 0)
         // AR = revenue − doc discount + shipping + VAT (all base), so the entry balances.
         const arBase = Math.round((revLines.reduce((s, l) => s + l.credit, 0) - docDiscBase + shipBase + vatBase) * 100) / 100
-        const lines = [{ accountId: 'acc-ar', debit: arBase, credit: 0, description: `Invoice ${number}` }, ...revLines]
+        const arAcc = get().controlAccountFor('customers', invoice.customerId)
+        const lines = [{ accountId: arAcc, debit: arBase, credit: 0, description: `Invoice ${number}` }, ...revLines]
         if (docDiscBase > 0) lines.push({ accountId: 'acc-salesdisc', debit: docDiscBase, credit: 0, description: 'Invoice discount' })
         if (shipBase > 0) lines.push({ accountId: 'acc-shipinc', debit: 0, credit: shipBase, description: 'Shipping & delivery' })
         if (vatBase > 0)
@@ -1126,7 +1238,7 @@ export const useStore = create(
         const fx = Math.round((cashBase - arBase) * 100) / 100
         const payLines = [
           { accountId: payment.bankAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
-          { accountId: 'acc-ar', debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
+          { accountId: get().controlAccountFor('customers', invoice.customerId), debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
         ]
         if (fx > 0) payLines.push({ accountId: 'acc-fxreal', debit: 0, credit: fx, description: `Realized FX gain – ${invoice.number}` })
         else if (fx < 0) payLines.push({ accountId: 'acc-fxreal', debit: -fx, credit: 0, description: `Realized FX loss – ${invoice.number}` })
@@ -1277,7 +1389,7 @@ export const useStore = create(
         ]
         if (cn.taxAmount > 0)
           lines.push({ accountId: 'acc-vatout', debit: cn.taxAmount, credit: 0, description: 'Output Tax reversal' })
-        lines.push({ accountId: 'acc-ar', debit: 0, credit: cn.total, description: `CN ${number}` })
+        lines.push({ accountId: get().controlAccountFor('customers', cn.customerId), debit: 0, credit: cn.total, description: `CN ${number}` })
         const je = get().addJournalEntry({
           date: cn.date,
           description: `Credit Note ${number} – ${cn.customerName || ''}`,
@@ -1314,7 +1426,7 @@ export const useStore = create(
         const arBase = Math.round((netBase + vatBase) * 100) / 100
         const lines = [{ accountId: 'acc-salesret', debit: netBase, credit: 0, description: `Credit Note ${number}` }]
         if (vatBase > 0) lines.push({ accountId: 'acc-vatout', debit: vatBase, credit: 0, description: 'Output Tax reversal' })
-        lines.push({ accountId: 'acc-ar', debit: 0, credit: arBase, description: `Credit Note ${number} for ${inv.number}` })
+        lines.push({ accountId: get().controlAccountFor('customers', inv.customerId), debit: 0, credit: arBase, description: `Credit Note ${number} for ${inv.number}` })
         const je = get().addJournalEntry({ date: rDate, description: `Sales Return ${number} – ${inv.customerName || ''}`, reference: number, type: 'credit_note', departmentId: inv.departmentId || null, lines })
 
         // Restock returned stock + reverse COGS at current average cost.
@@ -1396,7 +1508,7 @@ export const useStore = create(
         const netBase = Object.values(creditByAcc).reduce((s, v) => s + v, 0)
         const vatBase = items.reduce((s, l) => s + toBase(l.taxAmount), 0)
         const apBase = Math.round((netBase + vatBase) * 100) / 100
-        const lines = [{ accountId: 'acc-ap', debit: apBase, credit: 0, description: `Debit Note ${number} for ${pur.number}` }]
+        const lines = [{ accountId: get().controlAccountFor('suppliers', pur.supplierId), debit: apBase, credit: 0, description: `Debit Note ${number} for ${pur.number}` }]
         if (vatBase > 0) lines.push({ accountId: 'acc-vatin', debit: 0, credit: vatBase, description: 'Input Tax reversal' })
         Object.entries(creditByAcc).forEach(([a, amt]) => lines.push({ accountId: a, debit: 0, credit: amt, description: 'Goods returned' }))
         const je = get().addJournalEntry({ date: rDate, description: `Purchase Return ${number} – ${pur.supplierName || ''}`, reference: number, type: 'debit_note', departmentId: pur.departmentId || null, lines })
@@ -1574,7 +1686,7 @@ export const useStore = create(
         const apBase = Math.round((netBase + vatBase) * 100) / 100
         const lines = [{ accountId: 'acc-grni', debit: netBase, credit: 0, description: 'Clear GRNI' }]
         if (vatBase > 0) lines.push({ accountId: 'acc-vatin', debit: vatBase, credit: 0, description: 'Input Tax' })
-        lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Bill for ${po.number}` })
+        lines.push({ accountId: get().controlAccountFor('suppliers', po.supplierId), debit: 0, credit: apBase, description: `Bill for ${po.number}` })
 
         const { prefix, next } = get().settings.purchase
         const number = nextNum(prefix, next)
@@ -1630,7 +1742,7 @@ export const useStore = create(
         if (freightBase > 0) lines.push({ accountId: 'acc-freightin', debit: freightBase, credit: 0, description: 'Freight-in' })
         // AP = expenses − discount + freight + VAT (all base), so the entry balances.
         const apBase = Math.round((expLines.reduce((s, l) => s + l.debit, 0) - docDiscBase + freightBase + vatBase) * 100) / 100
-        lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Purchase ${number}` })
+        lines.push({ accountId: get().controlAccountFor('suppliers', purchase.supplierId), debit: 0, credit: apBase, description: `Purchase ${number}` })
         const je = get().addJournalEntry({
           date: purchase.date,
           description: `Purchase Invoice ${number} – ${purchase.supplierName || ''}`,
@@ -1709,7 +1821,7 @@ export const useStore = create(
         const cashBase = Math.round(netCash * payRate * 100) / 100
         const fx = Math.round((apBase - whtBase - cashBase) * 100) / 100
         const lines = [
-          { accountId: 'acc-ap', debit: apBase, credit: 0, description: `Payment for ${purchase.number}` },
+          { accountId: get().controlAccountFor('suppliers', purchase.supplierId), debit: apBase, credit: 0, description: `Payment for ${purchase.number}` },
           { accountId: payment.bankAccountId, debit: 0, credit: cashBase, description: `Payment for ${purchase.number}` },
         ]
         if (whtBase > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: whtBase, description: `Withholding tax – ${purchase.number}` })
@@ -1808,7 +1920,7 @@ export const useStore = create(
         const { prefix, next } = s.settings.debitNote
         const number = nextNum(prefix, next)
         const lines = [
-          { accountId: 'acc-ap',     debit: dn.total,    credit: 0,          description: `Debit Note ${number}` },
+          { accountId: get().controlAccountFor('suppliers', dn.supplierId), debit: dn.total, credit: 0, description: `Debit Note ${number}` },
           { accountId: 'acc-purret', debit: 0,           credit: dn.subtotal, description: `Purchase Return – ${number}` },
         ]
         if (dn.taxAmount > 0)
@@ -1965,7 +2077,11 @@ export const useStore = create(
         const s = get()
         const { prefix, next } = s.settings.fixedAsset
         const number = nextNum(prefix, next)
-        const creditAccId = asset.paymentType === 'credit' ? 'acc-ap' : (asset.bankAccountId || 'acc-bank1')
+        // Bought on credit, the liability belongs on whichever payables
+        // control account that supplier uses — the default when none is named.
+        const creditAccId = asset.paymentType === 'credit'
+          ? get().controlAccountFor('suppliers', asset.supplierId)
+          : (asset.bankAccountId || 'acc-bank1')
         const je = get().addJournalEntry({
           date: asset.purchaseDate,
           description: `Asset Purchase: ${asset.name} (${number})`,
@@ -3202,7 +3318,7 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 24, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 25, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3390,7 +3506,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 24,
+      version: 25,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3562,6 +3678,17 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 25) {
+          // Flag the three shipped control accounts. resolveControl treats
+          // these as control accounts regardless, so this is cosmetic — it
+          // just makes them show up in the settings list alongside any the
+          // user adds.
+          if (Array.isArray(persisted.accounts)) {
+            const kinds = { 'acc-ar': 'customers', 'acc-ap': 'suppliers', 'acc-inv': 'inventoryItems' }
+            persisted.accounts = persisted.accounts.map((a) =>
+              kinds[a.id] && !a.controlFor ? { ...a, controlFor: kinds[a.id] } : a)
+          }
         }
         if (version < 24) {
           // Capital accounts start empty — a sole trader needs none, and
