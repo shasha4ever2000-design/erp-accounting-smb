@@ -9,6 +9,7 @@ import { allocateLandedCost } from './utils/landedCost'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
+import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -249,6 +250,7 @@ export const useStore = create(
       },
 
       deleteAccount: (id) => {
+        get().recycleRecord('accounts', id)
         const gone = get().accounts.find((a) => a.id === id)
         set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) }))
         if (gone) get().logActivity('Deleted account', `${gone.code} – ${gone.name}`, { entity: 'account', entityId: id, entityRef: gone.code })
@@ -294,6 +296,7 @@ export const useStore = create(
       },
 
       deleteCustomer: (id) => {
+        get().recycleRecord('customers', id)
         const gone = get().customers.find((c) => c.id === id)
         set((s) => ({ customers: s.customers.filter((c) => c.id !== id) }))
         if (gone) get().logActivity('Deleted customer', gone.name || '', { entity: 'customer', entityId: id, entityRef: gone.name })
@@ -312,6 +315,7 @@ export const useStore = create(
       },
 
       deleteSupplier: (id) => {
+        get().recycleRecord('suppliers', id)
         const gone = get().suppliers.find((x) => x.id === id)
         set((s) => ({ suppliers: s.suppliers.filter((s2) => s2.id !== id) }))
         if (gone) get().logActivity('Deleted supplier', gone.name || '', { entity: 'supplier', entityId: id, entityRef: gone.name })
@@ -332,6 +336,7 @@ export const useStore = create(
       },
 
       deleteInventoryItem: (id) => {
+        get().recycleRecord('inventoryItems', id)
         const gone = get().inventoryItems.find((i) => i.id === id)
         set((s) => ({ inventoryItems: s.inventoryItems.filter((i) => i.id !== id) }))
         if (gone) get().logActivity('Deleted item', `${gone.code || ''} ${gone.name || ''}`.trim(), { entity: 'item', entityId: id, entityRef: gone.code || gone.name })
@@ -584,6 +589,62 @@ export const useStore = create(
         get().logActivity('Reversed opening balances', `as at ${op.date}`, {
           entity: 'opening', entityId: op.journalEntryId || '', severity: 'critical',
         })
+      },
+
+      // ─── RECYCLE BIN ───────────────────────────────────────────────
+      // Covers records whose deletion is pure data loss. Documents that post
+      // to the ledger are voided with a reversing entry instead — restoring
+      // one of those would post the transaction twice. See utils/recycleBin.
+      recycleBin: [],
+
+      /** Snapshot a record just before it is removed. Called by delete actions. */
+      recycleRecord: (entity, id) => {
+        if (!isRecyclable(entity)) return
+        const slice = get()[RECYCLABLE[entity].slice] || []
+        const record = slice.find((r) => r.id === id)
+        if (!record) return
+        const entry = makeEntry(entity, record, { user: get().currentUser() })
+        // Cap the bin so a bulk delete cannot grow local storage without
+        // bound; the oldest rows fall off first.
+        set((s) => ({ recycleBin: [...(s.recycleBin || []).slice(-999), entry] }))
+      },
+
+      /**
+       * Put a record back where it came from.
+       * @throws RESTORE_DENIED:<reason>
+       */
+      restoreFromBin: (entryId) => {
+        const st = get()
+        const entry = (st.recycleBin || []).find((e) => e.id === entryId)
+        const slice = entry ? (st[RECYCLABLE[entry.entity]?.slice] || []) : []
+        const check = canRestore(entry, slice)
+        if (!check.ok) throw new Error(`RESTORE_DENIED:${check.reason}`)
+
+        const key = RECYCLABLE[entry.entity].slice
+        set((s) => ({
+          [key]: [...(s[key] || []), entry.record],
+          recycleBin: s.recycleBin.filter((e) => e.id !== entryId),
+        }))
+        get().logActivity('Restored from recycle bin', `${entry.entity} · ${entry.recordId}`, {
+          entity: entry.entity, entityId: entry.recordId, severity: 'notable',
+        })
+        return entry.record
+      },
+
+      /** Remove one entry for good. */
+      purgeFromBin: (entryId) => {
+        const entry = (get().recycleBin || []).find((e) => e.id === entryId)
+        set((s) => ({ recycleBin: s.recycleBin.filter((e) => e.id !== entryId) }))
+        if (entry) get().logActivity('Purged from recycle bin', `${entry.entity} · ${entry.recordId}`, {
+          entity: entry.entity, entityId: entry.recordId, severity: 'critical',
+        })
+      },
+
+      /** Empty the bin. @param ids optional subset */
+      emptyRecycleBin: (ids) => {
+        const n = ids ? ids.length : (get().recycleBin || []).length
+        set((s) => ({ recycleBin: ids ? s.recycleBin.filter((e) => !ids.includes(e.id)) : [] }))
+        get().logActivity('Emptied recycle bin', `${n} item(s)`, { entity: 'recycleBin', severity: 'critical' })
       },
 
       // ─── AUDIT / ACTIVITY LOG ──────────────────────────────────────
@@ -959,8 +1020,10 @@ export const useStore = create(
       updateQuotation: (id, patch) =>
         set((s) => ({ quotations: s.quotations.map((q) => (q.id === id ? { ...q, ...patch } : q)) })),
 
-      deleteQuotation: (id) =>
-        set((s) => ({ quotations: s.quotations.filter((q) => q.id !== id) })),
+      deleteQuotation: (id) => {
+        get().recycleRecord('quotations', id)
+        return set((s) => ({ quotations: s.quotations.filter((q) => q.id !== id) }))
+      },
 
       // Convert a quotation to an invoice — in full, or partially by passing a
       // { lineId: qty } selection. Each source line tracks how much has been
@@ -1179,8 +1242,10 @@ export const useStore = create(
       updatePurchaseOrder: (id, patch) =>
         set((s) => ({ purchaseOrders: s.purchaseOrders.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
 
-      deletePurchaseOrder: (id) =>
-        set((s) => ({ purchaseOrders: s.purchaseOrders.filter((p) => p.id !== id) })),
+      deletePurchaseOrder: (id) => {
+        get().recycleRecord('purchaseOrders', id)
+        return set((s) => ({ purchaseOrders: s.purchaseOrders.filter((p) => p.id !== id) }))
+      },
 
       // Receive/bill a purchase order — in full, or partially via a { lineId:
       // qty } selection. Each line tracks receivedQty, so undelivered quantities
@@ -1565,8 +1630,10 @@ export const useStore = create(
       updateDepartment: (id, patch) =>
         set((s) => ({ departments: s.departments.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
 
-      deleteDepartment: (id) =>
-        set((s) => ({ departments: s.departments.filter((d) => d.id !== id) })),
+      deleteDepartment: (id) => {
+        get().recycleRecord('departments', id)
+        return set((s) => ({ departments: s.departments.filter((d) => d.id !== id) }))
+      },
 
       // ─── EMPLOYEES ─────────────────────────────────────────────────
       employees: [],
@@ -1581,6 +1648,7 @@ export const useStore = create(
       },
 
       deleteEmployee: (id) => {
+        get().recycleRecord('employees', id)
         const gone = get().employees.find((e) => e.id === id)
         set((s) => ({ employees: s.employees.filter((e) => e.id !== id) }))
         if (gone) get().logActivity('Deleted employee', gone.name || '', { entity: 'employee', entityId: id, entityRef: gone.name })
@@ -2138,8 +2206,10 @@ export const useStore = create(
       updateBOM: (id, patch) =>
         set((s) => ({ billsOfMaterials: s.billsOfMaterials.map((b) => (b.id === id ? { ...b, ...patch } : b)) })),
 
-      deleteBOM: (id) =>
-        set((s) => ({ billsOfMaterials: s.billsOfMaterials.filter((b) => b.id !== id) })),
+      deleteBOM: (id) => {
+        get().recycleRecord('billsOfMaterials', id)
+        return set((s) => ({ billsOfMaterials: s.billsOfMaterials.filter((b) => b.id !== id) }))
+      },
 
       // ─── WORK ORDERS ───────────────────────────────────────────────
       workOrders: [],
@@ -2274,8 +2344,10 @@ export const useStore = create(
       matchRules: [],
       addMatchRule: (rule) =>
         set((s) => ({ matchRules: [...s.matchRules, { flow: 'auto', ...rule, id: uuid(), contains: (rule.contains || '').trim() }] })),
-      deleteMatchRule: (id) =>
-        set((s) => ({ matchRules: s.matchRules.filter((r) => r.id !== id) })),
+      deleteMatchRule: (id) => {
+        get().recycleRecord('matchRules', id)
+        return set((s) => ({ matchRules: s.matchRules.filter((r) => r.id !== id) }))
+      },
 
       deleteBankTransaction: (id) =>
         set((s) => {
@@ -2339,8 +2411,10 @@ export const useStore = create(
       updateScheduledTransfer: (id, patch) =>
         set((s) => ({ scheduledTransfers: s.scheduledTransfers.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
 
-      deleteScheduledTransfer: (id) =>
-        set((s) => ({ scheduledTransfers: s.scheduledTransfers.filter((x) => x.id !== id) })),
+      deleteScheduledTransfer: (id) => {
+        get().recycleRecord('scheduledTransfers', id)
+        return set((s) => ({ scheduledTransfers: s.scheduledTransfers.filter((x) => x.id !== id) }))
+      },
 
       // Post a scheduled transfer now (on its scheduled date) and roll the next date forward.
       postScheduledTransfer: (id) => {
@@ -2372,12 +2446,14 @@ export const useStore = create(
       updateWarehouse: (id, patch) =>
         set((s) => ({ warehouses: s.warehouses.map((w) => (w.id === id ? { ...w, ...patch } : w)) })),
 
-      deleteWarehouse: (id) =>
-        set((s) => {
+      deleteWarehouse: (id) => {
+        get().recycleRecord('warehouses', id)
+        return set((s) => {
           const wh = s.warehouses.find((w) => w.id === id)
           if (wh?.isDefault) return s
           return { warehouses: s.warehouses.filter((w) => w.id !== id) }
-        }),
+        })
+      },
 
       // returns stock of an item in a warehouse (lazily defaults all stock to the default warehouse)
       getItemStock: (item, warehouseId) => {
@@ -2440,8 +2516,10 @@ export const useStore = create(
       updateRecurringInvoice: (id, patch) =>
         set((s) => ({ recurringInvoices: s.recurringInvoices.map((r) => (r.id === id ? { ...r, ...patch } : r)) })),
 
-      deleteRecurringInvoice: (id) =>
-        set((s) => ({ recurringInvoices: s.recurringInvoices.filter((r) => r.id !== id) })),
+      deleteRecurringInvoice: (id) => {
+        get().recycleRecord('recurringInvoices', id)
+        return set((s) => ({ recurringInvoices: s.recurringInvoices.filter((r) => r.id !== id) }))
+      },
 
       advanceDate: (dateStr, frequency) => {
         const d = new Date(dateStr)
@@ -2472,8 +2550,11 @@ export const useStore = create(
         }] })),
       updateRecurringJournal: (id, patch) =>
         set((s) => ({ recurringJournals: s.recurringJournals.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
-      deleteRecurringJournal: (id) =>
-        set((s) => ({ recurringJournals: s.recurringJournals.filter((x) => x.id !== id) })),
+      deleteRecurringJournal: (id) => {
+        get().recycleRecord('recurringJournals', id)
+        return set((s) => ({ recurringJournals: s.recurringJournals.filter((x) => x.id !== id) }))
+      },
+
       postRecurringJournal: (id, { onDate } = {}) => {
         const r = get().recurringJournals.find((x) => x.id === id)
         if (!r) return null
@@ -2526,8 +2607,10 @@ export const useStore = create(
       updateRecurringExpense: (id, patch) =>
         set((s) => ({ recurringExpenses: s.recurringExpenses.map((x) => (x.id === id ? { ...x, ...patch } : x)) })),
 
-      deleteRecurringExpense: (id) =>
-        set((s) => ({ recurringExpenses: s.recurringExpenses.filter((x) => x.id !== id) })),
+      deleteRecurringExpense: (id) => {
+        get().recycleRecord('recurringExpenses', id)
+        return set((s) => ({ recurringExpenses: s.recurringExpenses.filter((x) => x.id !== id) }))
+      },
 
       postRecurringExpense: (id, { onDate } = {}) => {
         const r = get().recurringExpenses.find((x) => x.id === id)
@@ -2661,8 +2744,10 @@ export const useStore = create(
         get().logActivity('Rejected requisition', req.number)
       },
 
-      deleteRequisition: (id) =>
-        set((s) => ({ requisitions: s.requisitions.filter((r) => r.id !== id) })),
+      deleteRequisition: (id) => {
+        get().recycleRecord('requisitions', id)
+        return set((s) => ({ requisitions: s.requisitions.filter((r) => r.id !== id) }))
+      },
 
       convertRequisitionToPO: (id) => {
         const req = get().requisitions.find((r) => r.id === id)
@@ -2700,8 +2785,10 @@ export const useStore = create(
       updateDeliveryNote: (id, patch) =>
         set((s) => ({ deliveryNotes: s.deliveryNotes.map((d) => (d.id === id ? { ...d, ...patch } : d)) })),
 
-      deleteDeliveryNote: (id) =>
-        set((s) => ({ deliveryNotes: s.deliveryNotes.filter((d) => d.id !== id) })),
+      deleteDeliveryNote: (id) => {
+        get().recycleRecord('deliveryNotes', id)
+        return set((s) => ({ deliveryNotes: s.deliveryNotes.filter((d) => d.id !== id) }))
+      },
 
       // ─── CURRENCIES & EXCHANGE RATES ───────────────────────────────
       // rate = units of this currency per 1 unit of the base (company) currency
@@ -2716,8 +2803,10 @@ export const useStore = create(
       updateCurrency: (id, patch) =>
         set((s) => ({ currencies: s.currencies.map((c) => (c.id === id ? { ...c, ...patch, updatedAt: new Date().toISOString() } : c)) })),
 
-      deleteCurrency: (id) =>
-        set((s) => ({ currencies: s.currencies.filter((c) => c.id !== id) })),
+      deleteCurrency: (id) => {
+        get().recycleRecord('currencies', id)
+        return set((s) => ({ currencies: s.currencies.filter((c) => c.id !== id) }))
+      },
 
       // ─── FX REVALUATION ────────────────────────────────────────────
       // Restates foreign-currency account balances to the period-end closing
@@ -2791,8 +2880,10 @@ export const useStore = create(
       updateLead: (id, patch) =>
         set((s) => ({ leads: s.leads.map((l) => (l.id === id ? { ...l, ...patch } : l)) })),
 
-      deleteLead: (id) =>
-        set((s) => ({ leads: s.leads.filter((l) => l.id !== id) })),
+      deleteLead: (id) => {
+        get().recycleRecord('leads', id)
+        return set((s) => ({ leads: s.leads.filter((l) => l.id !== id) }))
+      },
 
       convertLeadToCustomer: (id) => {
         const lead = get().leads.find((l) => l.id === id)
@@ -2823,11 +2914,13 @@ export const useStore = create(
       updateProject: (id, patch) =>
         set((s) => ({ projects: s.projects.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
 
-      deleteProject: (id) =>
-        set((s) => ({
+      deleteProject: (id) => {
+        get().recycleRecord('projects', id)
+        return set((s) => ({
           projects: s.projects.filter((p) => p.id !== id),
           timeEntries: s.timeEntries.filter((t) => t.projectId !== id),
-        })),
+        }))
+      },
 
       // Record project income or cost — posts to the ledger AND tags the project
       recordProjectTransaction: (projectId, tx) => {
@@ -2843,8 +2936,10 @@ export const useStore = create(
       updateTimeEntry: (id, patch) =>
         set((s) => ({ timeEntries: s.timeEntries.map((t) => (t.id === id ? { ...t, ...patch } : t)) })),
 
-      deleteTimeEntry: (id) =>
-        set((s) => ({ timeEntries: s.timeEntries.filter((t) => t.id !== id) })),
+      deleteTimeEntry: (id) => {
+        get().recycleRecord('timeEntries', id)
+        return set((s) => ({ timeEntries: s.timeEntries.filter((t) => t.id !== id) }))
+      },
 
       // ─── BUDGETS (annual, per account) ─────────────────────────────
       budgets: [],
@@ -2857,8 +2952,10 @@ export const useStore = create(
           return { budgets: [...s.budgets, { id: uuid(), accountId, year, amount }] }
         }),
 
-      deleteBudget: (id) =>
-        set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) })),
+      deleteBudget: (id) => {
+        get().recycleRecord('budgets', id)
+        return set((s) => ({ budgets: s.budgets.filter((b) => b.id !== id) }))
+      },
 
       // ─── BANK RECONCILIATION ───────────────────────────────────────
       // marks individual JE lines (by je id + account) as reconciled per statement
@@ -2888,8 +2985,9 @@ export const useStore = create(
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
+          'approvalRequests', 'recycleBin',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 21, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 22, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3077,7 +3175,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 21,
+      version: 22,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3237,6 +3335,9 @@ export const useStore = create(
             persisted.accounts.push({ id: 'acc-obe', code: '3009', name: 'Opening Balance Equity', type: 'equity', subtype: 'equity', isSystem: true })
           if (persisted.settings && !persisted.settings.opening)
             persisted.settings.opening = { date: '', posted: false, journalEntryId: null, postedAt: '', counts: null }
+        }
+        if (version < 22) {
+          if (!persisted.recycleBin) persisted.recycleBin = []
         }
         return persisted
        } catch (e) {

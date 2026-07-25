@@ -32,6 +32,7 @@ const StockAdjustments = lazy(() => import('./pages/StockAdjustments'))
 const Approvals = lazy(() => import('./pages/Approvals'))
 const OpeningBalances = lazy(() => import('./pages/OpeningBalances'))
 const DataImport = lazy(() => import('./pages/DataImport'))
+const RecycleBin = lazy(() => import('./pages/RecycleBin'))
 const PrepaidExpenses = lazy(() => import('./pages/PrepaidExpenses'))
 const Leases = lazy(() => import('./pages/Leases'))
 const ExpenseClaims = lazy(() => import('./pages/ExpenseClaims'))
@@ -198,6 +199,7 @@ export default function App() {
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/opening-balances" element={<OpeningBalances />} />
         <Route path="/import-export" element={<DataImport />} />
+        <Route path="/recycle-bin" element={<RecycleBin />} />
         <Route path="/manufacturing" element={<Manufacturing />} />
 
         {/* Financials */}
