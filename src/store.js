@@ -8,6 +8,7 @@ import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfi
 import { allocateLandedCost } from './utils/landedCost'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
+import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -62,6 +63,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-capital', code: '3001', name: "Owner's Capital",           type: 'equity',    subtype: 'equity',      isSystem: false },
   { id: 'acc-retained',code: '3002', name: 'Retained Earnings',         type: 'equity',    subtype: 'equity',      isSystem: true  },
   { id: 'acc-drawings',code: '3003', name: "Owner's Drawings",          type: 'equity',    subtype: 'equity',      isSystem: false },
+  { id: 'acc-obe',    code: '3009', name: 'Opening Balance Equity',      type: 'equity',    subtype: 'equity',      isSystem: true  },
   // REVENUE
   { id: 'acc-sales',  code: '4001', name: 'Sales Revenue',              type: 'revenue',   subtype: 'revenue',     isSystem: false },
   { id: 'acc-svc',    code: '4002', name: 'Service Revenue',            type: 'revenue',   subtype: 'revenue',     isSystem: false },
@@ -116,6 +118,7 @@ const DEFAULT_SETTINGS = {
   ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
   accounting:    { lockDate: '', lockedBy: '', lockedAt: '', autoPostRecurring: true }, // period close + auto-post scheduler
   approvals:     defaultApprovalSettings(), // threshold-based maker-checker
+  opening:       { date: '', posted: false, journalEntryId: null, postedAt: '', counts: null }, // migration cutover
   payroll:       { prefix: 'PR-',    next: 1 },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
@@ -437,6 +440,150 @@ export const useStore = create(
         if (req.submittedBy && user?.id && req.submittedBy !== user.id) return
         set((s) => ({ approvalRequests: s.approvalRequests.filter((r) => r.id !== id) }))
         get().logActivity('Withdrew approval request', req.kind, { entity: 'approval', entityId: id })
+      },
+
+      // ─── OPENING BALANCES (migration cutover) ──────────────────────
+      // Establishes the position a business is carrying into this system on
+      // day one. Receivables, payables and stock arrive as individual open
+      // documents rather than lump sums, so aging, statements and stock counts
+      // work from the first day instead of showing legacy invoices as new.
+
+      updateOpening: (patch) =>
+        set((s) => ({ settings: { ...s.settings, opening: { ...(s.settings.opening || {}), ...patch } } })),
+
+      /**
+       * Post the cutover. One balanced journal entry plus the subledger
+       * documents it summarises.
+       * @throws OPENING_ALREADY_POSTED | OPENING_INVALID:<reasons>
+       */
+      postOpeningBalances: (input) => {
+        const st = get()
+        if (st.settings.opening?.posted) throw new Error('OPENING_ALREADY_POSTED')
+
+        const errors = validateOpening(input, { lockDate: st.settings?.accounting?.lockDate })
+        if (errors.length) throw new Error(`OPENING_INVALID:${errors.join(' | ')}`)
+
+        const nameOf = (id) => st.accounts.find((a) => a.id === id)?.name || id
+        const entry = buildOpeningEntry(input, { accountName: nameOf })
+        const { date, customers = [], suppliers = [], items = [] } = input
+
+        const je = get().addJournalEntry({
+          date,
+          description: `Opening balances as at ${date}`,
+          reference: 'OPENING', type: 'opening', lines: entry.lines,
+        })
+
+        // Opening documents carry their ORIGINAL numbers — a payment arriving
+        // next week has to match what the customer has on their copy. They
+        // hold no journal entry of their own; the single opening entry above
+        // already put their total into the control account.
+        const stamp = new Date().toISOString()
+        const openingInvoices = customers.map((c) => ({
+          id: uuid(), number: c.number, isOpening: true,
+          customerId: c.customerId || '', customerName: c.customerName || '',
+          date: c.date || date, dueDate: c.dueDate || c.date || date,
+          items: [], subtotal: Number(c.amount) || 0, taxAmount: 0,
+          total: Number(c.amount) || 0, amountPaid: 0, payments: [],
+          status: 'sent', exchangeRate: 1, baseTotal: Number(c.amount) || 0,
+          notes: 'Carried in from your previous system',
+          journalEntryId: je.id, createdAt: stamp,
+        }))
+        const openingBills = suppliers.map((b) => ({
+          id: uuid(), number: b.number, isOpening: true,
+          supplierId: b.supplierId || '', supplierName: b.supplierName || '',
+          date: b.date || date, dueDate: b.dueDate || b.date || date,
+          items: [], subtotal: Number(b.amount) || 0, taxAmount: 0,
+          total: Number(b.amount) || 0, amountPaid: 0, payments: [],
+          status: 'received', exchangeRate: 1, baseTotal: Number(b.amount) || 0,
+          notes: 'Carried in from your previous system',
+          journalEntryId: je.id, createdAt: stamp,
+        }))
+
+        // Stock arrives at the cost you are carrying it in at, blended into
+        // any existing quantity with the same weighted-average maths a
+        // purchase uses — so a re-migration behaves predictably.
+        const openingQty = {}
+        items.forEach((it) => {
+          const q = Number(it.quantity) || 0
+          if (!it.itemId || q <= 0) return
+          openingQty[it.itemId] = (openingQty[it.itemId] || 0) + q
+        })
+
+        set((s) => ({
+          invoices: [...s.invoices, ...openingInvoices],
+          purchases: [...s.purchases, ...openingBills],
+          inventoryItems: s.inventoryItems.map((it) => {
+            const row = items.find((r) => r.itemId === it.id)
+            if (!row) return it
+            const q = Number(row.quantity) || 0
+            const cost = Number(row.unitCost) || 0
+            if (q <= 0) return it
+            const oldQty = it.quantity || 0
+            const newQty = oldQty + q
+            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + q * cost) / newQty : cost
+            return { ...it, quantity: newQty, costPrice: newCost }
+          }),
+          settings: { ...s.settings, opening: {
+            date, posted: true, journalEntryId: je.id, postedAt: stamp,
+            counts: { accounts: entry.lines.length, customers: customers.length, suppliers: suppliers.length, items: items.length },
+          } },
+        }))
+
+        items.forEach((it) => {
+          const q = Number(it.quantity) || 0
+          if (!it.itemId || q <= 0) return
+          get().logStockMovement({
+            itemId: it.itemId, itemName: it.itemName || '', date,
+            type: 'opening', qtyChange: q, ref: 'OPENING', note: 'Opening stock',
+          })
+        })
+
+        get().logActivity('Posted opening balances', `as at ${date}`, {
+          entity: 'opening', entityId: je.id, entityRef: je.number, severity: 'critical',
+        })
+        return { entry, journalEntry: je }
+      },
+
+      /**
+       * Undo the cutover so it can be re-entered. Refused once anything has
+       * been settled against it — reversing then would strand the payment
+       * against an invoice that no longer exists.
+       * @throws OPENING_NOT_POSTED | OPENING_HAS_ACTIVITY:<n> | PERIOD_LOCKED
+       */
+      reverseOpeningBalances: () => {
+        const st = get()
+        const op = st.settings.opening
+        if (!op?.posted) throw new Error('OPENING_NOT_POSTED')
+
+        const settled = [
+          ...st.invoices.filter((i) => i.isOpening && ((i.amountPaid || 0) > 0 || (i.payments || []).length)),
+          ...st.purchases.filter((p) => p.isOpening && ((p.amountPaid || 0) > 0 || (p.payments || []).length)),
+        ]
+        if (settled.length) throw new Error(`OPENING_HAS_ACTIVITY:${settled.length}`)
+
+        const lock = st.settings?.accounting?.lockDate
+        if (lock && op.date && String(op.date) <= String(lock)) throw new Error(`PERIOD_LOCKED:${lock}`)
+
+        // Back the opening quantity out of stock rather than zeroing it —
+        // anything received since the cutover is real and must survive.
+        const openingMoves = (st.stockMovements || []).filter((m) => m.type === 'opening' && m.ref === 'OPENING')
+
+        set((s) => ({
+          journalEntries: s.journalEntries.filter((j) => j.id !== op.journalEntryId),
+          invoices: s.invoices.filter((i) => !i.isOpening),
+          purchases: s.purchases.filter((p) => !p.isOpening),
+          stockMovements: (s.stockMovements || []).filter((m) => !(m.type === 'opening' && m.ref === 'OPENING')),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const back = openingMoves.filter((m) => m.itemId === it.id).reduce((t, m) => t + (m.qtyChange || 0), 0)
+            if (!back) return it
+            return { ...it, quantity: Math.max(0, (it.quantity || 0) - back) }
+          }),
+          settings: { ...s.settings, opening: { date: op.date, posted: false, journalEntryId: null, postedAt: '', counts: null } },
+        }))
+
+        get().logActivity('Reversed opening balances', `as at ${op.date}`, {
+          entity: 'opening', entityId: op.journalEntryId || '', severity: 'critical',
+        })
       },
 
       // ─── AUDIT / ACTIVITY LOG ──────────────────────────────────────
@@ -2742,7 +2889,7 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 20, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 21, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -2930,7 +3077,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 20,
+      version: 21,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3084,6 +3231,12 @@ export const useStore = create(
           if (persisted.settings)
             persisted.settings.approvals = { ...defaultApprovalSettings(), ...(persisted.settings.approvals || {}) }
           if (!persisted.approvalRequests) persisted.approvalRequests = []
+        }
+        if (version < 21) {
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-obe'))
+            persisted.accounts.push({ id: 'acc-obe', code: '3009', name: 'Opening Balance Equity', type: 'equity', subtype: 'equity', isSystem: true })
+          if (persisted.settings && !persisted.settings.opening)
+            persisted.settings.opening = { date: '', posted: false, journalEntryId: null, postedAt: '', counts: null }
         }
         return persisted
        } catch (e) {

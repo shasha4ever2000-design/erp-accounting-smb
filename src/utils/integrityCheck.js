@@ -172,6 +172,40 @@ function checkLockRespected(journalEntries, lockDate) {
 }
 
 /**
+ * A leftover balance in Opening Balance Equity means the migration never
+ * balanced: the difference was parked there rather than allocated to real
+ * capital, loans or assets. It is silent until someone reads the balance
+ * sheet and finds an account no accountant recognises, so the check surfaces
+ * it early.
+ */
+function checkOpeningBalanceEquityCleared(journalEntries, settings) {
+  const label = 'Opening Balance Equity has been cleared'
+  if (!settings?.opening?.posted)
+    return { id: 'obe-cleared', label, ok: true, detail: 'No opening balances posted', items: [] }
+
+  let net = 0
+  ;(journalEntries || []).forEach((je) => (je.lines || []).forEach((l) => {
+    if (l.accountId === 'acc-obe') net += (+l.credit || 0) - (+l.debit || 0)
+  }))
+  net = Math.round(net * 100) / 100
+  const ok = Math.abs(net) < 0.01
+  return {
+    id: 'obe-cleared',
+    label,
+    ok,
+    detail: ok
+      ? 'Nothing left unallocated'
+      : `${Math.abs(net).toFixed(2)} still sits in Opening Balance Equity`,
+    items: ok ? [] : [{
+      ref: 'acc-obe',
+      detail: net > 0
+        ? 'Assets exceeded the capital and liabilities you entered — post the missing capital or loans.'
+        : 'Liabilities exceeded the assets you entered — post the missing assets.',
+    }],
+  }
+}
+
+/**
  * Run every check against a store snapshot.
  * @returns { ok, passed, failed, checks[], ranAt }
  */
@@ -187,6 +221,7 @@ export function runIntegrityCheck(state) {
     checkNoNegativeStock(inventoryItems),
     checkNoOverpayments(invoices, purchases),
     checkLockRespected(journalEntries, settings?.accounting?.lockDate),
+    checkOpeningBalanceEquityCleared(journalEntries, settings),
   ]
   const failed = checks.filter((c) => !c.ok).length
   return { ok: failed === 0, passed: checks.length - failed, failed, checks, ranAt: new Date().toISOString() }

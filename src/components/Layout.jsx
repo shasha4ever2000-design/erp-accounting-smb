@@ -17,7 +17,7 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
-  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag
 } from 'lucide-react'
 
 const NAV = [
@@ -84,6 +84,7 @@ const NAV = [
   { label: 'FX Revaluation',     path: '/revaluation',       icon: ArrowLeftRight },
   { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
+  { label: 'Opening Balances',   path: '/opening-balances',  icon: Flag },
   { label: 'Year-End Close',     path: '/year-end',          icon: CalendarCheck },
   { label: 'Approvals',          path: '/approvals',         icon: ShieldCheck, badge: 'approvals' },
   { label: 'Audit Log',          path: '/audit-log',         icon: History },

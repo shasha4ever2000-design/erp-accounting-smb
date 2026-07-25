@@ -152,3 +152,62 @@ describe('runIntegrityCheck — robustness', () => {
     expect(JSON.stringify(s)).toBe(snapshot)
   })
 })
+
+describe('Opening Balance Equity check', () => {
+  const je = (lines) => ({ id: 'j1', number: 'JE-1', date: '2026-01-01', lines })
+  const run = (state) => runIntegrityCheck(state).checks.find((c) => c.id === 'obe-cleared')
+
+  it('stays quiet when no opening balances were posted', () => {
+    expect(run({ journalEntries: [], settings: {} }).ok).toBe(true)
+  })
+
+  it('passes when the migration balanced — nothing was parked', () => {
+    const c = run({
+      settings: { opening: { posted: true } },
+      journalEntries: [je([
+        { accountId: 'acc-bank1', debit: 100, credit: 0 },
+        { accountId: 'acc-capital', debit: 0, credit: 100 },
+      ])],
+    })
+    expect(c.ok).toBe(true)
+  })
+
+  it('flags a credit left in Opening Balance Equity and says what is missing', () => {
+    const c = run({
+      settings: { opening: { posted: true } },
+      journalEntries: [je([
+        { accountId: 'acc-bank1', debit: 5000, credit: 0 },
+        { accountId: 'acc-obe', debit: 0, credit: 5000 },
+      ])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.detail).toMatch(/5000\.00/)
+    expect(c.items[0].detail).toMatch(/capital or loans/i)
+  })
+
+  it('flags a debit left in Opening Balance Equity', () => {
+    const c = run({
+      settings: { opening: { posted: true } },
+      journalEntries: [je([
+        { accountId: 'acc-obe', debit: 3000, credit: 0 },
+        { accountId: 'acc-loan', debit: 0, credit: 3000 },
+      ])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].detail).toMatch(/missing assets/i)
+  })
+
+  it('clears once the balance is journalled out to real capital', () => {
+    const c = run({
+      settings: { opening: { posted: true } },
+      journalEntries: [
+        je([{ accountId: 'acc-bank1', debit: 5000, credit: 0 }, { accountId: 'acc-obe', debit: 0, credit: 5000 }]),
+        { id: 'j2', number: 'JE-2', date: '2026-02-01', lines: [
+          { accountId: 'acc-obe', debit: 5000, credit: 0 },
+          { accountId: 'acc-capital', debit: 0, credit: 5000 },
+        ] },
+      ],
+    })
+    expect(c.ok).toBe(true)
+  })
+})
