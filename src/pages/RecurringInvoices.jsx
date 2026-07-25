@@ -111,9 +111,9 @@ export default function RecurringInvoices() {
                 <Td><span className="text-gray-600 dark:text-slate-300">{r.generatedCount || 0}×</span></Td>
                 <Td>
                   <Badge className={
-                    r.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
-                    : r.status === 'paused' ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
-                    : 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400'
+                    r.status === 'active' ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300'
+                    : r.status === 'paused' ? 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300'
+                    : 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'
                   }>{r.status}</Badge>
                 </Td>
                 <Td right>
@@ -132,7 +132,7 @@ export default function RecurringInvoices() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Subscription" width="max-w-2xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Customer *" value={form.customerId} onChange={(e) => setField('customerId', e.target.value)}>
               <option value="">— Select customer —</option>
               {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -141,7 +141,7 @@ export default function RecurringInvoices() {
               {Object.entries(FREQ).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="First Invoice Date" type="date" value={form.nextDate} onChange={(e) => setField('nextDate', e.target.value)} />
             <Input label="End Date (optional)" type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} />
           </div>
@@ -163,7 +163,7 @@ export default function RecurringInvoices() {
                     <option value="">Revenue…</option>
                     {revenueAccs.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                   </select>
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>
@@ -186,7 +186,7 @@ export default function RecurringInvoices() {
       </Modal>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 bg-green-600 text-white px-4 py-2.5 rounded-xl shadow-lg text-sm font-medium z-50">
+        <div className="fixed bottom-6 end-6 bg-gradient-to-b from-success-500 to-success-600 text-white px-4 py-2.5 rounded-xl shadow-elevated text-sm font-semibold z-50 animate-slide-up">
           {toast}
         </div>
       )}

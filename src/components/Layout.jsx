@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { useI18n, useT } from '../i18n'
+import { actionableFor } from '../utils/approvals'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
 import InstallButton from './InstallButton'
@@ -15,7 +16,8 @@ import {
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
-  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight,
+  PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive
 } from 'lucide-react'
 
 const NAV = [
@@ -28,6 +30,7 @@ const NAV = [
   { label: 'Bank Transactions',    path: '/banking',        icon: Landmark },
   { label: 'Bank Reconciliation',  path: '/reconciliation', icon: CheckSquare },
   { label: 'Journal Entries',      path: '/journals',       icon: ClipboardList },
+  { label: 'Recurring Journals',   path: '/recurring-journals', icon: Repeat },
 
   { divider: 'Sales' },
   { label: 'Sales Pipeline (CRM)',path: '/pipeline',        icon: Filter },
@@ -36,6 +39,8 @@ const NAV = [
   { label: 'Quotations',         path: '/quotations',       icon: FileCheck },
   { label: 'Sales Invoices',     path: '/invoices',         icon: FileText },
   { label: 'Recurring Invoices', path: '/recurring-invoices', icon: Repeat },
+  { label: 'Payment Reminders',  path: '/payment-reminders', icon: BellRing },
+  { label: 'Sales Commissions',  path: '/commissions',      icon: BadgePercent },
   { label: 'Delivery Notes',     path: '/delivery-notes',   icon: TruckIcon },
   { label: 'Credit Notes',       path: '/credit-notes',     icon: FileMinus },
 
@@ -45,6 +50,8 @@ const NAV = [
   { label: 'Purchase Orders',    path: '/purchase-orders',  icon: Truck },
   { label: 'Purchase Invoices',  path: '/purchases',        icon: ShoppingCart },
   { label: 'Debit Notes',        path: '/debit-notes',      icon: FilePlus },
+  { label: 'Landed Costs',       path: '/landed-costs',     icon: Ship },
+  { label: 'Recurring Expenses', path: '/recurring-expenses', icon: Repeat },
 
   { divider: 'Inventory & Production' },
   { label: 'Inventory Items',    path: '/inventory',        icon: Package },
@@ -70,9 +77,18 @@ const NAV = [
 
   { divider: 'Reports & System' },
   { label: 'Analytics',          path: '/analytics',         icon: PieChart },
+  { label: 'Sales & Purchasing', path: '/trade-analytics',   icon: GitCompareArrows },
+  { label: 'Financial Health',   path: '/financial-health',  icon: Activity },
+  { label: 'Group Consolidation',path: '/consolidation',     icon: Layers },
   { label: 'Currencies',         path: '/currencies',        icon: Coins },
+  { label: 'FX Revaluation',     path: '/revaluation',       icon: ArrowLeftRight },
   { label: 'Statements',         path: '/statements',        icon: FileText },
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
+  { label: 'Opening Balances',   path: '/opening-balances',  icon: Flag },
+  { label: 'Import & Export',    path: '/import-export',     icon: ArrowUpDown },
+  { label: 'Year-End Close',     path: '/year-end',          icon: CalendarCheck },
+  { label: 'Approvals',          path: '/approvals',         icon: ShieldCheck, badge: 'approvals' },
+  { label: 'Recycle Bin',        path: '/recycle-bin',       icon: Archive },
   { label: 'Audit Log',          path: '/audit-log',         icon: History },
   { label: 'Team & Roles',       path: '/team',              icon: UsersRound },
   { label: 'Settings',           path: '/settings',          icon: Settings },
@@ -86,6 +102,13 @@ export default function Layout({ children }) {
   const lang = useI18n((s) => s.lang)
   const toggleLang = useI18n((s) => s.toggle)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  // Nav badge: only requests this user can actually decide, so an approver is
+  // nudged and everyone else isn't nagged about work that isn't theirs.
+  const approvalRequests = useStore((s) => s.approvalRequests)
+  const approvalSettings = useStore((s) => s.settings.approvals)
+  const me = useAuth((s) => s.currentUser())
+  const allUsers = useAuth((s) => s.users)
+  const badges = { approvals: actionableFor(approvalRequests, me, approvalSettings, allUsers).length }
   const [storageWarn, setStorageWarn] = useState(false)
   const location = useLocation()
 
@@ -100,28 +123,28 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-transparent overflow-hidden">
       {/* Sidebar */}
-      <aside className={`w-60 bg-slate-900 dark:bg-slate-950 border-r border-transparent dark:border-slate-800 flex flex-col flex-shrink-0 overflow-y-auto fixed lg:static inset-y-0 left-0 z-40 transform transition-transform lg:transform-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      <aside className={`w-60 bg-surface-925 border-e border-white/[0.06] flex flex-col flex-shrink-0 overflow-y-auto fixed lg:static inset-y-0 start-0 z-40 transform transition-transform duration-200 ease-spring lg:transform-none ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0 rtl:translate-x-full rtl:lg:translate-x-0'}`}>
         {/* Logo / Company */}
-        <div className="px-5 py-4 border-b border-slate-700/60">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center flex-shrink-0">
-              <TrendingUp size={16} className="text-white" />
+        <div className="px-4 pt-4 pb-3">
+          <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-xl">
+            <div className="w-9 h-9 bg-gradient-to-br from-brand-500 to-accent-600 rounded-[10px] flex items-center justify-center flex-shrink-0 shadow-glow ring-1 ring-white/20">
+              <TrendingUp size={17} className="text-white" strokeWidth={2.5} />
             </div>
             <div className="min-w-0">
-              <p className="text-white font-semibold text-sm leading-tight truncate">{company.name}</p>
-              <p className="text-slate-400 text-xs">{t('Accounting ERP')}</p>
+              <p className="text-white font-semibold text-sm leading-tight truncate tracking-snug">{company.name}</p>
+              <p className="text-slate-500 dark:text-slate-400 text-[10.5px] font-medium tracking-[0.08em] uppercase mt-0.5">{t('Accounting ERP')}</p>
             </div>
           </div>
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 py-2">
+        <nav className="flex-1 pb-3">
           {NAV.map((item, i) => {
             if (item.divider) {
               return (
-                <p key={i} className="px-5 pt-4 pb-1 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                <p key={i} className="px-5 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500/90">
                   {t(item.divider)}
                 </p>
               )
@@ -134,57 +157,68 @@ export default function Layout({ children }) {
                 end={item.path === '/'}
                 onClick={() => setSidebarOpen(false)}
                 className={({ isActive }) =>
-                  `flex items-center gap-3 mx-2 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                  `group relative flex items-center gap-3 mx-2.5 px-3 py-[7px] my-px rounded-lg text-sm transition-colors duration-100 ${
                     isActive
-                      ? 'bg-blue-600 text-white font-medium'
-                      : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                      ? 'bg-white/[0.07] text-white font-semibold ring-1 ring-inset ring-white/[0.06]'
+                      : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
                   }`
                 }
               >
-                <Icon size={15} className="flex-shrink-0" />
-                <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
+                {({ isActive }) => (
+                  <>
+                    {isActive && <span className="absolute inset-y-[7px] start-0 w-[3px] rounded-full bg-gradient-to-b from-brand-400 to-accent-500" />}
+                    <Icon size={16} strokeWidth={isActive ? 2.25 : 2} className={`flex-shrink-0 transition-colors ${isActive ? 'text-brand-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-300'}`} />
+                    <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
+                    {item.badge && badges[item.badge] > 0 && (
+                      <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-warning-500 text-white text-[10px] font-bold flex items-center justify-center">
+                        {badges[item.badge]}
+                      </span>
+                    )}
+                  </>
+                )}
               </NavLink>
             )
           })}
         </nav>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-700/60">
-          <p className="text-[10px] text-slate-500 text-center">ERP Accounting v3.0</p>
+        <div className="px-4 py-3 border-t border-white/[0.06]">
+          <p className="text-[10px] font-medium tracking-[0.08em] text-slate-600 dark:text-slate-300 text-center">ERP ACCOUNTING v3.0</p>
         </div>
       </aside>
 
       {/* Backdrop for mobile sidebar */}
-      {sidebarOpen && <div className="fixed inset-0 bg-black/40 z-30 lg:hidden" onClick={() => setSidebarOpen(false)} />}
+      {sidebarOpen && <div className="fixed inset-0 bg-surface-950/50 backdrop-blur-[2px] z-30 lg:hidden animate-fade-in" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main column */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar */}
-        <header className="no-print h-14 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur border-b border-gray-100 dark:border-slate-800 flex items-center gap-3 px-4 lg:px-6">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-gray-500 dark:text-slate-400">
+        <header className="no-print h-16 flex-shrink-0 bg-white/70 dark:bg-surface-900/70 backdrop-blur-xl border-b border-slate-200/70 dark:border-surface-800 flex items-center gap-3 px-4 lg:px-6 sticky top-0 z-20">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 -ms-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] dark:hover:bg-white/[0.06] transition-colors">
             <Menu size={20} />
           </button>
           <button
             onClick={openPalette}
-            className="flex items-center gap-2 text-sm text-gray-400 dark:text-slate-500 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:border-gray-300 dark:hover:border-slate-600 transition-colors w-full max-w-xs"
+            className="group flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500 bg-slate-100/70 dark:bg-surface-800/80 border border-slate-200/80 dark:border-surface-700 rounded-lg px-3 py-1.5 hover:border-slate-300 hover:bg-white dark:hover:border-surface-600 dark:hover:bg-surface-800 hover:shadow-xs transition-all w-full max-w-xs"
           >
-            <Search size={15} />
-            <span className="flex-1 text-left">{t('Search…')}</span>
-            <kbd className="hidden sm:inline text-[10px] border border-gray-200 dark:border-slate-600 rounded px-1.5 py-0.5">⌘K</kbd>
+            <Search size={15} className="group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors" />
+            <span className="flex-1 text-start">{t('Search…')}</span>
+            <kbd className="hidden sm:inline text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-white dark:bg-surface-900 border border-slate-200 dark:border-surface-600 rounded-md px-1.5 py-0.5 shadow-xs dark:shadow-none">⌘K</kbd>
           </button>
           <CompanySwitcher />
           <div className="flex-1" />
+          <SyncStatusIndicator />
           <InstallButton />
           <button
             onClick={toggleLang}
-            className="flex items-center gap-1.5 p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors text-sm font-medium"
+            className="flex items-center gap-1.5 p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:hover:bg-white/[0.06] dark:hover:text-slate-200 transition-colors text-sm font-medium"
             title={lang === 'ar' ? 'English' : 'العربية'}
           >
             <Globe size={18} /><span className="hidden sm:inline">{lang === 'ar' ? 'EN' : 'ع'}</span>
           </button>
           <button
             onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-800 transition-colors"
+            className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:hover:bg-white/[0.06] dark:hover:text-slate-200 transition-colors"
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
@@ -194,7 +228,7 @@ export default function Layout({ children }) {
 
         {/* Storage-full warning */}
         {storageWarn && (
-          <div className="no-print bg-amber-500 text-white text-sm px-4 py-2 flex items-center justify-between gap-3">
+          <div className="no-print bg-warning-50 dark:bg-warning-900/30 text-warning-800 dark:text-warning-200 border-b border-warning-200/70 dark:border-warning-800/50 text-sm px-4 py-2 flex items-center justify-between gap-3">
             <span>⚠️ Your browser storage is full — recent changes may not be saved. Open <strong>Settings → Backup</strong> to download your data, then free up space.</span>
             <button onClick={() => setStorageWarn(false)} className="font-bold px-2">✕</button>
           </div>
@@ -202,7 +236,8 @@ export default function Layout({ children }) {
 
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
-          <div className="min-h-full p-6 lg:p-8">
+          {/* Extra bottom padding keeps the floating AI button clear of page content */}
+          <div className="min-h-full p-4 sm:p-6 lg:p-8 pb-24 lg:pb-24">
             <ErrorBoundary resetKey={location.pathname}>{children}</ErrorBoundary>
           </div>
         </main>
@@ -225,6 +260,38 @@ function useOutside(onClose) {
   return ref
 }
 
+function SyncStatusIndicator() {
+  const t = useT()
+  const companies = useAuth((s) => s.companies)
+  const currentCompanyId = useAuth((s) => s.currentCompanyId)
+  const company = companies.find((c) => c.id === currentCompanyId)
+  const syncStatus = useStore((s) => s.syncStatus)
+  const lastSyncAt = useStore((s) => s.lastSyncAt)
+  const lastSyncError = useStore((s) => s.lastSyncError)
+
+  if (!company?.cloudCompanyId) return null // local-only company — no indicator, no sync code loaded
+
+  const label = syncStatus === 'syncing' ? t('Syncing…')
+    : syncStatus === 'error' ? `${t('Sync error')}: ${lastSyncError || ''}`
+    : lastSyncAt ? `${t('Synced')} · ${new Date(lastSyncAt).toLocaleTimeString()}`
+    : t('Not yet synced')
+
+  return (
+    <button
+      onClick={() => useStore.getState().syncNow()}
+      title={label}
+      className={`p-2 rounded-lg transition-colors ${
+        syncStatus === 'error' ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+        : 'text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:hover:bg-white/[0.06] dark:hover:text-slate-200'
+      }`}
+    >
+      {syncStatus === 'syncing' ? <RefreshCw size={18} className="animate-spin" />
+        : syncStatus === 'error' ? <AlertTriangle size={18} />
+        : <Cloud size={18} />}
+    </button>
+  )
+}
+
 function CompanySwitcher() {
   const companies = useAuth((s) => s.companies)
   const currentCompanyId = useAuth((s) => s.currentCompanyId)
@@ -240,32 +307,32 @@ function CompanySwitcher() {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-gray-50 dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg px-3 py-1.5 hover:border-gray-300 dark:hover:border-slate-600 max-w-[200px]">
-        <Building2 size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />
+      <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100/70 dark:bg-surface-800/80 border border-slate-200/80 dark:border-surface-700 rounded-lg px-3 py-1.5 hover:border-slate-300 hover:bg-white dark:hover:border-surface-600 dark:hover:bg-surface-800 hover:shadow-xs transition-all max-w-[200px]">
+        <Building2 size={15} className="text-brand-600 dark:text-brand-400 flex-shrink-0" />
         <span className="truncate">{current?.name || 'Company'}</span>
-        <ChevronDown size={14} className="text-gray-400 flex-shrink-0" />
+        <ChevronDown size={14} className={`text-slate-400 flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
-        <div className="absolute left-0 mt-1 w-64 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 py-1.5">
-          <p className="px-3 pt-1.5 pb-1 text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-slate-500">{t('Companies')}</p>
+        <div className="absolute start-0 mt-1.5 w-64 bg-white dark:bg-surface-850 rounded-xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 border border-slate-100 dark:border-surface-750 z-50 py-1.5 animate-slide-down">
+          <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{t('Companies')}</p>
           <div className="max-h-60 overflow-y-auto">
             {companies.map((c) => (
-              <button key={c.id} onClick={() => switchCompany(c.id)} className="w-full flex items-center justify-between px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700">
+              <button key={c.id} onClick={() => switchCompany(c.id)} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors">
                 <span className="truncate">{c.name}</span>
-                {c.id === currentCompanyId && <Check size={15} className="text-blue-600 dark:text-blue-400 flex-shrink-0" />}
+                {c.id === currentCompanyId && <Check size={15} className="text-brand-600 dark:text-brand-400 flex-shrink-0" />}
               </button>
             ))}
           </div>
-          <div className="border-t border-gray-100 dark:border-slate-700 mt-1 pt-1">
+          <div className="border-t border-slate-100 dark:border-surface-750 mt-1 pt-1">
             {creating ? (
               <div className="px-3 py-2 flex gap-2">
-                <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name.trim() && createCompany(name.trim())} placeholder="Company name" className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                <button onClick={() => name.trim() && createCompany(name.trim())} className="text-sm text-blue-600 font-medium">Add</button>
+                <input autoFocus value={name} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && name.trim() && createCompany(name.trim())} placeholder="Company name" className="flex-1 min-w-0 border border-slate-300 dark:border-surface-600 dark:bg-surface-800 dark:text-slate-100 rounded-lg px-2.5 py-1.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15" />
+                <button onClick={() => name.trim() && createCompany(name.trim())} className="text-sm text-brand-600 dark:text-brand-400 font-semibold hover:text-brand-700 dark:hover:text-brand-300 transition-colors">Add</button>
               </div>
             ) : (
-              <button onClick={() => setCreating(true)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><Plus size={15} /> {t('New company')}</button>
+              <button onClick={() => setCreating(true)} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors"><Plus size={15} /> {t('New company')}</button>
             )}
-            <button onClick={() => exitToCompanies()} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-700"><Building2 size={15} /> {t('Manage companies…')}</button>
+            <button onClick={() => exitToCompanies()} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors"><Building2 size={15} /> {t('Manage companies…')}</button>
           </div>
         </div>
       )}
@@ -283,16 +350,16 @@ function UserMenu() {
 
   return (
     <div className="relative" ref={ref}>
-      <button onClick={() => setOpen((o) => !o)} className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 text-white text-xs font-bold flex items-center justify-center">
+      <button onClick={() => setOpen((o) => !o)} className="w-9 h-9 rounded-full bg-gradient-to-br from-brand-500 to-accent-600 text-white text-xs font-bold flex items-center justify-center ring-2 ring-white/80 dark:ring-surface-700 shadow-xs hover:shadow-glow transition-shadow duration-200">
         {initials}
       </button>
       {open && (
-        <div className="absolute right-0 mt-1 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-100 dark:border-slate-700 z-50 py-1.5">
-          <div className="px-3 py-2 border-b border-gray-100 dark:border-slate-700">
-            <p className="text-sm font-semibold text-gray-800 dark:text-slate-100 truncate">{user?.name}</p>
-            <p className="text-xs text-gray-400 dark:text-slate-500 truncate">{user?.email}</p>
+        <div className="absolute end-0 mt-1.5 w-56 bg-white dark:bg-surface-850 rounded-xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 border border-slate-100 dark:border-surface-750 z-50 py-1.5 animate-slide-down">
+          <div className="px-3 py-2 border-b border-slate-100 dark:border-surface-750">
+            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{user?.name}</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
           </div>
-          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-slate-200 hover:bg-gray-50 dark:hover:bg-slate-700"><LogOut size={15} /> {t('Log out')}</button>
+          <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors"><LogOut size={15} /> {t('Log out')}</button>
         </div>
       )}
     </div>

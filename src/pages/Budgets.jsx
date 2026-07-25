@@ -3,6 +3,7 @@ import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
+import BudgetAlertStrip from '../components/BudgetAlertStrip'
 import { format } from 'date-fns'
 import { Target, Save } from 'lucide-react'
 
@@ -78,7 +79,7 @@ export default function Budgets() {
                   value={budgetFor(r.id)}
                   onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
                   placeholder="0"
-                  className="w-28 text-right border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  className="w-28 text-right border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
               </td>
               <td className="px-3 py-2 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.actual, sym)}</td>
               <td className={`px-3 py-2 text-right font-medium ${r.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{fmtMoney(r.variance, sym)}</td>
@@ -94,7 +95,7 @@ export default function Budgets() {
               </td>
             </tr>
           ))}
-          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 text-sm">{t('No accounts')}</td></tr>}
+          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No accounts')}</td></tr>}
         </tbody>
       </table>
     </Card>
@@ -117,6 +118,9 @@ export default function Budgets() {
           </div>
         }
       />
+
+      {/* Alerts for the year being viewed — silent when everything is on pace */}
+      <BudgetAlertStrip year={year} max={6} />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <SummaryCard label="Net Budgeted" value={fmtMoney(netBudget, sym)} icon={<Target size={18} />} tone="indigo" />

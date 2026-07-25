@@ -1,12 +1,15 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { StatCard, Card, Badge } from '../components/UI'
+import AccountLedgerModal from '../components/AccountLedgerModal'
+import { seedDemoData, isCompanyEmpty } from '../utils/demoData'
+import BudgetAlertStrip from '../components/BudgetAlertStrip'
 import { useT } from '../i18n'
 import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
-  FileText, ShoppingCart, Clock, DollarSign, ArrowRight,
+  FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles, ChevronRight,
 } from 'lucide-react'
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -14,11 +17,17 @@ import {
 import { format, subMonths, parseISO, isValid } from 'date-fns'
 
 export default function Dashboard() {
-  const { invoices, purchases, accounts, getAllBalances, settings, recurringInvoices, leases } = useStore()
+  const { invoices, purchases, accounts, journalEntries, getAllBalances, settings, recurringInvoices, leases } = useStore()
   const sym = settings.company.currencySymbol
   const t = useT()
 
-  const balances = useMemo(() => getAllBalances(), [getAllBalances])
+  // Click a money tile → its ledger's Statement of Account (same drawer as Reports).
+  const [drill, setDrill] = useState(null)
+  const today = new Date().toISOString().slice(0, 10)
+
+  // journalEntries must be a dep: getAllBalances is a stable reference, so
+  // without it the KPIs freeze until the page remounts.
+  const balances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
 
   const accountBalance = (id) => {
     const b = balances[id]
@@ -84,10 +93,10 @@ export default function Dashboard() {
       const yearMonth = format(d, 'yyyy-MM')
       let rev = 0, exp = 0
       invoices.forEach((inv) => {
-        if (inv.date?.startsWith(yearMonth) && inv.status !== 'cancelled') rev += inv.total || 0
+        if (inv.date?.startsWith(yearMonth) && inv.status !== 'cancelled' && inv.status !== 'void') rev += inv.total || 0
       })
       purchases.forEach((pur) => {
-        if (pur.date?.startsWith(yearMonth) && pur.status !== 'cancelled') exp += pur.total || 0
+        if (pur.date?.startsWith(yearMonth) && pur.status !== 'cancelled' && pur.status !== 'void') exp += pur.total || 0
       })
       months.push({ month: label, Revenue: rev, Expenses: exp })
     }
@@ -110,7 +119,7 @@ export default function Dashboard() {
       return months.findIndex((m) => m.key === ym)
     }
     invoices.forEach((inv) => {
-      if (inv.status === 'paid' || inv.status === 'cancelled') return
+      if (inv.status === 'paid' || inv.status === 'cancelled' || inv.status === 'void') return
       const bal = (inv.total || 0) - (inv.amountPaid || 0)
       const i = bucket(inv.dueDate || inv.date)
       if (bal > 0 && i >= 0) months[i].inflow += bal
@@ -140,39 +149,124 @@ export default function Dashboard() {
 
   const forecastLow = forecast.length ? Math.min(...forecast.map((f) => f.Projected)) : 0
 
+  // Month-over-month trend chips for the headline KPIs
+  const pctTrend = (cur, prev) => {
+    // Compare only when BOTH months have activity — a month with no postings
+    // yet would otherwise always read "▼100%".
+    if (!prev || !cur) return null
+    const p = ((cur - prev) / Math.abs(prev)) * 100
+    return { label: `${Math.abs(p).toFixed(0)}%`, up: p >= 0 }
+  }
+  const cm = chartData[chartData.length - 1] || { Revenue: 0, Expenses: 0 }
+  const pm = chartData[chartData.length - 2] || { Revenue: 0, Expenses: 0 }
+  const revTrend = pctTrend(cm.Revenue, pm.Revenue)
+  const expTrend = pctTrend(cm.Expenses, pm.Expenses)
+
+  // Theme-aware chart colors
+  const dark = (settings.theme || 'light') === 'dark'
+  const gridStroke = dark ? '#1e293b' : '#eef2f7'
+  const tickFill = dark ? '#94a3b8' : '#6b7280'
+
   const statusBadge = (status) => {
     const map = {
-      paid:    'bg-green-100 text-green-700',
-      sent:    'bg-blue-100 text-blue-700',
-      partial: 'bg-yellow-100 text-yellow-700',
-      overdue: 'bg-red-100 text-red-700',
-      draft:   'bg-gray-100 text-gray-600',
+      paid:    'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
+      sent:    'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
+      partial: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
+      overdue: 'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
+      draft:   'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
     }
-    return map[status] || 'bg-gray-100 text-gray-600'
+    return map[status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'
+  }
+
+  // Shared premium tooltip treatment for all charts (theme-aware)
+  const tooltipStyle = {
+    contentStyle: {
+      background: dark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.97)',
+      border: dark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(15,23,42,0.06)',
+      borderRadius: 12,
+      boxShadow: '0 8px 24px -8px rgba(15,23,42,0.25)',
+      padding: '10px 14px',
+      fontSize: 12.5,
+    },
+    labelStyle: { color: dark ? '#e2e8f0' : '#0f172a', fontWeight: 600, marginBottom: 4 },
+    itemStyle: { padding: 0 },
+    cursor: { stroke: dark ? '#334155' : '#cbd5e1', strokeDasharray: '3 3' },
   }
 
   const navigate = useNavigate()
 
   return (
-    <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('Dashboard')}</h1>
-        <p className="text-gray-500 dark:text-slate-400 text-sm mt-1">{format(new Date(), 'MMMM d, yyyy')}</p>
+    <div className="animate-fade-in">
+      {/* Hero */}
+      <div className="relative overflow-hidden rounded-2xl mb-6 p-6 lg:p-8 bg-gradient-to-br from-surface-900 via-surface-925 to-accent-950 text-white shadow-elevated ring-1 ring-white/[0.08]">
+        <div className="absolute -top-20 -end-12 w-80 h-80 rounded-full bg-brand-500/[0.18] blur-3xl" />
+        <div className="absolute -bottom-24 -start-12 w-80 h-80 rounded-full bg-accent-500/[0.12] blur-3xl" />
+        <div className="absolute inset-0 opacity-[0.035] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <div className="relative flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-slate-400 text-[13px] font-medium tracking-wide">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+            <h1 className="text-2xl lg:text-3xl font-bold tracking-tightest mt-1.5">{settings.company.name}</h1>
+            <p className="text-slate-300/90 text-sm mt-2 max-w-xl leading-relaxed">
+              {netProfit >= 0
+                ? t('You are profitable this period — net {v}.').replace('{v}', fmtMoney(netProfit, sym))
+                : t('Watch your spending — net loss of {v} this period.').replace('{v}', fmtMoney(Math.abs(netProfit), sym))}
+            </p>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button onClick={() => navigate('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-surface-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-50 active:scale-[.98] transition-all shadow-elevated">
+              <FileText size={16} /> {t('New Invoice')}
+            </button>
+            <button onClick={() => navigate('/reports')} className="group inline-flex items-center gap-2 bg-white/[0.08] text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-white/[0.14] active:scale-[.98] transition-all ring-1 ring-inset ring-white/[0.14] backdrop-blur-sm">
+              {t('Reports')} <ArrowRight size={15} className="transition-transform duration-150 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
+            </button>
+          </div>
+        </div>
       </div>
 
+      {/* First-run: offer sample data while the books are empty */}
+      {isCompanyEmpty(useStore.getState()) && (
+        <div className="mb-6 rounded-2xl border-2 border-dashed border-brand-200 dark:border-brand-500/30 bg-brand-50/50 dark:bg-brand-500/[0.06] p-5 flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-accent-600 flex items-center justify-center flex-shrink-0">
+              <Sparkles size={16} className="text-white" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-800 dark:text-slate-100">{t('New here? Explore with sample data')}</p>
+              <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 max-w-lg">
+                {t('Load a realistic demo company — customers, stock, invoices in every state, and four months of activity. Erase it anytime from Settings.')}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2.5">
+            <button
+              onClick={() => { try { seedDemoData(useStore.getState) } catch { /* already has data */ } }}
+              className="inline-flex items-center gap-2 bg-brand-600 text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-700 active:scale-[.98] transition-all shadow-card">
+              <Sparkles size={15} /> {t('Load sample data')}
+            </button>
+            <button onClick={() => navigate('/invoices/new')} className="text-sm font-semibold text-brand-600 dark:text-brand-400 hover:underline">
+              {t('or start from scratch')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <StatCard
           label={t('Total Revenue')}
           value={fmtMoney(totalRevenue, sym)}
           color="green"
           icon={<TrendingUp size={18} />}
+          trend={revTrend?.label} trendUp={revTrend?.up}
+          sub={revTrend ? t('vs last month') : undefined}
         />
         <StatCard
           label={t('Total Expenses')}
           value={fmtMoney(totalExpenses, sym)}
           color="red"
           icon={<TrendingDown size={18} />}
+          trend={expTrend?.label} trendUp={expTrend ? !expTrend.up : undefined}
+          sub={expTrend ? t('vs last month') : undefined}
         />
         <StatCard
           label={t('Net Profit')}
@@ -185,16 +279,18 @@ export default function Dashboard() {
           value={fmtMoney(cashBalance, sym)}
           color="purple"
           icon={<DollarSign size={18} />}
+          onClick={() => setDrill({ id: '__cashbank__', name: t('Cash & Bank'), type: 'asset', memberIds: ['acc-cash', 'acc-bank1'] })}
         />
       </div>
 
-      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
         <StatCard
           label={t('Accounts Receivable')}
           value={fmtMoney(arBalance, sym)}
           sub={t('Amount owed to you')}
           color="blue"
           icon={<FileText size={18} />}
+          onClick={() => setDrill(accounts.find((a) => a.id === 'acc-ar'))}
         />
         <StatCard
           label={t('Accounts Payable')}
@@ -202,6 +298,7 @@ export default function Dashboard() {
           sub={t('Amount you owe')}
           color="orange"
           icon={<ShoppingCart size={18} />}
+          onClick={() => setDrill(accounts.find((a) => a.id === 'acc-ap'))}
         />
         <StatCard
           label={t('Overdue Invoices')}
@@ -218,20 +315,23 @@ export default function Dashboard() {
         />
       </div>
 
+      {/* Budget warnings — renders nothing when everything is on pace */}
+      <BudgetAlertStrip />
+
       {/* Balance Sheet (left) & Profit and Loss (right) — Manager-style summaries */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Balance Sheet')}</h2>
-            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">{t('Full report →')}</button>
+            <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
-            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" />
-            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" />
-            <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" />
+            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" onOpen={setDrill} />
+            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" onOpen={setDrill} />
+            <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" onOpen={setDrill} />
             <div className="flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-bold text-gray-900 dark:text-slate-100">
               <span>{t('Liabilities + Equity')}</span>
-              <span className={balanced ? '' : 'text-red-600'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
+              <span className={balanced ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
             </div>
           </div>
         </Card>
@@ -239,11 +339,11 @@ export default function Dashboard() {
         <Card className="overflow-hidden">
           <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Profit & Loss')}</h2>
-            <button onClick={() => navigate('/reports')} className="text-xs text-blue-600 dark:text-blue-400 hover:underline">{t('Full report →')}</button>
+            <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
-            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" />
-            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" />
+            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" onOpen={setDrill} />
+            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" onOpen={setDrill} />
             <div className={`flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-black text-base ${netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
               <span className="text-gray-900 dark:text-slate-100">{netProfit >= 0 ? t('Net Profit') : t('Net Loss')}</span>
               <span>{fmtMoney(Math.abs(netProfit), sym)}</span>
@@ -255,25 +355,31 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Revenue vs Expenses chart */}
         <Card className="xl:col-span-2 p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Revenue vs Expenses — Last 6 Months')}</h2>
+          <div className="flex items-center gap-4 mb-5">
+            <h2 className="text-base font-semibold tracking-snug text-slate-800 dark:text-slate-100 flex-1">{t('Revenue vs Expenses — Last 6 Months')}</h2>
+            <div className="flex items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-brand-500" /> {t('Revenue')}</span>
+              <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-danger-500" /> {t('Expenses')}</span>
+            </div>
+          </div>
           <ResponsiveContainer width="100%" height={220}>
             <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15} />
-                  <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="exp" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.15} />
+                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.14} />
                   <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
-              <Tooltip formatter={(v) => fmtMoney(v, sym)} />
-              <Area type="monotone" dataKey="Revenue" stroke="#2563eb" fill="url(#rev)" strokeWidth={2} />
-              <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="url(#exp)" strokeWidth={2} />
+              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} dy={4} />
+              <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} width={72} />
+              <Tooltip formatter={(v) => fmtMoney(v, sym)} {...tooltipStyle} />
+              <Area type="monotone" dataKey="Revenue" stroke="#3b82f6" fill="url(#rev)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
+              <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="url(#exp)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
             </AreaChart>
           </ResponsiveContainer>
         </Card>
@@ -293,10 +399,10 @@ export default function Dashboard() {
               <button
                 key={q.path}
                 onClick={() => navigate(q.path)}
-                className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors"
+                className="group w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm ring-1 ring-inset ring-transparent hover:ring-slate-200/80 dark:hover:ring-surface-700 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] hover:shadow-xs transition-all"
               >
                 <span className={`font-medium ${q.color}`}>{t(q.label)}</span>
-                <ArrowRight size={14} className="text-gray-400" />
+                <ArrowRight size={14} className="text-slate-300 dark:text-slate-600 transition-all duration-150 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </button>
             ))}
           </div>
@@ -320,15 +426,15 @@ export default function Dashboard() {
           <AreaChart data={forecast} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="fc" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.18} />
-                <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2} />
+                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6b7280' }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: '#6b7280' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} />
-            <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} />
-            <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2} />
+            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+            <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} dy={4} />
+            <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} width={72} />
+            <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} {...tooltipStyle} />
+            <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
           </AreaChart>
         </ResponsiveContainer>
       </Card>
@@ -337,8 +443,8 @@ export default function Dashboard() {
       <Card className="mt-6">
         <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
           <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Recent Sales Invoices')}</h2>
-          <button onClick={() => navigate('/invoices')} className="text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
-            {t('View all')} <ArrowRight size={13} />
+          <button onClick={() => navigate('/invoices')} className="group text-sm font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">
+            {t('View all')} <ArrowRight size={13} className="transition-transform duration-150 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
           </button>
         </div>
         {recentInvoices.length === 0 ? (
@@ -376,23 +482,60 @@ export default function Dashboard() {
           </table>
         )}
       </Card>
+
+      <AccountLedgerModal
+        open={!!drill}
+        onClose={() => setDrill(null)}
+        account={drill}
+        accounts={accounts}
+        journalEntries={journalEntries}
+        sym={sym}
+        startDate={today}
+        endDate={today}
+        mode="todate"
+        companyName={settings.company.name}
+        onOpenAccount={(id) => setDrill(accounts.find((a) => a.id === id) || null)}
+      />
     </div>
   )
 }
 
-function BSPLSection({ title, rows, total, sym, color }) {
+function BSPLSection({ title, rows, total, sym, color, onOpen }) {
   const t = useT()
   return (
     <div className="mb-4">
       <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{t(title)}</p>
       {rows.length === 0 ? (
         <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">{t('None')}</p>
-      ) : rows.map((a) => (
-        <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
-          <span className="truncate pr-2">{a.name}</span>
-          <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
-        </div>
-      ))}
+      ) : rows.map((a) => {
+        // Synthetic aggregate rows (e.g. the injected "Net Profit (to date)"
+        // equity line) carry no account code and aren't a real ledger — leave
+        // those as plain text instead of drilling into a non-existent account.
+        const clickable = !!(onOpen && a.code)
+        const body = (
+          <>
+            <span className="truncate pe-2 flex items-center gap-1">
+              {a.name}
+              {clickable && <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity flex-shrink-0" />}
+            </span>
+            <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
+          </>
+        )
+        return clickable ? (
+          <button
+            key={a.id}
+            type="button"
+            onClick={() => onOpen(a)}
+            className="group w-full flex justify-between items-center py-0.5 text-gray-600 dark:text-slate-300 text-start rounded-md hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] hover:text-brand-700 dark:hover:text-brand-300 transition-colors -mx-1.5 px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
+          >
+            {body}
+          </button>
+        ) : (
+          <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
+            {body}
+          </div>
+        )
+      })}
       <div className="flex justify-between border-t border-gray-100 dark:border-slate-700 mt-1 pt-1 font-semibold text-gray-800 dark:text-slate-100">
         <span>{t('Total')} {t(title)}</span><span>{fmtMoney(total, sym)}</span>
       </div>

@@ -61,7 +61,7 @@ export default function Leases() {
     setPayModal(null)
   }
 
-  const STATUS_CLR = { active: 'bg-green-100 text-green-700', terminated: 'bg-gray-100 text-gray-500', expired: 'bg-amber-100 text-amber-700' }
+  const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', terminated: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400', expired: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' }
 
   const leaseStatus = (lease) => {
     if (lease.status === 'terminated') return 'terminated'
@@ -77,7 +77,7 @@ export default function Leases() {
         action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Lease')}</Btn>}
       />
 
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <StatCard label="Active Leases"     value={activeLeases.length}         color="blue"   icon={<Home size={18} />}       sub="current obligations" />
         <StatCard label="Monthly Commitment" value={fmtMoney(monthlyTotal, sym)} color="orange" icon={<CreditCard size={18} />}  sub="total monthly rent" />
         <StatCard label="Total Paid"         value={fmtMoney(totalPayments, sym)} color="green"  icon={<CreditCard size={18} />}  sub="all time payments" />
@@ -86,7 +86,7 @@ export default function Leases() {
       <div className="flex gap-2 mb-4">
         {[['active','Active'],['terminated','Terminated'],['all','All']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${filter === val ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
             {label} ({val === 'all' ? leases.length : leases.filter(l => l.status === val).length})
           </button>
         ))}
@@ -97,7 +97,7 @@ export default function Leases() {
           <EmptyState icon="🏢" title="No leases recorded" desc="Add office space, equipment, or vehicle leases. Each rent payment automatically posts a journal entry (Dr Rent Expense / Cr Bank)."
             action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Lease')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 text-sm">No {filter} leases</div>
+          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} leases</div>
         ) : (
           <Table headers={['Number', 'Name', 'Landlord', 'Type', 'Start', 'End', { label: 'Monthly Rent', right: true }, { label: 'Total Paid', right: true }, 'Payments', 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((lease) => {
@@ -105,19 +105,19 @@ export default function Leases() {
               const status     = leaseStatus(lease)
               return (
                 <Tr key={lease.id}>
-                  <Td><span className="font-mono text-xs text-gray-500">{lease.number}</span></Td>
+                  <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{lease.number}</span></Td>
                   <Td>
-                    <p className="font-medium text-gray-800">{lease.name}</p>
-                    {lease.notes && <p className="text-xs text-gray-400 truncate max-w-[120px]">{lease.notes}</p>}
+                    <p className="font-medium text-gray-800 dark:text-slate-100">{lease.name}</p>
+                    {lease.notes && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[120px]">{lease.notes}</p>}
                   </Td>
-                  <Td className="text-gray-500 text-sm">{lease.landlord || '—'}</Td>
-                  <Td className="text-gray-500 text-sm capitalize">{lease.leaseType}</Td>
-                  <Td className="text-gray-500 text-sm">{fmtDate(lease.startDate)}</Td>
-                  <Td className="text-gray-500 text-sm">{lease.endDate ? fmtDate(lease.endDate) : 'Open'}</Td>
-                  <Td right className="font-medium text-gray-700">{fmtMoney(lease.monthlyRent, sym)}</Td>
-                  <Td right className="text-gray-700">{fmtMoney(totalPaid, sym)}</Td>
-                  <Td className="text-gray-500 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
-                  <Td><Badge className={STATUS_CLR[status] || 'bg-gray-100 text-gray-500'}>{status}</Badge></Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.landlord || '—'}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm capitalize">{lease.leaseType}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(lease.startDate)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.endDate ? fmtDate(lease.endDate) : 'Open'}</Td>
+                  <Td right className="font-medium text-gray-700 dark:text-slate-200">{fmtMoney(lease.monthlyRent, sym)}</Td>
+                  <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(totalPaid, sym)}</Td>
+                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
+                  <Td><Badge className={STATUS_CLR[status] || 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{status}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="lease" entityId={lease.id} />
@@ -147,11 +147,11 @@ export default function Leases() {
       {/* Add Lease Modal */}
       <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Lease" width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Lease Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Office – Level 3, Suite A" />
             <Input label="Landlord / Lessor" value={form.landlord} onChange={(e) => setField('landlord', e.target.value)} placeholder="Company or person name" />
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label="Lease Type" value={form.leaseType} onChange={(e) => setField('leaseType', e.target.value)}>
               <option value="operating">{t('Operating Lease')}</option>
               <option value="finance">{t('Finance Lease')}</option>
@@ -159,7 +159,7 @@ export default function Leases() {
             <Input label="Start Date *" type="date" value={form.startDate} onChange={(e) => setField('startDate', e.target.value)} />
             <Input label="End Date" type="date" value={form.endDate} onChange={(e) => setField('endDate', e.target.value)} />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`Monthly Rent (${sym}) *`} type="number" min="0" step="0.01" value={form.monthlyRent} onChange={(e) => setField('monthlyRent', e.target.value)} />
             <Select label="Default Pay From" value={form.bankAccountId} onChange={(e) => setField('bankAccountId', e.target.value)}>
               {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
@@ -176,12 +176,12 @@ export default function Leases() {
       {/* Pay Modal */}
       <Modal open={!!payModal} onClose={() => setPayModal(null)} title={`Record Payment – ${payModal?.name}`}>
         <div className="space-y-4">
-          <div className="bg-blue-50 rounded-lg p-3 text-sm text-blue-700">
+          <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
             <p>Monthly rent: <strong>{fmtMoney(payModal?.monthlyRent || 0, sym)}</strong></p>
             <p className="text-xs mt-0.5 text-blue-500">Posts: Dr Rent Expense → Cr Bank</p>
           </div>
           <Input label="Period *" value={payForm.period} onChange={(e) => setPayForm((f) => ({ ...f, period: e.target.value }))} placeholder="e.g. June 2026" />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${sym}) *`} type="number" min="0" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
           </div>

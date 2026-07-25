@@ -4,9 +4,10 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { computeLine } from '../utils/lineMath'
 import { Plus, Trash2 } from 'lucide-react'
 
-const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, subtotal: 0, taxRate: 0, accountId: 'acc-admin' })
+const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, unitPrice: 0, discount: 0, subtotal: 0, taxRate: 0, accountId: 'acc-admin' })
 
 export default function PurchaseOrderForm() {
   const t = useT()
@@ -33,10 +34,8 @@ export default function PurchaseOrderForm() {
     setLines((ls) => ls.map((l) => {
       if (l.id !== id) return l
       const updated = { ...l, [k]: v }
-      if (k === 'quantity' || k === 'unitPrice') {
-        const qty   = parseFloat(k === 'quantity'  ? v : updated.quantity)  || 0
-        const price = parseFloat(k === 'unitPrice' ? v : updated.unitPrice) || 0
-        updated.subtotal = qty * price
+      if (k === 'quantity' || k === 'unitPrice' || k === 'discount') {
+        updated.subtotal = computeLine(updated, { taxEnabled }).subtotal
       }
       return updated
     }))
@@ -48,7 +47,8 @@ export default function PurchaseOrderForm() {
     setLines((ls) => ls.map((l) => {
       if (l.id !== lineId) return l
       const qty = parseFloat(l.quantity) || 1
-      return { ...l, description: item.name, unitPrice: item.costPrice || 0, subtotal: qty * (item.costPrice || 0), accountId: item.inventoryAccountId || 'acc-inv', taxRate: item.taxRate || 0 }
+      // Carry itemId so a converted bill receives stock into inventory (perpetual).
+      return { ...l, itemId, description: item.name, unitPrice: item.costPrice || 0, subtotal: qty * (item.costPrice || 0), accountId: item.inventoryAccountId || 'acc-inv', taxRate: item.taxRate || 0 }
     }))
   }
 
@@ -79,15 +79,15 @@ export default function PurchaseOrderForm() {
     <div>
       <PageHeader title="New Purchase Order" subtitle="Create a purchase order for your supplier" />
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Supplier')}</h3>
+            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Supplier')}</h3>
             <Select label="Select Supplier" value={form.supplierId} onChange={(e) => handleSupplier(e.target.value)}>
               <option value="">— Enter manually below —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </Select>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Supplier Name *" value={form.supplierName} onChange={(e) => setField('supplierName', e.target.value)} />
               <Input label="Supplier Email" type="email" value={form.supplierEmail} onChange={(e) => setField('supplierEmail', e.target.value)} />
             </div>
@@ -96,12 +96,12 @@ export default function PurchaseOrderForm() {
 
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
+              <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
               <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add Line')}</Btn>
             </div>
             {lines.map((line) => (
-              <div key={line.id} className="border border-gray-100 rounded-xl p-3 space-y-2 bg-gray-50">
-                <div className="grid grid-cols-4 gap-2">
+              <div key={line.id} className="border border-slate-200/70 dark:border-surface-700 rounded-xl p-3 space-y-2 bg-slate-50 dark:bg-surface-800/60">
+                <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   <div className="col-span-2">
                     <Select label="Product (optional)" value="" onChange={(e) => pickItem(line.id, e.target.value)}>
                       <option value="">{t('Pick from inventory...')}</option>
@@ -115,13 +115,14 @@ export default function PurchaseOrderForm() {
                   </div>
                 </div>
                 <Input label="Description *" value={line.description} onChange={(e) => setLine(line.id, 'description', e.target.value)} placeholder="Item / service description" />
-                <div className="grid grid-cols-4 gap-2 items-end">
+                <div className="grid grid-cols-5 gap-2 items-end">
                   <Input label="Qty" type="number" min="0" step="any" value={line.quantity} onChange={(e) => setLine(line.id, 'quantity', e.target.value)} />
                   <Input label={`Unit Price (${sym})`} type="number" min="0" step="0.01" value={line.unitPrice} onChange={(e) => setLine(line.id, 'unitPrice', e.target.value)} />
+                  <Input label={t('Disc %')} type="number" min="0" max="100" step="0.1" value={line.discount} onChange={(e) => setLine(line.id, 'discount', e.target.value)} />
                   {taxEnabled && <Input label="Tax %" type="number" min="0" max="100" value={line.taxRate ?? taxRate} onChange={(e) => setLine(line.id, 'taxRate', e.target.value)} />}
                   <div className={`flex items-end gap-2 ${taxEnabled ? '' : 'col-span-2'}`}>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Subtotal</label>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Subtotal</label>
                       <p className="py-2 px-3 text-sm font-medium">{sym}{(parseFloat(line.subtotal)||0).toFixed(2)}</p>
                     </div>
                     <Btn size="sm" variant="ghost" onClick={() => removeLine(line.id)} className="mb-0.5"><Trash2 size={13} className="text-red-400" /></Btn>
@@ -138,16 +139,16 @@ export default function PurchaseOrderForm() {
 
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide">{t('Order Details')}</h3>
+            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Order Details')}</h3>
             <Input label="Order Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Expected Delivery" type="date" value={form.deliveryDate} onChange={(e) => setField('deliveryDate', e.target.value)} />
           </Card>
 
           <Card className="p-5 space-y-2">
-            <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide mb-3">Summary</h3>
-            <div className="flex justify-between text-sm text-gray-600"><span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
-            {taxEnabled && <div className="flex justify-between text-sm text-gray-600"><span>Tax</span><span>{sym}{taxAmount.toFixed(2)}</span></div>}
-            <div className="border-t pt-2 flex justify-between font-bold text-gray-900"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
+            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide mb-3">Summary</h3>
+            <div className="flex justify-between text-sm text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
+            {taxEnabled && <div className="flex justify-between text-sm text-gray-600 dark:text-slate-300"><span>Tax</span><span>{sym}{taxAmount.toFixed(2)}</span></div>}
+            <div className="border-t border-slate-200 dark:border-surface-700 pt-2 flex justify-between font-bold text-gray-900 dark:text-slate-100"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
           </Card>
 
           <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Order')}</Btn>

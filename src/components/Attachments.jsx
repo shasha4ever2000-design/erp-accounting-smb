@@ -79,7 +79,7 @@ export default function AttachmentButton({ entityType, entityId, size = 'sm', la
             <span className="text-xs">{t('Receipts, contracts, scans — up to 10 MB each')}</span>
           </button>
 
-          {busy && <div className="flex items-center justify-center py-3 text-gray-400"><Loader2 size={18} className="animate-spin" /></div>}
+          {busy && <div className="flex items-center justify-center py-3 text-gray-400 dark:text-slate-500"><Loader2 size={18} className="animate-spin" /></div>}
 
           {!busy && items.length === 0 && (
             <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-2">{t('No documents attached yet.')}</p>

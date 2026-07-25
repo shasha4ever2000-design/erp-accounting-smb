@@ -83,7 +83,7 @@ export default function Warehouses() {
                   <div>
                     <div className="flex items-center gap-2">
                       <p className="font-semibold text-gray-800 dark:text-slate-100">{w.name}</p>
-                      {w.isDefault && <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">default</Badge>}
+                      {w.isDefault && <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">default</Badge>}
                     </div>
                     {w.location && <p className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1"><MapPin size={11} /> {w.location}</p>}
                   </div>
@@ -93,7 +93,7 @@ export default function Warehouses() {
                   {!w.isDefault && <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete warehouse "${w.name}"?`)) deleteWarehouse(w.id) }}><Trash2 size={13} className="text-red-400" /></Btn>}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
                 <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Items</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{itemsHere}</p></div>
                 <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Stock Value')}</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value.toLocaleString()}</p></div>
               </div>
@@ -153,7 +153,7 @@ export default function Warehouses() {
                   <span className="text-gray-700 dark:text-slate-200 font-medium">{tr.quantity} × {itemName(tr.itemId)}</span>
                   <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1.5 text-xs">{whName(tr.fromWarehouseId)} <ArrowLeftRight size={11} /> {whName(tr.toWarehouseId)}</span>
                 </div>
-                <button onClick={() => deleteStockTransfer(tr.id)} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                <button onClick={() => deleteStockTransfer(tr.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
               </div>
             ))}
           </div>
@@ -178,7 +178,7 @@ export default function Warehouses() {
           <Select label="Item" value={trForm.itemId} onChange={(e) => setT('itemId', e.target.value)}>
             {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
           </Select>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="From" value={trForm.fromWarehouseId} onChange={(e) => setT('fromWarehouseId', e.target.value)}>
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
             </Select>
@@ -191,7 +191,7 @@ export default function Warehouses() {
               Available in source: {getItemStock(inventoryItems.find((i) => i.id === trForm.itemId), trForm.fromWarehouseId)}
             </p>
           )}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Quantity *" type="number" min="0" step="0.01" value={trForm.quantity} onChange={(e) => setT('quantity', e.target.value)} />
             <Input label="Date" type="date" value={trForm.date} onChange={(e) => setT('date', e.target.value)} />
           </div>

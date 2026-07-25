@@ -89,26 +89,26 @@ export default function StockAdjustments() {
               const st = stat(adj)
               return (
               <Tr key={adj.id}>
-                <Td><span className="font-mono text-xs text-gray-500">{adj.number}</span></Td>
-                <Td className="text-gray-500 text-sm">{fmtDate(adj.date)}</Td>
+                <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{adj.number}</span></Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(adj.date)}</Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{adj.itemName || '—'}
-                  {adj.createdByName && <span className="block text-[11px] text-gray-400">{t('by')} {adj.createdByName}</span>}
+                  {adj.createdByName && <span className="block text-[11px] text-gray-400 dark:text-slate-500">{t('by')} {adj.createdByName}</span>}
                 </Td>
                 <Td>
                   {adj.type === 'increase'
-                    ? <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 inline-flex items-center gap-1"><TrendingUp size={10} /> Increase</Badge>
-                    : <Badge className="bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300 inline-flex items-center gap-1"><TrendingDown size={10} /> Decrease</Badge>}
+                    ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 inline-flex items-center gap-1"><TrendingUp size={10} /> Increase</Badge>
+                    : <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 inline-flex items-center gap-1"><TrendingDown size={10} /> Decrease</Badge>}
                 </Td>
                 <Td right className="text-gray-700 dark:text-slate-200">{adj.quantity}</Td>
                 <Td right>
-                  <span className={`font-semibold ${adj.type === 'increase' ? 'text-green-600' : 'text-red-600'}`}>
+                  <span className={`font-semibold ${adj.type === 'increase' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                     {adj.type === 'increase' ? '+' : '-'}{fmtMoney(adj.totalAmount, sym)}
                   </span>
                 </Td>
                 <Td>
-                  {st === 'approved' && <Badge className="bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300 inline-flex items-center gap-1"><ShieldCheck size={10} /> {t('Approved')}{adj.approvedByName ? ` · ${adj.approvedByName}` : ''}</Badge>}
-                  {st === 'pending'  && <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 inline-flex items-center gap-1"><Clock size={10} /> {t('Pending')}</Badge>}
-                  {st === 'rejected' && <Badge className="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">{t('Rejected')}</Badge>}
+                  {st === 'approved' && <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 inline-flex items-center gap-1"><ShieldCheck size={10} /> {t('Approved')}{adj.approvedByName ? ` · ${adj.approvedByName}` : ''}</Badge>}
+                  {st === 'pending'  && <Badge className="bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300 inline-flex items-center gap-1"><Clock size={10} /> {t('Pending')}</Badge>}
+                  {st === 'rejected' && <Badge className="bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{t('Rejected')}</Badge>}
                 </Td>
                 <Td right>
                   <div className="flex items-center justify-end gap-1">
@@ -135,7 +135,7 @@ export default function StockAdjustments() {
 
       <Modal open={modal} onClose={() => setModal(false)} title="New Stock Adjustment" width="max-w-lg">
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Select label="Adjustment Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
               <option value="increase">Increase (Stock In)</option>
@@ -153,7 +153,7 @@ export default function StockAdjustments() {
             <Input label="Or enter item name" value={form.itemName} onChange={(e) => setField('itemName', e.target.value)} placeholder="Item name" />
           )}
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Quantity *" type="number" min="0" step="any" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label={`Unit Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.unitCost} onChange={(e) => setField('unitCost', e.target.value)} />
             <div>

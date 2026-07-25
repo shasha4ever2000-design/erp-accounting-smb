@@ -1,0 +1,35 @@
+name: CI
+
+# Run the accounting-engine test suite (and a production build) on every push
+# and pull request. gh-pages is excluded — it holds only built assets, with no
+# package.json to install or test.
+on:
+  push:
+    branches-ignore: ['gh-pages']
+  pull_request:
+
+# A newer push to the same branch/PR cancels an in-progress run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test & build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build

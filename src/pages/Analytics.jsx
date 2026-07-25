@@ -14,9 +14,9 @@ const PIE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '
 
 export default function Analytics() {
   const t = useT()
-  const { invoices, purchases, accounts, customers, bankAccounts, getAllBalances, settings } = useStore()
+  const { invoices, purchases, accounts, customers, bankAccounts, journalEntries, getAllBalances, settings } = useStore()
   const sym = settings.company.currencySymbol
-  const balances = useMemo(() => getAllBalances(), [getAllBalances])
+  const balances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
 
   const bal = (id) => {
     const b = balances[id]; if (!b) return 0
@@ -37,8 +37,8 @@ export default function Analytics() {
       const d = subMonths(new Date(), i)
       const ym = format(d, 'yyyy-MM')
       let rev = 0, exp = 0
-      invoices.forEach((inv) => { if (inv.date?.startsWith(ym) && inv.status !== 'cancelled') rev += inv.total || 0 })
-      purchases.forEach((p) => { if (p.date?.startsWith(ym) && p.status !== 'cancelled') exp += p.total || 0 })
+      invoices.forEach((inv) => { if (inv.date?.startsWith(ym) && inv.status !== 'cancelled' && inv.status !== 'void') rev += inv.total || 0 })
+      purchases.forEach((p) => { if (p.date?.startsWith(ym) && p.status !== 'cancelled' && p.status !== 'void') exp += p.total || 0 })
       months.push({ month: format(d, 'MMM'), Revenue: Math.round(rev), Expenses: Math.round(exp) })
     }
     return months
@@ -50,7 +50,7 @@ export default function Analytics() {
 
   const topCustomers = useMemo(() => {
     const map = {}
-    invoices.forEach((inv) => { if (inv.status !== 'cancelled') map[inv.customerName || 'Unknown'] = (map[inv.customerName || 'Unknown'] || 0) + (inv.total || 0) })
+    invoices.forEach((inv) => { if (inv.status !== 'cancelled' && inv.status !== 'void') map[inv.customerName || 'Unknown'] = (map[inv.customerName || 'Unknown'] || 0) + (inv.total || 0) })
     return Object.entries(map).map(([name, value]) => ({ name: name.length > 16 ? name.slice(0, 16) + '…' : name, value: Math.round(value) })).sort((a, b) => b.value - a.value).slice(0, 5)
   }, [invoices])
 
@@ -60,7 +60,7 @@ export default function Analytics() {
     <div>
       <PageHeader title="Business Analytics" subtitle="Live insights across your company's finances" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <StatCard label="Revenue" value={fmtMoney(totalRevenue, sym)} color="green" icon={<TrendingUp size={18} />} />
         <StatCard label="Expenses" value={fmtMoney(totalExpenses, sym)} color="red" icon={<TrendingDown size={18} />} />
         <StatCard label="Net Profit" value={fmtMoney(netProfit, sym)} color={netProfit >= 0 ? 'blue' : 'orange'} icon={<DollarSign size={18} />} />
@@ -95,7 +95,7 @@ export default function Analytics() {
 
           <Card className="p-6">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Expense Breakdown')}</h2>
-            {expenseBreakdown.length === 0 ? <p className="text-sm text-gray-400 py-12 text-center">{t('No expenses yet')}</p> : (
+            {expenseBreakdown.length === 0 ? <p className="text-sm text-gray-400 dark:text-slate-500 py-12 text-center">{t('No expenses yet')}</p> : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie data={expenseBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45}>
@@ -110,7 +110,7 @@ export default function Analytics() {
 
           <Card className="xl:col-span-3 p-6">
             <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Top Customers by Revenue')}</h2>
-            {topCustomers.length === 0 ? <p className="text-sm text-gray-400 py-8 text-center">{t('No customer invoices yet')}</p> : (
+            {topCustomers.length === 0 ? <p className="text-sm text-gray-400 dark:text-slate-500 py-8 text-center">{t('No customer invoices yet')}</p> : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={topCustomers} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.4} vertical={false} />

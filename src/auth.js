@@ -1,9 +1,36 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 
+const toHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+
+// Legacy scheme: a single SHA-256 round. Far too fast to stand up to offline
+// brute-forcing if anyone gets at the stored hashes, so it is kept only to
+// verify (and then transparently upgrade) accounts created before PBKDF2.
 async function sha256Hex(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str))
-  return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
+  return toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)))
+}
+
+const PBKDF2_ITERATIONS = 210000
+
+// Current scheme: PBKDF2-SHA256, matching the strength already used for
+// encrypted backups (see utils/backup.js).
+async function pbkdf2Hex(password, salt, iterations = PBKDF2_ITERATIONS) {
+  const baseKey = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', salt: new TextEncoder().encode(salt), iterations, hash: 'SHA-256' },
+    baseKey,
+    256
+  )
+  return toHex(bits)
+}
+
+// Constant-time-ish comparison so a wrong password can't be narrowed down by
+// timing. (Both values are same-length hex here, but compare defensively.)
+function safeEqual(a, b) {
+  if (typeof a !== 'string' || typeof b !== 'string' || a.length !== b.length) return false
+  let diff = 0
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i)
+  return diff === 0
 }
 
 const newId = () =>
@@ -30,13 +57,13 @@ export const useAuth = create(
         email = (email || '').trim().toLowerCase()
         if (!name) return { error: 'Please enter your name.' }
         if (!email || !email.includes('@')) return { error: 'Please enter a valid email.' }
-        if ((password || '').length < 4) return { error: 'Password must be at least 4 characters.' }
+        if ((password || '').length < 8) return { error: 'Password must be at least 8 characters.' }
         if (get().users.some((u) => u.email === email)) return { error: 'An account with this email already exists.' }
         const salt = newId()
-        const hash = await sha256Hex(salt + ':' + password)
+        const hash = await pbkdf2Hex(password, salt)
         // The very first account is the Owner; later self-signups default to Viewer.
         const role = get().users.length === 0 ? 'owner' : 'viewer'
-        const user = { id: newId(), name, email, salt, hash, role, createdAt: new Date().toISOString() }
+        const user = { id: newId(), name, email, salt, hash, kdf: 'pbkdf2', iter: PBKDF2_ITERATIONS, role, createdAt: new Date().toISOString() }
         set((s) => ({ users: [...s.users, user], currentUserId: user.id }))
         return { ok: true }
       },
@@ -62,8 +89,22 @@ export const useAuth = create(
         email = (email || '').trim().toLowerCase()
         const u = get().users.find((x) => x.email === email)
         if (!u) return { error: 'No account found with this email.' }
-        const hash = await sha256Hex(u.salt + ':' + password)
-        if (hash !== u.hash) return { error: 'Incorrect password.' }
+
+        if (u.kdf === 'pbkdf2') {
+          const hash = await pbkdf2Hex(password, u.salt, u.iter || PBKDF2_ITERATIONS)
+          if (!safeEqual(hash, u.hash)) return { error: 'Incorrect password.' }
+        } else {
+          // Legacy single-round SHA-256 account: verify against the old scheme,
+          // then re-hash with PBKDF2 now that we have the plaintext in hand, so
+          // every account upgrades itself on next sign-in with no user action.
+          const legacy = await sha256Hex(u.salt + ':' + password)
+          if (!safeEqual(legacy, u.hash)) return { error: 'Incorrect password.' }
+          const upgraded = await pbkdf2Hex(password, u.salt)
+          set((s) => ({
+            users: s.users.map((x) => (x.id === u.id ? { ...x, hash: upgraded, kdf: 'pbkdf2', iter: PBKDF2_ITERATIONS } : x)),
+          }))
+        }
+
         set({ currentUserId: u.id })
         return { ok: true }
       },
@@ -84,8 +125,20 @@ export const useAuth = create(
       renameCompany: (id, name) =>
         set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, name: (name || '').trim() || c.name } : c)) })),
 
+      // Cloud sync is opt-in per local company. Linking just remembers which
+      // Supabase `companies` row this local company syncs with — the local
+      // storage key (erp-co-<local id>) never changes, so this is safe to
+      // toggle without disturbing anything already on disk.
+      linkCompanyCloud: (id, cloudCompanyId) =>
+        set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, cloudCompanyId } : c)) })),
+
+      unlinkCompanyCloud: (id) =>
+        set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, cloudCompanyId: undefined } : c)) })),
+
       deleteCompany: (id) => {
+        // purge the company's persisted data from both localStorage and IndexedDB
         try { localStorage.removeItem(`erp-co-${id}`) } catch { /* ignore */ }
+        import('./utils/idbKvStorage').then((m) => m.removeCompanyData(id)).catch(() => {})
         set((s) => ({
           companies: s.companies.filter((c) => c.id !== id),
           currentCompanyId: s.currentCompanyId === id ? null : s.currentCompanyId,
