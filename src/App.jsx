@@ -31,6 +31,7 @@ const InventoryControl = lazy(() => import('./pages/InventoryControl'))
 const StockAdjustments = lazy(() => import('./pages/StockAdjustments'))
 const Approvals = lazy(() => import('./pages/Approvals'))
 const OpeningBalances = lazy(() => import('./pages/OpeningBalances'))
+const DataImport = lazy(() => import('./pages/DataImport'))
 const PrepaidExpenses = lazy(() => import('./pages/PrepaidExpenses'))
 const Leases = lazy(() => import('./pages/Leases'))
 const ExpenseClaims = lazy(() => import('./pages/ExpenseClaims'))
@@ -196,6 +197,7 @@ export default function App() {
         <Route path="/stock-adjustments" element={<StockAdjustments />} />
         <Route path="/approvals" element={<Approvals />} />
         <Route path="/opening-balances" element={<OpeningBalances />} />
+        <Route path="/import-export" element={<DataImport />} />
         <Route path="/manufacturing" element={<Manufacturing />} />
 
         {/* Financials */}
