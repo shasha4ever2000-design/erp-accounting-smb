@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle } from 'lucide-react'
+import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle, ScanLine, Loader2 } from 'lucide-react'
+import { scanReceipt, applyToForm, currencyWarning, downscaleImage, fileToDataUrl } from '../utils/receiptOcr'
 
 const EXPENSE_CATEGORIES = [
   'Travel & Transport', 'Meals & Entertainment', 'Office Supplies',
@@ -32,6 +33,50 @@ export default function ExpenseClaims() {
   })
   const [form, setForm] = useState(emptyForm())
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+
+  // Receipt OCR: reads a photo into the blank fields of the form above.
+  const receiptRef = useRef(null)
+  const [scanning, setScanning] = useState(false)
+  const [scanNote, setScanNote] = useState(null)   // { tone, text }
+
+  const handleReceipt = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''                            // let the same file be re-picked
+    if (!file) return
+    setScanning(true); setScanNote(null)
+    try {
+      const small = await downscaleImage(await fileToDataUrl(file))
+      const res = await scanReceipt(small, {
+        apiKey: settings.ai?.apiKey || '',
+        model: settings.ai?.model || 'claude-haiku-4-5',
+        todayISO: today(),
+        currency: settings.company.currency,
+      })
+      if (!res.ok) { setScanNote({ tone: 'bad', text: res.reason }); return }
+
+      // A field still holding its opening default (today's date, the first
+      // category) was never typed by anyone, so OCR may fill it.
+      const { form: next, filled } = applyToForm(form, res.fields, { defaults: emptyForm() })
+      setForm(next)
+
+      const fx = currencyWarning(res.fields, settings.company.currency)
+      const parts = []
+      parts.push(filled.length
+        ? t('Filled {n} field(s) from the receipt — check them before submitting.').replace('{n}', filled.length)
+        : t('Nothing to fill — every field already had a value.'))
+      // A foreign-currency receipt posts at face value into base-currency
+      // books, so the amount needs converting by hand.
+      if (fx) parts.push(t('This receipt is in {c} — convert the amount to {b} before submitting.')
+        .replace('{c}', fx).replace('{b}', settings.company.currency || ''))
+      setScanNote({ tone: fx ? 'warn' : filled.length ? 'good' : 'warn', text: parts.join(' ') })
+    } catch {
+      setScanNote({ tone: 'bad', text: t('Could not read that file.') })
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const openModal = () => { setScanNote(null); setForm(emptyForm()); setModal(true) }
 
   const [payDate,      setPayDate]    = useState(today())
   const [payBankAccId, setPayBankAccId] = useState(bankOpts[0]?.id || 'acc-bank1')
@@ -68,7 +113,7 @@ export default function ExpenseClaims() {
       <PageHeader
         title="Expense Claims"
         subtitle="Employee expense reimbursements — submit, approve, and pay"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Claim')}</Btn>}
+        action={<Btn onClick={openModal}><Plus size={15} /> {t('New Claim')}</Btn>}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -90,7 +135,7 @@ export default function ExpenseClaims() {
       <Card>
         {expenseClaims.length === 0 ? (
           <EmptyState icon="🧾" title="No expense claims" desc="Employees can submit travel, meals, office supplies and other business expense claims for reimbursement."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('New Claim')}</Btn>} />
+            action={<Btn onClick={openModal}><Plus size={14} /> {t('New Claim')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} claims</div>
         ) : (
@@ -142,6 +187,38 @@ export default function ExpenseClaims() {
       {/* New Claim Modal */}
       <Modal open={modal} onClose={() => setModal(false)} title="New Expense Claim" width="max-w-lg">
         <div className="space-y-4">
+          {/* Receipt OCR — fills the blanks below, never overwrites what you typed. */}
+          <div className="rounded-xl border border-dashed border-brand-300/70 dark:border-brand-500/30 bg-brand-50/40 dark:bg-brand-500/[0.06] p-3">
+            <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-brand-800 dark:text-brand-200">{t('Scan a receipt')}</p>
+                <p className="text-xs text-brand-700/70 dark:text-brand-300/70 mt-0.5">
+                  {t('Photograph or upload a receipt and the blank fields below are filled in for you.')}
+                </p>
+              </div>
+              <Btn size="sm" variant="secondary" disabled={scanning} onClick={() => receiptRef.current?.click()}>
+                {scanning
+                  ? <><Loader2 size={14} className="animate-spin" /> {t('Reading…')}</>
+                  : <><ScanLine size={14} /> {t('Scan receipt')}</>}
+              </Btn>
+              {/* capture= opens the camera directly on a phone */}
+              <input ref={receiptRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={handleReceipt} />
+            </div>
+            {scanNote && (
+              <p className={`text-xs mt-2 ${
+                scanNote.tone === 'bad' ? 'text-rose-600 dark:text-rose-400'
+                : scanNote.tone === 'warn' ? 'text-warning-700 dark:text-warning-300'
+                : 'text-success-700 dark:text-success-400'}`}>
+                {scanNote.text}
+              </p>
+            )}
+            {!settings.ai?.apiKey && (
+              <p className="text-xs mt-2 text-gray-500 dark:text-slate-400">
+                {t('Needs a Claude API key — add one in Settings → AI Assistant.')}
+              </p>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {employees.length > 0 ? (
               <Select label="Employee" value={form.employeeId} onChange={(e) => pickEmployee(e.target.value)}>

@@ -557,6 +557,16 @@ const AR = {
   'Reverses on': 'يُعكس في',
   'FX revaluation posted, and reversed automatically on {d} — the restatement is for reporting only and must not survive into the next period.': 'تم ترحيل إعادة تقييم العملة، وسيتم عكسها تلقائياً في {d} — إعادة التقييم لأغراض التقارير فقط ولا يجوز أن تمتد للفترة التالية.',
   'A revaluation restates carrying values for the closing balance sheet only — it does not change what anyone owes. It is therefore reversed automatically on the next day, so when the invoice or bill finally settles the difference is booked once, as a realized gain or loss, at the rate the cash actually moved.': 'إعادة التقييم تعيد بيان القيم الدفترية لقائمة المركز المالي الختامية فقط — ولا تغيّر ما هو مستحق فعلياً. لذلك تُعكس تلقائياً في اليوم التالي، حتى إذا سُدّدت الفاتورة لاحقاً يُسجّل الفرق مرة واحدة كربح أو خسارة محققة بسعر الصرف الفعلي للنقد.',
+  // Receipt OCR for expense claims
+  'Scan a receipt': 'مسح إيصال',
+  'Scan receipt': 'مسح الإيصال',
+  'Reading…': 'جارٍ القراءة…',
+  'Photograph or upload a receipt and the blank fields below are filled in for you.': 'صوّر أو ارفع إيصالاً وسيتم ملء الحقول الفارغة أدناه تلقائياً.',
+  'Filled {n} field(s) from the receipt — check them before submitting.': 'تم ملء {n} حقل من الإيصال — راجعها قبل الإرسال.',
+  'Nothing to fill — every field already had a value.': 'لا يوجد ما يُملأ — جميع الحقول تحتوي على قيم بالفعل.',
+  'This receipt is in {c} — convert the amount to {b} before submitting.': 'هذا الإيصال بعملة {c} — حوّل المبلغ إلى {b} قبل الإرسال.',
+  'Could not read that file.': 'تعذر قراءة هذا الملف.',
+  'Needs a Claude API key — add one in Settings → AI Assistant.': 'يتطلب مفتاح Claude API — أضفه من الإعدادات ← المساعد الذكي.',
   'As at': 'كما في',
   // Prior-period comparatives on the P&L / Balance Sheet
   'Compare with': 'المقارنة مع',
