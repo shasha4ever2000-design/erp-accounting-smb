@@ -10,6 +10,7 @@ import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
+import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -238,10 +239,12 @@ export const useStore = create(
       },
 
       // ─── ACCOUNTS ──────────────────────────────────────────────────
-      accounts: DEFAULT_ACCOUNTS,
+      accounts: assignDefaultGroups(DEFAULT_ACCOUNTS),
 
       addAccount: (a) =>
-        set((s) => ({ accounts: [...s.accounts, { ...a, id: uuid() }] })),
+        set((s) => ({
+          accounts: [...s.accounts, { ...a, id: uuid(), groupId: a.groupId || defaultGroupFor(a) }],
+        })),
 
       updateAccount: (id, patch) => {
         const before = get().accounts.find((a) => a.id === id)
@@ -254,6 +257,94 @@ export const useStore = create(
         const gone = get().accounts.find((a) => a.id === id)
         set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) }))
         if (gone) get().logActivity('Deleted account', `${gone.code} – ${gone.name}`, { entity: 'account', entityId: id, entityRef: gone.code })
+      },
+
+      // ─── ACCOUNT GROUPS ────────────────────────────────────────────
+      // The chart is a tree; groups are the branches. They hold no balance of
+      // their own — a group total is always the sum of what is under it, so
+      // there is no way for a group and its contents to disagree.
+      accountGroups: DEFAULT_GROUPS.map((g) => ({ ...g })),
+
+      addAccountGroup: (g) => {
+        const check = validateGroup(g, get().accountGroups)
+        if (!check.ok) throw new Error(`GROUP_INVALID:${check.errors.join(' ')}`)
+        const id = uuid()
+        set((s) => ({
+          accountGroups: [...s.accountGroups, {
+            id,
+            name: String(g.name).trim(),
+            code: g.code || '',
+            type: g.type,
+            parentId: g.parentId || null,
+            sort: g.sort ?? 500,
+            role: g.role || '',
+          }],
+        }))
+        get().logActivity('Created account group', String(g.name).trim(), { entity: 'accountGroup', entityId: id })
+        return id
+      },
+
+      updateAccountGroup: (id, patch) => {
+        const before = get().accountGroups.find((g) => g.id === id)
+        if (!before) throw new Error('GROUP_NOT_FOUND')
+        // Validate the merged result, not the patch — a rename alone must not
+        // be judged against a half-filled object.
+        const check = validateGroup({ ...before, ...patch }, get().accountGroups, { id })
+        if (!check.ok) throw new Error(`GROUP_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({ accountGroups: s.accountGroups.map((g) => (g.id === id ? { ...g, ...patch } : g)) }))
+        get().logChange('Updated account group', before, get().accountGroups.find((g) => g.id === id), { entity: 'accountGroup' })
+      },
+
+      /**
+       * Delete a group and lift everything inside it up one level.
+       *
+       * Nothing is orphaned: subgroups and accounts re-parent to the deleted
+       * group's parent, or become ungrouped at the top of their type. A report
+       * that quietly lost a branch because someone tidied a header would be
+       * far worse than an untidy chart.
+       */
+      deleteAccountGroup: (id) => {
+        const gone = get().accountGroups.find((g) => g.id === id)
+        if (!gone) return
+        const plan = deleteGroupPlan(get().accountGroups, get().accounts, id)
+        const reparent = Object.fromEntries(plan.groupUpdates.map((u) => [u.id, u.parentId]))
+        const regroup = Object.fromEntries(plan.accountUpdates.map((u) => [u.id, u.groupId]))
+        set((s) => ({
+          accountGroups: s.accountGroups
+            .filter((g) => g.id !== id)
+            .map((g) => (g.id in reparent ? { ...g, parentId: reparent[g.id] } : g)),
+          accounts: s.accounts.map((a) => (a.id in regroup ? { ...a, groupId: regroup[a.id] } : a)),
+        }))
+        get().logActivity('Deleted account group', gone.name, {
+          entity: 'accountGroup', entityId: id, entityRef: gone.code || gone.name,
+        })
+        return { movedAccounts: plan.accountUpdates.length, movedGroups: plan.groupUpdates.length }
+      },
+
+      /** Move an account into a group. Refuses a group of a different type. */
+      moveAccountToGroup: (accountId, groupId) => {
+        const acc = get().accounts.find((a) => a.id === accountId)
+        if (!acc) throw new Error('ACCOUNT_NOT_FOUND')
+        if (groupId) {
+          const grp = get().accountGroups.find((g) => g.id === groupId)
+          if (!grp) throw new Error('GROUP_NOT_FOUND')
+          if (grp.type !== acc.type)
+            throw new Error('GROUP_TYPE_MISMATCH')
+        }
+        set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, groupId: groupId || '' } : a)) }))
+      },
+
+      /** Put the tree back to the shipped structure, keeping custom groups. */
+      restoreDefaultGroups: () => {
+        set((s) => {
+          const have = new Set(s.accountGroups.map((g) => g.id))
+          const missing = DEFAULT_GROUPS.filter((g) => !have.has(g.id)).map((g) => ({ ...g }))
+          return {
+            accountGroups: [...s.accountGroups, ...missing],
+            accounts: assignDefaultGroups(s.accounts.map((a) => ({ ...a, groupId: '' }))),
+          }
+        })
+        get().logActivity('Restored default account groups', '', { entity: 'accountGroup', severity: 'warning' })
       },
 
       // ─── BANK ACCOUNTS (Cash & Cash Equivalents) ───────────────────
@@ -2985,9 +3076,9 @@ export const useStore = create(
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
-          'approvalRequests', 'recycleBin',
+          'approvalRequests', 'recycleBin', 'accountGroups',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 22, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 23, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3175,7 +3266,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 22,
+      version: 23,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3338,6 +3429,15 @@ export const useStore = create(
         }
         if (version < 22) {
           if (!persisted.recycleBin) persisted.recycleBin = []
+        }
+        if (version < 23) {
+          // The chart becomes a tree. Existing accounts keep their ids and
+          // their balances — they only gain a groupId — so nothing on a report
+          // changes value as a result of this upgrade, only its indentation.
+          if (!Array.isArray(persisted.accountGroups) || !persisted.accountGroups.length)
+            persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
+          if (Array.isArray(persisted.accounts))
+            persisted.accounts = assignDefaultGroups(persisted.accounts)
         }
         return persisted
        } catch (e) {

@@ -5,6 +5,7 @@ import { vatBreakdown } from '../utils/vat'
 import { buildVatReturn, yearQuarters } from '../utils/vatReturn'
 import { buildSalesTaxReturn } from '../utils/salesTaxReturn'
 import { priorPeriod, variancePct, varianceTone } from '../utils/priorPeriod'
+import { buildTree, withTotals, pruneEmpty, flattenRows, findByRole, withoutNode, COST_OF_SALES } from '../utils/accountTree'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -34,7 +35,7 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings } = useStore()
+  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -167,22 +168,139 @@ export default function Reports() {
     </div>
   )
 
+  // ─── Grouped statement rendering ───────────────────────────────────
+  // The chart of accounts is a tree, so a statement is built once here and
+  // rendered as a flat row list carrying a depth number. Nested JSX for an
+  // arbitrarily deep tree means recursive components and indentation that
+  // drifts; a flat list keeps every column aligned no matter how deep it goes.
+
+  /**
+   * Decorated, pruned tree for one account type.
+   * `bals` is the current-period balance map; `priorBals` the comparative one.
+   */
+  const treeFor = (type, bals, priorBals) => {
+    const keys = priorBals ? ['balance', 'prior'] : ['balance']
+    const decorated = withTotals(
+      buildTree(accountGroups, accounts, type),
+      (a) => (priorBals
+        ? { balance: accountBalance(a.id, bals), prior: accountBalance(a.id, priorBals) }
+        : { balance: accountBalance(a.id, bals) }),
+      keys
+    )
+    return { tree: pruneEmpty(decorated, keys), keys }
+  }
+
+  const INDENT = ['ps-0', 'ps-4', 'ps-8', 'ps-12', 'ps-16', 'ps-20']
+  const pad = (d) => INDENT[Math.min(d, INDENT.length - 1)]
+
+  /** One group header: the name on the left, the rolled-up total on the right. */
+  const GroupHead = ({ row, showTotal }) => (
+    <div className={`flex items-center justify-between px-3 pt-3 pb-1 ${pad(row.depth)}`}>
+      <span className={`font-semibold tracking-tight ${row.depth === 0
+        ? 'text-gray-800 dark:text-slate-100 text-sm'
+        : 'text-gray-600 dark:text-slate-300 text-[13px]'}`}>{t(row.name)}</span>
+      {showTotal && (
+        <span className="flex items-center gap-4 flex-shrink-0">
+          {row.totals.prior != null && <span className="w-28" />}
+          {row.totals.prior != null && <span className="w-24" />}
+          <span className="w-32 text-end font-semibold tabular-nums text-gray-500 dark:text-slate-400 text-sm">
+            {fmtMoney(row.totals.balance, sym)}
+          </span>
+        </span>
+      )}
+    </div>
+  )
+
+  /** A group's rolled-up subtotal, ruled off from the lines above it. */
+  const SubTotal = ({ row, type, compare }) => (
+    <div className={`flex items-center justify-between px-3 py-1.5 mt-0.5 border-t border-gray-100 dark:border-surface-750 ${pad(row.depth)}`}>
+      <span className="text-[13px] font-semibold text-gray-600 dark:text-slate-300">
+        {t('Total')} {t(row.name)}
+      </span>
+      <span className="flex items-center gap-4 flex-shrink-0">
+        {compare && <VarianceCells value={row.totals.balance} prior={row.totals.prior || 0} type={type} />}
+        <span className="w-32 text-end font-semibold tabular-nums text-gray-700 dark:text-slate-200">
+          {fmtMoney(row.totals.balance, sym)}
+        </span>
+      </span>
+    </div>
+  )
+
+  /**
+   * Render a decorated tree. `mode` is passed through to the account drill-down.
+   *
+   * A group header shows its total only when the group is collapsed-looking —
+   * i.e. it has subgroups. For a plain list of accounts the subtotal below is
+   * enough, and showing both reads as the figure being counted twice.
+   */
+  const GroupedRows = ({ tree, mode, type, compare, skipRoot = false }) => (
+    <>
+      {(() => {
+        const rows = flattenRows(tree)
+        if (!skipRoot) return rows
+        // The section heading above already names this group (cost of sales),
+        // and its total is printed below as the section total. Repeating both
+        // reads as the same figure counted twice, so drop the group's own
+        // header and subtotal and pull everything up a level.
+        return rows
+          .filter((r) => !(r.depth === 0 && (r.kind === 'group' || r.kind === 'subtotal')))
+          .map((r) => ({ ...r, depth: Math.max(0, r.depth - 1) }))
+      })().map((row) => {
+        if (row.kind === 'group') return <GroupHead key={row.id} row={row} showTotal={false} />
+        if (row.kind === 'ungrouped')
+          return (
+            <div key={row.id} className={`flex items-center px-3 pt-3 pb-1 ${pad(row.depth)}`}>
+              <span className="font-semibold text-gray-500 dark:text-slate-400 text-[13px]">{t('Ungrouped')}</span>
+              <span className="ms-2 text-[10px] uppercase tracking-wider text-warning-600 dark:text-warning-400">
+                {t('not in a group')}
+              </span>
+            </div>
+          )
+        if (row.kind === 'subtotal') return <SubTotal key={row.id} row={row} type={type} compare={compare} />
+        return (
+          <div key={row.id} className={pad(row.depth)}>
+            <LedgerLine account={row.account} mode={mode} prior={compare ? (row.account.prior || 0) : null} />
+          </div>
+        )
+      })}
+    </>
+  )
+
   // ─── P&L ───────────────────────────────────────────────────────────
   const PLReport = () => {
-    const withPrior = (a) => (priorBalances ? { ...a, prior: accountBalance(a.id, priorBalances) } : a)
     // A line worth showing is one with a balance in either period — an account
-    // that ran to zero this month is exactly what a comparative should reveal.
-    const pick = (type) => accounts.filter((a) => a.type === type)
-      .map((a) => withPrior({ ...a, balance: accountBalance(a.id, balances) }))
-      .filter((a) => a.balance !== 0 || (a.prior || 0) !== 0)
-    const revenueAccs = pick('revenue')
-    const expenseAccs = pick('expense')
-    const totalRevenue = revenueAccs.reduce((s, a) => s + a.balance, 0)
-    const totalExpenses = expenseAccs.reduce((s, a) => s + a.balance, 0)
+    // that ran to zero this month is exactly what a comparative should reveal,
+    // which is why pruning looks at both keys rather than the current one.
+    const { tree: revTree } = treeFor('revenue', balances, priorBalances)
+    const { tree: expTree } = treeFor('expense', balances, priorBalances)
+
+    // Cost of sales is lifted out of expenses so the statement can show gross
+    // profit, the way every published income statement does. `withoutNode`
+    // deducts it from the expense total too, so nothing is counted twice.
+    const cosNode = findByRole(expTree, COST_OF_SALES)
+    const opexTree = cosNode ? withoutNode(expTree, cosNode.id) : expTree
+
+    const totalRevenue = revTree.totals.balance
+    const totalCos = cosNode?.totals.balance || 0
+    const totalOpex = opexTree.totals.balance
+    const totalExpenses = totalCos + totalOpex
+    const grossProfit = totalRevenue - totalCos
     const netProfit = totalRevenue - totalExpenses
-    const priorRevenue = priorBalances ? revenueAccs.reduce((s, a) => s + (a.prior || 0), 0) : null
-    const priorExpenses = priorBalances ? expenseAccs.reduce((s, a) => s + (a.prior || 0), 0) : null
+
+    const priorRevenue = priorBalances ? revTree.totals.prior : null
+    const priorCos = priorBalances ? (cosNode?.totals.prior || 0) : null
+    const priorOpex = priorBalances ? opexTree.totals.prior : null
+    const priorExpenses = priorBalances ? priorCos + priorOpex : null
+    const priorGross = priorBalances ? priorRevenue - priorCos : null
     const priorNet = priorBalances ? priorRevenue - priorExpenses : null
+
+    // Gross profit only means something when cost of sales carries a figure;
+    // a services company with an empty cost-of-sales group should see the
+    // simpler revenue-less-expenses statement, not a gross profit line equal
+    // to revenue.
+    const showGross = !!cosNode && (totalCos !== 0 || (priorCos || 0) !== 0)
+    const hasRevenue = revTree.groups.length > 0 || revTree.ungrouped.length > 0
+    const hasOpex = opexTree.groups.length > 0 || opexTree.ungrouped.length > 0
 
     return (
       <div className="space-y-6">
@@ -210,23 +328,49 @@ export default function Reports() {
           <div className="p-6">
             {/* Revenue */}
             <div className="flex items-center gap-2 mb-1"><span className="w-1.5 h-1.5 rounded-full bg-success-500" /><h4 className="font-bold text-success-700 dark:text-success-400 text-xs uppercase tracking-wider">{t('Revenue')}</h4></div>
-            {revenueAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No revenue for this period')}</p> : (
+            {!hasRevenue ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No revenue for this period')}</p> : (
               <div className="mb-2">
                 {priorBalances && <CompareHead label={t('Account')} />}
-                {revenueAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" prior={priorBalances ? a.prior : null} />)}
+                <GroupedRows tree={revTree} mode="period" type="revenue" compare={!!priorBalances} />
                 <TotalRow label={t('Total Revenue')} value={totalRevenue} prior={priorRevenue} type="revenue"
                   className="mt-1 rounded-lg bg-success-50/60 dark:bg-success-500/[0.08] px-3 py-2"
                   valueClass="text-success-800 dark:text-success-300" />
               </div>
             )}
 
+            {/* Cost of sales, then gross profit — the shape of a published
+                income statement, available now that groups carry a role. */}
+            {showGross && (
+              <>
+                <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-amber-500" /><h4 className="font-bold text-amber-700 dark:text-amber-400 text-xs uppercase tracking-wider">{t('Cost of Sales')}</h4></div>
+                <div className="mb-2">
+                  {priorBalances && <CompareHead label={t('Account')} />}
+                  <GroupedRows tree={{ ...expTree, groups: [cosNode], ungrouped: [] }} mode="period" type="expense" compare={!!priorBalances} skipRoot />
+                  <TotalRow label={t('Total Cost of Sales')} value={totalCos} prior={priorCos} type="expense"
+                    className="mt-1 rounded-lg bg-amber-50/60 dark:bg-amber-500/[0.08] px-3 py-2"
+                    valueClass="text-amber-800 dark:text-amber-300" />
+                </div>
+                <div className="border-t border-gray-200 dark:border-surface-700 mt-3 pt-3">
+                  <TotalRow label={t('Gross Profit')} value={grossProfit} prior={priorGross} type="revenue"
+                    className="rounded-lg bg-brand-50/60 dark:bg-brand-500/[0.08] px-3 py-2"
+                    valueClass="text-brand-800 dark:text-brand-300" />
+                  {totalRevenue !== 0 && (
+                    <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 px-3">
+                      {t('Gross margin')} {Math.round((grossProfit / totalRevenue) * 1000) / 10}%
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+
             {/* Expenses */}
-            <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><h4 className="font-bold text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wider">{t('Expenses')}</h4></div>
-            {expenseAccs.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No expenses for this period')}</p> : (
+            <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><h4 className="font-bold text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wider">{showGross ? t('Operating & Other Expenses') : t('Expenses')}</h4></div>
+            {!hasOpex ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No expenses for this period')}</p> : (
               <div className="mb-2">
                 {priorBalances && <CompareHead label={t('Account')} />}
-                {expenseAccs.map((a) => <LedgerLine key={a.id} account={a} mode="period" prior={priorBalances ? a.prior : null} />)}
-                <TotalRow label={t('Total Expenses')} value={totalExpenses} prior={priorExpenses} type="expense"
+                <GroupedRows tree={opexTree} mode="period" type="expense" compare={!!priorBalances} />
+                <TotalRow label={showGross ? t('Total Operating & Other Expenses') : t('Total Expenses')}
+                  value={showGross ? totalOpex : totalExpenses} prior={showGross ? priorOpex : priorExpenses} type="expense"
                   className="mt-1 rounded-lg bg-rose-50/60 dark:bg-rose-500/[0.08] px-3 py-2"
                   valueClass="text-rose-800 dark:text-rose-300" />
               </div>
@@ -249,21 +393,13 @@ export default function Reports() {
   // ─── Balance Sheet ──────────────────────────────────────────────
   const BSReport = () => {
     // as at the end date, cumulative from inception (not the selected period)
-    const pick = (type) => accounts.filter((a) => a.type === type)
-      .map((a) => ({
-        ...a,
-        balance: accountBalance(a.id, balancesToEnd),
-        prior: priorBalancesToEnd ? accountBalance(a.id, priorBalancesToEnd) : null,
-      }))
-      .filter((a) => a.balance !== 0 || (a.prior || 0) !== 0)
-    const assetAccs = pick('asset')
-    const liabAccs = pick('liability')
-    const equityAccs = pick('equity')
+    const { tree: assetTree } = treeFor('asset', balancesToEnd, priorBalancesToEnd)
+    const { tree: liabTree } = treeFor('liability', balancesToEnd, priorBalancesToEnd)
+    const { tree: equityTree } = treeFor('equity', balancesToEnd, priorBalancesToEnd)
 
-    const sum = (rows, key) => rows.reduce((s, a) => s + (a[key] || 0), 0)
-    const totalAssets = sum(assetAccs, 'balance')
-    const totalLiabs = sum(liabAccs, 'balance')
-    const totalEquity = sum(equityAccs, 'balance')
+    const totalAssets = assetTree.totals.balance
+    const totalLiabs = liabTree.totals.balance
+    const totalEquity = equityTree.totals.balance
 
     // Retained earnings = all net income from inception through the end date, so
     // Assets = Liabilities + Equity + Retained Earnings always holds.
@@ -273,16 +409,28 @@ export default function Reports() {
     const priorNetProfit = priorBalancesToEnd ? netAt(priorBalancesToEnd) : null
     const totalEquityAndProfit = totalEquity + netProfit
 
-    const Section = ({ title, items, total, prior, type, dot }) => (
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-1.5"><span className={`w-1.5 h-1.5 rounded-full ${dot}`} /><h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-slate-400">{title}</h4></div>
-        {priorBalancesToEnd && items.length > 0 && <CompareHead compare={fmtDate(priorRange.end)} current={fmtDate(endDate)} />}
-        {items.length === 0 && <p className="py-1.5 ps-3 text-gray-400 dark:text-slate-500 text-sm">—</p>}
-        {items.map((a) => <LedgerLine key={a.id} account={a} mode="todate" clickable={a.id !== 'net'} indent prior={priorBalancesToEnd ? (a.prior || 0) : null} />)}
-        <TotalRow label={`${t('Total')} ${title}`} value={total} prior={prior} type={type}
-          className="border-t border-gray-200 dark:border-surface-700 mt-1.5 pt-2 px-3" />
-      </div>
-    )
+    /**
+     * One statement section. `extra` carries lines that belong on the face of
+     * the balance sheet but are not accounts — retained earnings is computed,
+     * not posted, so it has no place in the tree.
+     */
+    const Section = ({ title, tree, total, prior, type, dot, extra = [] }) => {
+      const empty = tree.groups.length === 0 && tree.ungrouped.length === 0 && extra.length === 0
+      return (
+        <div className="mb-6">
+          <div className="flex items-center gap-2 mb-1.5"><span className={`w-1.5 h-1.5 rounded-full ${dot}`} /><h4 className="font-bold text-xs uppercase tracking-wider text-gray-500 dark:text-slate-400">{title}</h4></div>
+          {priorBalancesToEnd && !empty && <CompareHead compare={fmtDate(priorRange.end)} current={fmtDate(endDate)} />}
+          {empty && <p className="py-1.5 ps-3 text-gray-400 dark:text-slate-500 text-sm">—</p>}
+          <GroupedRows tree={tree} mode="todate" type={type} compare={!!priorBalancesToEnd} />
+          {extra.map((a) => (
+            <LedgerLine key={a.id} account={a} mode="todate" clickable={false} indent
+              prior={priorBalancesToEnd ? (a.prior || 0) : null} />
+          ))}
+          <TotalRow label={`${t('Total')} ${title}`} value={total} prior={prior} type={type}
+            className="border-t border-gray-200 dark:border-surface-700 mt-1.5 pt-2 px-3" />
+        </div>
+      )
+    }
 
     return (
       <Card className="overflow-hidden">
@@ -302,20 +450,20 @@ export default function Reports() {
               <span className="text-sm font-bold text-brand-700 dark:text-brand-300 uppercase tracking-wide">{t('Total Assets')}</span>
               <span className="text-lg font-black text-brand-700 dark:text-brand-300 tabular-nums">{fmtMoney(totalAssets, sym)}</span>
             </div>
-            <Section title="Assets" items={assetAccs} total={totalAssets} type="asset" dot="bg-brand-500"
-              prior={priorBalancesToEnd ? sum(assetAccs, 'prior') : null} />
+            <Section title="Assets" tree={assetTree} total={totalAssets} type="asset" dot="bg-brand-500"
+              prior={priorBalancesToEnd ? assetTree.totals.prior : null} />
           </div>
           <div>
             <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-4 ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'bg-success-50/60 dark:bg-success-500/[0.08]' : 'bg-rose-50/60 dark:bg-rose-500/[0.08]'}`}>
               <span className={`text-sm font-bold uppercase tracking-wide ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-700 dark:text-rose-300'}`}>{t('Liabilities + Equity')}</span>
               <span className={`text-lg font-black tabular-nums ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(totalLiabs + totalEquityAndProfit, sym)}</span>
             </div>
-            <Section title="Liabilities" items={liabAccs} total={totalLiabs} type="liability" dot="bg-orange-500"
-              prior={priorBalancesToEnd ? sum(liabAccs, 'prior') : null} />
-            <Section title="Equity" dot="bg-violet-500" type="equity"
-              items={[...equityAccs, (netProfit !== 0 || priorNetProfit) && { id: 'net', code: '', name: t('Retained Earnings (to date)'), type: 'equity', balance: netProfit, prior: priorNetProfit }].filter(Boolean)}
+            <Section title="Liabilities" tree={liabTree} total={totalLiabs} type="liability" dot="bg-orange-500"
+              prior={priorBalancesToEnd ? liabTree.totals.prior : null} />
+            <Section title="Equity" dot="bg-violet-500" type="equity" tree={equityTree}
+              extra={[(netProfit !== 0 || priorNetProfit) && { id: 'net', code: '', name: t('Retained Earnings (to date)'), type: 'equity', balance: netProfit, prior: priorNetProfit }].filter(Boolean)}
               total={totalEquityAndProfit}
-              prior={priorBalancesToEnd ? sum(equityAccs, 'prior') + priorNetProfit : null} />
+              prior={priorBalancesToEnd ? equityTree.totals.prior + priorNetProfit : null} />
             {Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) > 0.01 && (
               <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 flex items-center gap-1">⚠ {t('Balance sheet is out of balance by')} {fmtMoney(Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)), sym)}</p>
             )}
