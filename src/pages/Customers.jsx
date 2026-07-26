@@ -6,16 +6,17 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
 
 export default function Customers() {
-  const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount } = useStore()
+  const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
   const controlOptions = controlAccountsFor(accounts, 'customers')
   const sym = settings.company.currencySymbol
-  const customDefs = settings.customFields?.customer || []
   const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -26,10 +27,12 @@ export default function Customers() {
   const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', controlAccountId: c.controlAccountId || '', paymentTerms: typeof c.paymentTerms === 'string' ? c.paymentTerms : '', customFields: c.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
-  const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
+  const setCustom = (id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
+    const cf = validateValues(customFieldsFor('customer'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     const { controlAccountId, ...rest } = form
     const data = { ...rest, creditLimit: parseFloat(form.creditLimit) || 0, priceListPct: parseFloat(form.priceListPct) || 0 }
     if (editing) {
@@ -75,6 +78,7 @@ export default function Customers() {
     { key: 'taxId', label: t('Tax / VAT ID') },
     { key: 'address', label: t('Address') },
     { key: 'balance', label: t('Balance'), right: true, map: (_, c) => getBalance(c.id).toFixed(2) },
+    ...exportColumns(customFieldsFor('customer'), { fmtDate }),
   ]
 
   return (
@@ -177,14 +181,12 @@ export default function Customers() {
           </div>
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} placeholder="Street, City, Country" />
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Internal notes..." />
-          {customDefs.length > 0 && (
-            <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-700">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">{t('Custom Fields')}</p>
-              {customDefs.map((label) => (
-                <Input key={label} label={label} value={form.customFields?.[label] || ''} onChange={(e) => setCustom(label, e.target.value)} />
-              ))}
-            </div>
-          )}
+          <CustomFieldInputs
+            entityId="customer"
+            values={form.customFields}
+            onChange={setCustom}
+            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+          />
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Customer'}</Btn>

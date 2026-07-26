@@ -6,16 +6,17 @@ import { controlAccountsFor, defaultFor } from '../utils/controlAccounts'
 import { TERM_PRESETS } from '../utils/paymentTerms'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
 
 export default function Suppliers() {
-  const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount } = useStore()
+  const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
   const controlOptions = controlAccountsFor(accounts, 'suppliers')
   const sym = settings.company.currencySymbol
-  const customDefs = settings.customFields?.supplier || []
   const t = useT()
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
@@ -26,10 +27,12 @@ export default function Suppliers() {
   const openEdit = (s) => { setEditing(s); setForm({ name: s.name, email: s.email || '', phone: s.phone || '', address: s.address || '', taxId: s.taxId || '', notes: s.notes || '', controlAccountId: s.controlAccountId || '', paymentTerms: typeof s.paymentTerms === 'string' ? s.paymentTerms : '', customFields: s.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
-  const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
+  const setCustom = (id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))
 
   const handleSave = () => {
     if (!form.name.trim()) return
+    const cf = validateValues(customFieldsFor('supplier'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     const { controlAccountId, ...rest } = form
     if (editing) {
       updateSupplier(editing.id, rest)
@@ -73,6 +76,7 @@ export default function Suppliers() {
     { key: 'taxId', label: t('Tax / VAT ID') },
     { key: 'address', label: t('Address') },
     { key: 'balance', label: t('Balance'), right: true, map: (_, s) => getBalance(s.id).toFixed(2) },
+    ...exportColumns(customFieldsFor('supplier'), { fmtDate }),
   ]
 
   return (
@@ -170,14 +174,12 @@ export default function Suppliers() {
           )}
           <Textarea label="Address" value={form.address} onChange={(e) => setField('address', e.target.value)} rows={2} />
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} />
-          {customDefs.length > 0 && (
-            <div className="space-y-3 pt-3 border-t border-gray-100 dark:border-slate-700">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase">{t('Custom Fields')}</p>
-              {customDefs.map((label) => (
-                <Input key={label} label={label} value={form.customFields?.[label] || ''} onChange={(e) => setCustom(label, e.target.value)} />
-              ))}
-            </div>
-          )}
+          <CustomFieldInputs
+            entityId="supplier"
+            values={form.customFields}
+            onChange={setCustom}
+            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+          />
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Supplier'}</Btn>

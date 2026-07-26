@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues } from '../utils/customFields'
 import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
@@ -18,7 +20,7 @@ const MOBILE_LABEL = 'lg:[&>label]:hidden'
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
-  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice } = useStore()
+  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice, customFieldsFor } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []
@@ -40,6 +42,7 @@ export default function InvoiceForm() {
     shippingTaxable: false,
     currency: baseCurrency,
     exchangeRate: 1,
+    customFields: {},
     items: [emptyLine()],
   })
 
@@ -109,6 +112,8 @@ export default function InvoiceForm() {
     if (!form.customerId) return alert('Please select a customer.')
     if (form.items.length === 0) return alert('Add at least one line item.')
     if (form.items.some((l) => !l.description)) return alert('All line items must have a description.')
+    const cf = validateValues(customFieldsFor('invoice'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
 
     if (credit.willExceed) {
       const msg = t('This invoice puts {name} over their credit limit.\n\nLimit: {limit}\nOutstanding now: {exp}\nAfter this invoice: {proj}\n\nCreate it anyway?')
@@ -333,6 +338,12 @@ export default function InvoiceForm() {
           {/* Notes */}
           <Card className="p-6">
             <Textarea label="Notes / Terms" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} placeholder="Payment terms, thank you note, etc." />
+            <CustomFieldInputs
+              entityId="invoice"
+              values={form.customFields}
+              onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
+              className="mt-4"
+            />
           </Card>
         </div>
 

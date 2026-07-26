@@ -4,16 +4,19 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { CustomFieldInputs, useCustomFields } from '../components/CustomFields'
+import { validateValues } from '../utils/customFields'
 
 const CATEGORIES = ['Building', 'Land', 'Machinery & Equipment', 'Motor Vehicles', 'Furniture & Fixtures', 'Computer Equipment', 'Leasehold Improvements', 'Other']
 
 export default function FixedAssetForm() {
   const t = useT()
   const navigate = useNavigate()
-  const { bankAccounts, settings, addFixedAsset } = useStore()
+  const { bankAccounts, settings, addFixedAsset, customFieldsFor } = useStore()
   const sym = settings.company.currencySymbol
 
   const bankOpts = bankAccounts.map((ba) => ({ id: ba.accountId, name: ba.name }))
+  const assetFields = useCustomFields('fixedAsset')
 
   const [form, setForm] = useState({
     name: '', description: '', category: 'Machinery & Equipment',
@@ -21,6 +24,7 @@ export default function FixedAssetForm() {
     usefulLifeYears: 5, depreciationMethod: 'straight_line',
     paymentType: 'cash', bankAccountId: bankOpts[0]?.id || 'acc-bank1',
     notes: '',
+    customFields: {},
   })
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -33,6 +37,8 @@ export default function FixedAssetForm() {
     if (!form.name.trim())        return alert('Asset name is required.')
     if (!purchaseCost || purchaseCost <= 0) return alert('Purchase cost must be greater than zero.')
     if (!form.purchaseDate)       return alert('Purchase date is required.')
+    const cf = validateValues(customFieldsFor('fixedAsset'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     addFixedAsset({
       ...form,
       purchaseCost, salvageValue,
@@ -95,6 +101,16 @@ export default function FixedAssetForm() {
           <Card className="p-5">
             <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Insurance details, warranty, supplier info..." />
           </Card>
+
+          {assetFields.length > 0 && (
+            <Card className="p-5">
+              <CustomFieldInputs
+                entityId="fixedAsset"
+                values={form.customFields}
+                onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
+              />
+            </Card>
+          )}
         </div>
 
         <div className="space-y-4">

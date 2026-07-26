@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues } from '../utils/customFields'
 import { useT } from '../i18n'
 import { Plus, Trash2, ArrowLeft } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
@@ -18,7 +20,7 @@ const MOBILE_LABEL = 'lg:[&>label]:hidden'
 
 export default function PurchaseForm() {
   const navigate = useNavigate()
-  const { suppliers, accounts, inventoryItems, departments, currencies, settings, addPurchase } = useStore()
+  const { suppliers, accounts, inventoryItems, departments, currencies, settings, addPurchase, customFieldsFor } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const taxEnabled = settings.tax.enabled
@@ -39,6 +41,7 @@ export default function PurchaseForm() {
     shippingTaxable: false,
     currency: baseCurrency,
     exchangeRate: 1,
+    customFields: {},
     items: [emptyLine()],
   })
 
@@ -97,6 +100,8 @@ export default function PurchaseForm() {
   const handleSave = () => {
     if (!form.supplierId) return alert('Please select a supplier.')
     if (form.items.length === 0 || form.items.some((l) => !l.description)) return alert('All line items must have a description.')
+    const cf = validateValues(customFieldsFor('purchase'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     const lock = settings?.accounting?.lockDate
     if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
     let res
@@ -232,6 +237,12 @@ export default function PurchaseForm() {
 
           <Card className="p-6">
             <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} placeholder="Any notes about this purchase..." />
+            <CustomFieldInputs
+              entityId="purchase"
+              values={form.customFields}
+              onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
+              className="mt-4"
+            />
           </Card>
         </div>
 

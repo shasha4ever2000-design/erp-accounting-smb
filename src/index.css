@@ -62,11 +62,16 @@
   }
 }
 
+.print-only { display: none; }
+
 @media print {
   /* Chrome: hide app chrome, print only the document */
   aside, header, nav { display: none !important; }
   main { overflow: visible !important; padding: 0 !important; }
   .no-print { display: none !important; }
+  /* The screen shows every custom field; the printout shows only the ones
+     marked for it, so the two blocks never duplicate each other. */
+  .print-only { display: block !important; }
 
   /* Force a clean light document regardless of dark mode */
   html.dark body, body { background: #fff !important; }

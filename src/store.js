@@ -18,6 +18,11 @@ import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycle
 import { defaultBranding, validateBranding } from './utils/branding'
 import { defaultTerms, resolveTerms, dueDateFor, settlementDiscount, discountLines, validateTerms } from './utils/paymentTerms'
 import { nextBatch as nextCycleBatch, defaultPolicy as defaultCyclePolicy } from './utils/cycleCount'
+import {
+  CF_ENTITIES, newField as newCustomField, normaliseField as normaliseCustomField,
+  fieldsFor as customFieldsFor, coerceValues as coerceCustomValues,
+  validateField as validateCustomField, migrateLegacy as migrateCustomFieldSettings,
+} from './utils/customFields'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
@@ -126,7 +131,7 @@ const DEFAULT_SETTINGS = {
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
-  customFields:  { customer: [], supplier: [] },
+  customFields:  Object.fromEntries(CF_ENTITIES.map((e) => [e.id, []])),
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30, bankDetails: '' },
   purchase:      { prefix: 'PUR-',  next: 1 },
   journal:       { prefix: 'JE-',   next: 1 },
@@ -199,7 +204,69 @@ export const useStore = create(
         set((s) => ({ settings: { ...s.settings, zatca: { ...(s.settings.zatca || {}), ...patch } } })),
 
       updateCustomFields: (patch) =>
-        set((s) => ({ settings: { ...s.settings, customFields: { ...(s.settings.customFields || { customer: [], supplier: [] }), ...patch } } })),
+        set((s) => ({ settings: { ...s.settings, customFields: { ...(s.settings.customFields || {}), ...patch } } })),
+
+      // Custom field definitions, one list per form.
+      //
+      // Deliberately no "delete all values" step on removal: the definition
+      // goes, the values stay in the records. If the field was removed by
+      // mistake — and it will be — recreating it is a rename away from
+      // restoring the data, whereas a cascading delete is unrecoverable in a
+      // local-first app with no server-side backup.
+      customFieldsFor: (entityId) => customFieldsFor(get().settings, entityId),
+
+      addCustomField: (entityId, patch) => {
+        const list = customFieldsFor(get().settings, entityId)
+        const check = validateCustomField(patch, list)
+        if (!check.ok) throw new Error(`CUSTOM_FIELD_INVALID: ${check.errors.join(' ')}`)
+        const field = normaliseCustomField({ ...newCustomField(), ...patch, sort: (list.length + 1) * 10 })
+        set((s) => ({ settings: { ...s.settings, customFields: {
+          ...(s.settings.customFields || {}),
+          [entityId]: [...(s.settings.customFields?.[entityId] || []), field],
+        } } }))
+        get().logActivity('Added custom field', `${field.name} · ${entityId}`)
+        return field
+      },
+
+      updateCustomField: (entityId, id, patch) => {
+        const list = customFieldsFor(get().settings, entityId)
+        const current = list.find((f) => f.id === id)
+        if (!current) return null
+        const merged = { ...current, ...patch, id }
+        const check = validateCustomField(merged, list, { id })
+        if (!check.ok) throw new Error(`CUSTOM_FIELD_INVALID: ${check.errors.join(' ')}`)
+        const field = normaliseCustomField(merged)
+        set((s) => ({ settings: { ...s.settings, customFields: {
+          ...(s.settings.customFields || {}),
+          [entityId]: (s.settings.customFields?.[entityId] || []).map((f) => (f.id === id ? field : f)),
+        } } }))
+        return field
+      },
+
+      deleteCustomField: (entityId, id) => {
+        set((s) => ({ settings: { ...s.settings, customFields: {
+          ...(s.settings.customFields || {}),
+          [entityId]: (s.settings.customFields?.[entityId] || []).filter((f) => f.id !== id),
+        } } }))
+        get().logActivity('Removed custom field', entityId)
+      },
+
+      moveCustomField: (entityId, id, delta) => {
+        const list = customFieldsFor(get().settings, entityId)
+        const at = list.findIndex((f) => f.id === id)
+        const to = at + (delta < 0 ? -1 : 1)
+        if (at < 0 || to < 0 || to >= list.length) return
+        const next = [...list]
+        next.splice(to, 0, next.splice(at, 1)[0])
+        set((s) => ({ settings: { ...s.settings, customFields: {
+          ...(s.settings.customFields || {}),
+          [entityId]: next.map((f, i) => ({ ...f, sort: (i + 1) * 10 })),
+        } } }))
+      },
+
+      /** Clean a form's custom-field bag against the current definitions. */
+      cleanCustomValues: (entityId, values) =>
+        coerceCustomValues(customFieldsFor(get().settings, entityId), values),
 
       updateWht: (patch) =>
         set((s) => ({ settings: { ...s.settings, wht: { ...(s.settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }), ...patch } } })),
@@ -3722,7 +3789,7 @@ export const useStore = create(
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 29, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 30, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3910,7 +3977,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 29,
+      version: 30,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -4082,6 +4149,23 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 30) {
+          // Custom fields gain types and stable ids.
+          //
+          // The old shape stored plain labels in settings and keyed each
+          // record's values by that same label, so a rename detached every
+          // value ever entered. Both halves move together here: the label
+          // becomes a definition with a generated id, and every customer and
+          // supplier bag is rekeyed to match. A value whose label has no
+          // definition is left under its original key rather than dropped.
+          const { customFields, rekey } = migrateCustomFieldSettings(persisted.settings?.customFields)
+          if (persisted.settings) persisted.settings.customFields = customFields
+          const move = (rows, entityId) => (Array.isArray(rows)
+            ? rows.map((r) => (r?.customFields ? { ...r, customFields: rekey(entityId, r.customFields) } : r))
+            : rows)
+          persisted.customers = move(persisted.customers, 'customer')
+          persisted.suppliers = move(persisted.suppliers, 'supplier')
         }
         if (version < 29) {
           if (persisted.settings) {
