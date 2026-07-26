@@ -16,6 +16,8 @@ import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
 import { defaultBranding, validateBranding } from './utils/branding'
+import { defaultTerms, resolveTerms, dueDateFor, settlementDiscount, discountLines, validateTerms } from './utils/paymentTerms'
+import { nextBatch as nextCycleBatch, defaultPolicy as defaultCyclePolicy } from './utils/cycleCount'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
@@ -119,6 +121,8 @@ const DEFAULT_BANK_ACCOUNTS = [
 const DEFAULT_SETTINGS = {
   company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
   branding:      defaultBranding(),
+  terms:         defaultTerms(),
+  cycleCount:    { policy: defaultCyclePolicy(), batchSize: 20 },
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
@@ -1399,6 +1403,97 @@ export const useStore = create(
         const status = docFulfillment(newItems, 'invoicedQty').status === 'complete' ? 'invoiced' : 'partial'
         get().updateQuotation(id, { items: newItems, status, invoiceId: invoice.id, invoiceIds: [...(q.invoiceIds || []), invoice.id] })
         return invoice
+      },
+
+      // ─── PAYMENT TERMS ─────────────────────────────────────────────
+      updatePaymentTerms: (patch) => {
+        const merged = { ...defaultTerms(), ...get().settings.terms, ...patch }
+        const check = validateTerms(merged)
+        if (!check.ok) throw new Error(`TERMS_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({ settings: { ...s.settings, terms: merged } }))
+      },
+
+      /** The terms that apply to a customer or supplier, falling back to company default. */
+      termsFor: (kind, partyId) => {
+        const st = get()
+        const slice = kind === 'customer' ? st.customers : st.suppliers
+        const party = (slice || []).find((r) => r.id === partyId)
+        return resolveTerms(party, { ...defaultTerms(), ...st.settings.terms })
+      },
+
+      /** Due date implied by the party's terms. */
+      dueDateFrom: (kind, partyId, date) => dueDateFor(date, get().termsFor(kind, partyId)),
+
+      /** What settling this invoice on `payDate` would cost, and the discount. */
+      settlementOffer: (invoiceId, payDate) => {
+        const st = get()
+        const invoice = st.invoices.find((i) => i.id === invoiceId)
+        if (!invoice) return null
+        return settlementDiscount(invoice, payDate, st.termsFor('customer', invoice.customerId), {
+          taxEnabled: st.settings?.tax?.enabled !== false,
+        })
+      },
+
+      /**
+       * Write off an early-settlement discount.
+       *
+       * Posted as its own entry rather than folded into the receipt, so the
+       * discount and the tax it reverses are both visible in the ledger — and
+       * so the receipt still shows the cash that actually arrived.
+       */
+      postSettlementDiscount: (invoiceId, payDate) => {
+        const st = get()
+        const invoice = st.invoices.find((i) => i.id === invoiceId)
+        if (!invoice) throw new Error('INVOICE_NOT_FOUND')
+        const disc = get().settlementOffer(invoiceId, payDate)
+        if (!disc?.eligible) throw new Error(`DISCOUNT_NOT_AVAILABLE:${disc?.reason || 'unknown'}`)
+
+        const je = get().addJournalEntry({
+          date: payDate,
+          description: `Settlement discount — ${invoice.number}`,
+          reference: invoice.number,
+          type: 'settlement_discount',
+          lines: discountLines(disc, {
+            receivableAccountId: get().controlAccountFor('customers', invoice.customerId),
+            reference: invoice.number,
+          }),
+        })
+
+        // The discount settles part of the invoice: it is no longer collectable.
+        set((s) => ({
+          invoices: s.invoices.map((i) => (i.id === invoiceId
+            ? {
+                ...i,
+                amountPaid: Math.round((Number(i.amountPaid) || 0) * 100 + disc.discountGross * 100) / 100,
+                settlementDiscount: disc.discountGross,
+                settlementDiscountJournalEntryId: je.id,
+              }
+            : i)),
+        }))
+        get().logActivity('Allowed settlement discount', `${invoice.number} · ${disc.discountGross}`, {
+          entity: 'invoice', entityId: invoiceId, entityRef: invoice.number,
+        })
+        return { journalEntryId: je.id, ...disc }
+      },
+
+      // ─── CYCLE COUNTING ────────────────────────────────────────────
+      /** Which items are due a count, and how much they are worth. */
+      cycleCountBatch: (opts = {}) => {
+        const state = get()
+        const cfg = state.settings.cycleCount || {}
+        return nextCycleBatch(state.inventoryItems, state.stockCounts || [], {
+          policy: cfg.policy, limit: opts.limit ?? cfg.batchSize ?? 20, asAt: opts.asAt,
+        })
+      },
+
+      /** Start a stock count containing only the items that are due. */
+      startCycleCount: ({ date, warehouseId = '', limit } = {}) => {
+        const batch = get().cycleCountBatch({ limit, asAt: date })
+        if (!batch.itemIds.length) throw new Error('CYCLE_NOTHING_DUE')
+        return get().startStockCount({
+          date, warehouseId, itemIds: batch.itemIds,
+          notes: `Cycle count — ${batch.itemIds.length} item(s) due`,
+        })
       },
 
       // ─── DOCUMENT BRANDING ─────────────────────────────────────────
@@ -3627,7 +3722,7 @@ export const useStore = create(
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 28, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 29, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3815,7 +3910,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 28,
+      version: 29,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3987,6 +4082,13 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 29) {
+          if (persisted.settings) {
+            if (!persisted.settings.terms) persisted.settings.terms = defaultTerms()
+            if (!persisted.settings.cycleCount)
+              persisted.settings.cycleCount = { policy: defaultCyclePolicy(), batchSize: 20 }
+          }
         }
         if (version < 28) {
           // Branding gains its own settings block. The logo itself is moved

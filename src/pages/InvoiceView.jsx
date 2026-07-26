@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { alertIfLocked } from '../utils/periodLock'
@@ -17,7 +17,7 @@ import { ArrowLeft, DollarSign, Printer, Ban, RotateCcw } from 'lucide-react'
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { invoices, customers, accounts, deleteInvoice, voidInvoice, createSalesReturn, recordInvoicePayment, settings } = useStore()
+  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, deleteInvoice, voidInvoice, createSalesReturn, recordInvoicePayment, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -60,6 +60,23 @@ export default function InvoiceView() {
   const invIsFC = invoice.currency && invoice.currency !== settings.company.currency
   const invSym = invIsFC ? `${invoice.currency} ` : baseSym
   const invRate = Number(invoice.exchangeRate) || 1
+  // What the customer would pay if they settled on the chosen date, and what
+  // the early-settlement discount is worth. Recomputed as the date changes,
+  // because the whole point is that the offer expires.
+  const offer = useMemo(
+    () => (payModal ? settlementOffer(invoice.id, payForm.date) : null),
+    [payModal, payForm.date, invoice.id, invoice.amountPaid, settlementOffer]
+  )
+
+  const takeDiscount = () => {
+    try {
+      const res = postSettlementDiscount(invoice.id, payForm.date)
+      setPayForm((f) => ({ ...f, amount: String(res.amountToPay) }))
+    } catch (e) {
+      alert(String(e.message || e).replace('DISCOUNT_NOT_AVAILABLE:', t('No discount is available: ')))
+    }
+  }
+
   const openPay = () => { setPayForm({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '', exchangeRate: invRate }); setPayModal(true) }
   // Show the VAT column whenever any line carries VAT or a non-standard category
   // (zero-rated / exempt supplies must still be indicated on a ZATCA tax invoice).
@@ -321,6 +338,23 @@ export default function InvoiceView() {
             <span className="text-blue-700 dark:text-blue-400 font-medium">Balance Due: {fmtMoney(amountDue, invSym)}</span>
           </div>
           <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
+          {offer?.eligible && (
+            <div className="rounded-lg p-3.5 bg-success-50/70 dark:bg-success-500/[0.08] ring-1 ring-inset ring-success-500/25">
+              <p className="text-sm font-semibold text-success-800 dark:text-success-200">
+                {t('Early-settlement discount available until {d}').replace('{d}', fmtDate(offer.deadline))}
+              </p>
+              <div className="text-sm text-success-800/90 dark:text-success-200/90 mt-1.5 space-y-0.5">
+                <p>{t('Discount')}: <span className="tabular-nums font-medium">{fmtMoney(offer.discountNet, invSym)}</span>
+                  {offer.discountTax > 0 && <> + <span className="tabular-nums font-medium">{fmtMoney(offer.discountTax, invSym)}</span> {t('tax reversed')}</>}
+                </p>
+                <p>{t('They pay')}: <span className="tabular-nums font-semibold">{fmtMoney(offer.amountToPay, invSym)}</span></p>
+              </div>
+              <Btn size="sm" className="mt-2.5" onClick={takeDiscount}>{t('Allow the discount')}</Btn>
+              <p className="text-xs text-success-700/80 dark:text-success-300/70 mt-1.5">
+                {t('This writes the discount off and reduces the tax you owe on the supply, then fills in what is left to collect.')}
+              </p>
+            </div>
+          )}
           <Input label={`Amount (${invSym.trim()})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} placeholder={`Max: ${fmtMoney(amountDue, invSym)}`} />
           {invIsFC && (
             <div className="space-y-1">

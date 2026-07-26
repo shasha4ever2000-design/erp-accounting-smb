@@ -10,7 +10,7 @@ import {
   validateCount, COUNT_STATUS,
 } from '../utils/stockCount'
 import {
-  ClipboardCheck, Play, Check, Trash2, AlertTriangle, ScanLine, Undo2, PackageSearch,
+  ClipboardCheck, Play, Check, Trash2, AlertTriangle, ScanLine, Undo2, PackageSearch, Repeat,
 } from 'lucide-react'
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -20,6 +20,7 @@ export default function StockCounts() {
   const {
     stockCounts = [], inventoryItems, fixedAssets = [], warehouses = [], settings,
     startStockCount, updateStockCount, deleteStockCount, postStockCount,
+    startCycleCount, cycleCountBatch,
   } = useStore()
   const sym = settings.company.currencySymbol
 
@@ -52,6 +53,23 @@ export default function StockCounts() {
   const say = (tone, text) => {
     setFeedback({ tone, text })
     setTimeout(() => setFeedback(null), 3500)
+  }
+
+  // What a cycle count would pick up right now — shown on the button so the
+  // size of the job is visible before committing to it.
+  const cycleDue = useMemo(() => {
+    try { return cycleCountBatch({}) } catch { return { itemIds: [], dueCount: 0, value: 0 } }
+  }, [cycleCountBatch, inventoryItems, stockCounts])
+
+  const startCycle = () => {
+    try {
+      const c = startCycleCount({ date: today() })
+      setOpenId(c.id)
+    } catch (e) {
+      alert(String(e.message).includes('NOTHING_DUE')
+        ? t('Nothing is due a count yet. Class A items come round every 30 days, C every year.')
+        : String(e.message || e))
+    }
   }
 
   const startNew = () => {
@@ -112,13 +130,26 @@ export default function StockCounts() {
         <PageHeader
           title="Stock Counts"
           subtitle="Make the books agree with the shelves"
-          action={<Btn onClick={() => setNewModal(true)}><Play size={15} /> {t('Start a count')}</Btn>}
+          action={
+            <>
+              <Btn variant="secondary" onClick={startCycle} title={t('Count only what is due')}>
+                <Repeat size={15} /> {t('Cycle count')}{cycleDue.dueCount ? ` (${Math.min(cycleDue.dueCount, cycleDue.itemIds.length || cycleDue.dueCount)})` : ''}
+              </Btn>
+              <Btn onClick={() => setNewModal(true)}><Play size={15} /> {t('Start a count')}</Btn>
+            </>
+          }
         />
 
         <Card className="p-4 mb-6 text-sm text-gray-600 dark:text-slate-300 flex items-start gap-3">
           <ScanLine size={18} className="text-brand-600 dark:text-brand-400 flex-shrink-0 mt-0.5" />
           <p>
             {t('Starting a count freezes what the books say, so stock that legitimately moves while you are counting does not show up as a shortage. Scan or type each item, then post once — anything you never counted is left exactly as it is.')}
+            {cycleDue.dueCount > 0 && (
+              <span className="block mt-2 text-gray-500 dark:text-slate-400">
+                {t('{n} item(s) worth {v} are due a cycle count — the valuable stock comes round monthly, the long tail once a year.')
+                  .replace('{n}', cycleDue.dueCount).replace('{v}', fmtMoney(cycleDue.value, sym))}
+              </span>
+            )}
           </p>
         </Card>
 
