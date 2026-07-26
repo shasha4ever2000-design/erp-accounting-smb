@@ -35,6 +35,8 @@ const DataImport = lazy(() => import('./pages/DataImport'))
 const RecycleBin = lazy(() => import('./pages/RecycleBin'))
 const CapitalAccounts = lazy(() => import('./pages/CapitalAccounts'))
 const Labels = lazy(() => import('./pages/Labels'))
+const SalesOrders = lazy(() => import('./pages/SalesOrders'))
+const PurchaseQuotes = lazy(() => import('./pages/PurchaseQuotes'))
 const PrepaidExpenses = lazy(() => import('./pages/PrepaidExpenses'))
 const Leases = lazy(() => import('./pages/Leases'))
 const ExpenseClaims = lazy(() => import('./pages/ExpenseClaims'))
@@ -204,6 +206,8 @@ export default function App() {
         <Route path="/recycle-bin" element={<RecycleBin />} />
         <Route path="/capital-accounts" element={<CapitalAccounts />} />
         <Route path="/labels" element={<Labels />} />
+        <Route path="/sales-orders" element={<SalesOrders />} />
+        <Route path="/purchase-quotes" element={<PurchaseQuotes />} />
         <Route path="/manufacturing" element={<Manufacturing />} />
 
         {/* Financials */}

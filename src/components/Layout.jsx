@@ -17,7 +17,7 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
-  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2, Tag
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2, Tag, FileQuestion
 } from 'lucide-react'
 
 const NAV = [
@@ -38,6 +38,7 @@ const NAV = [
   { label: 'Point of Sale',      path: '/pos',              icon: Store },
   { label: 'Customers',          path: '/customers',        icon: Users },
   { label: 'Quotations',         path: '/quotations',       icon: FileCheck },
+  { label: 'Sales Orders',       path: '/sales-orders',    icon: ClipboardList },
   { label: 'Sales Invoices',     path: '/invoices',         icon: FileText },
   { label: 'Recurring Invoices', path: '/recurring-invoices', icon: Repeat },
   { label: 'Payment Reminders',  path: '/payment-reminders', icon: BellRing },
@@ -48,6 +49,7 @@ const NAV = [
   { divider: 'Purchases' },
   { label: 'Requisitions',       path: '/requisitions',     icon: ClipboardCheck },
   { label: 'Suppliers',          path: '/suppliers',        icon: Building2 },
+  { label: 'Purchase Quotes',    path: '/purchase-quotes', icon: FileQuestion },
   { label: 'Purchase Orders',    path: '/purchase-orders',  icon: Truck },
   { label: 'Purchase Invoices',  path: '/purchases',        icon: ShoppingCart },
   { label: 'Debit Notes',        path: '/debit-notes',      icon: FilePlus },

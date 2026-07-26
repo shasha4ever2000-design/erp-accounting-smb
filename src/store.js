@@ -123,6 +123,8 @@ const DEFAULT_SETTINGS = {
   receipt:       { prefix: 'REC-',  next: 1 },
   payment:       { prefix: 'PAY-',  next: 1 },
   quotation:     { prefix: 'QUO-',  next: 1 },
+  salesOrder:    { prefix: 'SO-',   next: 1 },
+  purchaseQuote: { prefix: 'PQ-',   next: 1 },
   purchaseOrder: { prefix: 'PO-',   next: 1 },
   goodsReceipt:  { prefix: 'GRN-',  next: 1 },
   creditNote:    { prefix: 'CN-',   next: 1 },
@@ -1390,6 +1392,157 @@ export const useStore = create(
         const status = docFulfillment(newItems, 'invoicedQty').status === 'complete' ? 'invoiced' : 'partial'
         get().updateQuotation(id, { items: newItems, status, invoiceId: invoice.id, invoiceIds: [...(q.invoiceIds || []), invoice.id] })
         return invoice
+      },
+
+      // ─── SALES ORDERS ──────────────────────────────────────────────
+      // A confirmed order that has not been delivered or invoiced yet.
+      //
+      // It posts nothing. A customer agreeing to buy is not a sale — revenue
+      // is earned when the goods go out or the invoice is raised, and booking
+      // it earlier would overstate both income and receivables. The value of
+      // the document is that it holds the commitment: what is owed to the
+      // customer, what is still to ship, and what is left to bill.
+      salesOrders: [],
+
+      addSalesOrder: (o) => {
+        const s = get()
+        const { prefix, next } = s.settings.salesOrder
+        const number = nextNum(prefix, next)
+        const newSO = { ...o, id: uuid(), number, status: o.status || 'open', createdAt: new Date().toISOString() }
+        set((st) => ({
+          salesOrders: [...st.salesOrders, newSO],
+          settings: { ...st.settings, salesOrder: { ...st.settings.salesOrder, next: next + 1 } },
+        }))
+        get().logActivity('Created sales order', `${number} · ${o.customerName || ''}`.trim(), { entity: 'salesOrder', entityId: newSO.id, entityRef: number })
+        return newSO
+      },
+
+      updateSalesOrder: (id, patch) =>
+        set((s) => ({ salesOrders: s.salesOrders.map((o) => (o.id === id ? { ...o, ...patch } : o)) })),
+
+      deleteSalesOrder: (id) => {
+        get().recycleRecord('salesOrders', id)
+        return set((s) => ({ salesOrders: s.salesOrders.filter((o) => o.id !== id) }))
+      },
+
+      /** Quotation → sales order, in full or partially. */
+      convertQuotationToSalesOrder: (id, selections) => {
+        const q = get().quotations.find((x) => x.id === id)
+        if (!q) return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(q.items || [], 'orderedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(q.items || [], sel, { key: 'orderedQty', taxEnabled })
+        if (items.length === 0) return null
+        const order = get().addSalesOrder({
+          customerId: q.customerId, customerName: q.customerName,
+          quotationId: q.id,
+          date: new Date().toISOString().slice(0, 10),
+          expectedDate: q.expiryDate || '',
+          departmentId: q.departmentId || null,
+          currency: q.currency, exchangeRate: q.exchangeRate,
+          items, subtotal, taxAmount, total, notes: q.notes || '',
+        })
+        const newItems = (q.items || []).map((l) => (applied[l.id] ? { ...l, orderedQty: (Number(l.orderedQty) || 0) + applied[l.id] } : l))
+        const status = docFulfillment(newItems, 'orderedQty').status === 'complete' ? 'ordered' : q.status
+        get().updateQuotation(id, { items: newItems, status, salesOrderId: order.id })
+        return order
+      },
+
+      /** Sales order → invoice. Each line remembers how much has been billed. */
+      convertSalesOrderToInvoice: (id, selections) => {
+        const o = get().salesOrders.find((x) => x.id === id)
+        if (!o || o.status === 'invoiced') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(o.items || [], 'invoicedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(o.items || [], sel, { key: 'invoicedQty', taxEnabled })
+        if (items.length === 0) return null
+        const invoice = get().addInvoice({
+          customerId: o.customerId, customerName: o.customerName,
+          salesOrderId: o.id,
+          date: new Date().toISOString().slice(0, 10),
+          dueDate: o.expectedDate || new Date().toISOString().slice(0, 10),
+          departmentId: o.departmentId || null,
+          currency: o.currency, exchangeRate: o.exchangeRate,
+          items, subtotal, taxAmount, total, notes: o.notes || '',
+        })
+        const newItems = (o.items || []).map((l) => (applied[l.id] ? { ...l, invoicedQty: (Number(l.invoicedQty) || 0) + applied[l.id] } : l))
+        const done = docFulfillment(newItems, 'invoicedQty').status === 'complete'
+        get().updateSalesOrder(id, {
+          items: newItems,
+          status: done ? 'invoiced' : 'partial',
+          invoiceIds: [...(o.invoiceIds || []), invoice.id],
+        })
+        return invoice
+      },
+
+      /** Sales order → delivery note, tracked separately from billing. */
+      convertSalesOrderToDeliveryNote: (id, selections) => {
+        const o = get().salesOrders.find((x) => x.id === id)
+        if (!o) return null
+        const sel = selections || defaultSelection(o.items || [], 'deliveredQty')
+        const { items, applied } = buildConversion(o.items || [], sel, { key: 'deliveredQty', taxEnabled: false })
+        if (items.length === 0) return null
+        const dn = get().addDeliveryNote({
+          customerId: o.customerId, customerName: o.customerName,
+          salesOrderId: o.id,
+          date: new Date().toISOString().slice(0, 10),
+          items, notes: o.notes || '',
+        })
+        const newItems = (o.items || []).map((l) => (applied[l.id] ? { ...l, deliveredQty: (Number(l.deliveredQty) || 0) + applied[l.id] } : l))
+        get().updateSalesOrder(id, {
+          items: newItems,
+          deliveryNoteIds: [...(o.deliveryNoteIds || []), dn.id],
+        })
+        return dn
+      },
+
+      // ─── PURCHASE QUOTES (supplier offers) ─────────────────────────
+      // What a supplier says they will charge, before anything is committed.
+      // Also posts nothing: asking three suppliers for a price creates no
+      // liability, and only the one that turns into a purchase order does.
+      purchaseQuotes: [],
+
+      addPurchaseQuote: (q) => {
+        const s = get()
+        const { prefix, next } = s.settings.purchaseQuote
+        const number = nextNum(prefix, next)
+        const newQ = { ...q, id: uuid(), number, status: q.status || 'open', createdAt: new Date().toISOString() }
+        set((st) => ({
+          purchaseQuotes: [...st.purchaseQuotes, newQ],
+          settings: { ...st.settings, purchaseQuote: { ...st.settings.purchaseQuote, next: next + 1 } },
+        }))
+        get().logActivity('Recorded purchase quote', `${number} · ${q.supplierName || ''}`.trim(), { entity: 'purchaseQuote', entityId: newQ.id, entityRef: number })
+        return newQ
+      },
+
+      updatePurchaseQuote: (id, patch) =>
+        set((s) => ({ purchaseQuotes: s.purchaseQuotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) })),
+
+      deletePurchaseQuote: (id) => {
+        get().recycleRecord('purchaseQuotes', id)
+        return set((s) => ({ purchaseQuotes: s.purchaseQuotes.filter((q) => q.id !== id) }))
+      },
+
+      /** Purchase quote → purchase order. */
+      convertPurchaseQuoteToOrder: (id, selections) => {
+        const q = get().purchaseQuotes.find((x) => x.id === id)
+        if (!q || q.status === 'ordered') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(q.items || [], 'orderedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(q.items || [], sel, { key: 'orderedQty', taxEnabled })
+        if (items.length === 0) return null
+        const po = get().addPurchaseOrder({
+          supplierId: q.supplierId, supplierName: q.supplierName,
+          purchaseQuoteId: q.id,
+          date: new Date().toISOString().slice(0, 10),
+          expectedDate: q.validUntil || '',
+          currency: q.currency, exchangeRate: q.exchangeRate,
+          items, subtotal, taxAmount, total, notes: q.notes || '',
+        })
+        const newItems = (q.items || []).map((l) => (applied[l.id] ? { ...l, orderedQty: (Number(l.orderedQty) || 0) + applied[l.id] } : l))
+        const done = docFulfillment(newItems, 'orderedQty').status === 'complete'
+        get().updatePurchaseQuote(id, { items: newItems, status: done ? 'ordered' : 'partial', purchaseOrderId: po.id })
+        return po
       },
 
       // ─── CREDIT NOTES (Sales Returns) ──────────────────────────────
@@ -3333,8 +3486,9 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
+          'salesOrders', 'purchaseQuotes',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 25, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 26, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3522,7 +3676,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 25,
+      version: 26,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3694,6 +3848,16 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 26) {
+          // Both are non-posting documents, so there is nothing to backfill —
+          // an upgrading company simply starts with none.
+          if (!persisted.salesOrders) persisted.salesOrders = []
+          if (!persisted.purchaseQuotes) persisted.purchaseQuotes = []
+          if (persisted.settings) {
+            if (!persisted.settings.salesOrder) persisted.settings.salesOrder = { prefix: 'SO-', next: 1 }
+            if (!persisted.settings.purchaseQuote) persisted.settings.purchaseQuote = { prefix: 'PQ-', next: 1 }
+          }
         }
         if (version < 25) {
           // Flag the three shipped control accounts. resolveControl treats

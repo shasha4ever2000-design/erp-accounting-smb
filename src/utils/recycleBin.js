@@ -44,6 +44,8 @@ export const RECYCLABLE = {
   timeEntries:       { slice: 'timeEntries',       label: 'Time entry',         name: (r) => r.description || r.projectName },
   scheduledTransfers:{ slice: 'scheduledTransfers',label: 'Scheduled transfer', name: (r) => r.description || r.name },
   capitalAccounts:   { slice: 'capitalAccounts',   label: 'Capital account',    name: (r) => r.name },
+  salesOrders:       { slice: 'salesOrders',       label: 'Sales order',        name: (r) => `${r.number || ''} ${r.customerName || ''}`.trim() },
+  purchaseQuotes:    { slice: 'purchaseQuotes',    label: 'Purchase quote',     name: (r) => `${r.number || ''} ${r.supplierName || ''}`.trim() },
 }
 
 /**
