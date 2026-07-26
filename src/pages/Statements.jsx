@@ -5,8 +5,10 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
 import { buildStatementMessage, mailtoLink, whatsappLink, resolveRegion } from '../utils/shareStatement'
+import { buildStatement } from '../utils/statement'
+import { DocumentHeader, DocumentFooter } from '../components/DocumentBrand'
 import { format } from 'date-fns'
-import { Printer, FileText, Mail, MessageCircle, Copy, Check } from 'lucide-react'
+import { Printer, FileText, Mail, MessageCircle, Copy, Check, AlertTriangle } from 'lucide-react'
 
 export default function Statements() {
   const t = useT()
@@ -19,37 +21,22 @@ export default function Statements() {
   const [entityId, setEntityId] = useState('')
   const [startDate, setStartDate] = useState(`${thisYear}-01-01`)
   const [endDate, setEndDate] = useState(today())
+  const [mode, setMode] = useState('activity')
 
   const list = type === 'customer' ? customers : suppliers
   const entity = list.find((e) => e.id === entityId)
 
-  const allTxns = useMemo(() => {
-    if (!entityId) return []
-    const txns = []
-    if (type === 'customer') {
-      invoices.filter((i) => i.customerId === entityId && i.status !== 'cancelled' && i.status !== 'void').forEach((inv) => {
-        txns.push({ date: inv.date, type: 'Sales Invoice', ref: inv.number, debit: inv.total, credit: 0 })
-        ;(inv.payments || []).forEach((p) => txns.push({ date: p.date, type: 'Payment Received', ref: p.number, debit: 0, credit: p.amount }))
-      })
-      creditNotes.filter((c) => c.customerId === entityId).forEach((cn) => txns.push({ date: cn.date, type: 'Credit Note', ref: cn.number, debit: 0, credit: cn.total }))
-    } else {
-      purchases.filter((p) => p.supplierId === entityId && p.status !== 'cancelled' && p.status !== 'void').forEach((pur) => {
-        txns.push({ date: pur.date, type: 'Purchase Invoice', ref: pur.number, debit: 0, credit: pur.total })
-        ;(pur.payments || []).forEach((p) => txns.push({ date: p.date, type: 'Payment Made', ref: p.number, debit: p.amount, credit: 0 }))
-      })
-      debitNotes.filter((d) => d.supplierId === entityId).forEach((dn) => txns.push({ date: dn.date, type: 'Debit Note', ref: dn.number, debit: dn.total, credit: 0 }))
-    }
-    return txns.sort((a, b) => (a.date || '').localeCompare(b.date || ''))
-  }, [entityId, type, invoices, purchases, creditNotes, debitNotes])
+  // Both views are built by utils/statement.js, which is tested on its own —
+  // this is real accounting logic and it used to live untested in this file.
+  const stmt = useMemo(
+    () => buildStatement(type, entityId, { invoices, purchases, creditNotes, debitNotes }, {
+      start: startDate, end: endDate, mode,
+    }),
+    [type, entityId, invoices, purchases, creditNotes, debitNotes, startDate, endDate, mode]
+  )
+  const { opening, closing, items, aged } = stmt
+  const rows = stmt.rows.map((r) => ({ ...r, type: r.label }))
 
-  const opening = allTxns.filter((t) => t.date < startDate).reduce((s, t) => s + t.debit - t.credit, 0)
-  const rows = []
-  let running = opening
-  allTxns.filter((t) => t.date >= startDate && t.date <= endDate).forEach((t) => {
-    running += t.debit - t.credit
-    rows.push({ ...t, balance: running })
-  })
-  const closing = running
   const label = type === 'customer' ? 'owed by customer' : 'owed to supplier'
 
   // ── Sharing ────────────────────────────────────────────────────────
@@ -124,6 +111,19 @@ export default function Statements() {
       </div>
 
       <Card className="p-5 mb-6 no-print">
+        <div className="flex gap-2 mb-4 flex-wrap">
+          {[['activity', 'Activity (balance forward)'], ['open', 'Open items only']].map(([v, lbl]) => (
+            <button key={v} onClick={() => setMode(v)}
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${mode === v ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700'}`}>
+              {t(lbl)}
+            </button>
+          ))}
+          <span className="text-xs text-gray-400 dark:text-slate-500 self-center ms-1">
+            {mode === 'open'
+              ? t('Only what is still unpaid, with its age — the view for chasing money.')
+              : t('Opening balance, every movement, closing balance — the view that reconciles.')}
+          </span>
+        </div>
         <div className="flex flex-wrap gap-4 items-end">
           <Select label="Type" value={type} onChange={(e) => { setType(e.target.value); setEntityId('') }} className="w-40">
             <option value="customer">{t('Customer')}</option>
@@ -145,17 +145,17 @@ export default function Statements() {
         </Card>
       ) : (
         <Card className="p-8 max-w-4xl mx-auto print:shadow-none">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{company.name}</h1>
-              {company.arabicName && <p className="text-lg font-bold text-gray-700 dark:text-slate-200" dir="rtl">{company.arabicName}</p>}
-              {company.address && <p className="text-sm text-gray-500 dark:text-slate-400 whitespace-pre-line">{company.address}</p>}
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-black text-blue-600 dark:text-blue-400">STATEMENT</p>
-              <p className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(startDate)} → {fmtDate(endDate)}</p>
-            </div>
-          </div>
+          <DocumentHeader
+            docType="statement"
+            title="STATEMENT"
+            right={
+              <div className="text-end">
+                <p className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(startDate)} → {fmtDate(endDate)}</p>
+                <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{fmtMoney(Math.abs(closing), sym)}</p>
+                <p className="text-xs text-gray-400 dark:text-slate-500">{closing >= 0 ? t(label) : t('in credit')}</p>
+              </div>
+            }
+          />
 
           <div className="mb-6">
             <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{type === 'customer' ? 'Customer' : 'Supplier'}</p>
@@ -164,6 +164,39 @@ export default function Statements() {
             {entity.taxId && <p className="text-sm text-gray-500 dark:text-slate-400">VAT/Tax: {entity.taxId}</p>}
           </div>
 
+          {mode === 'open' ? (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
+                  <th className="text-start py-2">{t('Date')}</th>
+                  <th className="text-start py-2">{t('Reference')}</th>
+                  <th className="text-start py-2">{t('Due')}</th>
+                  <th className="text-end py-2">{t('Total')}</th>
+                  <th className="text-end py-2">{t('Paid')}</th>
+                  <th className="text-end py-2">{t('Outstanding')}</th>
+                  <th className="text-end py-2">{t('Age')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((r) => (
+                  <tr key={r.docId} className="border-b border-gray-100 dark:border-slate-700/50">
+                    <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(r.date)}</td>
+                    <td className="py-2 font-mono text-xs text-gray-700 dark:text-slate-200">{r.ref}</td>
+                    <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(r.dueDate)}</td>
+                    <td className="py-2 text-end tabular-nums text-gray-600 dark:text-slate-300">{fmtMoney(r.total, sym)}</td>
+                    <td className="py-2 text-end tabular-nums text-gray-500 dark:text-slate-400">{r.paid ? fmtMoney(r.paid, sym) : '—'}</td>
+                    <td className="py-2 text-end tabular-nums font-semibold text-gray-900 dark:text-slate-100">{fmtMoney(r.outstanding, sym)}</td>
+                    <td className={`py-2 text-end tabular-nums ${r.daysOverdue > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-gray-400 dark:text-slate-500'}`}>
+                      {r.daysOverdue > 0 ? t('{n} days').replace('{n}', r.daysOverdue) : t('not due')}
+                    </td>
+                  </tr>
+                ))}
+                {items.length === 0 && (
+                  <tr><td colSpan={7} className="py-6 text-center text-gray-400 dark:text-slate-500">{t('Nothing outstanding — the account is clear.')}</td></tr>
+                )}
+              </tbody>
+            </table>
+          ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
@@ -195,6 +228,7 @@ export default function Statements() {
               )}
             </tbody>
           </table>
+          )}
 
           <div className="flex justify-end mt-6">
             <div className="w-64 bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4">
@@ -202,9 +236,54 @@ export default function Statements() {
                 <span className="text-gray-800 dark:text-slate-100">{t('Closing Balance')}</span>
                 <span className={closing >= 0 ? 'text-gray-900 dark:text-slate-100' : 'text-green-600'}>{fmtMoney(Math.abs(closing), sym)}</span>
               </div>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 text-right">{closing >= 0 ? label : 'in credit'}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 text-right">{closing >= 0 ? t(label) : t('in credit')}</p>
             </div>
           </div>
+
+          {/* Aged summary — the part of a statement people actually read. */}
+          {aged.total > 0 && (
+            <div className="mt-8 pt-5 border-t border-gray-200 dark:border-surface-700">
+              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-2">
+                {t('Aged summary')}
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm min-w-[420px]">
+                  <thead>
+                    <tr className="text-xs text-gray-500 dark:text-slate-400 uppercase">
+                      {aged.labels.map((l) => <th key={l} className="text-end py-1.5 font-medium">{t(l)}</th>)}
+                      <th className="text-end py-1.5 font-medium">{t('Total')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="border-t border-gray-100 dark:border-surface-750">
+                      {aged.cells.map((v, i) => (
+                        <td key={i} className={`text-end py-2 tabular-nums ${i > 1 && v > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-gray-700 dark:text-slate-200'}`}>
+                          {v ? fmtMoney(v, sym) : '—'}
+                        </td>
+                      ))}
+                      <td className="text-end py-2 tabular-nums font-bold text-gray-900 dark:text-slate-100">{fmtMoney(aged.total, sym)}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* If the two views disagree, say so rather than printing one of
+              them — a payment recorded against nothing means the figure
+              being chased is wrong. */}
+          {stmt.reconciliation && !stmt.reconciliation.ok && (
+            <div className="mt-6 p-3.5 rounded-lg bg-warning-50/70 dark:bg-warning-500/[0.08] ring-1 ring-inset ring-warning-500/25 flex items-start gap-3 no-print">
+              <AlertTriangle size={16} className="text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-warning-800 dark:text-warning-200">
+                {t('The running balance ({a}) does not match the unpaid documents ({b}). A credit or payment is recorded against nothing — check before sending this.')
+                  .replace('{a}', fmtMoney(stmt.reconciliation.closing, sym))
+                  .replace('{b}', fmtMoney(stmt.reconciliation.open, sym))}
+              </p>
+            </div>
+          )}
+
+          <DocumentFooter docType="statement" bankDetails={settings.invoice?.bankDetails} />
         </Card>
       )}
     </div>
