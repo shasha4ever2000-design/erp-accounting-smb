@@ -7,7 +7,7 @@ import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../comp
 import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
 import { docFulfillment } from '../utils/fulfillment'
-import { Plus, Trash2, FileText, ArrowRight } from 'lucide-react'
+import { Plus, Trash2, FileText, ArrowRight, ClipboardList } from 'lucide-react'
 
 const STATUS_COLORS = {
   sent:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
@@ -21,11 +21,12 @@ const STATUS_COLORS = {
 export default function Quotations() {
   const t = useT()
   const navigate = useNavigate()
-  const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice } = useStore()
+  const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice, convertQuotationToSalesOrder } = useStore()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax?.enabled !== false
   const [filter, setFilter] = useState('all')
   const [convertDoc, setConvertDoc] = useState(null)
+  const [orderDoc, setOrderDoc] = useState(null)
 
   const filtered = filter === 'all' ? quotations : quotations.filter((q) => q.status === filter)
   const sorted   = [...filtered].sort((a, b) => b.date.localeCompare(a.date))
@@ -34,6 +35,12 @@ export default function Quotations() {
     const inv = convertQuotationToInvoice(convertDoc.id, selections)
     setConvertDoc(null)
     if (inv) navigate(`/invoices/${inv.id}`)
+  }
+
+  const doOrder = (selections) => {
+    const so = convertQuotationToSalesOrder(orderDoc.id, selections)
+    setOrderDoc(null)
+    if (so) navigate('/sales-orders')
   }
 
   const handleDelete = (q) => {
@@ -109,6 +116,9 @@ export default function Quotations() {
                               <FileText size={13} className="text-green-500" />
                             </Btn>
                           )}
+                          <Btn size="sm" variant="ghost" onClick={() => setOrderDoc(q)} title={t('Turn this quotation into a sales order')}>
+                            <ClipboardList size={13} /> {t('Order')}
+                          </Btn>
                           <Btn size="sm" variant="secondary" onClick={() => setConvertDoc(q)} title="Convert to Invoice">
                             <ArrowRight size={13} /> {q.status === 'partial' ? t('Invoice rest') : t('Invoice')}
                           </Btn>
@@ -128,6 +138,18 @@ export default function Quotations() {
           </Table>
         )}
       </Card>
+
+      <ConvertModal
+        open={!!orderDoc}
+        onClose={() => setOrderDoc(null)}
+        doc={orderDoc}
+        docKey="orderedQty"
+        sym={sym}
+        taxEnabled={taxEnabled}
+        title={t('Turn this quotation into a sales order')}
+        confirmLabel={t('Create Sales Order')}
+        onConfirm={doOrder}
+      />
 
       <ConvertModal
         open={!!convertDoc}

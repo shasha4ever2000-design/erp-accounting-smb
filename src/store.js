@@ -6,11 +6,20 @@ import { useAuth } from './auth'
 import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
+import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
+import {
+  CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
+  movementLines, allocateProfit, profitAllocationLines,
+} from './utils/capitalAccounts'
+import {
+  CONTROL_KINDS, resolveControl, validateControlAccount, controlAccountsFor,
+  reclassLines, fieldFor, defaultFor,
+} from './utils/controlAccounts'
 
 // Quota-safe storage: never let a full localStorage throw and crash the app.
 const safeStorage = {
@@ -36,9 +45,9 @@ const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
   { id: 'acc-cash',    code: '1001', name: 'Cash on Hand',              type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-bank1',  code: '1002', name: 'Main Bank Account',          type: 'asset',     subtype: 'current',     isSystem: false },
-  { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true  },
+  { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true, controlFor: 'customers'  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
-  { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false },
+  { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false, controlFor: 'inventoryItems' },
   { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-wip',    code: '1420', name: 'Work-in-Progress',            type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-fingoods',code:'1430', name: 'Finished Goods',              type: 'asset',     subtype: 'current',     isSystem: false },
@@ -48,7 +57,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-depr',   code: '1610', name: 'Accumulated Depreciation',   type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
   // LIABILITIES – Current
-  { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
@@ -65,6 +74,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-capital', code: '3001', name: "Owner's Capital",           type: 'equity',    subtype: 'equity',      isSystem: false },
   { id: 'acc-retained',code: '3002', name: 'Retained Earnings',         type: 'equity',    subtype: 'equity',      isSystem: true  },
   { id: 'acc-drawings',code: '3003', name: "Owner's Drawings",          type: 'equity',    subtype: 'equity',      isSystem: false },
+  { id: 'acc-capital-ctl', code: '3005', name: 'Capital Accounts',      type: 'equity',    subtype: 'equity',      isSystem: true  },
   { id: 'acc-obe',    code: '3009', name: 'Opening Balance Equity',      type: 'equity',    subtype: 'equity',      isSystem: true  },
   // REVENUE
   { id: 'acc-sales',  code: '4001', name: 'Sales Revenue',              type: 'revenue',   subtype: 'revenue',     isSystem: false },
@@ -113,6 +123,8 @@ const DEFAULT_SETTINGS = {
   receipt:       { prefix: 'REC-',  next: 1 },
   payment:       { prefix: 'PAY-',  next: 1 },
   quotation:     { prefix: 'QUO-',  next: 1 },
+  salesOrder:    { prefix: 'SO-',   next: 1 },
+  purchaseQuote: { prefix: 'PQ-',   next: 1 },
   purchaseOrder: { prefix: 'PO-',   next: 1 },
   goodsReceipt:  { prefix: 'GRN-',  next: 1 },
   creditNote:    { prefix: 'CN-',   next: 1 },
@@ -334,6 +346,223 @@ export const useStore = create(
         set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, groupId: groupId || '' } : a)) }))
       },
 
+      // ─── CONTROL ACCOUNTS ──────────────────────────────────────────
+      // Receivables, payables and inventory can each be split across several
+      // control accounts. Nothing posts to a record's stored pointer directly —
+      // it goes through here, which falls back to the default whenever that
+      // pointer no longer names a usable control account. See
+      // utils/controlAccounts.js for why that matters.
+
+      /** The account a customer / supplier / item actually posts through. */
+      controlAccountFor: (kind, recordId) => {
+        const st = get()
+        const record = (st[CONTROL_KINDS[kind]?.slice] || []).find((r) => r.id === recordId)
+        return resolveControl(record, kind, st.accounts)
+      },
+
+      /** Every account usable as a control account of this kind. */
+      controlAccountOptions: (kind) => controlAccountsFor(get().accounts, kind),
+
+      /** Nominate an account as a control account, or stand it down. */
+      setAccountControlKind: (accountId, kind) => {
+        const account = get().accounts.find((a) => a.id === accountId)
+        if (!account) throw new Error('ACCOUNT_NOT_FOUND')
+
+        if (!kind) {
+          // Standing an account down while records still point at it would
+          // silently redirect their postings to the default — the balance
+          // sheet would go on balancing while two accounts quietly went wrong.
+          const slice = CONTROL_KINDS[account.controlFor]?.slice
+          const inUse = slice
+            ? (get()[slice] || []).filter((r) => r[fieldFor(account.controlFor)] === accountId).length
+            : 0
+          if (inUse) throw new Error(`CONTROL_IN_USE:${inUse}`)
+          set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, controlFor: '' } : a)) }))
+          return
+        }
+
+        const check = validateControlAccount(account, kind)
+        if (!check.ok) throw new Error(`CONTROL_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({ accounts: s.accounts.map((a) => (a.id === accountId ? { ...a, controlFor: kind } : a)) }))
+        get().logActivity('Made a control account', `${account.code} – ${account.name}`, { entity: 'account', entityId: accountId })
+      },
+
+      /**
+       * Point a customer, supplier or item at a different control account.
+       *
+       * An outstanding balance is moved with a reclassification entry rather
+       * than by rewriting history. Leaving the old debt where it was while new
+       * receipts credit the new account would make both accounts wrong, and
+       * the customer's own statement would reconcile to neither.
+       */
+      setRecordControlAccount: (kind, recordId, accountId, { date } = {}) => {
+        const cfg = CONTROL_KINDS[kind]
+        if (!cfg) throw new Error('CONTROL_KIND_UNKNOWN')
+        const st = get()
+        const record = (st[cfg.slice] || []).find((r) => r.id === recordId)
+        if (!record) throw new Error('RECORD_NOT_FOUND')
+
+        const from = resolveControl(record, kind, st.accounts)
+        const target = accountId || defaultFor(kind)
+        if (target !== defaultFor(kind)) {
+          const account = st.accounts.find((a) => a.id === target)
+          const check = validateControlAccount(account, kind)
+          if (!check.ok) throw new Error(`CONTROL_INVALID:${check.errors.join(' ')}`)
+        }
+
+        const field = fieldFor(kind)
+        if (from === target) {
+          set((s) => ({ [cfg.slice]: s[cfg.slice].map((r) => (r.id === recordId ? { ...r, [field]: accountId || '' } : r)) }))
+          return { moved: 0, journalEntryId: null }
+        }
+
+        // What this record still owes, read from the documents rather than the
+        // ledger: invoice and bill postings carry no customer or supplier id,
+        // so the ledger cannot be filtered by party. The open document balance
+        // is the right figure regardless — it is what the aging reports and
+        // customer statements are built from.
+        const openDocs = kind === 'customers' ? st.invoices : kind === 'suppliers' ? st.purchases : []
+        const partyField = kind === 'customers' ? 'customerId' : 'supplierId'
+        let balance = openDocs.reduce((sum, d) => {
+          if (d[partyField] !== recordId) return sum
+          if (['cancelled', 'void', 'draft'].includes(d.status)) return sum
+          return sum + ((+d.total || 0) - (+d.amountPaid || 0))
+        }, 0)
+        balance = Math.round(balance * 100) / 100
+
+        let entry = null
+        if (balance !== 0) {
+          // `balance` is what the party owes (or is owed), already expressed in
+          // the control account's own natural direction — a receivable as a
+          // debit, a payable as a credit. reclassLines works in those same
+          // terms, so it is passed through unchanged; negating it here would
+          // move payables the wrong way.
+          entry = get().addJournalEntry({
+            date: date || new Date().toISOString().slice(0, 10),
+            description: `Reclassified ${record.name || cfg.noun} to a different control account`,
+            type: 'reclass',
+            ...(kind === 'customers' ? { customerId: recordId } : {}),
+            ...(kind === 'suppliers' ? { supplierId: recordId } : {}),
+            lines: reclassLines(kind, {
+              fromAccountId: from, toAccountId: target, amount: balance, name: record.name || "",
+            }),
+          })
+        }
+
+        set((s) => ({ [cfg.slice]: s[cfg.slice].map((r) => (r.id === recordId ? { ...r, [field]: accountId || '' } : r)) }))
+        return { moved: balance, journalEntryId: entry?.id || null }
+      },
+
+      // ─── CAPITAL ACCOUNTS ──────────────────────────────────────────
+      // A subledger over acc-capital-ctl, one row per owner or partner. See
+      // utils/capitalAccounts.js for why the detail cannot live in the chart
+      // of accounts itself.
+      capitalAccounts: [],
+      capitalSubaccounts: DEFAULT_SUBACCOUNTS.map((s) => ({ ...s })),
+
+      addCapitalAccount: (a) => {
+        const check = validateCapitalAccount(a, get().capitalAccounts)
+        if (!check.ok) throw new Error(`CAPITAL_INVALID:${check.errors.join(' ')}`)
+        const id = uuid()
+        set((s) => ({
+          capitalAccounts: [...s.capitalAccounts, {
+            id,
+            name: String(a.name).trim(),
+            code: a.code || '',
+            share: a.share === '' || a.share == null ? 0 : Number(a.share),
+            notes: a.notes || '',
+            active: a.active !== false,
+            createdAt: new Date().toISOString(),
+          }],
+        }))
+        get().logActivity('Created capital account', String(a.name).trim(), { entity: 'capitalAccount', entityId: id })
+        return id
+      },
+
+      updateCapitalAccount: (id, patch) => {
+        const before = get().capitalAccounts.find((a) => a.id === id)
+        if (!before) throw new Error('CAPITAL_NOT_FOUND')
+        const check = validateCapitalAccount({ ...before, ...patch }, get().capitalAccounts, { id })
+        if (!check.ok) throw new Error(`CAPITAL_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({ capitalAccounts: s.capitalAccounts.map((a) => (a.id === id ? { ...a, ...patch } : a)) }))
+        get().logChange('Updated capital account', before, get().capitalAccounts.find((a) => a.id === id), { entity: 'capitalAccount' })
+      },
+
+      /**
+       * A capital account with history cannot be deleted — its ledger lines
+       * would point at nothing and the report would show them as unallocated.
+       * Deactivating keeps the history readable and takes it out of new
+       * pickers and profit splits.
+       */
+      deleteCapitalAccount: (id) => {
+        const used = get().journalEntries.some((je) =>
+          (je.lines || []).some((l) => l.capitalAccountId === id))
+        if (used) throw new Error('CAPITAL_HAS_ACTIVITY')
+        get().recycleRecord('capitalAccounts', id)
+        const gone = get().capitalAccounts.find((a) => a.id === id)
+        set((s) => ({ capitalAccounts: s.capitalAccounts.filter((a) => a.id !== id) }))
+        if (gone) get().logActivity('Deleted capital account', gone.name, { entity: 'capitalAccount', entityId: id })
+      },
+
+      addCapitalSubaccount: (name) => {
+        const clean = String(name || '').trim()
+        if (!clean) throw new Error('CAPITAL_SUB_NAME_REQUIRED')
+        const dup = get().capitalSubaccounts.some((s) => s.name.toLowerCase() === clean.toLowerCase())
+        if (dup) throw new Error('CAPITAL_SUB_DUPLICATE')
+        const id = uuid()
+        set((s) => ({
+          capitalSubaccounts: [...s.capitalSubaccounts, { id, name: clean, sort: 100 + s.capitalSubaccounts.length, isSystem: false }],
+        }))
+        return id
+      },
+
+      deleteCapitalSubaccount: (id) => {
+        const sub = get().capitalSubaccounts.find((s) => s.id === id)
+        if (!sub) return
+        if (sub.isSystem) throw new Error('CAPITAL_SUB_IS_SYSTEM')
+        const used = get().journalEntries.some((je) => (je.lines || []).some((l) => l.subaccountId === id))
+        if (used) throw new Error('CAPITAL_SUB_HAS_ACTIVITY')
+        set((s) => ({ capitalSubaccounts: s.capitalSubaccounts.filter((x) => x.id !== id) }))
+      },
+
+      /**
+       * Money in from an owner, or money out to one.
+       * `kind` is 'contribution' or 'drawing'.
+       */
+      recordCapitalMovement: (kind, payload) => {
+        const acc = get().capitalAccounts.find((a) => a.id === payload.capitalAccountId)
+        if (!acc) throw new Error('CAPITAL_NOT_FOUND')
+        const lines = movementLines(kind, { ...payload, name: acc.name })
+        const je = get().addJournalEntry({
+          date: payload.date,
+          description: payload.description || `${kind === 'contribution' ? 'Funds contributed' : 'Drawings'} — ${acc.name}`,
+          type: 'capital',
+          lines,
+        })
+        return je
+      },
+
+      /**
+       * Split a profit between the partners by their shares.
+       *
+       * Moves profit from retained earnings to each partner's share-of-profit
+       * subaccount. Total equity does not change by a cent — the money simply
+       * stops being "kept in the business" and becomes "owed to a named owner".
+       */
+      allocateProfitToPartners: ({ date, amount, description } = {}) => {
+        const active = get().capitalAccounts.filter((a) => a.active !== false)
+        if (!active.length) throw new Error('CAPITAL_NO_ACCOUNTS')
+        const split = allocateProfit(amount, active)
+        const lines = profitAllocationLines(split)
+        if (!lines.length) throw new Error('CAPITAL_NOTHING_TO_ALLOCATE')
+        return get().addJournalEntry({
+          date,
+          description: description || 'Allocation of profit to partners',
+          type: 'capital',
+          lines,
+        })
+      },
+
       /** Put the tree back to the shipped structure, keeping custom groups. */
       restoreDefaultGroups: () => {
         set((s) => {
@@ -415,11 +644,26 @@ export const useStore = create(
       // ─── INVENTORY ITEMS ───────────────────────────────────────────
       inventoryItems: [],
 
-      addInventoryItem: (item) =>
-        set((s) => ({ inventoryItems: [...s.inventoryItems, { ...item, id: uuid() }] })),
+      addInventoryItem: (item) => {
+        const id = uuid()
+        if (item?.isKit) {
+          const check = validateKit(id, item.components || [], get().inventoryItems)
+          if (!check.ok) throw new Error(`KIT_INVALID:${check.errors.join(' ')}`)
+        }
+        set((s) => ({ inventoryItems: [...s.inventoryItems, { ...item, id }] }))
+        return { id }
+      },
 
       updateInventoryItem: (id, patch) => {
         const before = get().inventoryItems.find((i) => i.id === id)
+        // A kit that contains itself would recurse for ever the next time
+        // something is sold, so the cycle is refused at save time rather than
+        // relied on being caught during a posting.
+        const merged = { ...(before || {}), ...patch }
+        if (merged.isKit) {
+          const check = validateKit(id, merged.components || [], get().inventoryItems)
+          if (!check.ok) throw new Error(`KIT_INVALID:${check.errors.join(' ')}`)
+        }
         set((s) => ({ inventoryItems: s.inventoryItems.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
         // Cost/quantity move constantly through normal trading; only log the
         // master-data edits a human actually made.
@@ -799,6 +1043,15 @@ export const useStore = create(
         const _dr = (entry.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
         const _cr = (entry.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
         if (Math.abs(_dr - _cr) > 0.05) throw new Error(`JE_UNBALANCED:${(_dr - _cr).toFixed(2)}`)
+        // The capital control account is a subledger: its balance must always
+        // be the sum of the partner accounts underneath it. A line that hits it
+        // without naming a partner would break that quietly — the balance sheet
+        // would still balance while the capital accounts report disagreed with
+        // it, and nothing on screen would say why. Refuse it at the door.
+        const _stray = (entry.lines || []).find(
+          (l) => l?.accountId === CAPITAL_CONTROL && !l?.capitalAccountId
+        )
+        if (_stray) throw new Error('CAPITAL_LINE_UNATTRIBUTED')
         const lock = s.settings?.accounting?.lockDate
         if (lock && String(entry.date) <= String(lock))
           throw new Error(`PERIOD_LOCKED:${lock}`)
@@ -907,7 +1160,8 @@ export const useStore = create(
         const shipBase = toBase(invoice.shipping || 0)
         // AR = revenue − doc discount + shipping + VAT (all base), so the entry balances.
         const arBase = Math.round((revLines.reduce((s, l) => s + l.credit, 0) - docDiscBase + shipBase + vatBase) * 100) / 100
-        const lines = [{ accountId: 'acc-ar', debit: arBase, credit: 0, description: `Invoice ${number}` }, ...revLines]
+        const arAcc = get().controlAccountFor('customers', invoice.customerId)
+        const lines = [{ accountId: arAcc, debit: arBase, credit: 0, description: `Invoice ${number}` }, ...revLines]
         if (docDiscBase > 0) lines.push({ accountId: 'acc-salesdisc', debit: docDiscBase, credit: 0, description: 'Invoice discount' })
         if (shipBase > 0) lines.push({ accountId: 'acc-shipinc', debit: 0, credit: shipBase, description: 'Shipping & delivery' })
         if (vatBase > 0)
@@ -921,16 +1175,15 @@ export const useStore = create(
 
         // Perpetual issue: reduce stock + post COGS at weighted-average cost for tracked lines.
         // COGS/inventory relief respect each item's own COGS and inventory accounts.
-        const issue = {} // itemId -> qty
+        // Kits explode into their components first: a bundle is one line on
+        // the invoice but there is no bundle on a shelf, so stock and cost of
+        // sales have to follow the parts that actually left it.
+        const issue = explodeLines(invoice.items, get().inventoryItems) // itemId -> qty
         const cogsByAcc = {}, invByAcc = {}
         let cogs = 0
-        invoice.items.forEach((line) => {
-          if (!line.itemId) return
-          const q = parseFloat(line.quantity) || 0
-          if (q <= 0) return
-          const it = get().inventoryItems.find((i) => i.id === line.itemId)
+        Object.entries(issue).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
           if (!it) return
-          issue[line.itemId] = (issue[line.itemId] || 0) + q
           const amt = q * (it.costPrice || 0)
           cogs += amt
           const cAcc = it.cogsAccountId || 'acc-cogs'
@@ -1002,7 +1255,7 @@ export const useStore = create(
         const fx = Math.round((cashBase - arBase) * 100) / 100
         const payLines = [
           { accountId: payment.bankAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
-          { accountId: 'acc-ar', debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
+          { accountId: get().controlAccountFor('customers', invoice.customerId), debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
         ]
         if (fx > 0) payLines.push({ accountId: 'acc-fxreal', debit: 0, credit: fx, description: `Realized FX gain – ${invoice.number}` })
         else if (fx < 0) payLines.push({ accountId: 'acc-fxreal', debit: -fx, credit: 0, description: `Realized FX loss – ${invoice.number}` })
@@ -1141,6 +1394,157 @@ export const useStore = create(
         return invoice
       },
 
+      // ─── SALES ORDERS ──────────────────────────────────────────────
+      // A confirmed order that has not been delivered or invoiced yet.
+      //
+      // It posts nothing. A customer agreeing to buy is not a sale — revenue
+      // is earned when the goods go out or the invoice is raised, and booking
+      // it earlier would overstate both income and receivables. The value of
+      // the document is that it holds the commitment: what is owed to the
+      // customer, what is still to ship, and what is left to bill.
+      salesOrders: [],
+
+      addSalesOrder: (o) => {
+        const s = get()
+        const { prefix, next } = s.settings.salesOrder
+        const number = nextNum(prefix, next)
+        const newSO = { ...o, id: uuid(), number, status: o.status || 'open', createdAt: new Date().toISOString() }
+        set((st) => ({
+          salesOrders: [...st.salesOrders, newSO],
+          settings: { ...st.settings, salesOrder: { ...st.settings.salesOrder, next: next + 1 } },
+        }))
+        get().logActivity('Created sales order', `${number} · ${o.customerName || ''}`.trim(), { entity: 'salesOrder', entityId: newSO.id, entityRef: number })
+        return newSO
+      },
+
+      updateSalesOrder: (id, patch) =>
+        set((s) => ({ salesOrders: s.salesOrders.map((o) => (o.id === id ? { ...o, ...patch } : o)) })),
+
+      deleteSalesOrder: (id) => {
+        get().recycleRecord('salesOrders', id)
+        return set((s) => ({ salesOrders: s.salesOrders.filter((o) => o.id !== id) }))
+      },
+
+      /** Quotation → sales order, in full or partially. */
+      convertQuotationToSalesOrder: (id, selections) => {
+        const q = get().quotations.find((x) => x.id === id)
+        if (!q) return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(q.items || [], 'orderedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(q.items || [], sel, { key: 'orderedQty', taxEnabled })
+        if (items.length === 0) return null
+        const order = get().addSalesOrder({
+          customerId: q.customerId, customerName: q.customerName,
+          quotationId: q.id,
+          date: new Date().toISOString().slice(0, 10),
+          expectedDate: q.expiryDate || '',
+          departmentId: q.departmentId || null,
+          currency: q.currency, exchangeRate: q.exchangeRate,
+          items, subtotal, taxAmount, total, notes: q.notes || '',
+        })
+        const newItems = (q.items || []).map((l) => (applied[l.id] ? { ...l, orderedQty: (Number(l.orderedQty) || 0) + applied[l.id] } : l))
+        const status = docFulfillment(newItems, 'orderedQty').status === 'complete' ? 'ordered' : q.status
+        get().updateQuotation(id, { items: newItems, status, salesOrderId: order.id })
+        return order
+      },
+
+      /** Sales order → invoice. Each line remembers how much has been billed. */
+      convertSalesOrderToInvoice: (id, selections) => {
+        const o = get().salesOrders.find((x) => x.id === id)
+        if (!o || o.status === 'invoiced') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(o.items || [], 'invoicedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(o.items || [], sel, { key: 'invoicedQty', taxEnabled })
+        if (items.length === 0) return null
+        const invoice = get().addInvoice({
+          customerId: o.customerId, customerName: o.customerName,
+          salesOrderId: o.id,
+          date: new Date().toISOString().slice(0, 10),
+          dueDate: o.expectedDate || new Date().toISOString().slice(0, 10),
+          departmentId: o.departmentId || null,
+          currency: o.currency, exchangeRate: o.exchangeRate,
+          items, subtotal, taxAmount, total, notes: o.notes || '',
+        })
+        const newItems = (o.items || []).map((l) => (applied[l.id] ? { ...l, invoicedQty: (Number(l.invoicedQty) || 0) + applied[l.id] } : l))
+        const done = docFulfillment(newItems, 'invoicedQty').status === 'complete'
+        get().updateSalesOrder(id, {
+          items: newItems,
+          status: done ? 'invoiced' : 'partial',
+          invoiceIds: [...(o.invoiceIds || []), invoice.id],
+        })
+        return invoice
+      },
+
+      /** Sales order → delivery note, tracked separately from billing. */
+      convertSalesOrderToDeliveryNote: (id, selections) => {
+        const o = get().salesOrders.find((x) => x.id === id)
+        if (!o) return null
+        const sel = selections || defaultSelection(o.items || [], 'deliveredQty')
+        const { items, applied } = buildConversion(o.items || [], sel, { key: 'deliveredQty', taxEnabled: false })
+        if (items.length === 0) return null
+        const dn = get().addDeliveryNote({
+          customerId: o.customerId, customerName: o.customerName,
+          salesOrderId: o.id,
+          date: new Date().toISOString().slice(0, 10),
+          items, notes: o.notes || '',
+        })
+        const newItems = (o.items || []).map((l) => (applied[l.id] ? { ...l, deliveredQty: (Number(l.deliveredQty) || 0) + applied[l.id] } : l))
+        get().updateSalesOrder(id, {
+          items: newItems,
+          deliveryNoteIds: [...(o.deliveryNoteIds || []), dn.id],
+        })
+        return dn
+      },
+
+      // ─── PURCHASE QUOTES (supplier offers) ─────────────────────────
+      // What a supplier says they will charge, before anything is committed.
+      // Also posts nothing: asking three suppliers for a price creates no
+      // liability, and only the one that turns into a purchase order does.
+      purchaseQuotes: [],
+
+      addPurchaseQuote: (q) => {
+        const s = get()
+        const { prefix, next } = s.settings.purchaseQuote
+        const number = nextNum(prefix, next)
+        const newQ = { ...q, id: uuid(), number, status: q.status || 'open', createdAt: new Date().toISOString() }
+        set((st) => ({
+          purchaseQuotes: [...st.purchaseQuotes, newQ],
+          settings: { ...st.settings, purchaseQuote: { ...st.settings.purchaseQuote, next: next + 1 } },
+        }))
+        get().logActivity('Recorded purchase quote', `${number} · ${q.supplierName || ''}`.trim(), { entity: 'purchaseQuote', entityId: newQ.id, entityRef: number })
+        return newQ
+      },
+
+      updatePurchaseQuote: (id, patch) =>
+        set((s) => ({ purchaseQuotes: s.purchaseQuotes.map((q) => (q.id === id ? { ...q, ...patch } : q)) })),
+
+      deletePurchaseQuote: (id) => {
+        get().recycleRecord('purchaseQuotes', id)
+        return set((s) => ({ purchaseQuotes: s.purchaseQuotes.filter((q) => q.id !== id) }))
+      },
+
+      /** Purchase quote → purchase order. */
+      convertPurchaseQuoteToOrder: (id, selections) => {
+        const q = get().purchaseQuotes.find((x) => x.id === id)
+        if (!q || q.status === 'ordered') return null
+        const taxEnabled = get().settings?.tax?.enabled !== false
+        const sel = selections || defaultSelection(q.items || [], 'orderedQty')
+        const { items, applied, subtotal, taxAmount, total } = buildConversion(q.items || [], sel, { key: 'orderedQty', taxEnabled })
+        if (items.length === 0) return null
+        const po = get().addPurchaseOrder({
+          supplierId: q.supplierId, supplierName: q.supplierName,
+          purchaseQuoteId: q.id,
+          date: new Date().toISOString().slice(0, 10),
+          expectedDate: q.validUntil || '',
+          currency: q.currency, exchangeRate: q.exchangeRate,
+          items, subtotal, taxAmount, total, notes: q.notes || '',
+        })
+        const newItems = (q.items || []).map((l) => (applied[l.id] ? { ...l, orderedQty: (Number(l.orderedQty) || 0) + applied[l.id] } : l))
+        const done = docFulfillment(newItems, 'orderedQty').status === 'complete'
+        get().updatePurchaseQuote(id, { items: newItems, status: done ? 'ordered' : 'partial', purchaseOrderId: po.id })
+        return po
+      },
+
       // ─── CREDIT NOTES (Sales Returns) ──────────────────────────────
       creditNotes: [],
 
@@ -1153,7 +1557,7 @@ export const useStore = create(
         ]
         if (cn.taxAmount > 0)
           lines.push({ accountId: 'acc-vatout', debit: cn.taxAmount, credit: 0, description: 'Output Tax reversal' })
-        lines.push({ accountId: 'acc-ar', debit: 0, credit: cn.total, description: `CN ${number}` })
+        lines.push({ accountId: get().controlAccountFor('customers', cn.customerId), debit: 0, credit: cn.total, description: `CN ${number}` })
         const je = get().addJournalEntry({
           date: cn.date,
           description: `Credit Note ${number} – ${cn.customerName || ''}`,
@@ -1190,22 +1594,23 @@ export const useStore = create(
         const arBase = Math.round((netBase + vatBase) * 100) / 100
         const lines = [{ accountId: 'acc-salesret', debit: netBase, credit: 0, description: `Credit Note ${number}` }]
         if (vatBase > 0) lines.push({ accountId: 'acc-vatout', debit: vatBase, credit: 0, description: 'Output Tax reversal' })
-        lines.push({ accountId: 'acc-ar', debit: 0, credit: arBase, description: `Credit Note ${number} for ${inv.number}` })
+        lines.push({ accountId: get().controlAccountFor('customers', inv.customerId), debit: 0, credit: arBase, description: `Credit Note ${number} for ${inv.number}` })
         const je = get().addJournalEntry({ date: rDate, description: `Sales Return ${number} – ${inv.customerName || ''}`, reference: number, type: 'credit_note', departmentId: inv.departmentId || null, lines })
 
         // Restock returned stock + reverse COGS at current average cost.
         const cogsByAcc = {}, invByAcc = {}, restock = {}
         let cogs = 0
-        items.forEach((l) => {
-          if (!l.itemId) return
-          const it = get().inventoryItems.find((i) => i.id === l.itemId); if (!it) return
-          const amt = Math.round(l.quantity * (it.costPrice || 0) * 100) / 100
-          if (amt <= 0) { restock[l.itemId] = (restock[l.itemId] || 0) + l.quantity; return }
+        // A returned kit puts its components back, not the kit — the same
+        // explosion the sale used, so what comes back matches what went out.
+        Object.entries(explodeLines(items, get().inventoryItems)).forEach(([itemId, qty]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId); if (!it) return
+          restock[itemId] = (restock[itemId] || 0) + qty
+          const amt = Math.round(qty * (it.costPrice || 0) * 100) / 100
+          if (amt <= 0) return
           cogs += amt
           const cAcc = it.cogsAccountId || 'acc-cogs', iAcc = it.inventoryAccountId || 'acc-inv'
           invByAcc[iAcc] = (invByAcc[iAcc] || 0) + amt
           cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
-          restock[l.itemId] = (restock[l.itemId] || 0) + l.quantity
         })
         let cogsJeId = null
         if (cogs > 0) {
@@ -1272,7 +1677,7 @@ export const useStore = create(
         const netBase = Object.values(creditByAcc).reduce((s, v) => s + v, 0)
         const vatBase = items.reduce((s, l) => s + toBase(l.taxAmount), 0)
         const apBase = Math.round((netBase + vatBase) * 100) / 100
-        const lines = [{ accountId: 'acc-ap', debit: apBase, credit: 0, description: `Debit Note ${number} for ${pur.number}` }]
+        const lines = [{ accountId: get().controlAccountFor('suppliers', pur.supplierId), debit: apBase, credit: 0, description: `Debit Note ${number} for ${pur.number}` }]
         if (vatBase > 0) lines.push({ accountId: 'acc-vatin', debit: 0, credit: vatBase, description: 'Input Tax reversal' })
         Object.entries(creditByAcc).forEach(([a, amt]) => lines.push({ accountId: a, debit: 0, credit: amt, description: 'Goods returned' }))
         const je = get().addJournalEntry({ date: rDate, description: `Purchase Return ${number} – ${pur.supplierName || ''}`, reference: number, type: 'debit_note', departmentId: pur.departmentId || null, lines })
@@ -1450,7 +1855,7 @@ export const useStore = create(
         const apBase = Math.round((netBase + vatBase) * 100) / 100
         const lines = [{ accountId: 'acc-grni', debit: netBase, credit: 0, description: 'Clear GRNI' }]
         if (vatBase > 0) lines.push({ accountId: 'acc-vatin', debit: vatBase, credit: 0, description: 'Input Tax' })
-        lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Bill for ${po.number}` })
+        lines.push({ accountId: get().controlAccountFor('suppliers', po.supplierId), debit: 0, credit: apBase, description: `Bill for ${po.number}` })
 
         const { prefix, next } = get().settings.purchase
         const number = nextNum(prefix, next)
@@ -1506,7 +1911,7 @@ export const useStore = create(
         if (freightBase > 0) lines.push({ accountId: 'acc-freightin', debit: freightBase, credit: 0, description: 'Freight-in' })
         // AP = expenses − discount + freight + VAT (all base), so the entry balances.
         const apBase = Math.round((expLines.reduce((s, l) => s + l.debit, 0) - docDiscBase + freightBase + vatBase) * 100) / 100
-        lines.push({ accountId: 'acc-ap', debit: 0, credit: apBase, description: `Purchase ${number}` })
+        lines.push({ accountId: get().controlAccountFor('suppliers', purchase.supplierId), debit: 0, credit: apBase, description: `Purchase ${number}` })
         const je = get().addJournalEntry({
           date: purchase.date,
           description: `Purchase Invoice ${number} – ${purchase.supplierName || ''}`,
@@ -1585,7 +1990,7 @@ export const useStore = create(
         const cashBase = Math.round(netCash * payRate * 100) / 100
         const fx = Math.round((apBase - whtBase - cashBase) * 100) / 100
         const lines = [
-          { accountId: 'acc-ap', debit: apBase, credit: 0, description: `Payment for ${purchase.number}` },
+          { accountId: get().controlAccountFor('suppliers', purchase.supplierId), debit: apBase, credit: 0, description: `Payment for ${purchase.number}` },
           { accountId: payment.bankAccountId, debit: 0, credit: cashBase, description: `Payment for ${purchase.number}` },
         ]
         if (whtBase > 0) lines.push({ accountId: 'acc-wht', debit: 0, credit: whtBase, description: `Withholding tax – ${purchase.number}` })
@@ -1684,7 +2089,7 @@ export const useStore = create(
         const { prefix, next } = s.settings.debitNote
         const number = nextNum(prefix, next)
         const lines = [
-          { accountId: 'acc-ap',     debit: dn.total,    credit: 0,          description: `Debit Note ${number}` },
+          { accountId: get().controlAccountFor('suppliers', dn.supplierId), debit: dn.total, credit: 0, description: `Debit Note ${number}` },
           { accountId: 'acc-purret', debit: 0,           credit: dn.subtotal, description: `Purchase Return – ${number}` },
         ]
         if (dn.taxAmount > 0)
@@ -1841,7 +2246,11 @@ export const useStore = create(
         const s = get()
         const { prefix, next } = s.settings.fixedAsset
         const number = nextNum(prefix, next)
-        const creditAccId = asset.paymentType === 'credit' ? 'acc-ap' : (asset.bankAccountId || 'acc-bank1')
+        // Bought on credit, the liability belongs on whichever payables
+        // control account that supplier uses — the default when none is named.
+        const creditAccId = asset.paymentType === 'credit'
+          ? get().controlAccountFor('suppliers', asset.supplierId)
+          : (asset.bankAccountId || 'acc-bank1')
         const je = get().addJournalEntry({
           date: asset.purchaseDate,
           description: `Asset Purchase: ${asset.name} (${number})`,
@@ -3076,9 +3485,10 @@ export const useStore = create(
           'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
-          'approvalRequests', 'recycleBin', 'accountGroups',
+          'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
+          'salesOrders', 'purchaseQuotes',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 23, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 26, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3266,7 +3676,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 23,
+      version: 26,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3438,6 +3848,41 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 26) {
+          // Both are non-posting documents, so there is nothing to backfill —
+          // an upgrading company simply starts with none.
+          if (!persisted.salesOrders) persisted.salesOrders = []
+          if (!persisted.purchaseQuotes) persisted.purchaseQuotes = []
+          if (persisted.settings) {
+            if (!persisted.settings.salesOrder) persisted.settings.salesOrder = { prefix: 'SO-', next: 1 }
+            if (!persisted.settings.purchaseQuote) persisted.settings.purchaseQuote = { prefix: 'PQ-', next: 1 }
+          }
+        }
+        if (version < 25) {
+          // Flag the three shipped control accounts. resolveControl treats
+          // these as control accounts regardless, so this is cosmetic — it
+          // just makes them show up in the settings list alongside any the
+          // user adds.
+          if (Array.isArray(persisted.accounts)) {
+            const kinds = { 'acc-ar': 'customers', 'acc-ap': 'suppliers', 'acc-inv': 'inventoryItems' }
+            persisted.accounts = persisted.accounts.map((a) =>
+              kinds[a.id] && !a.controlFor ? { ...a, controlFor: kinds[a.id] } : a)
+          }
+        }
+        if (version < 24) {
+          // Capital accounts start empty — a sole trader needs none, and
+          // inventing partners for them would be worse than useless. The
+          // control account is added regardless so the subledger has somewhere
+          // to post the moment they add their first one.
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-capital-ctl'))
+            persisted.accounts.push({
+              id: 'acc-capital-ctl', code: '3005', name: 'Capital Accounts',
+              type: 'equity', subtype: 'equity', isSystem: true, groupId: 'grp-eq',
+            })
+          if (!persisted.capitalAccounts) persisted.capitalAccounts = []
+          if (!persisted.capitalSubaccounts?.length)
+            persisted.capitalSubaccounts = DEFAULT_SUBACCOUNTS.map((s) => ({ ...s }))
         }
         return persisted
        } catch (e) {

@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { accountTypeLabel, accountTypeColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState } from '../components/UI'
 import { buildTree, flattenGroups, groupUsage, TYPE_ORDER, COST_OF_SALES } from '../utils/accountTree'
+import { CONTROL_KINDS } from '../utils/controlAccounts'
 import { Plus, Pencil, Trash2, FolderTree, ChevronRight, ChevronDown, AlertTriangle, RotateCcw } from 'lucide-react'
 
 const TYPES = TYPE_ORDER
@@ -15,7 +16,7 @@ const SUBTYPES = {
   expense:   ['expense'],
 }
 
-const emptyForm = { code: '', name: '', type: 'asset', subtype: 'current', description: '', currency: '', groupId: '' }
+const emptyForm = { code: '', name: '', type: 'asset', subtype: 'current', description: '', currency: '', groupId: '', controlFor: '' }
 const emptyGroup = { name: '', code: '', type: 'asset', parentId: '', role: '' }
 
 const INDENT = ['ps-0', 'ps-5', 'ps-10', 'ps-14', 'ps-20', 'ps-24']
@@ -50,6 +51,7 @@ export default function ChartOfAccounts() {
     setForm({
       code: a.code, name: a.name, type: a.type, subtype: a.subtype,
       description: a.description || '', currency: a.currency || '', groupId: a.groupId || '',
+      controlFor: a.controlFor || '',
     })
     setModal(true)
   }
@@ -268,6 +270,7 @@ export default function ChartOfAccounts() {
                       <span className="font-medium text-gray-800 dark:text-slate-100 text-sm">{a.name}</span>
                       {a.currency && a.currency !== base && <span className="ms-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold">{a.currency}</span>}
                       {a.isSystem && <span className="ms-2 text-[10px] bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 px-1.5 py-0.5 rounded">{t('system')}</span>}
+                      {a.controlFor && <span className="ms-2 text-[10px] bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 px-1.5 py-0.5 rounded font-medium">{t(CONTROL_KINDS[a.controlFor]?.label || 'control')}</span>}
                       {a.description && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 truncate">{a.description}</p>}
                     </div>
                     <span className="text-gray-400 dark:text-slate-500 capitalize text-xs hidden sm:inline">{a.subtype?.replace('_', ' ')}</span>
@@ -297,7 +300,7 @@ export default function ChartOfAccounts() {
             <Select label="Type" value={form.type} onChange={(e) => {
               // Changing type invalidates the chosen group, which belongs to
               // the old type — clear it rather than save a mismatch.
-              setForm((f) => ({ ...f, type: e.target.value, subtype: SUBTYPES[e.target.value][0], groupId: '' }))
+              setForm((f) => ({ ...f, type: e.target.value, subtype: SUBTYPES[e.target.value][0], groupId: '', controlFor: '' }))
             }}>
               {TYPES.map((k) => <option key={k} value={k}>{accountTypeLabel(k)}</option>)}
             </Select>
@@ -314,6 +317,20 @@ export default function ChartOfAccounts() {
               <option key={s} value={s}>{s.replace('_', ' ')}</option>
             ))}
           </Select>
+          {(form.type === 'asset' || form.type === 'liability') && (
+            <>
+              <Select label={t('Use as a control account for')} value={form.controlFor || ''}
+                onChange={(e) => setField('controlFor', e.target.value)}>
+                <option value="">{t('— Ordinary account —')}</option>
+                {form.type === 'asset' && <option value="customers">{t('Receivables')}</option>}
+                {form.type === 'asset' && <option value="inventoryItems">{t('Inventory')}</option>}
+                {form.type === 'liability' && <option value="suppliers">{t('Payables')}</option>}
+              </Select>
+              <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
+                {t('A control account holds balances for a group of customers, suppliers or items — so you can show, say, local and export receivables as separate lines on the balance sheet.')}
+              </p>
+            </>
+          )}
           <Input label="Description (optional)" value={form.description} onChange={(e) => setField('description', e.target.value)} placeholder="Brief description" />
           <Select label={t('Currency')} value={form.currency} onChange={(e) => setField('currency', e.target.value)}>
             <option value="">{t('Base currency')} ({base})</option>

@@ -1,7 +1,10 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
+import { isKit, kitCost, kitAvailability, describeKit } from '../utils/kits'
+import ItemImages from '../components/ItemImages'
+import { primaryThumbs, deleteImagesFor } from '../utils/itemImages'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -11,7 +14,7 @@ const emptyForm = {
   name: '', code: '', description: '', unit: 'pcs', category: '', barcode: '',
   costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
-  taxRate: 0,
+  taxRate: 0, isKit: false, components: [],
 }
 
 export default function Inventory() {
@@ -22,6 +25,18 @@ export default function Inventory() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
   const [search, setSearch] = useState('')
+  const [thumbs, setThumbs] = useState({})
+
+  // Thumbnails come from IndexedDB, not the store: full images would bloat
+  // every store write, and a list of two hundred items should render from two
+  // hundred small pictures rather than two hundred large ones.
+  useEffect(() => {
+    let alive = true
+    primaryThumbs(inventoryItems.map((i) => i.id))
+      .then((m) => { if (alive) setThumbs(m) })
+      .catch(() => {})
+    return () => { alive = false }
+  }, [inventoryItems])
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
   const openEdit = (item) => { setEditing(item); setForm({ ...emptyForm, ...item }); setModal(true) }
@@ -38,14 +53,27 @@ export default function Inventory() {
       reorderLevel: parseFloat(form.reorderLevel) || 0,
       maxLevel: parseFloat(form.maxLevel) || 0,
       taxRate: parseFloat(form.taxRate) || 0,
+      isKit: !!form.isKit,
+      components: form.isKit
+        ? (form.components || []).filter((c) => c.itemId).map((c) => ({ itemId: c.itemId, quantity: parseFloat(c.quantity) || 0 }))
+        : [],
     }
-    if (editing) updateInventoryItem(editing.id, data)
-    else addInventoryItem(data)
+    try {
+      if (editing) updateInventoryItem(editing.id, data)
+      else addInventoryItem(data)
+    } catch (e) {
+      // The store refuses a kit that would loop; show its reason rather than
+      // failing silently and leaving the modal open with no explanation.
+      return alert(String(e.message || e).replace('KIT_INVALID:', '').trim())
+    }
     close()
   }
 
   const handleDelete = (item) => {
-    if (confirm(`Delete "${item.name}"?`)) deleteInventoryItem(item.id)
+    if (!confirm(`Delete "${item.name}"?`)) return
+    deleteInventoryItem(item.id)
+    // Otherwise the photos linger in IndexedDB with nothing pointing at them.
+    deleteImagesFor(item.id).catch(() => {})
   }
 
   const revenueAccounts = accounts.filter((a) => a.type === 'revenue')
@@ -115,7 +143,23 @@ export default function Inventory() {
                 <Tr key={item.id}>
                   <Td className="font-mono text-gray-500 dark:text-slate-400 text-xs">{item.code || '—'}</Td>
                   <Td>
-                    <p className="font-medium text-gray-900 dark:text-slate-100">{item.name}</p>
+                    <p className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                      {thumbs[item.id] && (
+                        <img src={thumbs[item.id]} alt="" loading="lazy"
+                          className="w-8 h-8 rounded object-cover ring-1 ring-gray-200 dark:ring-surface-700 flex-shrink-0" />
+                      )}
+                      {item.name}
+                      {isKit(item) && (
+                        <span className="ms-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold align-middle">
+                          {t('kit')}
+                        </span>
+                      )}
+                    </p>
+                    {isKit(item) && (
+                      <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                        {describeKit(item, inventoryItems)} · {t('can build')} {kitAvailability(item, inventoryItems)}
+                      </p>
+                    )}
                     {item.description && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-xs">{item.description}</p>}
                   </Td>
                   <Td className="text-gray-500 dark:text-slate-400">{item.unit}</Td>
@@ -174,6 +218,59 @@ export default function Inventory() {
               {revenueAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
             </Select>
           </div>
+          {/* Pictures */}
+          <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
+            <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-2">{t('Pictures')}</p>
+            <ItemImages itemId={editing?.id} />
+          </div>
+
+          {/* Kit builder */}
+          <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
+            <label className="flex items-start gap-2.5 text-sm cursor-pointer">
+              <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-gray-300 dark:border-slate-600"
+                checked={!!form.isKit} onChange={(e) => setField('isKit', e.target.checked)} />
+              <span className="text-gray-700 dark:text-slate-200">
+                {t('This item is a kit')}
+                <span className="block text-xs text-gray-400 dark:text-slate-500">
+                  {t('Sold as one line, but made of other items. It holds no stock of its own — selling one takes its components off the shelf and costs them to sales.')}
+                </span>
+              </span>
+            </label>
+
+            {form.isKit && (
+              <div className="mt-3 space-y-2">
+                {(form.components || []).map((c, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <Select value={c.itemId} className="flex-1"
+                      onChange={(e) => setField('components', form.components.map((x, i) => (i === idx ? { ...x, itemId: e.target.value } : x)))}>
+                      <option value="">{t('— Choose an item —')}</option>
+                      {inventoryItems.filter((i) => i.id !== editing?.id && !i.isKit).map((i) => (
+                        <option key={i.id} value={i.id}>{i.code ? `${i.code} — ` : ''}{i.name}</option>
+                      ))}
+                    </Select>
+                    <input type="number" min="0" step="any" value={c.quantity}
+                      placeholder={t('Qty')}
+                      className="w-24 border rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600"
+                      onChange={(e) => setField('components', form.components.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))} />
+                    <button type="button" title={t('Remove')}
+                      onClick={() => setField('components', form.components.filter((_, i) => i !== idx))}
+                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
+                  </div>
+                ))}
+                <Btn size="sm" variant="secondary" onClick={() => setField('components', [...(form.components || []), { itemId: '', quantity: 1 }])}>
+                  + {t('Add component')}
+                </Btn>
+                {(form.components || []).some((c) => c.itemId) && (
+                  <p className="text-xs text-gray-500 dark:text-slate-400 pt-1">
+                    {t('Cost of one kit')}: <span className="font-semibold tabular-nums">{sym}{kitCost({ isKit: true, components: (form.components || []).map((c) => ({ itemId: c.itemId, quantity: parseFloat(c.quantity) || 0 })) }, inventoryItems).toFixed(2)}</span>
+                    {' · '}
+                    {t('Can build')} <span className="font-semibold tabular-nums">{kitAvailability({ isKit: true, components: (form.components || []).map((c) => ({ itemId: c.itemId, quantity: parseFloat(c.quantity) || 0 })) }, inventoryItems)}</span> {t('from stock')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>

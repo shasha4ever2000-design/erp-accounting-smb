@@ -119,3 +119,54 @@ html.dark ::-webkit-scrollbar-thumb { background: rgb(71 85 105 / 0.6); backgrou
 html.dark ::-webkit-scrollbar-thumb:hover { background: rgb(100 116 139 / 0.8); background-clip: padding-box; border: 2px solid transparent; }
 * { scrollbar-width: thin; scrollbar-color: rgb(148 163 184 / 0.5) transparent; }
 html.dark * { scrollbar-color: rgb(71 85 105 / 0.7) transparent; }
+
+/* ─── Printable asset / item labels ─────────────────────────────────
+   Sizes are in millimetres because the output is physical: a 63×38mm
+   label has to come out of the printer at 63×38mm, whatever the screen
+   is doing. On screen the sheet is shown on a white page so what you
+   see is what gets peeled off. */
+.label-page {
+  background: #fff;
+  padding: 10mm;
+  margin: 0 auto 1.5rem;
+  width: 210mm;
+  box-shadow: 0 1px 3px rgba(0,0,0,.1), 0 8px 24px -12px rgba(0,0,0,.25);
+  border-radius: 4px;
+}
+.label-grid { display: grid; justify-content: start; }
+.label-cell {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  padding: 2mm;
+  overflow: hidden;
+  box-sizing: border-box;
+  color: #000;
+  background: #fff;
+  /* A hairline guide so the sheet can be lined up in the printer; it is
+     dropped when actually printing so it never lands on the sticker. */
+  outline: 0.2mm dashed #d4d4d4;
+  outline-offset: -0.1mm;
+}
+.label-blank { background: repeating-linear-gradient(45deg, #fafafa, #fafafa 2mm, #f0f0f0 2mm, #f0f0f0 4mm); }
+.label-qr { width: 14mm; height: 14mm; flex: none; image-rendering: pixelated; }
+.label-text { min-width: 0; line-height: 1.25; font-family: ui-sans-serif, system-ui, sans-serif; }
+.label-code { font-family: ui-monospace, monospace; font-size: 2.6mm; font-weight: 700; letter-spacing: .02em; }
+.label-title {
+  font-size: 3mm; font-weight: 600; margin-top: .4mm;
+  overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.label-detail { font-size: 2.2mm; color: #444; margin-top: .5mm; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.label-company { font-size: 2mm; color: #777; margin-top: .5mm; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.label-pagefoot { text-align: center; font-size: .7rem; color: #9ca3af; margin-top: .5rem; }
+
+@media print {
+  @page { size: A4; margin: 0; }
+  .label-page {
+    box-shadow: none; border-radius: 0; margin: 0; padding: 10mm;
+    page-break-after: always; break-after: page;
+  }
+  .label-page:last-child { page-break-after: auto; break-after: auto; }
+  .label-cell { outline: none; }
+  .label-blank { background: #fff; }
+}
