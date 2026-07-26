@@ -6,6 +6,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
 import { numberToWords } from '../utils/numberToWords'
+import { DocumentHeader, DocumentFooter } from '../components/DocumentBrand'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
@@ -131,34 +132,28 @@ export default function InvoiceView() {
 
       <div className="max-w-3xl mx-auto">
         <Card className="p-8 print:shadow-none">
-          {/* Header */}
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-start gap-4">
-              {company.logo && <img src={company.logo} alt="logo" className="h-16 w-auto object-contain" />}
-              <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-slate-100">{company.name}</h1>
-              {company.arabicName && <p className="text-xl font-bold text-gray-800 dark:text-slate-100" dir="rtl">{company.arabicName}</p>}
-              {company.address && <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
-              {company.phone && <p className="text-gray-400 dark:text-slate-500 text-sm">{company.phone}</p>}
-              {company.email && <p className="text-gray-400 dark:text-slate-500 text-sm">{company.email}</p>}
-              {zatca.enabled && zatca.vatNumber
-                ? <p className="text-gray-600 dark:text-slate-300 text-sm font-medium mt-1">VAT No · الرقم الضريبي: {zatca.vatNumber}</p>
-                : company.taxId && <p className="text-gray-400 dark:text-slate-500 text-sm">Tax ID: {company.taxId}</p>}
-              {zatca.enabled && zatca.crNumber && <p className="text-gray-400 dark:text-slate-500 text-sm">CR · السجل التجاري: {zatca.crNumber}</p>}
+          {/* Header — layout, logo and accent come from Settings › Branding */}
+          <DocumentHeader
+            docType="invoice"
+            title="INVOICE"
+            right={
+              <div className="text-end">
+                {zatca.enabled && (
+                  <>
+                    <p className="text-sm font-semibold text-gray-600 dark:text-slate-300" dir="rtl">فاتورة ضريبية مبسطة</p>
+                    <p className="text-xs text-gray-400 dark:text-slate-500">{t('Simplified Tax Invoice')}</p>
+                  </>
+                )}
+                <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{invoice.number}</p>
+                <Badge className={`mt-2 ${statusColor(invoice.status)}`}>
+                  {invoice.status.toUpperCase()}
+                </Badge>
+                {zatca.enabled && zatca.crNumber && (
+                  <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">CR · السجل التجاري: {zatca.crNumber}</p>
+                )}
               </div>
-            </div>
-            <div className="text-right">
-              <p className="text-4xl font-black" style={{ color: company.accentColor || '#2563eb' }}>INVOICE</p>
-              {zatca.enabled
-                ? <p className="text-sm font-semibold text-gray-600 dark:text-slate-300" dir="rtl">فاتورة ضريبية مبسطة</p>
-                : null}
-              {zatca.enabled && <p className="text-xs text-gray-400 dark:text-slate-500">{t('Simplified Tax Invoice')}</p>}
-              <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{invoice.number}</p>
-              <Badge className={`mt-2 ${statusColor(invoice.status)}`}>
-                {invoice.status.toUpperCase()}
-              </Badge>
-            </div>
-          </div>
+            }
+          />
 
           {/* Billing & Dates */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
@@ -297,13 +292,10 @@ export default function InvoiceView() {
             </div>
           )}
 
-          {/* Bank details / payment instructions */}
-          {settings.invoice?.bankDetails && (
-            <div className="mt-6 pt-6 border-t border-gray-100 dark:border-surface-750">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{t('Payment Details')}</p>
-              <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-line">{settings.invoice.bankDetails}</p>
-            </div>
-          )}
+          {/* Payment details, terms, signature and footer — all from Branding.
+              Bank details still come from the invoice settings, since that is
+              where they have always been kept. */}
+          <DocumentFooter docType="invoice" bankDetails={settings.invoice?.bankDetails} />
 
           {/* Payment history */}
           {invoice.payments?.length > 0 && (

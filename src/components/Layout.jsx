@@ -61,6 +61,7 @@ const NAV = [
   { label: 'Inventory Control',  path: '/inventory-control',icon: BarChart3 },
   { label: 'Warehouses',         path: '/warehouses',       icon: Warehouse },
   { label: 'Stock Adjustments',  path: '/stock-adjustments',icon: Sliders },
+  { label: 'Stock Counts',       path: '/stock-counts',    icon: ClipboardCheck },
   { label: 'Asset & Item Labels',path: '/labels',           icon: Tag },
   { label: 'Manufacturing',      path: '/manufacturing',    icon: Factory },
 

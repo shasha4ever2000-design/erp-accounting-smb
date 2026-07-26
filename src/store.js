@@ -7,10 +7,15 @@ import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
+import {
+  COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
+  postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
+} from './utils/stockCount'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
+import { defaultBranding, validateBranding } from './utils/branding'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
@@ -113,6 +118,7 @@ const DEFAULT_BANK_ACCOUNTS = [
 
 const DEFAULT_SETTINGS = {
   company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
+  branding:      defaultBranding(),
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
@@ -123,6 +129,7 @@ const DEFAULT_SETTINGS = {
   receipt:       { prefix: 'REC-',  next: 1 },
   payment:       { prefix: 'PAY-',  next: 1 },
   quotation:     { prefix: 'QUO-',  next: 1 },
+  stockCount:    { prefix: 'SC-',   next: 1 },
   salesOrder:    { prefix: 'SO-',   next: 1 },
   purchaseQuote: { prefix: 'PQ-',   next: 1 },
   purchaseOrder: { prefix: 'PO-',   next: 1 },
@@ -1392,6 +1399,138 @@ export const useStore = create(
         const status = docFulfillment(newItems, 'invoicedQty').status === 'complete' ? 'invoiced' : 'partial'
         get().updateQuotation(id, { items: newItems, status, invoiceId: invoice.id, invoiceIds: [...(q.invoiceIds || []), invoice.id] })
         return invoice
+      },
+
+      // ─── DOCUMENT BRANDING ─────────────────────────────────────────
+      updateBranding: (patch) => {
+        const check = validateBranding(patch)
+        if (!check.ok) throw new Error(`BRANDING_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({
+          settings: { ...s.settings, branding: { ...defaultBranding(), ...s.settings.branding, ...patch } },
+        }))
+      },
+
+      /** Per-document overrides, merged rather than replaced. */
+      updateDocBranding: (docType, patch) =>
+        set((s) => {
+          const base = { ...defaultBranding(), ...s.settings.branding }
+          return {
+            settings: {
+              ...s.settings,
+              branding: {
+                ...base,
+                perDoc: { ...(base.perDoc || {}), [docType]: { ...((base.perDoc || {})[docType] || {}), ...patch } },
+              },
+            },
+          }
+        }),
+
+      /** Called once the old in-settings logo has been copied to IndexedDB. */
+      clearLegacyLogo: () =>
+        set((s) => ({ settings: { ...s.settings, company: { ...s.settings.company, logo: '' } } })),
+
+      // ─── STOCK COUNTS ──────────────────────────────────────────────
+      // Making the books agree with the shelves. See utils/stockCount.js —
+      // nearly all the care in this feature is about what posting must refuse
+      // to touch, above all that an uncounted line is never treated as a zero.
+      stockCounts: [],
+
+      startStockCount: ({ date, warehouseId = '', itemIds = null, notes = '' } = {}) => {
+        const s = get()
+        const { prefix, next } = s.settings.stockCount
+        const number = nextNum(prefix, next)
+        const lines = buildCountSheet(s.inventoryItems, { warehouseId, itemIds })
+        if (!lines.length) throw new Error('COUNT_NO_ITEMS')
+        const count = {
+          id: uuid(), number,
+          date: date || new Date().toISOString().slice(0, 10),
+          warehouseId, notes,
+          status: COUNT_STATUS.open,
+          lines,
+          startedAt: new Date().toISOString(),
+          startedBy: get().currentUser?.()?.name || '',
+          journalEntryId: null,
+        }
+        set((st) => ({
+          stockCounts: [...st.stockCounts, count],
+          settings: { ...st.settings, stockCount: { ...st.settings.stockCount, next: next + 1 } },
+        }))
+        get().logActivity('Started stock count', `${number} · ${lines.length} line(s)`, { entity: 'stockCount', entityId: count.id, entityRef: number })
+        return count
+      },
+
+      updateStockCount: (id, patch) =>
+        set((s) => ({
+          stockCounts: s.stockCounts.map((c) => {
+            if (c.id !== id) return c
+            // A posted count is history — its lines are what the adjustment was
+            // based on, so they must not drift afterwards.
+            if (c.status === COUNT_STATUS.posted) return c
+            return { ...c, ...patch }
+          }),
+        })),
+
+      deleteStockCount: (id) => {
+        const c = get().stockCounts.find((x) => x.id === id)
+        if (c?.status === COUNT_STATUS.posted) throw new Error('COUNT_POSTED')
+        get().recycleRecord('stockCounts', id)
+        return set((s) => ({ stockCounts: s.stockCounts.filter((x) => x.id !== id) }))
+      },
+
+      /**
+       * Post the count: adjust stock to what was found, and book the value
+       * difference. Only counted lines that actually differ are touched.
+       */
+      postStockCount: (id) => {
+        const st = get()
+        const count = st.stockCounts.find((c) => c.id === id)
+        const check = validateCount(count, { lockDate: st.settings?.accounting?.lockDate })
+        if (!check.ok) throw new Error(`COUNT_INVALID:${check.errors.join(' ')}`)
+
+        const lines = countPostingLines(count, st.inventoryItems)
+        const changes = countStockChanges(count)
+        const summary = summariseCount(count.lines || [])
+
+        let je = null
+        if (lines.length) {
+          je = get().addJournalEntry({
+            date: count.date,
+            description: `Stock count ${count.number}`,
+            reference: count.number,
+            type: 'stock_count',
+            lines,
+          })
+        }
+
+        const wh = count.warehouseId
+        set((s) => ({
+          inventoryItems: s.inventoryItems.map((it) => {
+            if (!(it.id in changes)) return it
+            const target = changes[it.id]
+            const patch = { quantity: target }
+            if (wh && it.stockByWarehouse) {
+              const map = { ...it.stockByWarehouse }
+              const before = Number(map[wh]) || 0
+              map[wh] = target
+              // Counting one warehouse says nothing about the others, so the
+              // total moves by this warehouse's delta rather than being
+              // replaced by its count.
+              patch.quantity = Math.round(((Number(it.quantity) || 0) + (target - before)) * 1e6) / 1e6
+              patch.stockByWarehouse = map
+            }
+            return { ...it, ...patch }
+          }),
+          stockCounts: s.stockCounts.map((c) => (c.id === id
+            ? { ...c, status: COUNT_STATUS.posted, postedAt: new Date().toISOString(), journalEntryId: je?.id || null, summary }
+            : c)),
+        }))
+
+        get().logActivity(
+          'Posted stock count',
+          `${count.number} · ${summary.gains} up, ${summary.losses} down`,
+          { entity: 'stockCount', entityId: id, entityRef: count.number, severity: summary.netValue === 0 ? 'info' : 'warning' }
+        )
+        return { journalEntryId: je?.id || null, summary, adjusted: Object.keys(changes).length }
       },
 
       // ─── SALES ORDERS ──────────────────────────────────────────────
@@ -3486,9 +3625,9 @@ export const useStore = create(
           'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
-          'salesOrders', 'purchaseQuotes',
+          'salesOrders', 'purchaseQuotes', 'stockCounts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 26, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 28, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3676,7 +3815,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 26,
+      version: 28,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3848,6 +3987,20 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 28) {
+          // Branding gains its own settings block. The logo itself is moved
+          // out of the store on first render — see useBrandAsset — because a
+          // migration cannot do async IndexedDB work.
+          if (persisted.settings)
+            persisted.settings.branding = { ...defaultBranding(), ...(persisted.settings.branding || {}) }
+          if (persisted.settings?.company?.accentColor && persisted.settings.branding)
+            persisted.settings.branding.accentColor = persisted.settings.company.accentColor
+        }
+        if (version < 27) {
+          if (!persisted.stockCounts) persisted.stockCounts = []
+          if (persisted.settings && !persisted.settings.stockCount)
+            persisted.settings.stockCount = { prefix: 'SC-', next: 1 }
         }
         if (version < 26) {
           // Both are non-posting documents, so there is nothing to backfill —

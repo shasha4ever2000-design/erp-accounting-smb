@@ -170,3 +170,21 @@ html.dark * { scrollbar-color: rgb(71 85 105 / 0.7) transparent; }
   .label-cell { outline: none; }
   .label-blank { background: #fff; }
 }
+
+/* ─── Branded documents ─────────────────────────────────────────────
+   Browsers drop background colours when printing unless told otherwise.
+   Without this the accent band on a branded invoice comes out as a white
+   gap with white text in it — worse than having no branding at all. */
+.doc-band,
+.doc-brand [style*="background"] {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media print {
+  .doc-brand, .doc-brand-footer { color: #000; }
+  /* Keep the signature block and payment details with the document rather
+     than orphaned onto a page of their own. */
+  .doc-brand-footer { break-inside: avoid; page-break-inside: avoid; }
+  .doc-brand { break-after: avoid; page-break-after: avoid; }
+}
