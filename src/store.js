@@ -19,6 +19,15 @@ import { defaultBranding, validateBranding } from './utils/branding'
 import { defaultTerms, resolveTerms, dueDateFor, settlementDiscount, discountLines, validateTerms } from './utils/paymentTerms'
 import { nextBatch as nextCycleBatch, defaultPolicy as defaultCyclePolicy } from './utils/cycleCount'
 import {
+  emptyContract, contractFor as contractInForce, serviceStart as serviceStartOf,
+  validateContract, grossOf as contractGross, contributoryWage,
+} from './utils/contracts'
+import {
+  defaultEosbSettings, eosbAward, accruedProvision, accrualSchedule,
+  accrualLines as eosbAccrualLines, settlementLines as eosbSettlementLines, EOSB_ACCOUNTS,
+} from './utils/endOfService'
+import { sheetFor, summarise as summariseAttendance, payrollImpact, validateDay, periodOf } from './utils/attendance'
+import {
   CF_ENTITIES, newField as newCustomField, normaliseField as normaliseCustomField,
   fieldsFor as customFieldsFor, coerceValues as coerceCustomValues,
   validateField as validateCustomField, migrateLegacy as migrateCustomFieldSettings,
@@ -76,6 +85,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-paye',   code: '2201', name: 'PAYE Tax Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-sspay',  code: '2202', name: 'Social Security Payable',    type: 'liability', subtype: 'current',     isSystem: false },
+  { id: 'acc-eosb-prov', code: '2215', name: 'End-of-Service Provision',  type: 'liability', subtype: 'noncurrent',  isSystem: false },
   { id: 'acc-expclaim',code:'2210', name: 'Employee Expense Claims',    type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-accrued',code: '2300', name: 'Accrued Expenses',           type: 'liability', subtype: 'current',     isSystem: false },
   // LIABILITIES – Non-Current
@@ -114,6 +124,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-purchdisc',code:'5030',name: 'Purchase Discounts',        type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-freightin',code:'5031',name: 'Freight-In / Delivery',     type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-gosiemp',code: '5015', name: 'Employer Social Insurance (GOSI)', type: 'expense', subtype: 'expense', isSystem: false },
+  { id: 'acc-eosb-exp', code: '5016', name: 'End-of-Service Benefit',          type: 'expense', subtype: 'expense', isSystem: false },
   { id: 'acc-purret', code: '5012', name: 'Purchase Returns',           type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-mfgcost',code: '5013', name: 'Manufacturing Costs',        type: 'expense',   subtype: 'expense',     isSystem: false },
 ]
@@ -150,6 +161,7 @@ const DEFAULT_SETTINGS = {
   approvals:     defaultApprovalSettings(), // threshold-based maker-checker
   opening:       { date: '', posted: false, journalEntryId: null, postedAt: '', counts: null }, // migration cutover
   payroll:       { prefix: 'PR-',    next: 1 },
+  hr:            { eosb: defaultEosbSettings(), restDays: [5, 6], deductLate: false, lateGraceMinutes: 0 },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
   lease:         { prefix: 'LEASE-', next: 1 },
@@ -2451,6 +2463,236 @@ export const useStore = create(
         if (gone) get().logActivity('Deleted employee', gone.name || '', { entity: 'employee', entityId: id, entityRef: gone.name })
       },
 
+      // ─── EMPLOYMENT CONTRACTS ──────────────────────────────────────
+      //
+      // An employee has a history of contracts and exactly one is in force on
+      // any day. A pay rise is a new contract, not an edit — which is what
+      // makes "what were they on last March" answerable, and what makes an
+      // end-of-service figure defensible.
+      employmentContracts: [],
+
+      addContract: (data) => {
+        const check = validateContract(data, get().employmentContracts)
+        if (!check.ok) throw new Error(`CONTRACT_INVALID: ${check.errors.join(' ')}`)
+        const c = { ...emptyContract(), ...data, id: uuid(), createdAt: new Date().toISOString() }
+        set((s) => ({ employmentContracts: [...s.employmentContracts, c] }))
+        get().logActivity('Added contract', `${get().employees.find((e) => e.id === c.employeeId)?.name || ''}`)
+        return c
+      },
+
+      updateContract: (id, patch) => {
+        const before = get().employmentContracts.find((c) => c.id === id)
+        if (!before) return null
+        const merged = { ...before, ...patch }
+        const check = validateContract(merged, get().employmentContracts, { id })
+        if (!check.ok) throw new Error(`CONTRACT_INVALID: ${check.errors.join(' ')}`)
+        set((s) => ({ employmentContracts: s.employmentContracts.map((c) => (c.id === id ? merged : c)) }))
+        get().logChange('Updated contract', before, merged, { entity: 'contract' })
+        return merged
+      },
+
+      deleteContract: (id) => {
+        const gone = get().employmentContracts.find((c) => c.id === id)
+        set((s) => ({ employmentContracts: s.employmentContracts.filter((c) => c.id !== id) }))
+        if (gone) get().logActivity('Deleted contract', gone.employeeId)
+      },
+
+      /** The contract in force for someone on a date (today by default). */
+      contractFor: (employeeId, asAt) =>
+        contractInForce(employeeId, get().employmentContracts, asAt || new Date().toISOString().slice(0, 10)),
+
+      /** When service began — the earliest contract, not the current one. */
+      serviceStartFor: (employeeId) => serviceStartOf(employeeId, get().employmentContracts),
+
+      // ─── END-OF-SERVICE ────────────────────────────────────────────
+      eosbAccruals: [],
+
+      eosbSettings: () => ({ ...defaultEosbSettings(), ...(get().settings.hr?.eosb || {}) }),
+
+      /** What is owed if this person left today (or on a given day). */
+      eosbFor: (employeeId, { asAt, reason = 'termination' } = {}) => {
+        const cfg = get().eosbSettings()
+        const at = asAt || new Date().toISOString().slice(0, 10)
+        const contract = get().contractFor(employeeId, at)
+        if (!contract) return null
+        return eosbAward(contract, {
+          serviceStart: get().serviceStartFor(employeeId), asAt: at, reason,
+          rule: cfg.rule, daysPerYear: cfg.daysPerYear, wageBasis: cfg.wageBasis,
+        })
+      },
+
+      /** What has been provided for one employee so far, from posted accruals. */
+      eosbProvidedFor: (employeeId) =>
+        Math.round(get().eosbAccruals
+          .filter((a) => a.status === 'posted')
+          .reduce((s, a) => s + ((a.lines || []).find((l) => l.employeeId === employeeId)?.movement || 0), 0) * 100) / 100,
+
+      /** The accrual due for a period, per employee — nothing is posted yet. */
+      eosbSchedule: (asAt) => {
+        const cfg = get().eosbSettings()
+        const at = asAt || new Date().toISOString().slice(0, 10)
+        if (cfg.rule === 'none') return { lines: [], total: 0, closing: 0 }
+        const rows = get().employees
+          .filter((e) => e.status === 'active')
+          .map((e) => {
+            const contract = get().contractFor(e.id, at)
+            if (!contract) return null
+            return {
+              employeeId: e.id, employeeName: e.name, contract,
+              serviceStart: get().serviceStartFor(e.id),
+              alreadyProvided: get().eosbProvidedFor(e.id),
+            }
+          })
+          .filter(Boolean)
+        return accrualSchedule(rows, { to: at, rule: cfg.rule, daysPerYear: cfg.daysPerYear, wageBasis: cfg.wageBasis })
+      },
+
+      /** Post the accrual: Dr end-of-service expense, Cr the provision. */
+      postEosbAccrual: (asAt, { period = '' } = {}) => {
+        const at = asAt || new Date().toISOString().slice(0, 10)
+        const schedule = get().eosbSchedule(at)
+        if (!schedule.lines.length || Math.abs(schedule.total) < 0.005)
+          throw new Error('EOSB_NOTHING_TO_POST')
+        const label = period || at.slice(0, 7)
+        const je = get().addJournalEntry({
+          date: at,
+          description: `End-of-service accrual — ${label}`,
+          reference: label, type: 'eosb_accrual',
+          lines: eosbAccrualLines(schedule.total, { reference: label }),
+        })
+        const record = {
+          id: uuid(), date: at, period: label, status: 'posted',
+          total: schedule.total, closing: schedule.closing,
+          lines: schedule.lines, journalEntryId: je.id,
+          createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ eosbAccruals: [...s.eosbAccruals, record] }))
+        get().logActivity('Posted end-of-service accrual', label)
+        return record
+      },
+
+      deleteEosbAccrual: (id) =>
+        set((s) => {
+          const rec = s.eosbAccruals.find((a) => a.id === id)
+          get().assertJEsUnlocked(rec?.journalEntryId)
+          return {
+            eosbAccruals: s.eosbAccruals.filter((a) => a.id !== id),
+            journalEntries: s.journalEntries.filter((j) => j.id !== rec?.journalEntryId),
+          }
+        }),
+
+      /**
+       * Settle a leaver: release their provision, charge or credit the
+       * difference, and put what they are owed into salaries payable.
+       */
+      settleEosb: (employeeId, { asAt, reason = 'termination', endContract = true } = {}) => {
+        const at = asAt || new Date().toISOString().slice(0, 10)
+        const award = get().eosbFor(employeeId, { asAt: at, reason })
+        if (!award) throw new Error('EOSB_NO_CONTRACT')
+        const provided = get().eosbProvidedFor(employeeId)
+        const name = get().employees.find((e) => e.id === employeeId)?.name || ''
+        const lines = eosbSettlementLines(award.award, provided, { reference: name })
+        if (!lines.length) throw new Error('EOSB_NOTHING_TO_SETTLE')
+
+        const je = get().addJournalEntry({
+          date: at,
+          description: `End-of-service settlement — ${name}`,
+          reference: name, type: 'eosb_settlement', lines,
+        })
+        // The release is recorded as a negative movement so the provision this
+        // person carries falls back to nil and cannot be double-counted.
+        const record = {
+          id: uuid(), date: at, period: at.slice(0, 7), status: 'posted',
+          kind: 'settlement', employeeId, reason,
+          total: -provided, closing: 0,
+          award: award.award, provided,
+          lines: [{ employeeId, employeeName: name, movement: -provided, opening: provided, closing: 0 }],
+          journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ eosbAccruals: [...s.eosbAccruals, record] }))
+
+        if (endContract) {
+          const c = get().contractFor(employeeId, at)
+          if (c) set((s) => ({
+            employmentContracts: s.employmentContracts.map((x) =>
+              x.id === c.id ? { ...x, status: 'terminated', endDate: x.endDate || at, endReason: reason } : x),
+          }))
+          get().updateEmployee(employeeId, { status: 'inactive' })
+        }
+        get().logActivity('Settled end-of-service', name)
+        return { record, award, provided }
+      },
+
+      // ─── ATTENDANCE ────────────────────────────────────────────────
+      //
+      // One record per employee per day. A day with no record is not an
+      // absence — it is a day nobody has said anything about, and it deducts
+      // nothing. See utils/attendance.js.
+      attendance: [],
+
+      attendanceSheet: (employeeId, period) =>
+        sheetFor(employeeId, period, get().attendance, { restDays: get().settings.hr?.restDays || [5, 6] }),
+
+      setAttendanceDay: (employeeId, date, patch) => {
+        const check = validateDay({ ...patch })
+        if (!check.ok) throw new Error(`ATTENDANCE_INVALID: ${check.errors.join(' ')}`)
+        const key = String(date).slice(0, 10)
+        set((s) => {
+          const at = s.attendance.findIndex((r) => r.employeeId === employeeId && String(r.date).slice(0, 10) === key)
+          const next = [...s.attendance]
+          if (at >= 0) next[at] = { ...next[at], ...patch }
+          else next.push({ id: uuid(), employeeId, date: key, status: '', hours: '', overtimeHours: '', lateMinutes: '', note: '', ...patch })
+          return { attendance: next }
+        })
+      },
+
+      /** Save a whole month at once, replacing that employee's days in it. */
+      saveAttendanceSheet: (employeeId, period, days = []) => {
+        const keep = get().attendance.filter(
+          (r) => !(r.employeeId === employeeId && periodOf(r.date) === period)
+        )
+        // Only days that say something are stored; a blank day is the absence
+        // of a record, not a record saying "blank".
+        const rows = days
+          .filter((d) => d.status || d.hours || d.overtimeHours || d.lateMinutes || d.note)
+          .map((d) => ({
+            id: d.id || uuid(), employeeId, date: String(d.date).slice(0, 10),
+            status: d.status || '', hours: d.hours ?? '', overtimeHours: d.overtimeHours ?? '',
+            lateMinutes: d.lateMinutes ?? '', note: d.note || '',
+          }))
+        set(() => ({ attendance: [...keep, ...rows] }))
+        get().logActivity('Saved attendance', `${get().employees.find((e) => e.id === employeeId)?.name || ''} · ${period}`)
+        return rows.length
+      },
+
+      clearAttendanceMonth: (employeeId, period) =>
+        set((s) => ({
+          attendance: s.attendance.filter((r) => !(r.employeeId === employeeId && periodOf(r.date) === period)),
+        })),
+
+      /** What a month's attendance does to one person's pay. */
+      attendanceImpact: (employeeId, period) => {
+        const contract = get().contractFor(employeeId, `${period}-28`)
+        if (!contract) return null
+        const days = get().attendanceSheet(employeeId, period)
+        const summary = summariseAttendance(days)
+        const hr = get().settings.hr || {}
+        return {
+          summary,
+          ...payrollImpact(summary, contract, {
+            daysInMonth: days.length || 30,
+            deductLate: !!hr.deductLate,
+            lateGraceMinutes: hr.lateGraceMinutes || 0,
+          }),
+        }
+      },
+
+      updateHrSettings: (patch) =>
+        set((s) => ({ settings: { ...s.settings, hr: {
+          ...(s.settings.hr || {}), ...patch,
+          eosb: { ...defaultEosbSettings(), ...(s.settings.hr?.eosb || {}), ...(patch.eosb || {}) },
+        } } })),
+
       // ─── PAYROLL RUNS ──────────────────────────────────────────────
       payrollRuns: [],
 
@@ -2471,7 +2713,9 @@ export const useStore = create(
         if (!run || run.status === 'processed') return
         const n = (l, f) => Number(l[f]) || 0
         // Earnings breakdown (basic + allowances) → gross; fall back to legacy `gross`.
-        const grossOf = (l) => n(l, 'gross') || (n(l, 'basic') + n(l, 'housing') + n(l, 'transport') + n(l, 'other'))
+        // Overtime is earnings, so it belongs in gross — and therefore in the
+        // salary expense — rather than being netted off somewhere quiet.
+        const grossOf = (l) => n(l, 'gross') || (n(l, 'basic') + n(l, 'housing') + n(l, 'transport') + n(l, 'other') + n(l, 'overtime'))
         const otherDedOf = (l) => n(l, 'late') + n(l, 'absent') + n(l, 'penalty')
         const gosiEmpOf = (l) => n(l, 'gosi') || n(l, 'socialSecurity') // employee GOSI (legacy: socialSecurity)
         const totalGross     = run.lines.reduce((a, l) => a + grossOf(l), 0)
@@ -3788,8 +4032,9 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
+          'employmentContracts', 'eosbAccruals', 'attendance',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 30, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 31, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3977,7 +4222,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 30,
+      version: 31,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -4149,6 +4394,26 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 31) {
+          // HR gains contracts, end-of-service and attendance.
+          //
+          // Existing employees keep the salary on their record: an upgrading
+          // company is not forced to re-enter every contract before it can run
+          // payroll again. Payroll falls back to the employee's own figures
+          // whenever no contract covers the period, so nothing breaks — a
+          // contract simply makes the answer better once one exists.
+          if (!persisted.employmentContracts) persisted.employmentContracts = []
+          if (!persisted.eosbAccruals) persisted.eosbAccruals = []
+          if (!persisted.attendance) persisted.attendance = []
+          if (persisted.settings && !persisted.settings.hr)
+            persisted.settings.hr = { eosb: defaultEosbSettings(), restDays: [5, 6], deductLate: false, lateGraceMinutes: 0 }
+          const addAcc = [
+            { id: 'acc-eosb-prov', code: '2215', name: 'End-of-Service Provision', type: 'liability', subtype: 'noncurrent', isSystem: false },
+            { id: 'acc-eosb-exp',  code: '5016', name: 'End-of-Service Benefit',   type: 'expense',   subtype: 'expense',    isSystem: false },
+          ]
+          if (Array.isArray(persisted.accounts))
+            addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
         }
         if (version < 30) {
           // Custom fields gain types and stable ids.

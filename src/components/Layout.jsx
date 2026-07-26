@@ -12,7 +12,7 @@ import {
   LayoutDashboard, BookOpen, Users, FileText, ShoppingCart,
   Package, Landmark, BarChart3, Settings, Building2, TrendingUp,
   ClipboardList, FileCheck, FileMinus, FilePlus, Truck,
-  UserCheck, Building, DollarSign, Wrench, Sliders, Wallet,
+  UserCheck, Building, DollarSign, Wrench, Sliders, Wallet, FileSignature, CalendarClock,
   Home, Clock, Receipt, Factory, Briefcase, Target, Search,
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
@@ -78,6 +78,8 @@ const NAV = [
   { divider: 'HR & Payroll' },
   { label: 'Departments',        path: '/departments',       icon: Building },
   { label: 'Employees',          path: '/employees',         icon: UserCheck },
+  { label: 'Contracts',          path: '/contracts',         icon: FileSignature },
+  { label: 'Attendance',         path: '/attendance',        icon: CalendarClock },
   { label: 'Payroll',            path: '/payroll',           icon: DollarSign },
 
   { divider: 'Reports & System' },

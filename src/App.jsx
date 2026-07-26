@@ -47,6 +47,8 @@ const FixedAssetForm = lazy(() => import('./pages/FixedAssetForm'))
 const Departments = lazy(() => import('./pages/Departments'))
 const Employees = lazy(() => import('./pages/Employees'))
 const Payroll = lazy(() => import('./pages/Payroll'))
+const Contracts = lazy(() => import('./pages/Contracts'))
+const Attendance = lazy(() => import('./pages/Attendance'))
 const JournalEntries = lazy(() => import('./pages/JournalEntries'))
 const RecurringJournals = lazy(() => import('./pages/RecurringJournals'))
 const PaymentReminders = lazy(() => import('./pages/PaymentReminders'))
@@ -228,6 +230,8 @@ export default function App() {
         {/* HR & Payroll */}
         <Route path="/departments" element={<Departments />} />
         <Route path="/employees" element={<Employees />} />
+        <Route path="/contracts" element={<Contracts />} />
+        <Route path="/attendance" element={<Attendance />} />
         <Route path="/payroll" element={<Payroll />} />
 
         {/* Reports & System */}

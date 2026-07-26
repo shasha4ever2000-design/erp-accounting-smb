@@ -5,7 +5,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Play, DollarSign, Trash2, Users, MinusCircle } from 'lucide-react'
+import { Plus, Play, DollarSign, Trash2, Users, MinusCircle, CalendarCheck, FileSignature } from 'lucide-react'
+import { grossOf as contractGross } from '../utils/contracts'
 
 const STATUS_CLR = {
   draft:     'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
@@ -14,24 +15,60 @@ const STATUS_CLR = {
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100
 const num = (v) => parseFloat(v) || 0
 
-// Build an editable payroll line from an employee's contract/salary structure.
-function lineFromEmployee(emp) {
-  const basic = num(emp.basicSalary) || num(emp.salary)
-  const housing = num(emp.housingAllowance), transport = num(emp.transportAllowance), other = num(emp.otherAllowance)
-  const gross = basic + housing + transport + other
-  const gosi = emp.gosiApplicable ? round2(gross * num(emp.gosiEmployeeRate) / 100) : 0
-  const gosiEmployer = emp.gosiApplicable ? round2(gross * num(emp.gosiEmployerRate) / 100) : 0
-  const tax = emp.taxApplicable ? round2(gross * num(emp.taxRate) / 100) : 0
-  return { employeeId: emp.id, employeeName: emp.name, basic, housing, transport, other, late: 0, absent: 0, penalty: 0, gosi, gosiEmployer, tax }
+/**
+ * Build one editable payroll line.
+ *
+ * The salary comes from the employment contract in force for the pay month
+ * when there is one, and from the employee record when there is not — an
+ * upgrading company can keep running payroll before it has entered a single
+ * contract, and gets better answers once it has.
+ *
+ * Absence and overtime come from the attendance sheet for that month, so the
+ * two modules meet here rather than being reconciled by hand.
+ */
+function lineFromEmployee(emp, { contract = null, impact = null } = {}) {
+  const src = contract || emp
+  const basic = num(contract ? contract.basic : (emp.basicSalary || emp.salary))
+  const housing = num(contract ? contract.housing : emp.housingAllowance)
+  const transport = num(contract ? contract.transport : emp.transportAllowance)
+  const other = num(contract ? contract.other : emp.otherAllowance)
+  const overtime = round2(num(impact?.overtimePay))
+  const absent = round2(num(impact?.absenceDeduction))
+  const late = round2(num(impact?.lateDeduction))
+
+  // Social insurance is charged on basic plus housing, not on the whole
+  // package — see utils/contracts.js. Overtime never enters it.
+  const contributory = basic + housing
+  const gosiOn = contract ? contract.gosiApplicable : emp.gosiApplicable
+  const gosi = gosiOn ? round2((contributory * num(src.gosiEmployeeRate)) / 100) : 0
+  const gosiEmployer = gosiOn ? round2((contributory * num(src.gosiEmployerRate)) / 100) : 0
+  const taxOn = contract ? contract.taxApplicable : emp.taxApplicable
+  const tax = taxOn ? round2(((basic + housing + transport + other + overtime) * num(src.taxRate)) / 100) : 0
+
+  return {
+    employeeId: emp.id, employeeName: emp.name,
+    basic, housing, transport, other, overtime,
+    late, absent, penalty: 0, gosi, gosiEmployer, tax,
+    fromContract: !!contract,
+    unmarkedDays: impact?.summary?.unmarked ?? null,
+  }
 }
-const grossOf = (l) => num(l.basic) + num(l.housing) + num(l.transport) + num(l.other)
+const grossOf = (l) => num(l.basic) + num(l.housing) + num(l.transport) + num(l.other) + num(l.overtime)
 const dedOf = (l) => num(l.late) + num(l.absent) + num(l.penalty) + num(l.gosi) + num(l.tax)
 const netOf = (l) => grossOf(l) - dedOf(l)
 
+const thisMonth = () => new Date().toISOString().slice(0, 7)
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const monthLabel = (m) => {
+  const p = /^(\d{4})-(\d{2})$/.exec(String(m || ''))
+  return p ? `${MONTHS[Number(p[2]) - 1]} ${p[1]}` : ''
+}
+
 export default function Payroll() {
   const t = useT()
-  const { employees, payrollRuns, bankAccounts, settings,
-          addPayrollRun, processPayrollRun, payPayrollRun, deletePayrollRun } = useStore()
+  const { employees, payrollRuns, bankAccounts, settings, employmentContracts, attendance,
+          addPayrollRun, processPayrollRun, payPayrollRun, deletePayrollRun,
+          contractFor, attendanceImpact } = useStore()
   const sym = settings.company.currencySymbol
 
   const [newModal, setNewModal]     = useState(false)
@@ -41,16 +78,34 @@ export default function Payroll() {
   const [runLines, setRunLines]     = useState([])
   const [payBankId, setPayBankId]   = useState('')
   const [payPayDate, setPayPayDate] = useState(today())
+  const [periodMonth, setPeriodMonth] = useState(thisMonth())
 
   const activeEmps = employees.filter((e) => e.status === 'active')
 
+  // Build the grid for a pay month: contract salary, plus whatever the
+  // attendance sheet for that month says about absence and overtime.
+  const buildLines = (month) => activeEmps.map((e) => lineFromEmployee(e, {
+    contract: contractFor(e.id, `${month}-28`),
+    impact: attendanceImpact(e.id, month),
+  }))
+
   const openNewRun = () => {
-    setRunLines(activeEmps.map(lineFromEmployee))
-    setPeriod(''); setPayDate(today()); setNewModal(true)
+    const month = thisMonth()
+    setPeriodMonth(month)
+    setRunLines(buildLines(month))
+    setPeriod(monthLabel(month)); setPayDate(today()); setNewModal(true)
+  }
+
+  const changeMonth = (month) => {
+    setPeriodMonth(month)
+    setPeriod(monthLabel(month))
+    setRunLines(buildLines(month))
   }
   const setCell = (i, field, value) => setRunLines((ls) => ls.map((l, idx) => idx === i ? { ...l, [field]: value } : l))
 
   const totalGross = runLines.reduce((s, l) => s + grossOf(l), 0)
+  const fromContractCount = runLines.filter((l) => l.fromContract).length
+  const unmarkedTotal = runLines.reduce((s, l) => s + (l.unmarkedDays || 0), 0)
   const totalDed   = runLines.reduce((s, l) => s + dedOf(l), 0)
   const totalNet   = runLines.reduce((s, l) => s + netOf(l), 0)
 
@@ -63,7 +118,7 @@ export default function Payroll() {
       late: num(l.late), absent: num(l.absent), penalty: num(l.penalty), gosi: num(l.gosi), gosiEmployer: num(l.gosiEmployer), tax: num(l.tax),
       gross: grossOf(l), totalDeductions: dedOf(l), net: netOf(l),
     }))
-    addPayrollRun({ period, payDate, lines })
+    addPayrollRun({ period, periodMonth, payDate, lines })
     setNewModal(false)
   }
 
@@ -74,8 +129,10 @@ export default function Payroll() {
   const bankOpts = bankAccounts.map((ba) => ({ id: ba.accountId, name: ba.name }))
   const sorted = [...payrollRuns].sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)
 
-  // Live payroll estimate (from active employees' contracts) for the KPI cards.
-  const estLines = activeEmps.map(lineFromEmployee)
+  // Live payroll estimate for the KPI cards — contract pay only, with no
+  // attendance in it, because "what does payroll cost a month" should not
+  // wobble with last month's sick days.
+  const estLines = activeEmps.map((e) => lineFromEmployee(e, { contract: contractFor(e.id) }))
   const estGross = estLines.reduce((s, l) => s + grossOf(l), 0)
   const estNet   = estLines.reduce((s, l) => s + netOf(l), 0)
 
@@ -136,7 +193,8 @@ export default function Payroll() {
       {/* Run Payroll — editable grid */}
       <Modal open={newModal} onClose={() => setNewModal(false)} title="Run Payroll" width="max-w-6xl">
         <div className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
+            <Input label="Pay Month" type="month" value={periodMonth} onChange={(e) => changeMonth(e.target.value)} />
             <Input label="Pay Period *" value={period} onChange={(e) => setPeriod(e.target.value)} placeholder="e.g. June 2026" />
             <Input label="Pay Date" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
           </div>
@@ -145,7 +203,20 @@ export default function Payroll() {
             <div className="text-center py-6 text-gray-400 dark:text-slate-500">{t('No active employees. Add employees in the HR section first.')}</div>
           ) : (
             <>
-              <p className="text-xs text-gray-500 dark:text-slate-400">{t('Earnings and deductions are suggested from each employee\'s contract — edit any cell for this run.')}</p>
+              <p className="text-xs text-gray-500 dark:text-slate-400">
+                {t('Pay comes from the employment contract in force for this month; overtime and absence come from the attendance sheet. Edit any cell for this run.')}
+                {fromContractCount < runLines.length && (
+                  <span className="text-amber-600 dark:text-amber-400"> {' '}
+                    {t('{n} of {m} have no contract for this month, so their employee record was used instead.')
+                      .replace('{n}', runLines.length - fromContractCount).replace('{m}', runLines.length)}
+                  </span>
+                )}
+                {unmarkedTotal > 0 && (
+                  <span className="text-slate-400 dark:text-slate-500"> {' '}
+                    {t('{d} days this month are unmarked on the attendance sheet and were not deducted.').replace('{d}', unmarkedTotal)}
+                  </span>
+                )}
+              </p>
               <div className="overflow-x-auto border border-gray-100 dark:border-slate-700 rounded-lg">
                 <table className="text-xs whitespace-nowrap">
                   <thead className="bg-gray-50 dark:bg-slate-800/60">
@@ -155,6 +226,7 @@ export default function Payroll() {
                       <th className="px-2 py-2">{t('Housing')}</th>
                       <th className="px-2 py-2">{t('Transport')}</th>
                       <th className="px-2 py-2">{t('Other')}</th>
+                      <th className="px-2 py-2">{t('Overtime')}</th>
                       <th className="px-2 py-2 text-right bg-green-50/60 dark:bg-green-900/10">{t('Gross')}</th>
                       <th className="px-2 py-2">{t('Late')}</th>
                       <th className="px-2 py-2">{t('Absent')}</th>
@@ -172,6 +244,7 @@ export default function Payroll() {
                         <td className="px-2 py-1.5"><NumCell v={l.housing} onChange={(v) => setCell(i, 'housing', v)} /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.transport} onChange={(v) => setCell(i, 'transport', v)} /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.other} onChange={(v) => setCell(i, 'other', v)} /></td>
+                        <td className="px-2 py-1.5"><NumCell v={l.overtime} onChange={(v) => setCell(i, 'overtime', v)} /></td>
                         <td className="px-2 py-1.5 text-right font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(grossOf(l), sym)}</td>
                         <td className="px-2 py-1.5"><NumCell v={l.late} onChange={(v) => setCell(i, 'late', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.absent} onChange={(v) => setCell(i, 'absent', v)} muted /></td>
@@ -185,7 +258,7 @@ export default function Payroll() {
                   <tfoot>
                     <tr className="border-t-2 border-gray-200 dark:border-slate-600 font-bold bg-gray-50 dark:bg-slate-800/60">
                       <td className="px-2 py-2 sticky left-0 bg-gray-50 dark:bg-slate-800/60">{t('Totals')}</td>
-                      <td colSpan={4} />
+                      <td colSpan={5} />
                       <td className="px-2 py-2 text-right">{fmtMoney(totalGross, sym)}</td>
                       <td colSpan={5} className="px-2 py-2 text-right text-red-500 dark:text-red-400">-{fmtMoney(totalDed, sym)}</td>
                       <td className="px-2 py-2 text-right text-green-700 dark:text-green-400">{fmtMoney(totalNet, sym)}</td>

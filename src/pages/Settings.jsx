@@ -11,6 +11,7 @@ import { APPROVAL_KINDS, defaultApprovalSettings } from '../utils/approvals'
 import CloudSyncCard from '../components/CloudSyncCard'
 import IntegrityCheckCard from '../components/IntegrityCheckCard'
 import CustomFieldsManager from '../components/CustomFieldsManager'
+import HrSettingsCard from '../components/HrSettingsCard'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -456,6 +457,8 @@ export default function Settings() {
         </Card>
 
         <CustomFieldsManager />
+
+        <HrSettingsCard />
 
         {/* Backup & Restore */}
         {/* Period Close / Lock */}
