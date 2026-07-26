@@ -10,6 +10,8 @@ import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
 import { APPROVAL_KINDS, defaultApprovalSettings } from '../utils/approvals'
 import CloudSyncCard from '../components/CloudSyncCard'
 import IntegrityCheckCard from '../components/IntegrityCheckCard'
+import CustomFieldsManager from '../components/CustomFieldsManager'
+import HrSettingsCard from '../components/HrSettingsCard'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -26,7 +28,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateCustomFields, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
+  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -38,15 +40,8 @@ export default function Settings() {
   const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
   const [wht, setWht] = useState({ enabled: false, rate: 5, name: 'Withholding Tax', ...(settings.wht || {}) })
   const setWhtField = (k, v) => setWht((w) => ({ ...w, [k]: v }))
-  const [customFields, setCustomFields] = useState({ customer: [...(settings.customFields?.customer || [])], supplier: [...(settings.customFields?.supplier || [])] })
-  const [newCf, setNewCf] = useState({ customer: '', supplier: '' })
-  const addCf = (entity) => {
-    const label = newCf[entity].trim()
-    if (!label || customFields[entity].includes(label)) return
-    setCustomFields((c) => ({ ...c, [entity]: [...c[entity], label] }))
-    setNewCf((n) => ({ ...n, [entity]: '' }))
-  }
-  const removeCf = (entity, label) => setCustomFields((c) => ({ ...c, [entity]: c[entity].filter((l) => l !== label) }))
+  // Custom fields save through the store as they are edited — see
+  // CustomFieldsManager — so there is no local copy to reconcile here.
   const [showKey, setShowKey] = useState(false)
   const [lockInput, setLockInput] = useState(settings.accounting?.lockDate || '')
   const approvals = { ...defaultApprovalSettings(), ...(settings.approvals || {}) }
@@ -202,7 +197,6 @@ export default function Settings() {
     updateAiSettings(ai)
     updateZatca(zatca)
     updateWht(wht)
-    updateCustomFields(customFields)
     // keep the company-picker label in sync with the company name
     try {
       const auth = useAuth.getState()
@@ -462,31 +456,9 @@ export default function Settings() {
           </div>
         </Card>
 
-        {/* Custom Fields */}
-        <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-1">{t('Custom Fields')}</h2>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">Add your own fields to customer and supplier records (e.g. “Account Manager”, “Credit Limit”, “Region”).</p>
-          {['customer', 'supplier'].map((entity) => (
-            <div key={entity} className="mb-4 last:mb-0">
-              <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-2 capitalize">{entity} fields</p>
-              <div className="flex flex-wrap gap-2 mb-2">
-                {customFields[entity].length === 0 && <span className="text-xs text-gray-300 dark:text-slate-600">{t('None yet')}</span>}
-                {customFields[entity].map((label) => (
-                  <span key={label} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 rounded-full pl-3 pr-1.5 py-1 text-sm">
-                    {label}
-                    <button onClick={() => removeCf(entity, label)} className="w-4 h-4 rounded-full bg-gray-300 dark:bg-slate-600 text-white flex items-center justify-center text-xs hover:bg-red-400">×</button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <input value={newCf[entity]} onChange={(e) => setNewCf((n) => ({ ...n, [entity]: e.target.value }))} onKeyDown={(e) => e.key === 'Enter' && addCf(entity)}
-                  placeholder={`Add a ${entity} field…`} className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
-                <Btn size="sm" variant="secondary" onClick={() => addCf(entity)}>Add</Btn>
-              </div>
-            </div>
-          ))}
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">{t('Remember to click')}<strong>{t('Save Settings')}</strong> to apply.</p>
-        </Card>
+        <CustomFieldsManager />
+
+        <HrSettingsCard />
 
         {/* Backup & Restore */}
         {/* Period Close / Lock */}

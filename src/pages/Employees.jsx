@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues } from '../utils/customFields'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -15,6 +17,7 @@ const emptyForm = {
   gosiApplicable: false, gosiEmployeeRate: 9, gosiEmployerRate: 11,
   taxApplicable: false, taxRate: 0,
   salary: '',
+  customFields: {},
 }
 
 const numf = (v) => parseFloat(v) || 0
@@ -25,7 +28,7 @@ const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500
 
 export default function Employees() {
   const t = useT()
-  const { employees, departments, settings, addEmployee, updateEmployee, deleteEmployee } = useStore()
+  const { employees, departments, settings, addEmployee, updateEmployee, deleteEmployee, customFieldsFor } = useStore()
   const sym = settings.company.currencySymbol
 
   const [modal, setModal]   = useState(false)
@@ -48,6 +51,8 @@ export default function Employees() {
 
   const handleSave = () => {
     if (!form.name.trim())  return alert('Employee name is required.')
+    const cf = validateValues(customFieldsFor('employee'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     const data = {
       ...form,
       basicSalary: numf(form.basicSalary), housingAllowance: numf(form.housingAllowance),
@@ -212,6 +217,12 @@ export default function Employees() {
               <option value="inactive">Inactive / Terminated</option>
             </Select>
           </div>
+          <CustomFieldInputs
+            entityId="employee"
+            values={form.customFields}
+            onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
+            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+          />
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Employee'}</Btn>

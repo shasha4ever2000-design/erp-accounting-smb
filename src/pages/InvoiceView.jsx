@@ -7,6 +7,7 @@ import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
 import { numberToWords } from '../utils/numberToWords'
 import { DocumentHeader, DocumentFooter } from '../components/DocumentBrand'
+import { CustomFieldPrintLines, CustomFieldValues } from '../components/CustomFields'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
@@ -300,6 +301,15 @@ export default function InvoiceView() {
               <img src={qrUrl} alt="ZATCA QR" className="w-28 h-28" />
             </div>
           )}
+
+          {/* Custom fields the user chose to show on the printed invoice —
+              a PO number or contract reference belongs next to the totals,
+              not buried in a details panel the customer never sees. */}
+          <CustomFieldPrintLines entityId="invoice" values={invoice.customFields} className="mt-6 print-only" />
+
+          {/* The rest, on screen only: internal references the customer has no
+              business reading off their own invoice. */}
+          <CustomFieldValues entityId="invoice" values={invoice.customFields} className="mt-6 no-print" />
 
           {/* Notes */}
           {invoice.notes && (

@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { today, addDays } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues } from '../utils/customFields'
 import { computeLine } from '../utils/lineMath'
 import { Plus, Trash2 } from 'lucide-react'
 
@@ -12,7 +14,7 @@ const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1
 export default function QuotationForm() {
   const t = useT()
   const navigate = useNavigate()
-  const { customers, accounts, inventoryItems, settings, addQuotation } = useStore()
+  const { customers, accounts, inventoryItems, settings, addQuotation, customFieldsFor } = useStore()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
   const taxRate = settings.tax.rate
@@ -20,6 +22,7 @@ export default function QuotationForm() {
   const [form, setForm] = useState({
     customerId: '', customerName: '', customerEmail: '', customerAddress: '',
     date: today(), expiryDate: addDays(today(), 30), notes: settings.invoice.notes || '',
+    customFields: {},
   })
   const [lines, setLines] = useState([emptyLine()])
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
@@ -67,6 +70,8 @@ export default function QuotationForm() {
   const handleSave = () => {
     if (!form.customerName.trim()) return alert('Customer name is required.')
     if (lines.every((l) => !l.description.trim())) return alert('Add at least one line item.')
+    const cf = validateValues(customFieldsFor('quotation'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     const q = addQuotation({
       ...form,
       items: lines.map((l) => ({ ...l, quantity: parseFloat(l.quantity) || 1, unitPrice: parseFloat(l.unitPrice) || 0, subtotal: parseFloat(l.subtotal) || 0 })),
@@ -137,6 +142,12 @@ export default function QuotationForm() {
 
           <Card className="p-5">
             <Textarea label="Notes / Terms" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={3} placeholder="Payment terms, validity period, etc." />
+            <CustomFieldInputs
+              entityId="quotation"
+              values={form.customFields}
+              onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
+              className="mt-4"
+            />
           </Card>
         </div>
 

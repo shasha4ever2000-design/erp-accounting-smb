@@ -7,6 +7,8 @@ import ItemImages from '../components/ItemImages'
 import { primaryThumbs, deleteImagesFor } from '../utils/itemImages'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
+import { CustomFieldInputs } from '../components/CustomFields'
+import { validateValues } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
 
@@ -15,10 +17,11 @@ const emptyForm = {
   costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
   taxRate: 0, isKit: false, components: [],
+  customFields: {},
 }
 
 export default function Inventory() {
-  const { inventoryItems, accounts, addInventoryItem, updateInventoryItem, deleteInventoryItem, settings } = useStore()
+  const { inventoryItems, accounts, addInventoryItem, updateInventoryItem, deleteInventoryItem, settings, customFieldsFor } = useStore()
   const sym = settings.company.currencySymbol
   const t = useT()
   const [modal, setModal] = useState(false)
@@ -45,6 +48,8 @@ export default function Inventory() {
 
   const handleSave = () => {
     if (!form.name.trim()) return alert('Item name is required.')
+    const cf = validateValues(customFieldsFor('item'), form.customFields)
+    if (!cf.ok) return alert(cf.errors.join('\n'))
     const data = {
       ...form,
       costPrice: parseFloat(form.costPrice) || 0,
@@ -271,6 +276,12 @@ export default function Inventory() {
             )}
           </div>
 
+          <CustomFieldInputs
+            entityId="item"
+            values={form.customFields}
+            onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
+            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+          />
           <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>
