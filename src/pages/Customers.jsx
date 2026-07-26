@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useStore } from '../store'
 import { controlAccountsFor, defaultFor } from '../utils/controlAccounts'
+import { TERM_PRESETS, describeTerms, resolveTerms } from '../utils/paymentTerms'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -8,7 +9,7 @@ import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', customFields: {} }
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
 
 export default function Customers() {
   const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount } = useStore()
@@ -22,7 +23,7 @@ export default function Customers() {
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', controlAccountId: c.controlAccountId || '', customFields: c.customFields || {} }); setModal(true) }
+  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', controlAccountId: c.controlAccountId || '', paymentTerms: typeof c.paymentTerms === 'string' ? c.paymentTerms : '', customFields: c.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const setCustom = (label, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [label]: v } }))
@@ -161,6 +162,10 @@ export default function Customers() {
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} placeholder="Tax registration number" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Credit limit')} (${sym})`} type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setField('creditLimit', e.target.value)} placeholder={t('0 = no limit')} />
+            <Select label={t('Payment terms')} value={form.paymentTerms} onChange={(e) => setField('paymentTerms', e.target.value)}>
+              <option value="">{t('Company default')}</option>
+              {TERM_PRESETS.map((p) => <option key={p.id} value={p.id}>{t(p.label)}</option>)}
+            </Select>
             {controlOptions.length > 1 && (
               <Select label={t('Receivables account')} value={form.controlAccountId} onChange={(e) => setField('controlAccountId', e.target.value)}>
                 {controlOptions.map((a) => (
