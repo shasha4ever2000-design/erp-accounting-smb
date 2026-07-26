@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
+import BrandingPanel from '../components/BrandingPanel'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
@@ -51,17 +52,6 @@ export default function Settings() {
   const approvals = { ...defaultApprovalSettings(), ...(settings.approvals || {}) }
   const [saved, setSaved] = useState(false)
   const fileRef = useRef(null)
-  const logoRef = useRef(null)
-
-  const handleLogo = (e) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    if (file.size > 500 * 1024) return alert('Please use a logo under 500 KB.')
-    const reader = new FileReader()
-    reader.onload = (ev) => setCompany((c) => ({ ...c, logo: ev.target.result }))
-    reader.readAsDataURL(file)
-    e.target.value = ''
-  }
 
   const isManager = useAuth((s) => s.isManager())
 
@@ -403,20 +393,10 @@ export default function Settings() {
         <Card className="p-6">
           <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Invoice Branding')}</h2>
           <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Company Logo')}</label>
-              <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50">
-                  {company.logo ? <img src={company.logo} alt="logo" className="max-w-full max-h-full object-contain" /> : <span className="text-xs text-gray-400 dark:text-slate-500">{t('No logo')}</span>}
-                </div>
-                <div className="space-y-2">
-                  <Btn size="sm" variant="secondary" onClick={() => logoRef.current?.click()}>{t('Upload Logo')}</Btn>
-                  {company.logo && <Btn size="sm" variant="ghost" onClick={() => setCompanyField('logo', '')}>Remove</Btn>}
-                  <input ref={logoRef} type="file" accept="image/png,image/jpeg,image/svg+xml" onChange={handleLogo} className="hidden" />
-                  <p className="text-xs text-gray-400 dark:text-slate-500">{t('PNG/JPG/SVG, under 500 KB. Appears on invoices & delivery notes.')}</p>
-                </div>
-              </div>
-            </div>
+            {/* Branding — logo, colour, layout and per-document wording.
+                The logo is stored outside the settings object; see
+                utils/brandAssets.js for why. */}
+            <BrandingPanel />
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Accent Color')}</label>
               <div className="flex items-center gap-3">
@@ -719,7 +699,7 @@ export default function Settings() {
             <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
               <div className={`h-full ${storagePct > 85 ? 'bg-red-500' : storagePct > 60 ? 'bg-amber-500' : 'bg-green-500'}`} style={{ width: `${storagePct}%` }} />
             </div>
-            {storagePct > 85 && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{t('Storage is nearly full — download a backup and consider removing your logo or old data.')}</p>}
+            {storagePct > 85 && <p className="text-xs text-red-500 dark:text-red-400 mt-1">{t('Storage is nearly full — download a backup and consider archiving old data.')}</p>}
           </div>
         </Card>
 

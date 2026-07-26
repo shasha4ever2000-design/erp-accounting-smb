@@ -15,6 +15,7 @@ import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
+import { defaultBranding, validateBranding } from './utils/branding'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
@@ -117,6 +118,7 @@ const DEFAULT_BANK_ACCOUNTS = [
 
 const DEFAULT_SETTINGS = {
   company: { name: 'My Company', arabicName: '', address: '', phone: '', email: '', taxId: '', currency: 'USD', currencySymbol: '$', fiscalYearStart: '01', logo: '', accentColor: '#2563eb' },
+  branding:      defaultBranding(),
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
@@ -1398,6 +1400,34 @@ export const useStore = create(
         get().updateQuotation(id, { items: newItems, status, invoiceId: invoice.id, invoiceIds: [...(q.invoiceIds || []), invoice.id] })
         return invoice
       },
+
+      // ─── DOCUMENT BRANDING ─────────────────────────────────────────
+      updateBranding: (patch) => {
+        const check = validateBranding(patch)
+        if (!check.ok) throw new Error(`BRANDING_INVALID:${check.errors.join(' ')}`)
+        set((s) => ({
+          settings: { ...s.settings, branding: { ...defaultBranding(), ...s.settings.branding, ...patch } },
+        }))
+      },
+
+      /** Per-document overrides, merged rather than replaced. */
+      updateDocBranding: (docType, patch) =>
+        set((s) => {
+          const base = { ...defaultBranding(), ...s.settings.branding }
+          return {
+            settings: {
+              ...s.settings,
+              branding: {
+                ...base,
+                perDoc: { ...(base.perDoc || {}), [docType]: { ...((base.perDoc || {})[docType] || {}), ...patch } },
+              },
+            },
+          }
+        }),
+
+      /** Called once the old in-settings logo has been copied to IndexedDB. */
+      clearLegacyLogo: () =>
+        set((s) => ({ settings: { ...s.settings, company: { ...s.settings.company, logo: '' } } })),
 
       // ─── STOCK COUNTS ──────────────────────────────────────────────
       // Making the books agree with the shelves. See utils/stockCount.js —
@@ -3597,7 +3627,7 @@ export const useStore = create(
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 27, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 28, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -3785,7 +3815,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 27,
+      version: 28,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; safeStorage remains the graceful fallback inside.
       storage: createJSONStorage(() => idbKvStorage),
@@ -3957,6 +3987,15 @@ export const useStore = create(
             persisted.accountGroups = DEFAULT_GROUPS.map((g) => ({ ...g }))
           if (Array.isArray(persisted.accounts))
             persisted.accounts = assignDefaultGroups(persisted.accounts)
+        }
+        if (version < 28) {
+          // Branding gains its own settings block. The logo itself is moved
+          // out of the store on first render — see useBrandAsset — because a
+          // migration cannot do async IndexedDB work.
+          if (persisted.settings)
+            persisted.settings.branding = { ...defaultBranding(), ...(persisted.settings.branding || {}) }
+          if (persisted.settings?.company?.accentColor && persisted.settings.branding)
+            persisted.settings.branding.accentColor = persisted.settings.company.accentColor
         }
         if (version < 27) {
           if (!persisted.stockCounts) persisted.stockCounts = []
