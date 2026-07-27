@@ -97,7 +97,7 @@ create index if not exists records_sync_cursor on public.records (company_id, up
 -- Always stamp updated_at server-side — never trust a client-supplied value,
 -- so last-write-wins conflict resolution can't be gamed by clock skew.
 create or replace function public.touch_records_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   new.updated_at := now();
   return new;
