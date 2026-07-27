@@ -42,26 +42,6 @@ import {
   reclassLines, fieldFor, defaultFor,
 } from './utils/controlAccounts'
 
-// Quota-safe storage: never let a full localStorage throw and crash the app.
-const safeStorage = {
-  getItem: (name) => {
-    try { return localStorage.getItem(name) } catch { return null }
-  },
-  setItem: (name, value) => {
-    try {
-      localStorage.setItem(name, value)
-    } catch (e) {
-      console.warn('ERP: could not save to local storage (it may be full).', e)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('erp-storage-error'))
-      }
-    }
-  },
-  removeItem: (name) => {
-    try { localStorage.removeItem(name) } catch { /* ignore */ }
-  },
-}
-
 const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
   { id: 'acc-cash',    code: '1001', name: 'Cash on Hand',              type: 'asset',     subtype: 'current',     isSystem: true  },
@@ -4224,7 +4204,9 @@ export const useStore = create(
       name: currentCompanyKey(),
       version: 31,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
-      // localStorage snapshot; safeStorage remains the graceful fallback inside.
+      // localStorage snapshot; localStorage remains the graceful fallback
+      // inside idbKvStorage, which also raises erp-storage-error if a write
+      // lands nowhere at all.
       storage: createJSONStorage(() => idbKvStorage),
       migrate: (persisted, version) => {
        try {
