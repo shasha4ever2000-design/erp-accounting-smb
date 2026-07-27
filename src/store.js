@@ -335,6 +335,16 @@ export const useStore = create(
       },
 
       deleteAccount: (id) => {
+        // Every posting anywhere in the app addresses a system account by
+        // this fixed id (acc-ar, acc-vatout, acc-salpay, ...), so deleting one
+        // does not just remove a row — it breaks referential integrity across
+        // every document type at once. The chart of accounts page already
+        // stops this in its own delete handler, but that leaves the guarantee
+        // resting on every future delete button remembering to check, which
+        // is exactly the kind of thing this file does not otherwise leave to
+        // the caller (see JE_UNBALANCED, PERIOD_LOCKED, CAPITAL_LINE_UNATTRIBUTED).
+        const target = get().accounts.find((a) => a.id === id)
+        if (target?.isSystem) throw new Error(`ACCOUNT_IS_SYSTEM:${target.code} – ${target.name}`)
         get().recycleRecord('accounts', id)
         const gone = get().accounts.find((a) => a.id === id)
         set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) }))

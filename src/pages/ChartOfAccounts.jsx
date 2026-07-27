@@ -66,7 +66,13 @@ export default function ChartOfAccounts() {
 
   const handleDelete = (a) => {
     if (a.isSystem) return alert(t('System accounts cannot be deleted.'))
-    if (confirm(t('Delete "{n}"?').replace('{n}', a.name))) deleteAccount(a.id)
+    if (!confirm(t('Delete "{n}"?').replace('{n}', a.name))) return
+    // The store enforces this too — see ACCOUNT_IS_SYSTEM in deleteAccount —
+    // so this catch is a backstop for the check above, not the only guard.
+    try { deleteAccount(a.id) } catch (err) {
+      if (String(err.message || err).startsWith('ACCOUNT_IS_SYSTEM')) return alert(t('System accounts cannot be deleted.'))
+      throw err
+    }
   }
 
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
