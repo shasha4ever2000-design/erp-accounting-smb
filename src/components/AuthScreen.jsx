@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../auth'
 import { useT, useI18n } from '../i18n'
+import { scorePassword, scoreLabel, passwordHint } from '../utils/password'
 import { TrendingUp, Mail, Lock, User, Loader2, ShieldCheck, Globe, Check } from 'lucide-react'
 
 export default function AuthScreen() {
@@ -107,6 +108,10 @@ export default function AuthScreen() {
                 <input className="w-full bg-transparent outline-none text-sm text-gray-900 dark:text-slate-100 placeholder:text-gray-400 dark:placeholder:text-slate-500" aria-label={t('Password')} type="password" placeholder={t('Password')} value={form.password} onChange={(e) => set('password', e.target.value)} onKeyDown={(e) => e.key === 'Enter' && submit(e)} />
               </Field>
 
+              {mode === 'signup' && form.password && (
+                <PasswordMeter password={form.password} t={t} />
+              )}
+
               {error && (
                 <p role="alert" className="text-sm text-red-700 dark:text-red-300 bg-red-50 dark:bg-red-900/25 border border-red-100 dark:border-red-900/40 rounded-xl px-3.5 py-2.5 animate-fade-in">{error}</p>
               )}
@@ -138,6 +143,36 @@ export default function AuthScreen() {
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/**
+ * A strength meter, shown only while signing up.
+ *
+ * Four bars rather than a percentage: a number invites people to optimise for
+ * the number. The hint underneath names the one thing to change, because
+ * "weak" on its own tells nobody what to do about it.
+ */
+function PasswordMeter({ password, t }) {
+  const score = scorePassword(password)
+  const hint = passwordHint(password)
+  const tone = ['bg-red-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-500', 'bg-emerald-500'][score]
+  const text = ['text-red-600 dark:text-red-400', 'text-orange-600 dark:text-orange-400',
+    'text-amber-600 dark:text-amber-400', 'text-lime-600 dark:text-lime-400',
+    'text-emerald-600 dark:text-emerald-400'][score]
+
+  return (
+    <div className="animate-fade-in" aria-live="polite">
+      <div className="flex gap-1.5" role="img" aria-label={`${t('Password strength')}: ${t(scoreLabel(score))}`}>
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className={`h-1 flex-1 rounded-full transition-colors ${i < score ? tone : 'bg-gray-200 dark:bg-slate-700'}`} />
+        ))}
+      </div>
+      <p className={`text-xs mt-1.5 ${text}`}>
+        <span className="font-medium">{t(scoreLabel(score))}</span>
+        {hint && <span className="text-gray-500 dark:text-slate-400"> · {t(hint)}</span>}
+      </p>
     </div>
   )
 }

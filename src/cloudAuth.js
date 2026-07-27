@@ -9,8 +9,15 @@
 // explicitly linked to a cloud company (see auth.js: cloudCompanyId).
 
 import { getSupabase } from './lib/supabase'
+import { validatePassword } from './utils/password'
 
 export async function cloudSignUp({ email, password, name }) {
+  // The same floor as a local account. Supabase can screen against the
+  // HaveIBeenPwned corpus, but only on a paid plan — this project is on the
+  // free tier, so the check has to be ours either way.
+  const pwCheck = validatePassword(password, { name, email })
+  if (!pwCheck.ok) return { error: pwCheck.error }
+
   const { data, error } = await getSupabase().auth.signUp({
     email: (email || '').trim().toLowerCase(),
     password,
