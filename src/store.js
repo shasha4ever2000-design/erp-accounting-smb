@@ -7,6 +7,7 @@ import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
+import { weightedAverageCost } from './utils/inventoryCost'
 import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
@@ -939,9 +940,10 @@ export const useStore = create(
             const cost = Number(row.unitCost) || 0
             if (q <= 0) return it
             const oldQty = it.quantity || 0
-            const newQty = oldQty + q
-            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + q * cost) / newQty : cost
-            return { ...it, quantity: newQty, costPrice: newCost }
+            const newCost = weightedAverageCost({
+              onHand: oldQty, unitCost: it.costPrice, receivedQty: q, receivedValue: q * cost,
+            })
+            return { ...it, quantity: oldQty + q, costPrice: newCost }
           }),
           settings: { ...s.settings, opening: {
             date, posted: true, journalEntryId: je.id, postedAt: stamp,
@@ -1214,6 +1216,31 @@ export const useStore = create(
 
       // ─── SALES INVOICES ────────────────────────────────────────────
       invoices: [],
+
+      /**
+       * Which tracked items a set of document lines would drive below zero.
+       *
+       * Selling stock that is not there is allowed — the integrity check
+       * reports it afterwards — but it distorts weighted-average cost on the
+       * next receipt, so the forms warn first. This lives in the store, and
+       * explodes kits through the same explodeLines the posting path uses, so
+       * the warning can never disagree with what actually happens on save.
+       *
+       * @returns {Array<{itemId, name, onHand, required, shortBy}>} empty when fine
+       */
+      stockShortfall: (items = []) => {
+        const stock = get().inventoryItems
+        return Object.entries(explodeLines(items, stock))
+          .map(([itemId, qty]) => {
+            const it = stock.find((i) => i.id === itemId)
+            if (!it) return null
+            const onHand = Number(it.quantity) || 0
+            const required = Number(qty) || 0
+            if (required <= onHand) return null
+            return { itemId, name: it.name || '', onHand, required, shortBy: Math.round((required - onHand) * 1000) / 1000 }
+          })
+          .filter(Boolean)
+      },
 
       addInvoice: (invoice) => {
         const s = get()
@@ -2112,9 +2139,11 @@ export const useStore = create(
         set((st) => ({
           inventoryItems: st.inventoryItems.map((it) => {
             const u = recv[it.id]; if (!u) return it
-            const oldQty = it.quantity || 0, newQty = oldQty + u.qty
-            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
-            const patch = { quantity: newQty, costPrice: newCost }
+            const oldQty = it.quantity || 0
+            const newCost = weightedAverageCost({
+              onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
+            })
+            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
             if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + u.qty; patch.stockByWarehouse = m }
             return { ...it, ...patch }
           }),
@@ -2244,9 +2273,10 @@ export const useStore = create(
             const u = recv[it.id]
             if (!u) return it
             const oldQty = it.quantity || 0
-            const newQty = oldQty + u.qty
-            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
-            const patch = { quantity: newQty, costPrice: newCost }
+            const newCost = weightedAverageCost({
+              onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
+            })
+            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
             if (it.stockByWarehouse) {
               const map = { ...it.stockByWarehouse }
               map[defWh] = (map[defWh] || 0) + u.qty

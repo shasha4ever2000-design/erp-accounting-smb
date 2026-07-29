@@ -1659,6 +1659,10 @@ const AR = {
   'Synced': 'تمت المزامنة',
   'Syncing…': 'جارٍ المزامنة…',
   'Not yet synced': 'لم تتم المزامنة بعد',
+  // ── Negative-stock warning ──
+  'This invoice sells more than you have in stock:': 'هذه الفاتورة تبيع أكثر من الكمية المتوفرة في المخزون:',
+  '{on} in stock, {req} needed': 'المتوفر {on}، والمطلوب {req}',
+  'Stock will go negative and item costs may be distorted until you receive more. Create it anyway?': 'سيصبح المخزون بالسالب وقد تتأثر تكلفة الأصناف حتى استلام كمية جديدة. هل تريد الإنشاء على أي حال؟',
   'Forgot password?': 'نسيت كلمة المرور؟',
   '← Back to sign in': '← العودة لتسجيل الدخول',
   'Send reset link': 'إرسال رابط إعادة التعيين',
