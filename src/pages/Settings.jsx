@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock, Shield, ShieldCheck, Clock, Trash2, RotateCcw, KeyRound } from 'lucide-react'
 import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
+import { COSTING_METHODS } from '../utils/fifo'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
 import { APPROVAL_KINDS, defaultApprovalSettings } from '../utils/approvals'
 import CloudSyncCard from '../components/CloudSyncCard'
@@ -28,7 +29,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInvoiceSettings, updateAiSettings, updateZatca, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
+  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -267,6 +268,25 @@ export default function Settings() {
                 <option value="latin">{t('Western digits (0 1 2 3)')}</option>
                 <option value="arabic">{t('Arabic-Indic digits (٠ ١ ٢ ٣)')}</option>
               </Select>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Inventory Costing')}</h2>
+            <div className="space-y-3">
+              <Select
+                label={t('Costing method')}
+                value={settings.inventory?.costingMethod || 'wac'}
+                onChange={(e) => updateInventorySettings({ costingMethod: e.target.value })}
+              >
+                {COSTING_METHODS.map((m) => <option key={m.id} value={m.id}>{t(m.label)}</option>)}
+              </Select>
+              <p className="text-xs text-gray-400 dark:text-slate-500">
+                {t(COSTING_METHODS.find((m) => m.id === (settings.inventory?.costingMethod || 'wac'))?.hint || '')}
+              </p>
+              <p className="text-xs text-warning-600 dark:text-warning-400">
+                {t('Changing this affects cost of sales on invoices posted from now on. Entries already posted are not restated.')}
+              </p>
             </div>
           </Card>
 

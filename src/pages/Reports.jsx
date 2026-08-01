@@ -5,7 +5,7 @@ import { vatBreakdown } from '../utils/vat'
 import { buildVatReturn, yearQuarters } from '../utils/vatReturn'
 import { buildSalesTaxReturn } from '../utils/salesTaxReturn'
 import { priorPeriod, variancePct, varianceTone } from '../utils/priorPeriod'
-import { buildTree, withTotals, pruneEmpty, flattenRows, findByRole, withoutNode, COST_OF_SALES } from '../utils/accountTree'
+import { buildTree, withTotals, pruneEmpty, flattenRows, findByRole, withoutNode, COST_OF_SALES, OTHER_INCOME } from '../utils/accountTree'
 import { PageHeader, Card, Btn, Select, Input, Table, Tr, Td } from '../components/UI'
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
@@ -280,18 +280,31 @@ export default function Reports() {
     const cosNode = findByRole(expTree, COST_OF_SALES)
     const opexTree = cosNode ? withoutNode(expTree, cosNode.id) : expTree
 
+    // Other income is lifted out of revenue for the same reason, in the other
+    // direction: gross profit is trading revenue less cost of sales, and an FX
+    // movement or a gain on selling a van is not trading. Left in, it inflates
+    // the margin — and an FX *loss*, being a debit to a revenue-typed account,
+    // silently reduces reported sales. Net profit is unaffected either way,
+    // since the total is added back below.
+    const oiNode = findByRole(revTree, OTHER_INCOME)
+    const salesTree = oiNode ? withoutNode(revTree, oiNode.id) : revTree
+
+    const operatingRevenue = salesTree.totals.balance
+    const otherIncome = oiNode?.totals.balance || 0
     const totalRevenue = revTree.totals.balance
     const totalCos = cosNode?.totals.balance || 0
     const totalOpex = opexTree.totals.balance
     const totalExpenses = totalCos + totalOpex
-    const grossProfit = totalRevenue - totalCos
+    const grossProfit = operatingRevenue - totalCos
     const netProfit = totalRevenue - totalExpenses
 
+    const priorOperating = priorBalances ? salesTree.totals.prior : null
+    const priorOther = priorBalances ? (oiNode?.totals.prior || 0) : null
     const priorRevenue = priorBalances ? revTree.totals.prior : null
     const priorCos = priorBalances ? (cosNode?.totals.prior || 0) : null
     const priorOpex = priorBalances ? opexTree.totals.prior : null
     const priorExpenses = priorBalances ? priorCos + priorOpex : null
-    const priorGross = priorBalances ? priorRevenue - priorCos : null
+    const priorGross = priorBalances ? priorOperating - priorCos : null
     const priorNet = priorBalances ? priorRevenue - priorExpenses : null
 
     // Gross profit only means something when cost of sales carries a figure;
@@ -299,14 +312,15 @@ export default function Reports() {
     // simpler revenue-less-expenses statement, not a gross profit line equal
     // to revenue.
     const showGross = !!cosNode && (totalCos !== 0 || (priorCos || 0) !== 0)
-    const hasRevenue = revTree.groups.length > 0 || revTree.ungrouped.length > 0
+    const showOther = !!oiNode && (otherIncome !== 0 || (priorOther || 0) !== 0)
+    const hasRevenue = salesTree.groups.length > 0 || salesTree.ungrouped.length > 0
     const hasOpex = opexTree.groups.length > 0 || opexTree.ungrouped.length > 0
 
     return (
       <div className="space-y-6">
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="bg-success-50 dark:bg-success-500/10 ring-1 ring-inset ring-success-600/10 dark:ring-success-400/15 rounded-xl p-4"><p className="text-sm text-success-600 dark:text-success-400">{t('Total Revenue')}</p><p className="text-2xl font-bold tracking-tightest tabular text-success-700 dark:text-success-300">{fmtMoney(totalRevenue, sym)}</p></div>
+          <div className="bg-success-50 dark:bg-success-500/10 ring-1 ring-inset ring-success-600/10 dark:ring-success-400/15 rounded-xl p-4"><p className="text-sm text-success-600 dark:text-success-400">{t('Total Revenue')}</p><p className="text-2xl font-bold tracking-tightest tabular text-success-700 dark:text-success-300">{fmtMoney(operatingRevenue, sym)}</p></div>
           <div className="bg-danger-50 dark:bg-danger-500/10 ring-1 ring-inset ring-danger-600/10 dark:ring-danger-400/15 rounded-xl p-4"><p className="text-sm text-danger-600 dark:text-danger-400">{t('Total Expenses')}</p><p className="text-2xl font-bold tracking-tightest tabular text-danger-700 dark:text-danger-300">{fmtMoney(totalExpenses, sym)}</p></div>
           <div className={`${netProfit >= 0 ? 'bg-brand-50 dark:bg-brand-500/10 ring-brand-600/10 dark:ring-brand-400/15' : 'bg-warning-50 dark:bg-warning-500/10 ring-warning-600/10 dark:ring-warning-400/15'} ring-1 ring-inset rounded-xl p-4`}>
             <p className={`text-sm ${netProfit >= 0 ? 'text-brand-600 dark:text-brand-400' : 'text-warning-600 dark:text-warning-400'}`}>Net {netProfit >= 0 ? 'Profit' : 'Loss'}</p>
@@ -331,8 +345,8 @@ export default function Reports() {
             {!hasRevenue ? <p className="text-gray-400 dark:text-slate-500 text-sm mb-4 ps-3.5">{t('No revenue for this period')}</p> : (
               <div className="mb-2">
                 {priorBalances && <CompareHead label={t('Account')} />}
-                <GroupedRows tree={revTree} mode="period" type="revenue" compare={!!priorBalances} />
-                <TotalRow label={t('Total Revenue')} value={totalRevenue} prior={priorRevenue} type="revenue"
+                <GroupedRows tree={salesTree} mode="period" type="revenue" compare={!!priorBalances} />
+                <TotalRow label={t('Total Revenue')} value={operatingRevenue} prior={priorOperating} type="revenue"
                   className="mt-1 rounded-lg bg-success-50/60 dark:bg-success-500/[0.08] px-3 py-2"
                   valueClass="text-success-800 dark:text-success-300" />
               </div>
@@ -354,11 +368,27 @@ export default function Reports() {
                   <TotalRow label={t('Gross Profit')} value={grossProfit} prior={priorGross} type="revenue"
                     className="rounded-lg bg-brand-50/60 dark:bg-brand-500/[0.08] px-3 py-2"
                     valueClass="text-brand-800 dark:text-brand-300" />
-                  {totalRevenue !== 0 && (
+                  {operatingRevenue !== 0 && (
                     <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 px-3">
-                      {t('Gross margin')} {Math.round((grossProfit / totalRevenue) * 1000) / 10}%
+                      {t('Gross margin')} {Math.round((grossProfit / operatingRevenue) * 1000) / 10}%
                     </p>
                   )}
+                </div>
+              </>
+            )}
+
+            {/* Other income sits below gross profit, not inside revenue: it is
+                income, so it belongs in net profit, but it is not trading, so
+                it must not flatter the margin above. */}
+            {showOther && (
+              <>
+                <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-teal-500" /><h4 className="font-bold text-teal-700 dark:text-teal-400 text-xs uppercase tracking-wider">{t('Other Income')}</h4></div>
+                <div className="mb-2">
+                  {priorBalances && <CompareHead label={t('Account')} />}
+                  <GroupedRows tree={{ ...revTree, groups: [oiNode], ungrouped: [] }} mode="period" type="revenue" compare={!!priorBalances} skipRoot />
+                  <TotalRow label={t('Total Other Income')} value={otherIncome} prior={priorOther} type="revenue"
+                    className="mt-1 rounded-lg bg-teal-50/60 dark:bg-teal-500/[0.08] px-3 py-2"
+                    valueClass="text-teal-800 dark:text-teal-300" />
                 </div>
               </>
             )}

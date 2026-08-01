@@ -1,13 +1,19 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
-import { idbKvStorage } from './utils/idbKvStorage'
+import { idbKvStorage, deferredJSONStorage, flushNow } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
+import { WAC, FIFO, issueFrom, receiveInto, layersFromBalance } from './utils/fifo'
+import { CHEQUE_IN, CHEQUE_OUT, canTransition, validateCheque, chequeLines, isTerminal } from './utils/cheques'
+import {
+  ADVANCE_ACCOUNT, validateAdvance, advanceBalance, appliedTotal, applicableAmount,
+  customerCredit, receiveLines, refundLines,
+} from './utils/advances'
 import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
@@ -33,7 +39,7 @@ import {
   fieldsFor as customFieldsFor, coerceValues as coerceCustomValues,
   validateField as validateCustomField, migrateLegacy as migrateCustomFieldSettings,
 } from './utils/customFields'
-import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
+import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor, OTHER_INCOME } from './utils/accountTree'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
   movementLines, allocateProfit, profitAllocationLines,
@@ -48,6 +54,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-cash',    code: '1001', name: 'Cash on Hand',              type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-bank1',  code: '1002', name: 'Main Bank Account',          type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true, controlFor: 'customers'  },
+  { id: 'acc-chq-in', code: '1150', name: 'Cheques Under Collection',     type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false, controlFor: 'inventoryItems' },
   { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
@@ -61,6 +68,8 @@ const DEFAULT_ACCOUNTS = [
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-chq-out',code: '2150', name: 'Cheques Payable',             type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-custadv',code: '2250', name: 'Customer Advances',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
@@ -123,6 +132,7 @@ const DEFAULT_SETTINGS = {
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
+  inventory:     { costingMethod: 'wac' },
   customFields:  Object.fromEntries(CF_ENTITIES.map((e) => [e.id, []])),
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30, bankDetails: '' },
   purchase:      { prefix: 'PUR-',  next: 1 },
@@ -183,6 +193,12 @@ export const useStore = create(
 
       updateCompany: (patch) =>
         set((s) => ({ settings: { ...s.settings, company: { ...s.settings.company, ...patch } } })),
+
+      /** 'wac' or 'fifo' — how an issue of stock is costed. */
+      costingMethod: () => get().settings?.inventory?.costingMethod || WAC,
+
+      updateInventorySettings: (patch) =>
+        set((s) => ({ settings: { ...s.settings, inventory: { ...(s.settings.inventory || { costingMethod: WAC }), ...patch } } })),
 
       updateTax: (patch) =>
         set((s) => ({ settings: { ...s.settings, tax: { ...s.settings.tax, ...patch } } })),
@@ -669,14 +685,29 @@ export const useStore = create(
           while (usedCodes.has(String(n))) n++
           const code = ba.code || String(n)
           return {
-            accounts: [...st.accounts, { id: accId, code, name: ba.name, type: 'asset', subtype: 'current', isSystem: false }],
-            bankAccounts: [...st.bankAccounts, { id: baId, accountId: accId, name: ba.name, type: ba.type || 'bank', bankName: ba.bankName || '', accountNumber: ba.accountNumber || '', isDefault: false }],
+            // The currency lives on the GL account as well as the bank record.
+            // FX revaluation walks the chart looking for accounts tagged with a
+            // non-base currency (see Revaluation.jsx), so writing it through is
+            // what makes a foreign-currency bank account revaluable at all —
+            // rather than the user having to remember to tag it separately in
+            // the Chart of Accounts.
+            accounts: [...st.accounts, { id: accId, code, name: ba.name, type: 'asset', subtype: 'current', isSystem: false, currency: ba.currency || '' }],
+            bankAccounts: [...st.bankAccounts, { id: baId, accountId: accId, name: ba.name, type: ba.type || 'bank', bankName: ba.bankName || '', accountNumber: ba.accountNumber || '', currency: ba.currency || '', isDefault: false }],
           }
         })
       },
 
-      updateBankAccount: (id, patch) =>
-        set((s) => ({ bankAccounts: s.bankAccounts.map((b) => (b.id === id ? { ...b, ...patch } : b)) })),
+      updateBankAccount: (id, patch) => {
+        const before = get().bankAccounts.find((b) => b.id === id)
+        set((s) => ({ bankAccounts: s.bankAccounts.map((b) => (b.id === id ? { ...b, ...patch } : b)) }))
+        // Keep the GL account's currency in step, or revaluation would go on
+        // using the old one — the two are one fact stored twice.
+        if (before && 'currency' in patch && patch.currency !== before.currency) {
+          set((s) => ({
+            accounts: s.accounts.map((a) => (a.id === before.accountId ? { ...a, currency: patch.currency || '' } : a)),
+          }))
+        }
+      },
 
       deleteBankAccount: (id) =>
         set((s) => ({ bankAccounts: s.bankAccounts.filter((b) => b.id !== id) })),
@@ -943,7 +974,11 @@ export const useStore = create(
             const newCost = weightedAverageCost({
               onHand: oldQty, unitCost: it.costPrice, receivedQty: q, receivedValue: q * cost,
             })
-            return { ...it, quantity: oldQty + q, costPrice: newCost }
+            const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+            return { ...it, quantity: oldQty + q, ...receiveInto(seeded, {
+              qty: q, value: q * cost, date, ref: 'Opening balance',
+              method: get().costingMethod(), wacCost: newCost,
+            }) }
           }),
           settings: { ...s.settings, opening: {
             date, posted: true, journalEntryId: je.id, postedAt: stamp,
@@ -1287,11 +1322,19 @@ export const useStore = create(
         // sales have to follow the parts that actually left it.
         const issue = explodeLines(invoice.items, get().inventoryItems) // itemId -> qty
         const cogsByAcc = {}, invByAcc = {}
+        const costPatch = {}   // itemId -> { costLayers, costPrice } from the issue
         let cogs = 0
+        const method = get().costingMethod()
         Object.entries(issue).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
           if (!it) return
-          const amt = q * (it.costPrice || 0)
+          // Under FIFO this is what the oldest units on the shelf actually
+          // cost; under weighted average it is the carried price, exactly as
+          // before. Either way the layers move, so the two stay switchable.
+          const priced = issueFrom({ ...it, costLayers: it.costLayers || layersFromBalance(it.quantity, it.costPrice) },
+            { qty: q, method })
+          costPatch[itemId] = priced.patch
+          const amt = priced.cost
           cogs += amt
           const cAcc = it.cogsAccountId || 'acc-cogs'
           const iAcc = it.inventoryAccountId || 'acc-inv'
@@ -1322,7 +1365,7 @@ export const useStore = create(
           inventoryItems: st.inventoryItems.map((it) => {
             const q = issue[it.id]
             if (!q) return it
-            const patch = { quantity: (it.quantity || 0) - q }
+            const patch = { quantity: (it.quantity || 0) - q, ...(costPatch[it.id] || {}) }
             if (it.stockByWarehouse) {
               const map = { ...it.stockByWarehouse }
               map[defWh] = (map[defWh] || 0) - q
@@ -1343,8 +1386,10 @@ export const useStore = create(
         const s = get()
         const invoice = s.invoices.find((i) => i.id === invoiceId)
         if (!invoice) return
-        // Overpayment guard: never receive more than the outstanding balance, so the
-        // AR subledger can't go negative (no advances/unapplied-cash model yet).
+        // Overpayment guard: never receive more than the outstanding balance, so
+        // the AR subledger can't go negative. Money beyond the invoice is not a
+        // receipt against it — it belongs on account, which is what
+        // receiveAdvance is for.
         const remaining = Math.max(0, (invoice.total || 0) - (invoice.amountPaid || 0))
         const amount = Math.min(Number(payment.amount) || 0, remaining)
         if (amount <= 0) return
@@ -1360,8 +1405,13 @@ export const useStore = create(
         const cashBase = Math.round(amount * payRate * 100) / 100
         const arBase = Math.round(amount * invRate * 100) / 100
         const fx = Math.round((cashBase - arBase) * 100) / 100
+        // Normally the debit is the bank. Applying a customer advance reuses
+        // this whole path — status, receipt numbering, FX — with the advance
+        // account standing in, rather than growing a second payment mechanism
+        // that could drift away from this one.
+        const fromAccountId = payment.fromAccountId || payment.bankAccountId
         const payLines = [
-          { accountId: payment.bankAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
+          { accountId: fromAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
           { accountId: get().controlAccountFor('customers', invoice.customerId), debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
         ]
         if (fx > 0) payLines.push({ accountId: 'acc-fxreal', debit: 0, credit: fx, description: `Realized FX gain – ${invoice.number}` })
@@ -1379,6 +1429,9 @@ export const useStore = create(
           ),
           settings: { ...st.settings, receipt: { ...st.settings.receipt, next: next + 1 } },
         }))
+        // What actually landed — the caller asked for `payment.amount`, but the
+        // overpayment guard may have clamped it to the outstanding balance.
+        return { amount, number, journalEntryId: je.id }
       },
 
       updateInvoice: (id, patch) =>
@@ -1451,6 +1504,228 @@ export const useStore = create(
             return { ...it, ...patch }
           }),
         }))
+      },
+
+      // ─── CUSTOMER ADVANCES (deposits / money on account) ───────────
+      //
+      // A deposit is a liability, not revenue and not a negative receivable:
+      // the cash is in the bank but the work is not done. See utils/advances.js.
+      customerAdvances: [],
+
+      receiveAdvance: (input) => {
+        const check = validateAdvance(input)
+        if (!check.ok) throw new Error(`ADVANCE_INVALID:${check.error}`)
+        const amount = Math.round((Number(input.amount) || 0) * 100) / 100
+        const ref = `Advance from ${input.customerName || ''}`.trim()
+
+        const je = get().addJournalEntry({
+          date: input.date, description: ref, type: 'advance',
+          lines: receiveLines(amount, input.bankAccountId, ref),
+        })
+
+        const advance = {
+          ...input, id: uuid(), amount, applications: [], refunded: 0,
+          journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ customerAdvances: [...s.customerAdvances, advance] }))
+        get().logActivity('Received customer advance', `${input.customerName || ''} · ${amount}`, {
+          entity: 'advance', entityId: advance.id,
+        })
+        return advance
+      },
+
+      /**
+       * Put some of an advance against an invoice.
+       *
+       * Routed through recordInvoicePayment with the advance account standing
+       * in for the bank, so the invoice ends up with the same paid status,
+       * receipt number and FX treatment as any other settlement.
+       */
+      applyAdvance: (advanceId, invoiceId, { amount, date } = {}) => {
+        const advance = get().customerAdvances.find((a) => a.id === advanceId)
+        const invoice = get().invoices.find((i) => i.id === invoiceId)
+        if (!advance || !invoice) return
+        if (invoice.customerId !== advance.customerId)
+          throw new Error('ADVANCE_WRONG_CUSTOMER')
+
+        const most = applicableAmount(advance, invoice)
+        const want = amount == null ? most : Math.round((Number(amount) || 0) * 100) / 100
+        const apply = Math.min(most, want)
+        if (apply <= 0) return
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        const res = get().recordInvoicePayment(invoiceId, {
+          amount: apply, date: when, fromAccountId: ADVANCE_ACCOUNT,
+          source: 'advance', advanceId, method: 'Advance applied',
+        })
+        if (!res || res.amount <= 0) return
+
+        set((s) => ({
+          customerAdvances: s.customerAdvances.map((a) => (a.id === advanceId ? {
+            ...a,
+            applications: [...(a.applications || []), {
+              id: uuid(), invoiceId, invoiceNumber: invoice.number,
+              amount: res.amount, date: when, journalEntryId: res.journalEntryId,
+            }],
+          } : a)),
+        }))
+        get().logActivity('Applied advance to invoice', `${invoice.number} · ${res.amount}`, {
+          entity: 'advance', entityId: advanceId, entityRef: invoice.number,
+        })
+        return res
+      },
+
+      refundAdvance: (advanceId, { amount, date, bankAccountId } = {}) => {
+        const advance = get().customerAdvances.find((a) => a.id === advanceId)
+        if (!advance) return
+        const available = advanceBalance(advance)
+        const want = amount == null ? available : Math.round((Number(amount) || 0) * 100) / 100
+        const give = Math.min(available, want)
+        if (give <= 0) throw new Error('ADVANCE_NOTHING_TO_REFUND')
+        const bank = bankAccountId || advance.bankAccountId
+        if (!bank) throw new Error('ADVANCE_NO_BANK')
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        const ref = `Refund of advance to ${advance.customerName || ''}`.trim()
+        const je = get().addJournalEntry({
+          date: when, description: ref, type: 'advance_refund',
+          lines: refundLines(give, bank, ref),
+        })
+        set((s) => ({
+          customerAdvances: s.customerAdvances.map((a) => (a.id === advanceId
+            ? { ...a, refunded: Math.round(((Number(a.refunded) || 0) + give) * 100) / 100, refundJournalEntryId: je.id }
+            : a)),
+        }))
+        get().logActivity('Refunded customer advance', `${advance.customerName || ''} · ${give}`, {
+          entity: 'advance', entityId: advanceId, severity: 'warning',
+        })
+        return { amount: give, journalEntryId: je.id }
+      },
+
+      /** Credit a customer is holding with you, across every open advance. */
+      customerCreditBalance: (customerId) => customerCredit(get().customerAdvances, customerId),
+
+      deleteAdvance: (id) => {
+        const advance = get().customerAdvances.find((a) => a.id === id)
+        if (!advance) return
+        // Once any of it has been applied or refunded the ledger has moved on;
+        // removing the record would orphan those entries.
+        if (appliedTotal(advance) > 0 || (Number(advance.refunded) || 0) > 0)
+          throw new Error('ADVANCE_IN_USE')
+        get().recycleRecord('customerAdvances', id)
+        set((s) => ({ customerAdvances: s.customerAdvances.filter((a) => a.id !== id) }))
+        get().logActivity('Deleted customer advance', `${advance.customerName || ''}`, {
+          entity: 'advance', entityId: id, severity: 'warning',
+        })
+      },
+
+      // ─── CHEQUE REGISTER (post-dated cheques) ──────────────────────
+      //
+      // A cheque is a promise, not cash. It sits in Cheques Under Collection
+      // (received) or Cheques Payable (issued) until it actually clears, so a
+      // drawer full of post-dated cheques never flatters the bank balance.
+      // See utils/cheques.js for the full posting map.
+      cheques: [],
+
+      addCheque: (input) => {
+        const check = validateCheque(input)
+        if (!check.ok) throw new Error(`CHEQUE_INVALID:${check.error}`)
+
+        const direction = input.direction
+        const kind = direction === CHEQUE_IN ? 'customers' : 'suppliers'
+        const partyAccountId = get().controlAccountFor(kind, input.partyId)
+        const amount = Math.round((Number(input.amount) || 0) * 100) / 100
+        const date = input.issueDate || input.dueDate
+
+        const je = get().addJournalEntry({
+          date,
+          description: direction === CHEQUE_IN
+            ? `Cheque ${input.number} received from ${input.partyName || ''}`.trim()
+            : `Cheque ${input.number} issued to ${input.partyName || ''}`.trim(),
+          reference: input.number, type: 'cheque',
+          lines: chequeLines('receive', { direction, amount, partyAccountId, number: input.number }),
+        })
+
+        const cheque = {
+          ...input, id: uuid(), amount, status: 'pending',
+          partyAccountId, journalEntryId: je.id,
+          events: [{ status: 'pending', date, journalEntryId: je.id }],
+          createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ cheques: [...s.cheques, cheque] }))
+        get().logActivity(
+          direction === CHEQUE_IN ? 'Recorded cheque received' : 'Recorded cheque issued',
+          `${input.number} · ${input.partyName || ''} · due ${input.dueDate}`,
+          { entity: 'cheque', entityId: cheque.id, entityRef: input.number },
+        )
+        return cheque
+      },
+
+      /**
+       * Move a cheque along its lifecycle, posting whatever that costs.
+       *
+       * Depositing posts nothing — the cheque has left the drawer but not the
+       * payer's account, so no balance has changed yet. Clearing, bouncing and
+       * cancelling each post, and a bounce is a reversal rather than a delete,
+       * so the debt returns and the history survives to inform the next credit
+       * decision.
+       */
+      setChequeStatus: (id, to, { date, bankAccountId, reason } = {}) => {
+        const cheque = get().cheques.find((c) => c.id === id)
+        if (!cheque) return
+        if (!canTransition(cheque.direction, cheque.status, to))
+          throw new Error(`CHEQUE_BAD_TRANSITION:${cheque.status}->${to}`)
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        let jeId = null
+
+        if (to === 'cleared' || to === 'bounced' || to === 'cancelled') {
+          const bank = bankAccountId || cheque.bankAccountId
+          if (to === 'cleared' && !bank) throw new Error('CHEQUE_NO_BANK')
+          const event = to === 'cleared' ? 'clear' : to === 'bounced' ? 'bounce' : 'cancel'
+          const verb = to === 'cleared' ? 'cleared' : to === 'bounced' ? 'returned unpaid' : 'cancelled'
+          const je = get().addJournalEntry({
+            date: when,
+            description: `Cheque ${cheque.number} ${verb}${reason ? ` - ${reason}` : ''}`,
+            reference: cheque.number, type: 'cheque',
+            lines: chequeLines(event, {
+              direction: cheque.direction, amount: cheque.amount,
+              partyAccountId: cheque.partyAccountId, bankAccountId: bank, number: cheque.number,
+            }),
+          })
+          jeId = je.id
+        }
+
+        set((s) => ({
+          cheques: s.cheques.map((c) => (c.id === id ? {
+            ...c, status: to,
+            bankAccountId: bankAccountId || c.bankAccountId,
+            clearedDate: to === 'cleared' ? when : c.clearedDate,
+            bounceReason: to === 'bounced' ? (reason || '') : c.bounceReason,
+            events: [...(c.events || []), { status: to, date: when, journalEntryId: jeId, reason: reason || '' }],
+          } : c)),
+        }))
+        get().logActivity('Cheque status changed', `${cheque.number} -> ${to}${reason ? ` · ${reason}` : ''}`, {
+          entity: 'cheque', entityId: id, entityRef: cheque.number,
+          severity: to === 'bounced' ? 'warning' : 'info',
+        })
+      },
+
+      /** Cheques still in motion — nothing settled. */
+      outstandingCheques: (direction) => get().cheques
+        .filter((c) => !isTerminal(c.status) && (!direction || c.direction === direction)),
+
+      deleteCheque: (id) => {
+        const cheque = get().cheques.find((c) => c.id === id)
+        if (!cheque) return
+        // A settled cheque is history the ledger already reflects; removing it
+        // would leave its journal entries pointing at nothing.
+        if (isTerminal(cheque.status)) throw new Error(`CHEQUE_SETTLED:${cheque.number}`)
+        get().recycleRecord('cheques', id)
+        set((s) => ({ cheques: s.cheques.filter((c) => c.id !== id) }))
+        get().logActivity('Deleted cheque', `${cheque.number} · ${cheque.partyName || ''}`, {
+          entity: 'cheque', entityId: id, entityRef: cheque.number, severity: 'warning',
+        })
       },
 
       // ─── QUOTATIONS / ESTIMATES ────────────────────────────────────
@@ -1935,6 +2210,9 @@ export const useStore = create(
         Object.entries(explodeLines(items, get().inventoryItems)).forEach(([itemId, qty]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId); if (!it) return
           restock[itemId] = (restock[itemId] || 0) + qty
+          // Goods coming back join the queue at the cost they are carried at,
+          // rather than jumping to the front — the units are physically newer
+          // than anything already on the shelf, and FIFO follows the shelf.
           const amt = Math.round(qty * (it.costPrice || 0) * 100) / 100
           if (amt <= 0) return
           cogs += amt
@@ -2143,7 +2421,11 @@ export const useStore = create(
             const newCost = weightedAverageCost({
               onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
             })
-            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
+            const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+            const patch = { quantity: oldQty + u.qty, ...receiveInto(seeded, {
+              qty: u.qty, value: u.cost, date: recvDate, ref: 'Goods receipt',
+              method: get().costingMethod(), wacCost: newCost,
+            }) }
             if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + u.qty; patch.stockByWarehouse = m }
             return { ...it, ...patch }
           }),
@@ -2276,7 +2558,11 @@ export const useStore = create(
             const newCost = weightedAverageCost({
               onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
             })
-            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
+            const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+            const patch = { quantity: oldQty + u.qty, ...receiveInto(seeded, {
+              qty: u.qty, value: u.cost, date: purchase.date, ref: 'Supplier bill',
+              method: get().costingMethod(), wacCost: newCost,
+            }) }
             if (it.stockByWarehouse) {
               const map = { ...it.stockByWarehouse }
               map[defWh] = (map[defWh] || 0) + u.qty
@@ -2865,43 +3151,50 @@ export const useStore = create(
       // Batch straight-line depreciation for every active asset in one period.
       // Skips assets already depreciated for that period or fully depreciated,
       // and caps the charge at the remaining depreciable base.
-      runDepreciation: ({ period, date }) => {
-        const assets = get().fixedAssets.filter((a) => a.status === 'active')
-        let count = 0, total = 0
-        assets.forEach((a) => {
-          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
-          if (a.purchaseDate && date && a.purchaseDate > date) return // not yet acquired
-          if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
+      /**
+       * Which active assets are owed a straight-line charge for a period, and
+       * how much each is owed. Posts nothing.
+       *
+       * This is the single definition of "what depreciation is due". The
+       * preview a user approves and the run that posts are otherwise two
+       * copies of the same fifteen lines, and the moment they disagree the
+       * app shows one number and books another — at exactly the point where
+       * someone is deciding whether to commit.
+       *
+       * Skips assets already charged for the period, so running twice is
+       * safe, and caps the charge at what is left of the depreciable base so
+       * an asset can never depreciate past its salvage value.
+       */
+      depreciationDue: (period, date) => {
+        const { fixedAssets, assetDepreciations } = get()
+        return fixedAssets.reduce((due, a) => {
+          if (a.status !== 'active') return due
+          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return due
+          if (a.purchaseDate && date && a.purchaseDate > date) return due // not yet acquired
+          if (assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return due
           const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
           const months = (a.usefulLifeYears || 0) * 12
-          if (months <= 0) return
+          if (months <= 0) return due
           const remaining = (cost - salvage) - (a.accumulatedDepreciation || 0)
           const amount = Math.round(Math.min((cost - salvage) / months, remaining) * 100) / 100
-          if (amount <= 0.005) return
-          get().recordDepreciation(a.id, { date, amount, period })
-          count += 1; total += amount
-        })
-        return { count, total: Math.round(total * 100) / 100 }
+          if (amount <= 0.005) return due
+          due.push({ assetId: a.id, name: a.name || '', amount })
+          return due
+        }, [])
+      },
+
+      /** Totals for a set of due charges, rounded the way they will be posted. */
+      _depreciationTotals: (due) =>
+        ({ count: due.length, total: Math.round(due.reduce((s, d) => s + d.amount, 0) * 100) / 100 }),
+
+      runDepreciation: ({ period, date }) => {
+        const due = get().depreciationDue(period, date)
+        due.forEach((d) => get().recordDepreciation(d.assetId, { date, amount: d.amount, period }))
+        return get()._depreciationTotals(due)
       },
 
       // preview only (no posting): how many assets are due for a period + total
-      previewDepreciation: (period, date) => {
-        const assets = get().fixedAssets.filter((a) => a.status === 'active')
-        let count = 0, total = 0
-        assets.forEach((a) => {
-          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
-          if (a.purchaseDate && date && a.purchaseDate > date) return
-          if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
-          const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
-          const months = (a.usefulLifeYears || 0) * 12
-          if (months <= 0) return
-          const remaining = (cost - salvage) - (a.accumulatedDepreciation || 0)
-          const amount = Math.round(Math.min((cost - salvage) / months, remaining) * 100) / 100
-          if (amount <= 0.005) return
-          count += 1; total += amount
-        })
-        return { count, total: Math.round(total * 100) / 100 }
-      },
+      previewDepreciation: (period, date) => get()._depreciationTotals(get().depreciationDue(period, date)),
 
       disposeAsset: (assetId, { date, proceeds, bankAccountId }) => {
         const asset = get().fixedAssets.find((a) => a.id === assetId)
@@ -4052,9 +4345,9 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
-          'employmentContracts', 'eosbAccruals', 'attendance',
+          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 31, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 35, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4084,7 +4377,13 @@ export const useStore = create(
         try { const raw = await idbKvStorage.getItem(currentCompanyKey() + '::backups'); const s = raw ? JSON.parse(raw) : null; if (s && Array.isArray(s.items)) return s } catch { /* ignore */ }
         return { items: [], lastAutoAt: null }
       },
-      _writeBackups: async (store) => { await idbKvStorage.setItem(currentCompanyKey() + '::backups', JSON.stringify(store)) },
+      // A snapshot is a safety net, so it is written through rather than
+      // left in the coalescing queue — the moment a user takes one is exactly
+      // the moment they expect it to exist.
+      _writeBackups: async (store) => {
+        await idbKvStorage.setItem(currentCompanyKey() + '::backups', JSON.stringify(store))
+        await flushNow()
+      },
 
       snapshotNow: async (label = 'Manual') => {
         const data = get().exportData()
@@ -4242,12 +4541,15 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 31,
+      version: 35,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
       // lands nowhere at all.
-      storage: createJSONStorage(() => idbKvStorage),
+      // Not createJSONStorage: that serializes the whole company on every
+      // mutation. deferredJSONStorage holds the object and serializes once
+      // when the write queue drains. See utils/idbKvStorage.js.
+      storage: deferredJSONStorage,
       migrate: (persisted, version) => {
        try {
         if (version < 4) {
@@ -4436,6 +4738,56 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 35) {
+          // FIFO becomes an option. Existing items get one cost layer seeded
+          // from what they already hold, so a company switching to FIFO starts
+          // from its current carrying value rather than from nothing — and a
+          // company that stays on weighted average sees no change at all.
+          if (persisted.settings && !persisted.settings.inventory)
+            persisted.settings.inventory = { costingMethod: 'wac' }
+          if (Array.isArray(persisted.inventoryItems))
+            persisted.inventoryItems = persisted.inventoryItems.map((i) => (
+              i.costLayers ? i : { ...i, costLayers: layersFromBalance(i.quantity, i.costPrice) }))
+        }
+        if (version < 34) {
+          // Customer advances. A deposit is a liability until the work is
+          // done, so it gets its own account rather than sitting as a
+          // negative receivable.
+          if (!persisted.customerAdvances) persisted.customerAdvances = []
+          const advAcc = { id: 'acc-custadv', code: '2250', name: 'Customer Advances', type: 'liability', subtype: 'current', isSystem: true }
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((x) => x.id === advAcc.id))
+            persisted.accounts.push(advAcc)
+        }
+        if (version < 33) {
+          // The cheque register. Two system accounts keep a post-dated cheque
+          // out of the bank balance until it clears — an asset for cheques
+          // held, a liability for cheques written.
+          if (!persisted.cheques) persisted.cheques = []
+          const chqAcc = [
+            { id: 'acc-chq-in',  code: '1150', name: 'Cheques Under Collection', type: 'asset',     subtype: 'current', isSystem: true },
+            { id: 'acc-chq-out', code: '2150', name: 'Cheques Payable',          type: 'liability', subtype: 'current', isSystem: true },
+          ]
+          if (Array.isArray(persisted.accounts))
+            chqAcc.forEach((a) => { if (!persisted.accounts.some((x) => x.id === a.id)) persisted.accounts.push(a) })
+        }
+        if (version < 32) {
+          // Other Income becomes a named role, so the income statement can
+          // keep it out of gross profit the same way it already keeps cost of
+          // sales out of operating expenses.
+          //
+          // Only the role is added. No account changes type and no journal
+          // entry moves, so the trial balance, retained earnings and net
+          // profit are all identical before and after — what changes is that
+          // gross profit and gross margin stop counting FX movements and
+          // disposal gains as trading revenue.
+          //
+          // A company that renamed or re-parented the shipped group keeps its
+          // own structure; the role attaches by id, and its absence just means
+          // the statement behaves exactly as it did before.
+          if (Array.isArray(persisted.accountGroups))
+            persisted.accountGroups = persisted.accountGroups.map((g) =>
+              (g.id === 'grp-oi' && !g.role ? { ...g, role: OTHER_INCOME } : g))
         }
         if (version < 30) {
           // Custom fields gain types and stable ids.
