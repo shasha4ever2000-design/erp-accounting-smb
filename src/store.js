@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import { persist, createJSONStorage } from 'zustand/middleware'
+import { persist } from 'zustand/middleware'
 import { v4 as uuid } from 'uuid'
 import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
-import { idbKvStorage } from './utils/idbKvStorage'
+import { idbKvStorage, deferredJSONStorage, flushNow } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
@@ -4377,7 +4377,13 @@ export const useStore = create(
         try { const raw = await idbKvStorage.getItem(currentCompanyKey() + '::backups'); const s = raw ? JSON.parse(raw) : null; if (s && Array.isArray(s.items)) return s } catch { /* ignore */ }
         return { items: [], lastAutoAt: null }
       },
-      _writeBackups: async (store) => { await idbKvStorage.setItem(currentCompanyKey() + '::backups', JSON.stringify(store)) },
+      // A snapshot is a safety net, so it is written through rather than
+      // left in the coalescing queue — the moment a user takes one is exactly
+      // the moment they expect it to exist.
+      _writeBackups: async (store) => {
+        await idbKvStorage.setItem(currentCompanyKey() + '::backups', JSON.stringify(store))
+        await flushNow()
+      },
 
       snapshotNow: async (label = 'Manual') => {
         const data = get().exportData()
@@ -4540,7 +4546,10 @@ export const useStore = create(
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
       // lands nowhere at all.
-      storage: createJSONStorage(() => idbKvStorage),
+      // Not createJSONStorage: that serializes the whole company on every
+      // mutation. deferredJSONStorage holds the object and serializes once
+      // when the write queue drains. See utils/idbKvStorage.js.
+      storage: deferredJSONStorage,
       migrate: (persisted, version) => {
        try {
         if (version < 4) {

@@ -39,7 +39,19 @@ const newId = () =>
     ? crypto.randomUUID()
     : 'id-' + Math.random().toString(36).slice(2) + Date.now()
 
-const reload = () => { if (typeof window !== 'undefined') window.location.reload() }
+// Changing company reloads the page, because the data store is keyed by
+// company and rehydrates on boot. Saves are coalesced (see idbKvStorage), so
+// the last few hundred milliseconds may still be queued at this point — and
+// the pagehide / beforeunload listeners are only best-effort for an async
+// IndexedDB write. Flushing here first makes it deterministic: nothing is in
+// flight by the time the page goes away.
+const reload = async () => {
+  try {
+    const { flushNow } = await import('./utils/idbKvStorage')
+    await flushNow()
+  } catch { /* a failed flush must never strand the user on this screen */ }
+  if (typeof window !== 'undefined') window.location.reload()
+}
 
 export const useAuth = create(
   persist(
