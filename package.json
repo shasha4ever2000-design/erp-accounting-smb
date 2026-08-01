@@ -1,6 +1,6 @@
 {
   "name": "erp-accounting-smb",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "private": true,
   "type": "module",
   "description": "Professional double-entry ERP & accounting for small and medium businesses.",
@@ -52,7 +52,16 @@
       "icon": "build/icon.png"
     },
     "mac": {
-      "target": "dmg",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "icon": "build/icon.png",
       "category": "public.app-category.business"
     },
