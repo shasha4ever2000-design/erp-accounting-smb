@@ -30,6 +30,7 @@ const NAV = [
   { label: 'Cash Flow',            path: '/cash-flow',      icon: ArrowLeftRight },
   { label: 'Bank Transactions',    path: '/banking',        icon: Landmark },
   { label: 'Bank Reconciliation',  path: '/reconciliation', icon: CheckSquare },
+  { label: 'Cheque Register',      path: '/cheques',          icon: Landmark },
   { label: 'Journal Entries',      path: '/journals',       icon: ClipboardList },
   { label: 'Recurring Journals',   path: '/recurring-journals', icon: Repeat },
 

@@ -47,6 +47,7 @@ export const RECYCLABLE = {
   salesOrders:       { slice: 'salesOrders',       label: 'Sales order',        name: (r) => `${r.number || ''} ${r.customerName || ''}`.trim() },
   purchaseQuotes:    { slice: 'purchaseQuotes',    label: 'Purchase quote',     name: (r) => `${r.number || ''} ${r.supplierName || ''}`.trim() },
   stockCounts:       { slice: 'stockCounts',       label: 'Stock count',        name: (r) => `${r.number || ''}`.trim() },
+  cheques:           { slice: 'cheques',           label: 'Cheque',             name: (r) => `${r.number || ''} ${r.partyName || ''}`.trim() },
 }
 
 /**

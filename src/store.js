@@ -8,6 +8,7 @@ import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfi
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
+import { CHEQUE_IN, CHEQUE_OUT, canTransition, validateCheque, chequeLines, isTerminal } from './utils/cheques'
 import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
@@ -48,6 +49,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-cash',    code: '1001', name: 'Cash on Hand',              type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-bank1',  code: '1002', name: 'Main Bank Account',          type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true, controlFor: 'customers'  },
+  { id: 'acc-chq-in', code: '1150', name: 'Cheques Under Collection',     type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false, controlFor: 'inventoryItems' },
   { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
@@ -61,6 +63,7 @@ const DEFAULT_ACCOUNTS = [
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-chq-out',code: '2150', name: 'Cheques Payable',             type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
@@ -1451,6 +1454,115 @@ export const useStore = create(
             return { ...it, ...patch }
           }),
         }))
+      },
+
+      // ─── CHEQUE REGISTER (post-dated cheques) ──────────────────────
+      //
+      // A cheque is a promise, not cash. It sits in Cheques Under Collection
+      // (received) or Cheques Payable (issued) until it actually clears, so a
+      // drawer full of post-dated cheques never flatters the bank balance.
+      // See utils/cheques.js for the full posting map.
+      cheques: [],
+
+      addCheque: (input) => {
+        const check = validateCheque(input)
+        if (!check.ok) throw new Error(`CHEQUE_INVALID:${check.error}`)
+
+        const direction = input.direction
+        const kind = direction === CHEQUE_IN ? 'customers' : 'suppliers'
+        const partyAccountId = get().controlAccountFor(kind, input.partyId)
+        const amount = Math.round((Number(input.amount) || 0) * 100) / 100
+        const date = input.issueDate || input.dueDate
+
+        const je = get().addJournalEntry({
+          date,
+          description: direction === CHEQUE_IN
+            ? `Cheque ${input.number} received from ${input.partyName || ''}`.trim()
+            : `Cheque ${input.number} issued to ${input.partyName || ''}`.trim(),
+          reference: input.number, type: 'cheque',
+          lines: chequeLines('receive', { direction, amount, partyAccountId, number: input.number }),
+        })
+
+        const cheque = {
+          ...input, id: uuid(), amount, status: 'pending',
+          partyAccountId, journalEntryId: je.id,
+          events: [{ status: 'pending', date, journalEntryId: je.id }],
+          createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ cheques: [...s.cheques, cheque] }))
+        get().logActivity(
+          direction === CHEQUE_IN ? 'Recorded cheque received' : 'Recorded cheque issued',
+          `${input.number} · ${input.partyName || ''} · due ${input.dueDate}`,
+          { entity: 'cheque', entityId: cheque.id, entityRef: input.number },
+        )
+        return cheque
+      },
+
+      /**
+       * Move a cheque along its lifecycle, posting whatever that costs.
+       *
+       * Depositing posts nothing — the cheque has left the drawer but not the
+       * payer's account, so no balance has changed yet. Clearing, bouncing and
+       * cancelling each post, and a bounce is a reversal rather than a delete,
+       * so the debt returns and the history survives to inform the next credit
+       * decision.
+       */
+      setChequeStatus: (id, to, { date, bankAccountId, reason } = {}) => {
+        const cheque = get().cheques.find((c) => c.id === id)
+        if (!cheque) return
+        if (!canTransition(cheque.direction, cheque.status, to))
+          throw new Error(`CHEQUE_BAD_TRANSITION:${cheque.status}->${to}`)
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        let jeId = null
+
+        if (to === 'cleared' || to === 'bounced' || to === 'cancelled') {
+          const bank = bankAccountId || cheque.bankAccountId
+          if (to === 'cleared' && !bank) throw new Error('CHEQUE_NO_BANK')
+          const event = to === 'cleared' ? 'clear' : to === 'bounced' ? 'bounce' : 'cancel'
+          const verb = to === 'cleared' ? 'cleared' : to === 'bounced' ? 'returned unpaid' : 'cancelled'
+          const je = get().addJournalEntry({
+            date: when,
+            description: `Cheque ${cheque.number} ${verb}${reason ? ` - ${reason}` : ''}`,
+            reference: cheque.number, type: 'cheque',
+            lines: chequeLines(event, {
+              direction: cheque.direction, amount: cheque.amount,
+              partyAccountId: cheque.partyAccountId, bankAccountId: bank, number: cheque.number,
+            }),
+          })
+          jeId = je.id
+        }
+
+        set((s) => ({
+          cheques: s.cheques.map((c) => (c.id === id ? {
+            ...c, status: to,
+            bankAccountId: bankAccountId || c.bankAccountId,
+            clearedDate: to === 'cleared' ? when : c.clearedDate,
+            bounceReason: to === 'bounced' ? (reason || '') : c.bounceReason,
+            events: [...(c.events || []), { status: to, date: when, journalEntryId: jeId, reason: reason || '' }],
+          } : c)),
+        }))
+        get().logActivity('Cheque status changed', `${cheque.number} -> ${to}${reason ? ` · ${reason}` : ''}`, {
+          entity: 'cheque', entityId: id, entityRef: cheque.number,
+          severity: to === 'bounced' ? 'warning' : 'info',
+        })
+      },
+
+      /** Cheques still in motion — nothing settled. */
+      outstandingCheques: (direction) => get().cheques
+        .filter((c) => !isTerminal(c.status) && (!direction || c.direction === direction)),
+
+      deleteCheque: (id) => {
+        const cheque = get().cheques.find((c) => c.id === id)
+        if (!cheque) return
+        // A settled cheque is history the ledger already reflects; removing it
+        // would leave its journal entries pointing at nothing.
+        if (isTerminal(cheque.status)) throw new Error(`CHEQUE_SETTLED:${cheque.number}`)
+        get().recycleRecord('cheques', id)
+        set((s) => ({ cheques: s.cheques.filter((c) => c.id !== id) }))
+        get().logActivity('Deleted cheque', `${cheque.number} · ${cheque.partyName || ''}`, {
+          entity: 'cheque', entityId: id, entityRef: cheque.number, severity: 'warning',
+        })
       },
 
       // ─── QUOTATIONS / ESTIMATES ────────────────────────────────────
@@ -4059,9 +4171,9 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
-          'employmentContracts', 'eosbAccruals', 'attendance',
+          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 32, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 33, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4249,7 +4361,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 32,
+      version: 33,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -4443,6 +4555,18 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 33) {
+          // The cheque register. Two system accounts keep a post-dated cheque
+          // out of the bank balance until it clears — an asset for cheques
+          // held, a liability for cheques written.
+          if (!persisted.cheques) persisted.cheques = []
+          const chqAcc = [
+            { id: 'acc-chq-in',  code: '1150', name: 'Cheques Under Collection', type: 'asset',     subtype: 'current', isSystem: true },
+            { id: 'acc-chq-out', code: '2150', name: 'Cheques Payable',          type: 'liability', subtype: 'current', isSystem: true },
+          ]
+          if (Array.isArray(persisted.accounts))
+            chqAcc.forEach((a) => { if (!persisted.accounts.some((x) => x.id === a.id)) persisted.accounts.push(a) })
         }
         if (version < 32) {
           // Other Income becomes a named role, so the income statement can

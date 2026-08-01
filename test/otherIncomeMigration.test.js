@@ -52,7 +52,11 @@ describe('v32 tags Other Income', () => {
       { id: 'acc-cogs', type: 'expense', groupId: 'grp-cos' },
     ]
     const out = migrate({ accountGroups: oldGroups(), accounts: accounts.map((a) => ({ ...a })) }, 31)
-    expect(out.accounts).toEqual(accounts)
+    // Later migrations may *add* accounts (v33 adds the cheque holding
+    // accounts); what matters here is that none of the existing ones moved.
+    accounts.forEach((before) => {
+      expect(out.accounts.find((a) => a.id === before.id)).toEqual(before)
+    })
     // In particular the FX account is still revenue-typed, so the year-end
     // close goes on sweeping it into retained earnings.
     expect(out.accounts.find((a) => a.id === 'acc-fxreal').type).toBe('revenue')
