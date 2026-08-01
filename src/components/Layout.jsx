@@ -45,6 +45,7 @@ const NAV = [
   { label: 'Payment Reminders',  path: '/payment-reminders', icon: BellRing },
   { label: 'Sales Commissions',  path: '/commissions',      icon: BadgePercent },
   { label: 'Delivery Notes',     path: '/delivery-notes',   icon: TruckIcon },
+  { label: 'Customer Advances',   path: '/advances',         icon: Wallet },
   { label: 'Credit Notes',       path: '/credit-notes',     icon: FileMinus },
 
   { divider: 'Purchases' },

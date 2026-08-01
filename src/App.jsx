@@ -38,6 +38,7 @@ const Labels = lazy(() => import('./pages/Labels'))
 const SalesOrders = lazy(() => import('./pages/SalesOrders'))
 const StockCounts = lazy(() => import('./pages/StockCounts'))
 const Cheques = lazy(() => import('./pages/Cheques'))
+const Advances = lazy(() => import('./pages/Advances'))
 const PurchaseQuotes = lazy(() => import('./pages/PurchaseQuotes'))
 const PrepaidExpenses = lazy(() => import('./pages/PrepaidExpenses'))
 const Leases = lazy(() => import('./pages/Leases'))
@@ -213,6 +214,7 @@ export default function App() {
         <Route path="/sales-orders" element={<SalesOrders />} />
         <Route path="/stock-counts" element={<StockCounts />} />
         <Route path="/cheques" element={<Cheques />} />
+        <Route path="/advances" element={<Advances />} />
         <Route path="/purchase-quotes" element={<PurchaseQuotes />} />
         <Route path="/manufacturing" element={<Manufacturing />} />
 

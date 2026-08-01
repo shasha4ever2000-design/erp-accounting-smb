@@ -10,6 +10,10 @@ import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
 import { CHEQUE_IN, CHEQUE_OUT, canTransition, validateCheque, chequeLines, isTerminal } from './utils/cheques'
 import {
+  ADVANCE_ACCOUNT, validateAdvance, advanceBalance, appliedTotal, applicableAmount,
+  customerCredit, receiveLines, refundLines,
+} from './utils/advances'
+import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
 } from './utils/stockCount'
@@ -64,6 +68,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-chq-out',code: '2150', name: 'Cheques Payable',             type: 'liability', subtype: 'current',     isSystem: true  },
+  { id: 'acc-custadv',code: '2250', name: 'Customer Advances',           type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-vatout', code: '2100', name: 'Tax Payable (Output)',        type: 'liability', subtype: 'current',     isSystem: true  },
   { id: 'acc-wht',    code: '2110', name: 'Withholding Tax Payable',     type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-salpay', code: '2200', name: 'Salaries Payable',           type: 'liability', subtype: 'current',     isSystem: true  },
@@ -1346,8 +1351,10 @@ export const useStore = create(
         const s = get()
         const invoice = s.invoices.find((i) => i.id === invoiceId)
         if (!invoice) return
-        // Overpayment guard: never receive more than the outstanding balance, so the
-        // AR subledger can't go negative (no advances/unapplied-cash model yet).
+        // Overpayment guard: never receive more than the outstanding balance, so
+        // the AR subledger can't go negative. Money beyond the invoice is not a
+        // receipt against it — it belongs on account, which is what
+        // receiveAdvance is for.
         const remaining = Math.max(0, (invoice.total || 0) - (invoice.amountPaid || 0))
         const amount = Math.min(Number(payment.amount) || 0, remaining)
         if (amount <= 0) return
@@ -1363,8 +1370,13 @@ export const useStore = create(
         const cashBase = Math.round(amount * payRate * 100) / 100
         const arBase = Math.round(amount * invRate * 100) / 100
         const fx = Math.round((cashBase - arBase) * 100) / 100
+        // Normally the debit is the bank. Applying a customer advance reuses
+        // this whole path — status, receipt numbering, FX — with the advance
+        // account standing in, rather than growing a second payment mechanism
+        // that could drift away from this one.
+        const fromAccountId = payment.fromAccountId || payment.bankAccountId
         const payLines = [
-          { accountId: payment.bankAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
+          { accountId: fromAccountId, debit: cashBase, credit: 0, description: `Receipt for ${invoice.number}` },
           { accountId: get().controlAccountFor('customers', invoice.customerId), debit: 0, credit: arBase, description: `Receipt for ${invoice.number}` },
         ]
         if (fx > 0) payLines.push({ accountId: 'acc-fxreal', debit: 0, credit: fx, description: `Realized FX gain – ${invoice.number}` })
@@ -1382,6 +1394,9 @@ export const useStore = create(
           ),
           settings: { ...st.settings, receipt: { ...st.settings.receipt, next: next + 1 } },
         }))
+        // What actually landed — the caller asked for `payment.amount`, but the
+        // overpayment guard may have clamped it to the outstanding balance.
+        return { amount, number, journalEntryId: je.id }
       },
 
       updateInvoice: (id, patch) =>
@@ -1454,6 +1469,119 @@ export const useStore = create(
             return { ...it, ...patch }
           }),
         }))
+      },
+
+      // ─── CUSTOMER ADVANCES (deposits / money on account) ───────────
+      //
+      // A deposit is a liability, not revenue and not a negative receivable:
+      // the cash is in the bank but the work is not done. See utils/advances.js.
+      customerAdvances: [],
+
+      receiveAdvance: (input) => {
+        const check = validateAdvance(input)
+        if (!check.ok) throw new Error(`ADVANCE_INVALID:${check.error}`)
+        const amount = Math.round((Number(input.amount) || 0) * 100) / 100
+        const ref = `Advance from ${input.customerName || ''}`.trim()
+
+        const je = get().addJournalEntry({
+          date: input.date, description: ref, type: 'advance',
+          lines: receiveLines(amount, input.bankAccountId, ref),
+        })
+
+        const advance = {
+          ...input, id: uuid(), amount, applications: [], refunded: 0,
+          journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ customerAdvances: [...s.customerAdvances, advance] }))
+        get().logActivity('Received customer advance', `${input.customerName || ''} · ${amount}`, {
+          entity: 'advance', entityId: advance.id,
+        })
+        return advance
+      },
+
+      /**
+       * Put some of an advance against an invoice.
+       *
+       * Routed through recordInvoicePayment with the advance account standing
+       * in for the bank, so the invoice ends up with the same paid status,
+       * receipt number and FX treatment as any other settlement.
+       */
+      applyAdvance: (advanceId, invoiceId, { amount, date } = {}) => {
+        const advance = get().customerAdvances.find((a) => a.id === advanceId)
+        const invoice = get().invoices.find((i) => i.id === invoiceId)
+        if (!advance || !invoice) return
+        if (invoice.customerId !== advance.customerId)
+          throw new Error('ADVANCE_WRONG_CUSTOMER')
+
+        const most = applicableAmount(advance, invoice)
+        const want = amount == null ? most : Math.round((Number(amount) || 0) * 100) / 100
+        const apply = Math.min(most, want)
+        if (apply <= 0) return
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        const res = get().recordInvoicePayment(invoiceId, {
+          amount: apply, date: when, fromAccountId: ADVANCE_ACCOUNT,
+          source: 'advance', advanceId, method: 'Advance applied',
+        })
+        if (!res || res.amount <= 0) return
+
+        set((s) => ({
+          customerAdvances: s.customerAdvances.map((a) => (a.id === advanceId ? {
+            ...a,
+            applications: [...(a.applications || []), {
+              id: uuid(), invoiceId, invoiceNumber: invoice.number,
+              amount: res.amount, date: when, journalEntryId: res.journalEntryId,
+            }],
+          } : a)),
+        }))
+        get().logActivity('Applied advance to invoice', `${invoice.number} · ${res.amount}`, {
+          entity: 'advance', entityId: advanceId, entityRef: invoice.number,
+        })
+        return res
+      },
+
+      refundAdvance: (advanceId, { amount, date, bankAccountId } = {}) => {
+        const advance = get().customerAdvances.find((a) => a.id === advanceId)
+        if (!advance) return
+        const available = advanceBalance(advance)
+        const want = amount == null ? available : Math.round((Number(amount) || 0) * 100) / 100
+        const give = Math.min(available, want)
+        if (give <= 0) throw new Error('ADVANCE_NOTHING_TO_REFUND')
+        const bank = bankAccountId || advance.bankAccountId
+        if (!bank) throw new Error('ADVANCE_NO_BANK')
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        const ref = `Refund of advance to ${advance.customerName || ''}`.trim()
+        const je = get().addJournalEntry({
+          date: when, description: ref, type: 'advance_refund',
+          lines: refundLines(give, bank, ref),
+        })
+        set((s) => ({
+          customerAdvances: s.customerAdvances.map((a) => (a.id === advanceId
+            ? { ...a, refunded: Math.round(((Number(a.refunded) || 0) + give) * 100) / 100, refundJournalEntryId: je.id }
+            : a)),
+        }))
+        get().logActivity('Refunded customer advance', `${advance.customerName || ''} · ${give}`, {
+          entity: 'advance', entityId: advanceId, severity: 'warning',
+        })
+        return { amount: give, journalEntryId: je.id }
+      },
+
+      /** Credit a customer is holding with you, across every open advance. */
+      customerCreditBalance: (customerId) => customerCredit(get().customerAdvances, customerId),
+
+      deleteAdvance: (id) => {
+        const advance = get().customerAdvances.find((a) => a.id === id)
+        if (!advance) return
+        // Once any of it has been applied or refunded the ledger has moved on;
+        // removing the record would orphan those entries.
+        if (appliedTotal(advance) > 0 || (Number(advance.refunded) || 0) > 0)
+          throw new Error('ADVANCE_IN_USE')
+        get().recycleRecord('customerAdvances', id)
+        set((s) => ({ customerAdvances: s.customerAdvances.filter((a) => a.id !== id) }))
+        get().logActivity('Deleted customer advance', `${advance.customerName || ''}`, {
+          entity: 'advance', entityId: id, severity: 'warning',
+        })
       },
 
       // ─── CHEQUE REGISTER (post-dated cheques) ──────────────────────
@@ -4171,9 +4299,9 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
-          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques',
+          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 33, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 34, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4361,7 +4489,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 33,
+      version: 34,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -4555,6 +4683,15 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 34) {
+          // Customer advances. A deposit is a liability until the work is
+          // done, so it gets its own account rather than sitting as a
+          // negative receivable.
+          if (!persisted.customerAdvances) persisted.customerAdvances = []
+          const advAcc = { id: 'acc-custadv', code: '2250', name: 'Customer Advances', type: 'liability', subtype: 'current', isSystem: true }
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((x) => x.id === advAcc.id))
+            persisted.accounts.push(advAcc)
         }
         if (version < 33) {
           // The cheque register. Two system accounts keep a post-dated cheque
