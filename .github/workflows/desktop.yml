@@ -40,6 +40,11 @@ jobs:
         env:
           BUILD_TARGET: electron
 
+      # Architectures come from the `build.mac.target` block in package.json,
+      # which names x64 and arm64 explicitly. Do not simplify that back to a
+      # bare "dmg": electron-builder then builds only the host architecture,
+      # and macos-latest is Apple Silicon — which is how v1.4.0 shipped with
+      # an arm64 disk image and nothing for Intel Macs.
       - name: Build installer
         run: npx electron-builder --publish never
         env:
