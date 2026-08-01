@@ -15,6 +15,11 @@ import {
   customerCredit, receiveLines, refundLines,
 } from './utils/advances'
 import {
+  ADVANCE_ACCOUNT as EMP_ADV_ACCOUNT, validateAdvance as validateEmpAdvance,
+  advanceBalance as empAdvanceBalance, dueFromPayroll, owedBy, totalOutstanding,
+  issueLines as empIssueLines, repayLines as empRepayLines, writeOffLines as empWriteOffLines,
+} from './utils/employeeAdvances'
+import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
 } from './utils/stockCount'
@@ -55,6 +60,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-bank1',  code: '1002', name: 'Main Bank Account',          type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true, controlFor: 'customers'  },
   { id: 'acc-chq-in', code: '1150', name: 'Cheques Under Collection',     type: 'asset',     subtype: 'current',     isSystem: true  },
+  { id: 'acc-empadv', code: '1250', name: 'Employee Advances',            type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false, controlFor: 'inventoryItems' },
   { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
@@ -1504,6 +1510,115 @@ export const useStore = create(
             return { ...it, ...patch }
           }),
         }))
+      },
+
+      // ─── EMPLOYEE ADVANCES (salary advances / staff loans) ─────────
+      //
+      // The mirror of a customer advance: money handed over that has not been
+      // worked off yet, so an asset rather than a liability. It winds down
+      // through payroll — see the deduction in processPayrollRun, which is
+      // what stops an advance being a journal entry somebody has to remember
+      // every month. See utils/employeeAdvances.js.
+      employeeAdvances: [],
+
+      issueEmployeeAdvance: (input) => {
+        const check = validateEmpAdvance(input)
+        if (!check.ok) throw new Error(`EMPADV_INVALID:${check.error}`)
+        const amount = Math.round((Number(input.amount) || 0) * 100) / 100
+        const ref = `Advance to ${input.employeeName || ''}`.trim()
+
+        const je = get().addJournalEntry({
+          date: input.date, description: ref, type: 'employee_advance',
+          lines: empIssueLines(amount, input.bankAccountId, ref),
+        })
+        const advance = {
+          ...input, id: uuid(), amount,
+          instalment: Math.round((Number(input.instalment) || 0) * 100) / 100,
+          repayments: [], status: 'open',
+          journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ employeeAdvances: [...s.employeeAdvances, advance] }))
+        get().logActivity('Issued employee advance', `${input.employeeName || ''} · ${amount}`, {
+          entity: 'employeeAdvance', entityId: advance.id,
+        })
+        return advance
+      },
+
+      /** Cash handed back outside payroll. */
+      repayEmployeeAdvance: (id, { amount, date, bankAccountId } = {}) => {
+        const adv = get().employeeAdvances.find((a) => a.id === id)
+        if (!adv) return
+        const owed = empAdvanceBalance(adv)
+        const want = amount == null ? owed : Math.round((Number(amount) || 0) * 100) / 100
+        const take = Math.min(owed, want)
+        if (take <= 0.005) throw new Error('EMPADV_NOTHING_OWED')
+        const bank = bankAccountId || adv.bankAccountId
+        if (!bank) throw new Error('EMPADV_NO_BANK')
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        const ref = `Advance repayment – ${adv.employeeName || ''}`.trim()
+        const je = get().addJournalEntry({
+          date: when, description: ref, type: 'employee_advance', lines: empRepayLines(take, bank, ref),
+        })
+        get()._recordAdvanceRepayments([{ advanceId: id, amount: take }], { date: when, source: 'cash', journalEntryId: je.id })
+        return { amount: take, journalEntryId: je.id }
+      },
+
+      /** Give up on recovering one — the point at which it becomes a cost. */
+      writeOffEmployeeAdvance: (id, { date, expenseAccountId, reason } = {}) => {
+        const adv = get().employeeAdvances.find((a) => a.id === id)
+        if (!adv) return
+        const owed = empAdvanceBalance(adv)
+        if (owed <= 0.005) throw new Error('EMPADV_NOTHING_OWED')
+        const when = date || new Date().toISOString().slice(0, 10)
+        const ref = `Advance written off – ${adv.employeeName || ''}${reason ? ` (${reason})` : ''}`
+        const je = get().addJournalEntry({
+          date: when, description: ref, type: 'employee_advance',
+          lines: empWriteOffLines(owed, expenseAccountId, ref),
+        })
+        set((s) => ({
+          employeeAdvances: s.employeeAdvances.map((a) => (a.id === id
+            ? { ...a, status: 'written_off', writeOffJournalEntryId: je.id, writeOffReason: reason || '' } : a)),
+        }))
+        get().logActivity('Wrote off employee advance', `${adv.employeeName || ''} · ${owed}`, {
+          entity: 'employeeAdvance', entityId: id, severity: 'warning',
+        })
+        return { amount: owed, journalEntryId: je.id }
+      },
+
+      /** Shared by the payroll deduction and cash repayment. Posts nothing. */
+      _recordAdvanceRepayments: (parts, { date, source, payrollRunId, journalEntryId }) => {
+        if (!parts?.length) return
+        const by = Object.fromEntries(parts.map((p) => [p.advanceId, p.amount]))
+        set((s) => ({
+          employeeAdvances: s.employeeAdvances.map((a) => {
+            const amt = by[a.id]
+            if (!amt) return a
+            const repayments = [...(a.repayments || []), { id: uuid(), amount: amt, date, source, payrollRunId, journalEntryId }]
+            const settled = (Number(a.amount) || 0) - repayments.reduce((x, r) => x + r.amount, 0) <= 0.005
+            return { ...a, repayments, status: settled ? 'settled' : a.status }
+          }),
+        }))
+      },
+
+      /** What payroll should take off one employee this run. */
+      advanceDueFor: (employeeId, cap) => dueFromPayroll(get().employeeAdvances, employeeId, { cap }),
+
+      /** What an employee still owes, for the payroll form and the register. */
+      advanceOwedBy: (employeeId) => owedBy(get().employeeAdvances, employeeId),
+
+      totalEmployeeAdvances: () => totalOutstanding(get().employeeAdvances),
+
+      deleteEmployeeAdvance: (id) => {
+        const adv = get().employeeAdvances.find((a) => a.id === id)
+        if (!adv) return
+        if ((adv.repayments || []).length > 0 || adv.status === 'written_off')
+          throw new Error('EMPADV_IN_USE')
+        get().recycleRecord('employeeAdvances', id)
+        set((s) => ({ employeeAdvances: s.employeeAdvances.filter((a) => a.id !== id) }))
+        get().logActivity('Deleted employee advance', `${adv.employeeName || ''}`, {
+          entity: 'employeeAdvance', entityId: id, severity: 'warning',
+        })
       },
 
       // ─── CUSTOMER ADVANCES (deposits / money on account) ───────────
@@ -3030,6 +3145,12 @@ export const useStore = create(
         const totalGosiEmployer = run.lines.reduce((a, l) => a + n(l, 'gosiEmployer'), 0)
         const totalOtherDed  = run.lines.reduce((a, l) => a + otherDedOf(l), 0)
         const totalNet       = run.lines.reduce((a, l) => a + n(l, 'net'), 0)
+        // Salary-advance recovery. The line's `loan` field has already been
+        // taken off its net pay by the payroll form, so the credit that would
+        // have gone to the employee goes against the advance instead — the
+        // entry balances by construction. A run where nobody owes anything
+        // has totalLoan 0 and posts exactly as it did before.
+        const totalLoan = Math.round(run.lines.reduce((a, l) => a + n(l, 'loan'), 0) * 100) / 100
         // Salary cost = earnings not withheld from unpaid deductions (late/absent/penalty
         // reduce the expense; tax & GOSI become payroll liabilities).
         const salaryExpense = totalGross - totalOtherDed
@@ -3041,6 +3162,8 @@ export const useStore = create(
           lines.push({ accountId: 'acc-paye',  debit: 0, credit: totalTax,     description: `Payroll ${run.number} – Income Tax` })
         if (totalGosiEmp > 0)
           lines.push({ accountId: 'acc-sspay', debit: 0, credit: totalGosiEmp, description: `Payroll ${run.number} – GOSI (employee)` })
+        if (totalLoan > 0)
+          lines.push({ accountId: EMP_ADV_ACCOUNT, debit: 0, credit: totalLoan, description: `Payroll ${run.number} – Advance recovery` })
         if (totalGosiEmployer > 0) {
           lines.push({ accountId: 'acc-gosiemp', debit: totalGosiEmployer, credit: 0,                   description: `Payroll ${run.number} – GOSI (employer)` })
           lines.push({ accountId: 'acc-sspay',   debit: 0,                  credit: totalGosiEmployer, description: `Payroll ${run.number} – GOSI (employer)` })
@@ -3050,6 +3173,19 @@ export const useStore = create(
           description: `Payroll Run ${run.number} – ${run.period}`,
           reference: run.number, type: 'payroll', lines,
         })
+        // Wind the advances down by what this run actually recovered, oldest
+        // first, capped at each employee's own deduction so one person's
+        // advance can never be repaid out of another's pay.
+        if (totalLoan > 0) {
+          run.lines.forEach((l) => {
+            const take = n(l, 'loan')
+            if (take <= 0.005 || !l.employeeId) return
+            const { parts } = get().advanceDueFor(l.employeeId, take)
+            get()._recordAdvanceRepayments(parts, {
+              date: run.payDate, source: 'payroll', payrollRunId: runId, journalEntryId: je.id,
+            })
+          })
+        }
         set((st) => ({
           payrollRuns: st.payrollRuns.map((r) =>
             r.id === runId ? { ...r, status: 'processed', journalEntryId: je.id } : r
@@ -4345,9 +4481,9 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
-          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances',
+          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 35, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 36, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4541,7 +4677,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 35,
+      version: 36,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -4738,6 +4874,14 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 36) {
+          // Employee salary advances. An asset — money handed over that has
+          // not yet been worked off — winding down through payroll.
+          if (!persisted.employeeAdvances) persisted.employeeAdvances = []
+          const a = { id: 'acc-empadv', code: '1250', name: 'Employee Advances', type: 'asset', subtype: 'current', isSystem: true }
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((x) => x.id === a.id))
+            persisted.accounts.push(a)
         }
         if (version < 35) {
           // FIFO becomes an option. Existing items get one cost layer seeded

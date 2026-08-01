@@ -2004,6 +2004,32 @@ const AR = {
   'Purchase': 'شراء',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
 
+  // ── Employee advances / staff loans ──
+  'Employee Advances': 'سلف الموظفين',
+  'Salary advances and staff loans — recovered automatically from payroll': 'سلف الرواتب وقروض الموظفين — تُسترد تلقائياً من مسير الرواتب',
+  'Issue advance': 'صرف سلفة', 'Advance': 'سلفة',
+  'Cr Employee Advances': 'دائن سلف الموظفين',
+  'owed back by staff': 'مستحقة على الموظفين', 'Staff repaying': 'موظفون يسددون',
+  'No advances yet': 'لا توجد سلف بعد',
+  'An advance is money lent to an employee, not a cost. It is held as an asset and comes back through payroll a bit at a time, so nobody has to remember the deduction each month.': 'السلفة مبلغ مُقرض للموظف وليست مصروفاً. تُسجَّل كأصل وتُسترد من الراتب على أقساط، فلا يحتاج أحد لتذكّر الاستقطاع كل شهر.',
+  'Advanced': 'المصروف', 'Repaid': 'المسدَّد', 'Per payroll': 'لكل مسير',
+  'whole balance': 'كامل الرصيد', 'run left': 'مسير متبقٍ', 'runs left': 'مسيرات متبقية',
+  'Repaying': 'قيد السداد', 'Written off': 'مشطوبة',
+  'Repay': 'سداد', 'Write off': 'شطب', 'Record repayment': 'تسجيل السداد',
+  'Delete this advance? Its journal entry goes to the recycle bin.': 'حذف هذه السلفة؟ سيُنقل قيدها إلى سلة المحذوفات.',
+  'Some of this advance has already been repaid, so it stays on the record.': 'تم سداد جزء من هذه السلفة، لذلك تبقى في السجل.',
+  'Date paid out': 'تاريخ الصرف', 'Deduct per payroll': 'الاستقطاع لكل مسير', 'Whole amount': 'كامل المبلغ',
+  'Advance against salary': 'سلفة على الراتب',
+  'This employee already owes {amt}.': 'على هذا الموظف بالفعل {amt}.',
+  'Recorded as an asset, not a payroll cost — the money is still yours until it is worked off. Payroll deducts the instalment automatically.': 'تُسجَّل كأصل لا كتكلفة رواتب — المبلغ ما زال ملكك حتى يُستوفى. ويستقطع مسير الرواتب القسط تلقائياً.',
+  'Repay in cash': 'سداد نقدي',
+  '{name} · {amt} outstanding': '{name} · {amt} مستحقة',
+  'For money handed back outside payroll. Payroll deductions are recorded automatically.': 'للمبالغ المعادة خارج مسير الرواتب. أما استقطاعات المسير فتُسجَّل تلقائياً.',
+  'This advance is already fully repaid.': 'تم سداد هذه السلفة بالكامل.',
+  'Choose the account the money was paid into.': 'اختر الحساب الذي أُودع فيه المبلغ.',
+  'Write off advance': 'شطب السلفة', 'Charge to': 'تُحمّل على', 'Left without notice': 'ترك العمل دون إشعار',
+  'This is the point the advance becomes a cost. It cannot be undone from here — the entry would have to be reversed manually.': 'عند هذه النقطة تتحول السلفة إلى تكلفة. ولا يمكن التراجع من هنا — يلزم عكس القيد يدوياً.',
+
   // ── Print / PDF ──
   'Download PDF': 'تنزيل PDF', 'Back': 'رجوع',
 
