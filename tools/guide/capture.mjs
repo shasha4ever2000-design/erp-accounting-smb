@@ -4,8 +4,9 @@ import { chromium } from '/opt/node22/lib/node_modules/playwright/index.mjs'
 import { mkdirSync, writeFileSync } from 'node:fs'
 
 const BASE = process.env.BASE || 'http://localhost:4179/erp-accounting-smb'
-const DIR = process.env.GUIDE_DIR || '.guide-build'
-const OUT = `${DIR}/shots`
+const DIR = '/tmp/claude-0/-home-user-worldcup2026/bb36a4c6-a632-58d3-bd87-76cdfe045204/scratchpad'
+const AR = process.env.GUIDE_LANG === 'ar'
+const OUT = `${DIR}/${AR ? 'shots-ar' : 'shots'}`
 mkdirSync(OUT, { recursive: true })
 
 const errors = []
@@ -35,15 +36,29 @@ await page.screenshot({ path: `${OUT}/03-empty-dashboard.png` })
 // ── Restore the seeded books ───────────────────────────────────────
 await page.goto(BASE + '/settings', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
-await page.setInputFiles('input[type="file"][accept*="json"]', `${DIR}/demo-backup.json`)
+await page.setInputFiles('input[type="file"][accept*="json"]', `${DIR}/demo-backup${AR ? '-ar' : ''}.json`)
 await page.waitForTimeout(3500)
 await page.goto(BASE + '/', { waitUntil: 'networkidle' })
 await page.waitForTimeout(2000)
 await page.goto(BASE + '/customers', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
 const check = (await page.textContent('body')) || ''
-const restored = /Al-Noor Trading Est\./.test(check) && !/No customers yet/.test(check)
+// The customer is renamed in the Arabic build, so match either spelling.
+const restored = /Al-Noor Trading Est\.|مؤسسة النور/.test(check) && !/No customers yet|لا يوجد عملاء/.test(check)
 console.log('restore worked:', restored)
+
+// Switch the whole interface to Arabic before capturing anything, so the guide
+// shows the app the way an Arabic reader will actually see it — mirrored
+// layout, Arabic labels, Arabic numerals formatting and all.
+if (AR) {
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  await page.locator('button:has-text("ع")').first().click()
+  await page.waitForTimeout(1500)
+  const dir = await page.getAttribute('html', 'dir')
+  if (dir !== 'rtl') { await browser.close(); throw new Error('language did not switch to Arabic') }
+  console.log('switched to Arabic')
+}
 if (!restored) { await browser.close(); throw new Error('restore failed — aborting capture') }
 
 // ── Every screen ───────────────────────────────────────────────────
@@ -147,19 +162,19 @@ await detail('reports-pl', async () => {
 await detail('payroll-run-form', async () => {
   await page.goto(BASE + '/payroll', { waitUntil: 'networkidle' })
   await page.waitForTimeout(900)
-  await page.getByRole('button', { name: /Run Payroll/i }).first().click()
+  await page.getByRole('button', { name: /Run Payroll|تشغيل الرواتب/i }).first().click()
 })
 
 await detail('customer-form', async () => {
   await page.goto(BASE + '/customers', { waitUntil: 'networkidle' })
   await page.waitForTimeout(800)
-  await page.getByRole('button', { name: /New Customer|Add Customer/i }).first().click()
+  await page.getByRole('button', { name: /New Customer|Add Customer|عميل جديد/i }).first().click()
 })
 
 await detail('item-form', async () => {
   await page.goto(BASE + '/inventory', { waitUntil: 'networkidle' })
   await page.waitForTimeout(800)
-  await page.getByRole('button', { name: /New Item|Add Item/i }).first().click()
+  await page.getByRole('button', { name: /New Item|Add Item|صنف جديد/i }).first().click()
 })
 
 await detail('command-palette', async () => {
@@ -176,7 +191,7 @@ await detail('dark-mode', async () => {
   })
 })
 
-await detail('arabic-rtl', async () => {
+if (!AR) await detail('arabic-rtl', async () => {
   await page.goto(BASE + '/', { waitUntil: 'networkidle' })
   await page.waitForTimeout(700)
   await page.locator('button:has-text("ع")').first().click()

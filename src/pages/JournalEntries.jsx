@@ -173,9 +173,9 @@ export default function JournalEntries() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Account</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Debit</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Credit</th>
+                  <th className="text-start px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Account')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Debit')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Credit')}</th>
                   <th className="px-2 py-2 w-8" />
                 </tr>
               </thead>
@@ -241,20 +241,20 @@ export default function JournalEntries() {
       </Modal>
 
       {/* View Entry Modal */}
-      <Modal open={!!viewEntry} onClose={() => setViewEntry(null)} title={`Journal Entry ${viewEntry?.number}`} width="max-w-xl">
+      <Modal open={!!viewEntry} onClose={() => setViewEntry(null)} title={`${t('Journal Entry')} ${viewEntry?.number || ''}`} width="max-w-xl">
         {viewEntry && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div><p className="text-gray-400 dark:text-slate-500">Date</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
+              <div><p className="text-gray-400 dark:text-slate-500">{t('Date')}</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
               <div><p className="text-gray-400 dark:text-slate-500">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
               <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>
             </div>
             <table className="w-full text-sm border border-slate-200 dark:border-surface-700 rounded-lg overflow-hidden">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Account</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Debit</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Credit</th>
+                  <th className="text-start px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Account')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Debit')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Credit')}</th>
                 </tr>
               </thead>
               <tbody>

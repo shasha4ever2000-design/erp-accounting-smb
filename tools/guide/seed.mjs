@@ -432,9 +432,26 @@ step('currencies', () => {
   g().addCurrency({ code: 'AED', name: 'UAE Dirham', symbol: 'AED', rate: 0.9793 })
 })
 
+
+// ── Arabic build ───────────────────────────────────────────────────
+// Interface strings translate themselves; the books do not. Rename the chart
+// of accounts and the master data so an Arabic reader sees Arabic journal
+// entries rather than Arabic headings over English accounts.
+const AR = process.env.GUIDE_LANG === 'ar'
+let arabicNote = 'english build'
+if (AR) {
+  const { arabize, ACCOUNT_NAMES } = await import(`${DIR}/arabize.mjs`)
+  const r = arabize(g, useStore)
+  arabicNote = `renamed ${r.renamedAccounts} accounts; still english: ${r.stillEnglish.join(', ') || 'none'}`
+  if (typeof MANIFEST !== 'undefined')
+    MANIFEST.forEach((e) => e.entries.forEach((je) =>
+      je.lines.forEach((l) => { l.account = ACCOUNT_NAMES[l.account] || l.account })))
+}
+const SUFFIX = AR ? '-ar' : ''
+
 // ── Write it out ───────────────────────────────────────────────────
 const data = g().exportData()
-writeFileSync(`${DIR}/demo-backup.json`, JSON.stringify(data))
+writeFileSync(`${DIR}/demo-backup${SUFFIX}.json`, JSON.stringify(data))
 
 say('seeded  :', done.length, 'steps')
 if (fail.length) { say('FAILED  :'); fail.forEach((f) => say('  -', f)) }
@@ -455,6 +472,7 @@ const bad = s.journalEntries.filter((je) => {
   return Math.round((dr - cr) * 100) / 100 !== 0
 })
 say('unbalanced entries:', bad.length)
+say('arabic:', arabicNote)
 const bal = s.getAllBalances()
 const net = (id) => { const b = bal[id] || { dr: 0, cr: 0 }; return Math.round((b.dr - b.cr) * 100) / 100 }
 const sumType = (type) => Math.round(s.accounts.filter((a) => a.type === type)
@@ -467,4 +485,4 @@ say('expenses:', sumType('expense'))
 say('profit  :', Math.round((-sumType('revenue') - sumType('expense')) * 100) / 100)
 const negatives = ['acc-bank1', 'acc-ar', 'acc-inv', 'acc-rawmat', 'acc-fingoods'].filter((id) => net(id) < 0)
 say('negative where it should not be:', negatives.join(', ') || 'none')
-writeFileSync(`${DIR}/seed-report.txt`, REPORT.join('\n'))
+writeFileSync(`${DIR}/seed-report${SUFFIX}.txt`, REPORT.join('\n'))

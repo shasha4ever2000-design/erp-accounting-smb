@@ -2003,6 +2003,7 @@ const AR = {
   'Issues stock & posts COGS at average cost': 'يصرف المخزون ويسجل تكلفة البضاعة بمتوسط التكلفة',
   'Purchase': 'شراء',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
+  'Journal Entry': 'قيد يومية',
 
   // ── Employee advances / staff loans ──
   'Employee Advances': 'سلف الموظفين',

@@ -1,11 +1,42 @@
 # Building the guides
 
-Two PDFs live in `docs/`, both generated:
+Four PDFs live in `docs/`, all generated:
 
 | | What it is |
 | --- | --- |
 | `ERP-Accounting-User-Guide.pdf` | Screen by screen — every module, what it is for, how to use it. |
 | `ERP-Every-Transaction.pdf` | Forty worked transactions — the figures, the screen, and a picture of the journal entry each one produces. |
+| `…-AR.pdf` | Arabic editions of both, right-to-left, with the app itself captured in Arabic. |
+
+## The Arabic editions
+
+`GUIDE_LANG=ar` changes three things:
+
+1. **The seed runs `arabize.mjs`** — the interface translates itself, but the *books* do not.
+   Account names, customers, items and staff are data, so an Arabic reader would otherwise get
+   Arabic headings over an English chart of accounts. `arabize.mjs` renames all 62 default
+   accounts and the master data, then rewrites every denormalised `*Name` field on documents —
+   invoices copy the customer name onto themselves at creation, so renaming the customer alone
+   never reaches them.
+2. **The capture script switches the app to Arabic** before taking any screenshot, and asserts
+   `<html dir>` actually became `rtl` rather than trusting the click.
+3. **The builders (`*_ar.py`) typeset right-to-left** — mirrored borders, padding and table
+   alignment, and Noto Sans Arabic. Install it with
+   `apt-get install fonts-noto-core fonts-hosny-amiri`; without an Arabic face the PDF renders
+   boxes.
+
+### Known limits of the Arabic editions
+
+Two things stay English in the screenshots, because the application generates them in English:
+
+- **Journal entry descriptions.** `store.js` builds these from templates
+  (`Sales Invoice ${number} – ${customerName}`) that are not passed through `i18n`. The
+  *accounts* in every entry are Arabic; the description line above them is not.
+- **The printed invoice template** — `INVOICE`, `BILL TO`, `Subtotal`, `Total`, and the
+  amount-in-words line.
+
+Both are real localisation gaps in the product rather than in the guide. Fixing them means
+routing those strings through `i18n.js`; the guides will pick the change up on the next build.
 
 They share this folder. The screen guide uses `seed.mjs` / `capture.mjs` /
 `build_guide.py`; the transaction guide uses `seed-transactions.mjs` /

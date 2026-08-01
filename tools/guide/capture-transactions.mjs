@@ -5,10 +5,11 @@ import { mkdirSync, writeFileSync, readFileSync } from 'node:fs'
 
 const BASE = process.env.BASE || 'http://localhost:4180/erp-accounting-smb'
 const DIR = process.env.GUIDE_DIR || '.guide-build'
-const OUT = `${DIR}/tx-shots`
+const AR = process.env.GUIDE_LANG === 'ar'
+const OUT = `${DIR}/${AR ? 'tx-shots-ar' : 'tx-shots'}`
 mkdirSync(OUT, { recursive: true })
 
-const manifest = JSON.parse(readFileSync(`${DIR}/tx-manifest.json`, `utf8'))
+const manifest = JSON.parse(readFileSync(`${DIR}/tx-manifest.json`, 'utf8'))
 const errors = []
 const browser = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' })
 const page = await browser.newPage({ viewport: { width: 1500, height: 940 }, deviceScaleFactor: 2 })
@@ -29,7 +30,7 @@ await page.getByRole('button', { name: 'Create' }).click()
 await page.waitForTimeout(3000)
 await page.goto(BASE + '/settings', { waitUntil: 'networkidle' })
 await page.waitForTimeout(1200)
-await page.setInputFiles('input[type="file"][accept*="json"]', `${DIR}/tx-backup.json`)
+await page.setInputFiles('input[type="file"][accept*="json"]', `${DIR}/tx-backup${AR ? '-ar' : ''}.json`)
 await page.waitForTimeout(3500)
 
 await page.goto(BASE + '/journals', { waitUntil: 'networkidle' })
@@ -37,6 +38,16 @@ await page.waitForTimeout(1500)
 const check = (await page.textContent('body')) || ''
 if (!/JE-00/.test(check)) { await browser.close(); throw new Error('restore failed — no journal entries') }
 console.log('restore ok')
+
+if (AR) {
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' })
+  await page.waitForTimeout(800)
+  await page.locator('button:has-text("ع")').first().click()
+  await page.waitForTimeout(1500)
+  const dir = await page.getAttribute('html', 'dir')
+  if (dir !== 'rtl') { await browser.close(); throw new Error('language did not switch to Arabic') }
+  console.log('switched to Arabic')
+}
 
 // From here on, refuse every dialog rather than accept it. The only confirms
 // left on these screens are destructive ones (Void an entry), and a mis-aimed
@@ -51,7 +62,7 @@ for (const ex of manifest) {
     try {
       await page.goto(BASE + '/journals', { waitUntil: 'networkidle' })
       await page.waitForTimeout(500)
-      await page.getByPlaceholder('Search entries...').fill(je.number)
+      await page.locator('input[placeholder*="Search entries"], input[placeholder*="بحث"]').first().fill(je.number)
       await page.waitForTimeout(500)
       // One row survives the filter. In the actions cell the buttons are
       // [attachment, view, (void)] — a manual entry has the third one, so
@@ -124,6 +135,6 @@ try {
   await page.screenshot({ path: `${OUT}/doc-invoice-view.png` })
 } catch (e) { errors.push('invoice view: ' + e.message) }
 
-writeFileSync(`${DIR}/tx-capture-report.txt`, errors.join(`\n') || 'no errors')
+writeFileSync(`${DIR}/tx-capture-report.txt`, errors.join('\n') || 'no errors')
 await browser.close()
 console.log('errors:', errors.length ? '\n' + errors.join('\n') : 'none')
