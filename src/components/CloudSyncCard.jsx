@@ -22,11 +22,20 @@ export default function CloudSyncCard() {
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
 
-  // Sign-in / sign-up form
+  // Sign-in / sign-up / forgot-password form
   const [mode, setMode] = useState('signin')
   const [form, setForm] = useState({ name: '', email: '', password: '' })
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const [signupSent, setSignupSent] = useState(false)
+  const [resetSent, setResetSent] = useState(false)
+
+  // Set when Supabase redirects the user back with a one-time recovery
+  // session (after they click the link from a reset email), independent of
+  // an ordinary signed-in session — the user needs to pick a new password
+  // before they can do anything else.
+  const [recovering, setRecovering] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [resetDone, setResetDone] = useState(false)
 
   // Company linking
   const [myCloudCompanies, setMyCloudCompanies] = useState([])
@@ -64,7 +73,11 @@ export default function CloudSyncCard() {
       setSession(sess)
       setLoading(false)
       if (sess) refreshCloudState(sess)
-      unsub = cloudAuth.onCloudAuthChange((s) => { setSession(s); if (s) refreshCloudState(s) })
+      unsub = cloudAuth.onCloudAuthChange((s, event) => {
+        if (event === 'PASSWORD_RECOVERY') { setRecovering(true); return }
+        setSession(s)
+        if (s) refreshCloudState(s)
+      })
     })()
     return () => unsub()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -78,12 +91,32 @@ export default function CloudSyncCard() {
   const handleAuth = async () => {
     setErr(''); setBusy(true)
     const cloudAuth = await import('../cloudAuth')
+    if (mode === 'forgot') {
+      const res = await cloudAuth.cloudResetPassword(form.email)
+      setBusy(false)
+      if (res.error) { setErr(res.error); return }
+      setResetSent(true)
+      return
+    }
     const res = mode === 'signup'
       ? await cloudAuth.cloudSignUp(form)
       : await cloudAuth.cloudSignIn(form)
     setBusy(false)
     if (res.error) { setErr(res.error); return }
     if (mode === 'signup' && res.needsEmailConfirm) { setSignupSent(true); return }
+    const sess = await cloudAuth.getCloudSession()
+    setSession(sess)
+  }
+
+  const handleSetNewPassword = async () => {
+    setErr(''); setBusy(true)
+    const cloudAuth = await import('../cloudAuth')
+    const res = await cloudAuth.cloudUpdatePassword(newPassword)
+    setBusy(false)
+    if (res.error) { setErr(res.error); return }
+    setNewPassword('')
+    setResetDone(true)
+    setRecovering(false)
     const sess = await cloudAuth.getCloudSession()
     setSession(sess)
   }
@@ -176,6 +209,23 @@ export default function CloudSyncCard() {
 
       {loading ? (
         <p className="text-sm text-gray-400 dark:text-slate-500">{t('Checking cloud account…')}</p>
+      ) : recovering ? (
+        <>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">{t('Choose a new password for your cloud account.')}</p>
+          {resetDone ? (
+            <p className="text-sm bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 rounded-lg px-3 py-2.5">
+              {t('Password updated. You are signed in.')}
+            </p>
+          ) : (
+            <div className="max-w-sm space-y-3">
+              <Input label={t('New password')} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
+              {err && <p className="text-sm text-red-500">{err}</p>}
+              <Btn onClick={handleSetNewPassword} disabled={busy || !newPassword}>
+                {busy ? t('Please wait…') : t('Set new password')}
+              </Btn>
+            </div>
+          )}
+        </>
       ) : !session ? (
         <>
           <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
@@ -185,6 +235,25 @@ export default function CloudSyncCard() {
             <p className="text-sm bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 rounded-lg px-3 py-2.5">
               {t('Check your email to confirm your account, then come back and sign in.')}
             </p>
+          ) : mode === 'forgot' ? (
+            <div className="max-w-sm space-y-3">
+              <div className="flex gap-1.5 mb-1">
+                <button onClick={() => { setMode('signin'); setErr(''); setResetSent(false) }} className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">{t('← Back to sign in')}</button>
+              </div>
+              {resetSent ? (
+                <p className="text-sm bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 rounded-lg px-3 py-2.5">
+                  {t('If an account exists for that email, a reset link is on its way.')}
+                </p>
+              ) : (
+                <>
+                  <Input label={t('Email')} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
+                  {err && <p className="text-sm text-red-500">{err}</p>}
+                  <Btn onClick={handleAuth} disabled={busy || !form.email}>
+                    {busy ? t('Please wait…') : t('Send reset link')}
+                  </Btn>
+                </>
+              )}
+            </div>
           ) : (
             <div className="max-w-sm space-y-3">
               <div className="flex gap-1.5 mb-1">
@@ -194,6 +263,9 @@ export default function CloudSyncCard() {
               {mode === 'signup' && <Input label={t('Your name')} value={form.name} onChange={(e) => setField('name', e.target.value)} />}
               <Input label={t('Email')} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
               <Input label={t('Password')} type="password" value={form.password} onChange={(e) => setField('password', e.target.value)} />
+              {mode === 'signin' && (
+                <button onClick={() => { setMode('forgot'); setErr('') }} className="text-xs font-semibold text-brand-600 hover:text-brand-700">{t('Forgot password?')}</button>
+              )}
               {err && <p className="text-sm text-red-500">{err}</p>}
               <Btn onClick={handleAuth} disabled={busy || !form.email || !form.password}>
                 {busy ? t('Please wait…') : mode === 'signup' ? t('Create cloud account') : t('Sign in')}

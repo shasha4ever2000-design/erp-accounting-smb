@@ -40,9 +40,23 @@ describe('local auth password hashing', () => {
     expect(g().users).toHaveLength(0)
   })
 
+  it('refuses a common password, however long', async () => {
+    // The strength rule lives in utils/password.js; this proves signup
+    // actually calls it rather than relying on the form to.
+    const res = await g().signup({ name: 'A', email: 'a@x.com', password: 'Password1!23' })
+    expect(res).toHaveProperty('error')
+    expect(g().users).toHaveLength(0)
+  })
+
+  it('refuses a password containing the person own email', async () => {
+    const res = await g().signup({ name: 'A', email: 'marmalade@x.com', password: 'marmalade jar 9' })
+    expect(res).toHaveProperty('error')
+    expect(g().users).toHaveLength(0)
+  })
+
   it('rejects a duplicate email', async () => {
-    await g().signup({ name: 'A', email: 'a@x.com', password: 'password123' })
-    const res = await g().signup({ name: 'B', email: 'A@X.com', password: 'password456' })
+    await g().signup({ name: 'A', email: 'a@x.com', password: 'rusty kettle jar' })
+    const res = await g().signup({ name: 'B', email: 'A@X.com', password: 'copper lantern bell' })
     expect(res).toHaveProperty('error')
     expect(g().users).toHaveLength(1)
   })
@@ -74,14 +88,14 @@ describe('local auth password hashing', () => {
   })
 
   it('never promotes a second self-signup to owner', async () => {
-    await g().signup({ name: 'A', email: 'a@x.com', password: 'password123' })
-    await g().signup({ name: 'B', email: 'b@x.com', password: 'password123' })
+    await g().signup({ name: 'A', email: 'a@x.com', password: 'rusty kettle jar' })
+    await g().signup({ name: 'B', email: 'b@x.com', password: 'copper lantern bell' })
     expect(g().users[0].role).toBe('owner')
     expect(g().users[1].role).toBe('viewer')
   })
 
   it('refuses to demote or remove the last owner', async () => {
-    await g().signup({ name: 'A', email: 'a@x.com', password: 'password123' })
+    await g().signup({ name: 'A', email: 'a@x.com', password: 'rusty kettle jar' })
     const owner = g().users[0]
     g().setUserRole(owner.id, 'viewer')
     expect(g().users[0].role).toBe('owner')

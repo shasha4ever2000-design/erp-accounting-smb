@@ -97,7 +97,7 @@ create index if not exists records_sync_cursor on public.records (company_id, up
 -- Always stamp updated_at server-side — never trust a client-supplied value,
 -- so last-write-wins conflict resolution can't be gamed by clock skew.
 create or replace function public.touch_records_updated_at()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = public as $$
 begin
   new.updated_at := now();
   return new;
@@ -238,3 +238,30 @@ begin
   end if;
 end;
 $$;
+
+-- ── Lock the signed-in-only RPCs down ─────────────────────────────────
+-- Postgres grants EXECUTE on a new function to PUBLIC by default, and the
+-- `anon` role inherits from PUBLIC — so revoking from `anon` by name does
+-- nothing at all. The default grant itself has to go, then the roles that
+-- genuinely need it are granted back explicitly.
+--
+-- Both of these are only ever called by a signed-in user (cloudAuth.js:
+-- createCloudCompany, acceptInvite). They already failed safely for an
+-- anonymous caller — create_company would violate the NOT NULL on created_by,
+-- and accept_company_invite matches no invite because auth.uid() is null —
+-- but not being reachable at all beats failing correctly.
+revoke execute on function public.create_company(text) from public;
+revoke execute on function public.accept_company_invite(uuid) from public;
+grant execute on function public.create_company(text) to authenticated, service_role;
+grant execute on function public.accept_company_invite(uuid) to authenticated, service_role;
+
+-- Deliberately left reachable by `anon`:
+--   company_role     — eleven RLS policies call it, all granted to `public`.
+--                      Revoking it breaks row-level security evaluation and
+--                      locks signed-in users out of their own data. It is
+--                      safe as it stands: auth.uid() is null for an
+--                      anonymous caller, so it returns null and every policy
+--                      that consults it fails closed.
+--   handle_new_user  — a trigger function on auth.users. Nothing about the
+--                      sign-up path should be disturbed for a warning that
+--                      carries no reachable exploit.

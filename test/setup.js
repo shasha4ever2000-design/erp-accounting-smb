@@ -10,7 +10,24 @@ globalThis.localStorage = {
   clear: () => { for (const k of Object.keys(mem)) delete mem[k] },
 }
 
+// A real (if minimal) event target rather than no-op stubs, so tests that
+// care whether a window event actually fired — e.g. the storage-failure
+// banner in idbKvStorage.js — can listen for it instead of taking it on
+// faith.
+if (typeof globalThis.CustomEvent === 'undefined') {
+  globalThis.CustomEvent = class CustomEvent {
+    constructor(type, opts = {}) { this.type = type; this.detail = opts.detail }
+  }
+}
+const winListeners = new Map()
 globalThis.window = globalThis.window || {}
-globalThis.window.addEventListener = () => {}
-globalThis.window.removeEventListener = () => {}
+globalThis.window.addEventListener = (type, fn) => {
+  if (!winListeners.has(type)) winListeners.set(type, new Set())
+  winListeners.get(type).add(fn)
+}
+globalThis.window.removeEventListener = (type, fn) => { winListeners.get(type)?.delete(fn) }
+globalThis.window.dispatchEvent = (event) => {
+  winListeners.get(event.type)?.forEach((fn) => fn(event))
+  return true
+}
 globalThis.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })

@@ -27,21 +27,56 @@ export function lineVatCategory(line) {
   return (Number(line?.taxAmount) || Number(line?.taxRate)) > 0 ? 'standard' : 'zero'
 }
 
-// Sum a document's line subtotals grouped by VAT category. Falls back to a
-// document-level classification when a record has no line items.
+const normCat = (cat) => (cat === 'exempt' ? 'exempt' : cat === 'zero' ? 'zero' : 'standard')
+
+/**
+ * The taxable base of each document, grouped by VAT category.
+ *
+ * This has to agree with the VAT actually charged, because the return reports
+ * the two side by side and any reader — or auditor — divides one by the other.
+ * A line's stored `subtotal` is not that base on its own: a whole-document
+ * discount and a shipping charge are both applied above the line level by
+ * `invoiceTotals`, and both move the base.
+ *
+ * Falls back to a document-level classification when a record has no line
+ * items. Documents carrying neither a discount nor shipping — credit and debit
+ * notes, and anything created before those fields existed — are unaffected.
+ */
 export function vatBreakdown(docs) {
   const out = { standard: 0, zero: 0, exempt: 0 }
-  docs.forEach((d) => {
+  ;(docs || []).forEach((d) => {
     const lines = d.items || []
+    const per = { standard: 0, zero: 0, exempt: 0 }
+
     if (lines.length === 0) {
-      const cat = (Number(d.taxAmount) || 0) > 0 ? 'standard' : 'zero'
-      out[cat] += d.subtotal || 0
-      return
+      per[(Number(d.taxAmount) || 0) > 0 ? 'standard' : 'zero'] += Number(d.subtotal) || 0
+    } else {
+      lines.forEach((l) => { per[normCat(lineVatCategory(l))] += Number(l.subtotal) || 0 })
     }
-    lines.forEach((l) => {
-      const cat = lineVatCategory(l)
-      out[cat === 'exempt' ? 'exempt' : cat === 'zero' ? 'zero' : 'standard'] += l.subtotal || 0
-    })
+
+    // A whole-document discount spreads pro-rata across every line, so it
+    // scales each category's base by the same factor — which is exactly how
+    // invoiceTotals scales the VAT it charges. Leaving it out declared a gross
+    // base against a net VAT figure: a 10% discount on a standard-rated
+    // invoice reported VAT of 135 against a base of 1000, implying 13.5%.
+    const lineNet = per.standard + per.zero + per.exempt
+    const discount = Number(d.docDiscountAmount) || 0
+    if (discount > 0 && lineNet > 0) {
+      const keep = Math.max(0, (lineNet - discount) / lineNet)
+      per.standard *= keep; per.zero *= keep; per.exempt *= keep
+    }
+
+    // Shipping sits on top of the lines and the document discount never
+    // touches it, but it is part of the supply and carries its own VAT, so it
+    // belongs in the base. Standard-rated when VAT was charged on it;
+    // otherwise it joins the same no-tax-charged bucket lineVatCategory
+    // already falls back to.
+    const shipping = Number(d.shipping) || 0
+    if (shipping > 0) per[d.shippingTaxable ? 'standard' : 'zero'] += shipping
+
+    out.standard += per.standard
+    out.zero += per.zero
+    out.exempt += per.exempt
   })
   return out
 }

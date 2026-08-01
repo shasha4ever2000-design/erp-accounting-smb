@@ -20,7 +20,7 @@ const MOBILE_LABEL = 'lg:[&>label]:hidden'
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
-  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice, customFieldsFor } = useStore()
+  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice, customFieldsFor, stockShortfall } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []
@@ -122,6 +122,15 @@ export default function InvoiceForm() {
         .replace('{exp}', fmtMoney(credit.exposure, settings.company.currencySymbol))
         .replace('{proj}', fmtMoney(credit.projected, settings.company.currencySymbol))
       if (!confirm(msg)) return
+    }
+
+    // Selling stock that isn't there is allowed, but it skews the weighted
+    // average cost of the next receipt, so say so before it happens rather
+    // than leaving it for the integrity check to report later.
+    const short = stockShortfall(form.items)
+    if (short.length) {
+      const detail = short.map((s) => `• ${s.name}: ${t('{on} in stock, {req} needed').replace('{on}', s.onHand).replace('{req}', s.required)}`).join('\n')
+      if (!confirm(`${t('This invoice sells more than you have in stock:')}\n\n${detail}\n\n${t('Stock will go negative and item costs may be distorted until you receive more. Create it anyway?')}`)) return
     }
 
     const lock = settings?.accounting?.lockDate

@@ -9,8 +9,15 @@
 // explicitly linked to a cloud company (see auth.js: cloudCompanyId).
 
 import { getSupabase } from './lib/supabase'
+import { validatePassword } from './utils/password'
 
 export async function cloudSignUp({ email, password, name }) {
+  // The same floor as a local account. Supabase can screen against the
+  // HaveIBeenPwned corpus, but only on a paid plan — this project is on the
+  // free tier, so the check has to be ours either way.
+  const pwCheck = validatePassword(password, { name, email })
+  if (!pwCheck.ok) return { error: pwCheck.error }
+
   const { data, error } = await getSupabase().auth.signUp({
     email: (email || '').trim().toLowerCase(),
     password,
@@ -35,10 +42,51 @@ export async function getCloudSession() {
   return data.session
 }
 
-/** Subscribe to auth state changes. Returns an unsubscribe function. */
+/**
+ * Subscribe to auth state changes. `callback` receives (session, event) —
+ * most callers only need the session, but the event distinguishes an
+ * ordinary sign-in from Supabase landing the user back on the app with a
+ * one-time PASSWORD_RECOVERY session after they clicked the email link from
+ * cloudResetPassword. Returns an unsubscribe function.
+ */
 export function onCloudAuthChange(callback) {
-  const { data } = getSupabase().auth.onAuthStateChange((_event, session) => callback(session))
+  const { data } = getSupabase().auth.onAuthStateChange((event, session) => callback(session, event))
   return () => data.subscription.unsubscribe()
+}
+
+// The email link from resetPasswordForEmail has to send the browser
+// somewhere that will actually load the SPA and run detectSessionInUrl. On
+// the web that's wherever the app is currently hosted; the desktop build has
+// no https origin of its own (file:// / app://), so its recovery emails
+// point at the hosted web app instead — same Supabase project, so signing
+// in there updates the same account the desktop app uses.
+const HOSTED_WEB_APP_URL = 'https://shasha4ever2000-design.github.io/erp-accounting-smb/'
+
+function resetRedirectUrl() {
+  if (typeof window === 'undefined') return HOSTED_WEB_APP_URL
+  const { protocol, origin, pathname } = window.location
+  if (protocol !== 'http:' && protocol !== 'https:') return HOSTED_WEB_APP_URL
+  return origin + pathname
+}
+
+/** Send a password-reset email. Supabase reports success here even for an unregistered email, by design, so this can't be used to probe which addresses have accounts. */
+export async function cloudResetPassword(email) {
+  const { error } = await getSupabase().auth.resetPasswordForEmail((email || '').trim().toLowerCase(), {
+    redirectTo: resetRedirectUrl(),
+  })
+  if (error) return { error: error.message }
+  return { ok: true }
+}
+
+/** Set a new password for the currently-signed-in session (used right after the PASSWORD_RECOVERY redirect). */
+export async function cloudUpdatePassword(password) {
+  const { data: { session } } = await getSupabase().auth.getSession()
+  const pwCheck = validatePassword(password, { email: session?.user?.email })
+  if (!pwCheck.ok) return { error: pwCheck.error }
+
+  const { error } = await getSupabase().auth.updateUser({ password })
+  if (error) return { error: error.message }
+  return { ok: true }
 }
 
 // ── Companies & membership ────────────────────────────────────────────

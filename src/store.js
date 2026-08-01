@@ -7,6 +7,7 @@ import { idbKvStorage } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
+import { weightedAverageCost } from './utils/inventoryCost'
 import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
@@ -41,26 +42,6 @@ import {
   CONTROL_KINDS, resolveControl, validateControlAccount, controlAccountsFor,
   reclassLines, fieldFor, defaultFor,
 } from './utils/controlAccounts'
-
-// Quota-safe storage: never let a full localStorage throw and crash the app.
-const safeStorage = {
-  getItem: (name) => {
-    try { return localStorage.getItem(name) } catch { return null }
-  },
-  setItem: (name, value) => {
-    try {
-      localStorage.setItem(name, value)
-    } catch (e) {
-      console.warn('ERP: could not save to local storage (it may be full).', e)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('erp-storage-error'))
-      }
-    }
-  },
-  removeItem: (name) => {
-    try { localStorage.removeItem(name) } catch { /* ignore */ }
-  },
-}
 
 const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
@@ -355,6 +336,16 @@ export const useStore = create(
       },
 
       deleteAccount: (id) => {
+        // Every posting anywhere in the app addresses a system account by
+        // this fixed id (acc-ar, acc-vatout, acc-salpay, ...), so deleting one
+        // does not just remove a row — it breaks referential integrity across
+        // every document type at once. The chart of accounts page already
+        // stops this in its own delete handler, but that leaves the guarantee
+        // resting on every future delete button remembering to check, which
+        // is exactly the kind of thing this file does not otherwise leave to
+        // the caller (see JE_UNBALANCED, PERIOD_LOCKED, CAPITAL_LINE_UNATTRIBUTED).
+        const target = get().accounts.find((a) => a.id === id)
+        if (target?.isSystem) throw new Error(`ACCOUNT_IS_SYSTEM:${target.code} – ${target.name}`)
         get().recycleRecord('accounts', id)
         const gone = get().accounts.find((a) => a.id === id)
         set((s) => ({ accounts: s.accounts.filter((a) => a.id !== id) }))
@@ -949,9 +940,10 @@ export const useStore = create(
             const cost = Number(row.unitCost) || 0
             if (q <= 0) return it
             const oldQty = it.quantity || 0
-            const newQty = oldQty + q
-            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + q * cost) / newQty : cost
-            return { ...it, quantity: newQty, costPrice: newCost }
+            const newCost = weightedAverageCost({
+              onHand: oldQty, unitCost: it.costPrice, receivedQty: q, receivedValue: q * cost,
+            })
+            return { ...it, quantity: oldQty + q, costPrice: newCost }
           }),
           settings: { ...s.settings, opening: {
             date, posted: true, journalEntryId: je.id, postedAt: stamp,
@@ -1224,6 +1216,31 @@ export const useStore = create(
 
       // ─── SALES INVOICES ────────────────────────────────────────────
       invoices: [],
+
+      /**
+       * Which tracked items a set of document lines would drive below zero.
+       *
+       * Selling stock that is not there is allowed — the integrity check
+       * reports it afterwards — but it distorts weighted-average cost on the
+       * next receipt, so the forms warn first. This lives in the store, and
+       * explodes kits through the same explodeLines the posting path uses, so
+       * the warning can never disagree with what actually happens on save.
+       *
+       * @returns {Array<{itemId, name, onHand, required, shortBy}>} empty when fine
+       */
+      stockShortfall: (items = []) => {
+        const stock = get().inventoryItems
+        return Object.entries(explodeLines(items, stock))
+          .map(([itemId, qty]) => {
+            const it = stock.find((i) => i.id === itemId)
+            if (!it) return null
+            const onHand = Number(it.quantity) || 0
+            const required = Number(qty) || 0
+            if (required <= onHand) return null
+            return { itemId, name: it.name || '', onHand, required, shortBy: Math.round((required - onHand) * 1000) / 1000 }
+          })
+          .filter(Boolean)
+      },
 
       addInvoice: (invoice) => {
         const s = get()
@@ -2122,9 +2139,11 @@ export const useStore = create(
         set((st) => ({
           inventoryItems: st.inventoryItems.map((it) => {
             const u = recv[it.id]; if (!u) return it
-            const oldQty = it.quantity || 0, newQty = oldQty + u.qty
-            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
-            const patch = { quantity: newQty, costPrice: newCost }
+            const oldQty = it.quantity || 0
+            const newCost = weightedAverageCost({
+              onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
+            })
+            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
             if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + u.qty; patch.stockByWarehouse = m }
             return { ...it, ...patch }
           }),
@@ -2254,9 +2273,10 @@ export const useStore = create(
             const u = recv[it.id]
             if (!u) return it
             const oldQty = it.quantity || 0
-            const newQty = oldQty + u.qty
-            const newCost = newQty > 0 ? (oldQty * (it.costPrice || 0) + u.cost) / newQty : (it.costPrice || 0)
-            const patch = { quantity: newQty, costPrice: newCost }
+            const newCost = weightedAverageCost({
+              onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
+            })
+            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
             if (it.stockByWarehouse) {
               const map = { ...it.stockByWarehouse }
               map[defWh] = (map[defWh] || 0) + u.qty
@@ -4224,7 +4244,9 @@ export const useStore = create(
       name: currentCompanyKey(),
       version: 31,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
-      // localStorage snapshot; safeStorage remains the graceful fallback inside.
+      // localStorage snapshot; localStorage remains the graceful fallback
+      // inside idbKvStorage, which also raises erp-storage-error if a write
+      // lands nowhere at all.
       storage: createJSONStorage(() => idbKvStorage),
       migrate: (persisted, version) => {
        try {

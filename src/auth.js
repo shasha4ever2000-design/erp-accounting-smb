@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
+import { validatePassword } from './utils/password'
 
 const toHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 
@@ -57,7 +58,10 @@ export const useAuth = create(
         email = (email || '').trim().toLowerCase()
         if (!name) return { error: 'Please enter your name.' }
         if (!email || !email.includes('@')) return { error: 'Please enter a valid email.' }
-        if ((password || '').length < 8) return { error: 'Password must be at least 8 characters.' }
+        // Screened here rather than only in the form, so the rule holds
+        // however the account is created. See utils/password.js.
+        const pwCheck = validatePassword(password, { name, email })
+        if (!pwCheck.ok) return { error: pwCheck.error }
         if (get().users.some((u) => u.email === email)) return { error: 'An account with this email already exists.' }
         const salt = newId()
         const hash = await pbkdf2Hex(password, salt)
