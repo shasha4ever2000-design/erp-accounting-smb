@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
 import { Save, AlertTriangle, Sparkles, Eye, EyeOff, Download, Upload, Database, Lock, Unlock, CalendarClock, Shield, ShieldCheck, Clock, Trash2, RotateCcw, KeyRound } from 'lucide-react'
 import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
+import { flushNow } from '../utils/idbKvStorage'
 import { COSTING_METHODS } from '../utils/fifo'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
 import { APPROVAL_KINDS, defaultApprovalSettings } from '../utils/approvals'
@@ -130,7 +131,7 @@ export default function Settings() {
     const file = e.target.files?.[0]
     if (!file) return
     const reader = new FileReader()
-    reader.onload = (ev) => {
+    reader.onload = async (ev) => {
       try {
         const parsed = parseBackupText(ev.target.result)
         if (parsed.encrypted) {
@@ -140,6 +141,9 @@ export default function Settings() {
         } else {
           if (!confirm(t('Restoring will REPLACE all current data with the backup. Continue?'))) return
           importData(parsed.data)
+          // Saves are coalesced, so the restored books are still only in memory
+          // here. Reloading without flushing first throws them away.
+          await flushNow()
           alert(t('Backup restored successfully! The page will reload.'))
           window.location.reload()
         }
@@ -159,6 +163,7 @@ export default function Settings() {
       const data = await decryptBackup(importModal.envelope, importPass)
       if (!confirm(t('Restoring will REPLACE all current data with the backup. Continue?'))) { setImportBusy(false); return }
       importData(data)
+      await flushNow()   // see handleImportFile — reloading unflushed loses it
       setImportModal(null)
       alert(t('Backup restored successfully! The page will reload.'))
       window.location.reload()

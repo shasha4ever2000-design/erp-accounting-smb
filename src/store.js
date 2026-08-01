@@ -4543,8 +4543,11 @@ export const useStore = create(
         const entry = store.items.find((e) => e.id === id)
         if (!entry) throw new Error('Snapshot not found')
         get().importData(entry.data)
-        // Give the persist middleware a moment to flush the restored state, then reload.
-        if (typeof window !== 'undefined') setTimeout(() => window.location.reload(), 900)
+        // Writes are coalesced, so the restored state is still only in memory.
+        // Flush it before reloading — a timer here is a race, and losing it
+        // would mean a restore that silently restored nothing.
+        await flushNow()
+        if (typeof window !== 'undefined') window.location.reload()
         return true
       },
 
