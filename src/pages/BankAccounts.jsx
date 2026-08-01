@@ -8,12 +8,12 @@ import { Plus, Pencil, Trash2, Landmark, Wallet, CreditCard, ArrowDownLeft, Arro
 const TYPE_LABELS = { bank: 'Bank Account', cash: 'Cash Account', credit_card: 'Credit Card' }
 const TYPE_ICONS  = { bank: Landmark, cash: Wallet, credit_card: CreditCard }
 
-const emptyForm = { name: '', type: 'bank', bankName: '', accountNumber: '', code: '' }
+const emptyForm = { name: '', type: 'bank', bankName: '', accountNumber: '', code: '', currency: '' }
 
 export default function BankAccounts() {
   const t = useT()
   const { bankAccounts, accounts, bankTransactions, invoices, purchases, getAllBalances, settings,
-          addBankAccount, updateBankAccount, deleteBankAccount } = useStore()
+          addBankAccount, updateBankAccount, deleteBankAccount, currencies = [] } = useStore()
   const sym = settings.company.currencySymbol
 
   const [modal, setModal]   = useState(false)
@@ -33,13 +33,13 @@ export default function BankAccounts() {
   const totalCash = bankAccounts.reduce((sum, ba) => sum + getBalance(ba.accountId), 0)
 
   const openNew  = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (ba) => { setEditing(ba); setForm({ name: ba.name, type: ba.type, bankName: ba.bankName || '', accountNumber: ba.accountNumber || '', code: '' }); setModal(true) }
+  const openEdit = (ba) => { setEditing(ba); setForm({ name: ba.name, type: ba.type, bankName: ba.bankName || '', accountNumber: ba.accountNumber || '', code: '', currency: ba.currency || '' }); setModal(true) }
   const close    = () => setModal(false)
 
   const handleSave = () => {
     if (!form.name.trim()) return alert('Account name is required.')
     if (editing) {
-      updateBankAccount(editing.id, { name: form.name, type: form.type, bankName: form.bankName, accountNumber: form.accountNumber })
+      updateBankAccount(editing.id, { name: form.name, type: form.type, bankName: form.bankName, accountNumber: form.accountNumber, currency: form.currency })
     } else {
       addBankAccount(form)
     }
@@ -97,7 +97,12 @@ export default function BankAccounts() {
                 </div>
               </div>
               <p className="font-semibold text-gray-900 dark:text-slate-100">{ba.name}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{TYPE_LABELS[ba.type] || ba.type}{ba.bankName ? ` · ${ba.bankName}` : ''}</p>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                {TYPE_LABELS[ba.type] || ba.type}{ba.bankName ? ` · ${ba.bankName}` : ''}
+                {ba.currency && ba.currency !== settings.company.currency && (
+                  <span className="ms-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold">{ba.currency}</span>
+                )}
+              </p>
               {ba.accountNumber && <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">···{ba.accountNumber.slice(-4)}</p>}
               <p className={`text-2xl font-bold mt-3 ${balance >= 0 ? 'text-gray-900 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>
                 {fmtMoney(balance, sym)}
@@ -158,6 +163,17 @@ export default function BankAccounts() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Bank Name" value={form.bankName} onChange={(e) => setField('bankName', e.target.value)} placeholder="e.g. HSBC" />
             <Input label="Account Number" value={form.accountNumber} onChange={(e) => setField('accountNumber', e.target.value)} placeholder="Last 4 digits" />
+          </div>
+          <div>
+            <Select label={t('Currency')} value={form.currency} onChange={(e) => setField('currency', e.target.value)}>
+              <option value="">{t('Base currency')} ({settings.company.currency})</option>
+              {currencies.filter((c) => c.code !== settings.company.currency).map((c) => (
+                <option key={c.id || c.code} value={c.code}>{c.code} — {c.name}</option>
+              ))}
+            </Select>
+            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+              {t('A foreign-currency account is restated to the closing rate on the FX Revaluation page.')}
+            </p>
           </div>
           {!editing && (
             <Input label="GL Account Code (optional)" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="Auto-assigned if blank" />

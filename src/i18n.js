@@ -1660,6 +1660,8 @@ const AR = {
   'Syncing…': 'جارٍ المزامنة…',
   'Not yet synced': 'لم تتم المزامنة بعد',
   'Total Other Income': 'إجمالي الإيرادات الأخرى',
+  'Base currency': 'العملة الأساسية',
+  'A foreign-currency account is restated to the closing rate on the FX Revaluation page.': 'يُعاد تقييم الحساب بالعملة الأجنبية وفق سعر الإقفال في صفحة إعادة التقييم.',
   // ── Customer advances ──
   'Customer Advances': 'دفعات مقدمة من العملاء',
   'Deposits and money on account — held as a liability until you invoice against them': 'العرابين والمبالغ تحت الحساب — تُقيّد كالتزام حتى تصدر فاتورة بها',

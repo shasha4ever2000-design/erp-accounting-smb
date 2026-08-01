@@ -677,14 +677,29 @@ export const useStore = create(
           while (usedCodes.has(String(n))) n++
           const code = ba.code || String(n)
           return {
-            accounts: [...st.accounts, { id: accId, code, name: ba.name, type: 'asset', subtype: 'current', isSystem: false }],
-            bankAccounts: [...st.bankAccounts, { id: baId, accountId: accId, name: ba.name, type: ba.type || 'bank', bankName: ba.bankName || '', accountNumber: ba.accountNumber || '', isDefault: false }],
+            // The currency lives on the GL account as well as the bank record.
+            // FX revaluation walks the chart looking for accounts tagged with a
+            // non-base currency (see Revaluation.jsx), so writing it through is
+            // what makes a foreign-currency bank account revaluable at all —
+            // rather than the user having to remember to tag it separately in
+            // the Chart of Accounts.
+            accounts: [...st.accounts, { id: accId, code, name: ba.name, type: 'asset', subtype: 'current', isSystem: false, currency: ba.currency || '' }],
+            bankAccounts: [...st.bankAccounts, { id: baId, accountId: accId, name: ba.name, type: ba.type || 'bank', bankName: ba.bankName || '', accountNumber: ba.accountNumber || '', currency: ba.currency || '', isDefault: false }],
           }
         })
       },
 
-      updateBankAccount: (id, patch) =>
-        set((s) => ({ bankAccounts: s.bankAccounts.map((b) => (b.id === id ? { ...b, ...patch } : b)) })),
+      updateBankAccount: (id, patch) => {
+        const before = get().bankAccounts.find((b) => b.id === id)
+        set((s) => ({ bankAccounts: s.bankAccounts.map((b) => (b.id === id ? { ...b, ...patch } : b)) }))
+        // Keep the GL account's currency in step, or revaluation would go on
+        // using the old one — the two are one fact stored twice.
+        if (before && 'currency' in patch && patch.currency !== before.currency) {
+          set((s) => ({
+            accounts: s.accounts.map((a) => (a.id === before.accountId ? { ...a, currency: patch.currency || '' } : a)),
+          }))
+        }
+      },
 
       deleteBankAccount: (id) =>
         set((s) => ({ bankAccounts: s.bankAccounts.filter((b) => b.id !== id) })),
