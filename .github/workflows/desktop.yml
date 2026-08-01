@@ -1,7 +1,30 @@
 name: Build Desktop Installers
 
+# Two ways in:
+#
+#   push a v* tag        — the normal path. Builds that tag and publishes it.
+#   run it by hand       — pick what to build and what to publish it as.
+#
+# The manual path exists because a release is only as good as the commit the
+# tag happens to sit on. v1.5.0 was tagged one commit early, on a tree whose
+# package.json still said 1.4.1, so three platforms' worth of installers were
+# built from the wrong code and named after the wrong version. Re-pointing a
+# tag is the fix, and doing it from here means it can be done correctly without
+# anyone needing push access to refs/tags from wherever they happen to be.
 on:
   workflow_dispatch:
+    inputs:
+      ref:
+        description: 'What to build — branch, tag or commit SHA'
+        default: main
+        required: true
+      tag:
+        description: 'Publish a release under this tag. Leave blank to only upload artifacts.'
+        default: ''
+      replace_existing:
+        description: 'Delete an existing release and tag of that name first'
+        type: boolean
+        default: false
   push:
     tags: ['v*']
 
@@ -9,7 +32,65 @@ permissions:
   contents: write
 
 jobs:
+  # Settles what the tag will point at before any installer is built, so three
+  # parallel builds cannot race each other into creating it.
+  prepare:
+    if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 0
+
+      - name: Report what is about to be released
+        run: |
+          echo "Building $(git rev-parse HEAD) from '${{ inputs.ref }}'"
+          echo "package.json version: $(node -p "require('./package.json').version")"
+          echo "Publishing as: ${{ inputs.tag }}"
+
+      # A version in package.json that disagrees with the tag is exactly how
+      # v1.5.0 shipped installers named 1.4.1. Refuse rather than repeat it.
+      - name: Check the tag matches package.json
+        run: |
+          PKG="$(node -p "require('./package.json').version")"
+          WANT="${TAG#v}"
+          if [ "$PKG" != "$WANT" ]; then
+            echo "::error::Tag $TAG does not match package.json version $PKG."
+            echo "::error::The installers would be named $PKG. Fix one or the other first."
+            exit 1
+          fi
+        env:
+          TAG: ${{ inputs.tag }}
+
+      - name: Replace the existing release and tag
+        if: inputs.replace_existing
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --yes \
+            && echo "Deleted release $TAG" || echo "No release $TAG to delete"
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
+            && echo "Deleted tag $TAG" || echo "No tag $TAG to delete"
+
+      # Created with GITHUB_TOKEN, which deliberately does not re-trigger the
+      # push-tag path above — so this cannot start a second build of itself.
+      - name: Point the tag at this commit
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ inputs.tag }}
+        run: |
+          gh api -X POST "repos/$GITHUB_REPOSITORY/git/refs" \
+            -f ref="refs/tags/$TAG" \
+            -f sha="$(git rev-parse HEAD)"
+          echo "$TAG now points at $(git rev-parse HEAD)"
+
   build:
+    needs: [prepare]
+    # `prepare` is skipped for a plain tag push and for an artifacts-only run;
+    # neither is a reason not to build.
+    if: ${{ !cancelled() && (needs.prepare.result == 'success' || needs.prepare.result == 'skipped') }}
     strategy:
       fail-fast: false
       matrix:
@@ -21,8 +102,12 @@ jobs:
           - os: ubuntu-latest
             name: Linux
     runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name || '') }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || github.ref }}
 
       - uses: actions/setup-node@v4
         with:
@@ -61,10 +146,11 @@ jobs:
             release/*.dmg
             release/*.AppImage
 
-      - name: Publish to GitHub Release (on tag)
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: Publish to GitHub Release
+        if: env.RELEASE_TAG != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.RELEASE_TAG }}
           files: |
             release/*.exe
             release/*.dmg
