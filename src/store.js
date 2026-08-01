@@ -8,6 +8,7 @@ import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfi
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
+import { WAC, FIFO, issueFrom, receiveInto, layersFromBalance } from './utils/fifo'
 import { CHEQUE_IN, CHEQUE_OUT, canTransition, validateCheque, chequeLines, isTerminal } from './utils/cheques'
 import {
   ADVANCE_ACCOUNT, validateAdvance, advanceBalance, appliedTotal, applicableAmount,
@@ -131,6 +132,7 @@ const DEFAULT_SETTINGS = {
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
+  inventory:     { costingMethod: 'wac' },
   customFields:  Object.fromEntries(CF_ENTITIES.map((e) => [e.id, []])),
   invoice:       { prefix: 'INV-',  next: 1, notes: 'Thank you for your business!', dueDays: 30, bankDetails: '' },
   purchase:      { prefix: 'PUR-',  next: 1 },
@@ -191,6 +193,12 @@ export const useStore = create(
 
       updateCompany: (patch) =>
         set((s) => ({ settings: { ...s.settings, company: { ...s.settings.company, ...patch } } })),
+
+      /** 'wac' or 'fifo' — how an issue of stock is costed. */
+      costingMethod: () => get().settings?.inventory?.costingMethod || WAC,
+
+      updateInventorySettings: (patch) =>
+        set((s) => ({ settings: { ...s.settings, inventory: { ...(s.settings.inventory || { costingMethod: WAC }), ...patch } } })),
 
       updateTax: (patch) =>
         set((s) => ({ settings: { ...s.settings, tax: { ...s.settings.tax, ...patch } } })),
@@ -966,7 +974,11 @@ export const useStore = create(
             const newCost = weightedAverageCost({
               onHand: oldQty, unitCost: it.costPrice, receivedQty: q, receivedValue: q * cost,
             })
-            return { ...it, quantity: oldQty + q, costPrice: newCost }
+            const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+            return { ...it, quantity: oldQty + q, ...receiveInto(seeded, {
+              qty: q, value: q * cost, date, ref: 'Opening balance',
+              method: get().costingMethod(), wacCost: newCost,
+            }) }
           }),
           settings: { ...s.settings, opening: {
             date, posted: true, journalEntryId: je.id, postedAt: stamp,
@@ -1310,11 +1322,19 @@ export const useStore = create(
         // sales have to follow the parts that actually left it.
         const issue = explodeLines(invoice.items, get().inventoryItems) // itemId -> qty
         const cogsByAcc = {}, invByAcc = {}
+        const costPatch = {}   // itemId -> { costLayers, costPrice } from the issue
         let cogs = 0
+        const method = get().costingMethod()
         Object.entries(issue).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
           if (!it) return
-          const amt = q * (it.costPrice || 0)
+          // Under FIFO this is what the oldest units on the shelf actually
+          // cost; under weighted average it is the carried price, exactly as
+          // before. Either way the layers move, so the two stay switchable.
+          const priced = issueFrom({ ...it, costLayers: it.costLayers || layersFromBalance(it.quantity, it.costPrice) },
+            { qty: q, method })
+          costPatch[itemId] = priced.patch
+          const amt = priced.cost
           cogs += amt
           const cAcc = it.cogsAccountId || 'acc-cogs'
           const iAcc = it.inventoryAccountId || 'acc-inv'
@@ -1345,7 +1365,7 @@ export const useStore = create(
           inventoryItems: st.inventoryItems.map((it) => {
             const q = issue[it.id]
             if (!q) return it
-            const patch = { quantity: (it.quantity || 0) - q }
+            const patch = { quantity: (it.quantity || 0) - q, ...(costPatch[it.id] || {}) }
             if (it.stockByWarehouse) {
               const map = { ...it.stockByWarehouse }
               map[defWh] = (map[defWh] || 0) - q
@@ -2190,6 +2210,9 @@ export const useStore = create(
         Object.entries(explodeLines(items, get().inventoryItems)).forEach(([itemId, qty]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId); if (!it) return
           restock[itemId] = (restock[itemId] || 0) + qty
+          // Goods coming back join the queue at the cost they are carried at,
+          // rather than jumping to the front — the units are physically newer
+          // than anything already on the shelf, and FIFO follows the shelf.
           const amt = Math.round(qty * (it.costPrice || 0) * 100) / 100
           if (amt <= 0) return
           cogs += amt
@@ -2398,7 +2421,11 @@ export const useStore = create(
             const newCost = weightedAverageCost({
               onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
             })
-            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
+            const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+            const patch = { quantity: oldQty + u.qty, ...receiveInto(seeded, {
+              qty: u.qty, value: u.cost, date: recvDate, ref: 'Goods receipt',
+              method: get().costingMethod(), wacCost: newCost,
+            }) }
             if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + u.qty; patch.stockByWarehouse = m }
             return { ...it, ...patch }
           }),
@@ -2531,7 +2558,11 @@ export const useStore = create(
             const newCost = weightedAverageCost({
               onHand: oldQty, unitCost: it.costPrice, receivedQty: u.qty, receivedValue: u.cost,
             })
-            const patch = { quantity: oldQty + u.qty, costPrice: newCost }
+            const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+            const patch = { quantity: oldQty + u.qty, ...receiveInto(seeded, {
+              qty: u.qty, value: u.cost, date: purchase.date, ref: 'Supplier bill',
+              method: get().costingMethod(), wacCost: newCost,
+            }) }
             if (it.stockByWarehouse) {
               const map = { ...it.stockByWarehouse }
               map[defWh] = (map[defWh] || 0) + u.qty
@@ -4316,7 +4347,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 34, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 35, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4504,7 +4535,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 34,
+      version: 35,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -4698,6 +4729,17 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 35) {
+          // FIFO becomes an option. Existing items get one cost layer seeded
+          // from what they already hold, so a company switching to FIFO starts
+          // from its current carrying value rather than from nothing — and a
+          // company that stays on weighted average sees no change at all.
+          if (persisted.settings && !persisted.settings.inventory)
+            persisted.settings.inventory = { costingMethod: 'wac' }
+          if (Array.isArray(persisted.inventoryItems))
+            persisted.inventoryItems = persisted.inventoryItems.map((i) => (
+              i.costLayers ? i : { ...i, costLayers: layersFromBalance(i.quantity, i.costPrice) }))
         }
         if (version < 34) {
           // Customer advances. A deposit is a liability until the work is

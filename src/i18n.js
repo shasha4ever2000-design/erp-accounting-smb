@@ -1699,6 +1699,14 @@ const AR = {
   'Choose the account to refund from.': 'اختر الحساب الذي سيتم الاسترداد منه.',
   'Delete this advance? Its journal entry goes to the recycle bin.': 'حذف هذه الدفعة؟ سيُنقل قيدها إلى سلة المحذوفات.',
   'Some of this advance has already been applied or refunded, so it stays on the record.': 'تم بالفعل تطبيق أو رد جزء من هذه الدفعة، لذا تبقى في السجل.',
+  // ── Inventory costing ──
+  'Inventory Costing': 'تكلفة المخزون',
+  'Costing method': 'طريقة التكلفة',
+  'Weighted average': 'المتوسط المرجح',
+  'FIFO (first in, first out)': 'الوارد أولًا صادر أولًا (FIFO)',
+  'Every unit carries the blended cost of everything on hand.': 'تحمل كل وحدة التكلفة المخلوطة لكل ما هو متوفر.',
+  'The oldest stock is sold first, so cost of sales follows what you actually paid earliest.': 'يُباع أقدم مخزون أولًا، فتتبع تكلفة المبيعات ما دفعته فعليًا في البداية.',
+  'Changing this affects cost of sales on invoices posted from now on. Entries already posted are not restated.': 'يؤثر التغيير على تكلفة المبيعات في الفواتير المرحّلة من الآن فصاعدًا. لا يُعاد احتساب القيود المرحّلة سابقًا.',
   // ── Cheque register ──
   'Cheque Register': 'سجل الشيكات',
   'Post-dated cheques stay out of your bank balance until they actually clear': 'الشيكات الآجلة لا تدخل رصيد البنك حتى يتم تحصيلها فعليًا',
