@@ -3,6 +3,7 @@ import { useStore } from '../store'
 import { useT } from '../i18n'
 import { fmtMoney } from '../utils/formatters'
 import { computeFinancialHealth, healthLabel } from '../utils/financialHealth'
+import { groupIdsWithRole, OTHER_INCOME } from '../utils/accountTree'
 import { PageHeader, Card } from '../components/UI'
 import { Activity, Droplets, TrendingUp, Gauge, Scale } from 'lucide-react'
 
@@ -18,7 +19,7 @@ const RATING = {
 
 export default function FinancialHealth() {
   const t = useT()
-  const { accounts, getAllBalances, settings } = useStore()
+  const { accounts, accountGroups = [], getAllBalances, settings } = useStore()
   const sym = settings.company.currencySymbol
 
   const { result, asOf } = useMemo(() => {
@@ -44,10 +45,20 @@ export default function FinancialHealth() {
     const totalLiabilities = sumType('liability', null, allBal)
     const equity = totalAssets - totalLiabilities // accounting identity → includes retained earnings + current profit
 
-    const revenue = sumType('revenue', null, ttmBal)
+    // Every ratio here that divides by revenue means *trading* revenue: gross
+    // and net margin per riyal of sales, and DSO against the sales that create
+    // receivables. Other income — an FX movement, a gain on selling a van — is
+    // none of those, so it comes out, exactly as it does on the P&L. Net income
+    // still counts it, because it genuinely is part of the bottom line.
+    const otherIncomeGroups = groupIdsWithRole(accountGroups, OTHER_INCOME)
+    const allRevenue = sumType('revenue', null, ttmBal)
+    const otherIncome = accounts
+      .filter((a) => a.type === 'revenue' && otherIncomeGroups.has(a.groupId))
+      .reduce((s, a) => s + nat(a, ttmBal), 0)
+    const revenue = allRevenue - otherIncome
     const cogs = accounts.filter(isCogs).reduce((s, a) => s + nat(a, ttmBal), 0)
     const expenses = sumType('expense', null, ttmBal)
-    const netIncome = revenue - expenses
+    const netIncome = allRevenue - expenses
     const grossProfit = revenue - cogs
     const ar = acc('acc-ar') ? nat(acc('acc-ar'), allBal) : 0
     const ap = acc('acc-ap') ? nat(acc('acc-ap'), allBal) : 0
@@ -56,7 +67,7 @@ export default function FinancialHealth() {
       asOf: today,
       result: computeFinancialHealth({ currentAssets, inventory, cash, currentLiabilities, totalAssets, totalLiabilities, equity, revenue, cogs, grossProfit, netIncome, ar, ap }),
     }
-  }, [accounts, getAllBalances])
+  }, [accounts, accountGroups, getAllBalances])
 
   const { groups, score, counts } = result
   const scoreColor = score == null ? 'text-slate-400' : score >= 75 ? 'text-success-600 dark:text-success-400' : score >= 50 ? 'text-brand-600 dark:text-brand-400' : score >= 30 ? 'text-warning-600 dark:text-warning-400' : 'text-danger-600 dark:text-danger-400'

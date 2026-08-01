@@ -1659,6 +1659,7 @@ const AR = {
   'Synced': 'تمت المزامنة',
   'Syncing…': 'جارٍ المزامنة…',
   'Not yet synced': 'لم تتم المزامنة بعد',
+  'Total Other Income': 'إجمالي الإيرادات الأخرى',
   // ── Negative-stock warning ──
   'This invoice sells more than you have in stock:': 'هذه الفاتورة تبيع أكثر من الكمية المتوفرة في المخزون:',
   '{on} in stock, {req} needed': 'المتوفر {on}، والمطلوب {req}',

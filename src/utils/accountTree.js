@@ -27,6 +27,41 @@ export const TYPE_ORDER = ['asset', 'liability', 'equity', 'revenue', 'expense']
 export const COST_OF_SALES = 'cost_of_sales'
 
 /**
+ * Marks the group holding income that is not trading revenue — FX movements,
+ * gains on disposing an asset, sundry receipts.
+ *
+ * It has to be identifiable because gross profit is revenue less cost of
+ * sales, and none of this is revenue. Folding it in inflates the trading
+ * margin with things that have nothing to do with trading. An FX *loss* is
+ * worse still: it is a debit to an account that is correctly typed revenue,
+ * so it quietly reduces reported sales. Naming the group is what lets the
+ * statement separate the two without mistyping the accounts — which would
+ * break the year-end close, since that sweeps every revenue-typed account
+ * into retained earnings and must go on doing so.
+ */
+export const OTHER_INCOME = 'other_income'
+
+/**
+ * Every group id carrying `role`, plus all of its descendants.
+ *
+ * Tree-based reports can lift a whole node out with `withoutNode`, but
+ * anything working from a flat account list — the ratios on Financial
+ * Health — needs to ask "is this account somewhere under that group?", and a
+ * user is free to nest their own subgroups beneath the shipped ones.
+ */
+export function groupIdsWithRole(groups = [], role) {
+  const out = new Set(groups.filter((g) => g.role === role).map((g) => g.id))
+  let grew = true
+  while (grew) {
+    grew = false
+    groups.forEach((g) => {
+      if (g.parentId && out.has(g.parentId) && !out.has(g.id)) { out.add(g.id); grew = true }
+    })
+  }
+  return out
+}
+
+/**
  * The structure a new company starts with, and the one existing flat charts
  * are migrated into. Codes are display/sort only — they carry no meaning to
  * the engine.
@@ -53,7 +88,7 @@ export const DEFAULT_GROUPS = [
 
   // Revenue
   { id: 'grp-rev',    code: '4000', name: 'Operating Revenue',        type: 'revenue',   parentId: null, sort: 10 },
-  { id: 'grp-oi',     code: '4090', name: 'Other Income',             type: 'revenue',   parentId: null, sort: 20 },
+  { id: 'grp-oi',     code: '4090', name: 'Other Income',             type: 'revenue',   parentId: null, sort: 20, role: OTHER_INCOME },
 
   // Expense
   { id: 'grp-cos',    code: '5000', name: 'Cost of Sales',            type: 'expense',   parentId: null, sort: 10, role: COST_OF_SALES },

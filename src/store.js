@@ -33,7 +33,7 @@ import {
   fieldsFor as customFieldsFor, coerceValues as coerceCustomValues,
   validateField as validateCustomField, migrateLegacy as migrateCustomFieldSettings,
 } from './utils/customFields'
-import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor } from './utils/accountTree'
+import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor, OTHER_INCOME } from './utils/accountTree'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
   movementLines, allocateProfit, profitAllocationLines,
@@ -2865,43 +2865,50 @@ export const useStore = create(
       // Batch straight-line depreciation for every active asset in one period.
       // Skips assets already depreciated for that period or fully depreciated,
       // and caps the charge at the remaining depreciable base.
-      runDepreciation: ({ period, date }) => {
-        const assets = get().fixedAssets.filter((a) => a.status === 'active')
-        let count = 0, total = 0
-        assets.forEach((a) => {
-          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
-          if (a.purchaseDate && date && a.purchaseDate > date) return // not yet acquired
-          if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
+      /**
+       * Which active assets are owed a straight-line charge for a period, and
+       * how much each is owed. Posts nothing.
+       *
+       * This is the single definition of "what depreciation is due". The
+       * preview a user approves and the run that posts are otherwise two
+       * copies of the same fifteen lines, and the moment they disagree the
+       * app shows one number and books another — at exactly the point where
+       * someone is deciding whether to commit.
+       *
+       * Skips assets already charged for the period, so running twice is
+       * safe, and caps the charge at what is left of the depreciable base so
+       * an asset can never depreciate past its salvage value.
+       */
+      depreciationDue: (period, date) => {
+        const { fixedAssets, assetDepreciations } = get()
+        return fixedAssets.reduce((due, a) => {
+          if (a.status !== 'active') return due
+          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return due
+          if (a.purchaseDate && date && a.purchaseDate > date) return due // not yet acquired
+          if (assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return due
           const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
           const months = (a.usefulLifeYears || 0) * 12
-          if (months <= 0) return
+          if (months <= 0) return due
           const remaining = (cost - salvage) - (a.accumulatedDepreciation || 0)
           const amount = Math.round(Math.min((cost - salvage) / months, remaining) * 100) / 100
-          if (amount <= 0.005) return
-          get().recordDepreciation(a.id, { date, amount, period })
-          count += 1; total += amount
-        })
-        return { count, total: Math.round(total * 100) / 100 }
+          if (amount <= 0.005) return due
+          due.push({ assetId: a.id, name: a.name || '', amount })
+          return due
+        }, [])
+      },
+
+      /** Totals for a set of due charges, rounded the way they will be posted. */
+      _depreciationTotals: (due) =>
+        ({ count: due.length, total: Math.round(due.reduce((s, d) => s + d.amount, 0) * 100) / 100 }),
+
+      runDepreciation: ({ period, date }) => {
+        const due = get().depreciationDue(period, date)
+        due.forEach((d) => get().recordDepreciation(d.assetId, { date, amount: d.amount, period }))
+        return get()._depreciationTotals(due)
       },
 
       // preview only (no posting): how many assets are due for a period + total
-      previewDepreciation: (period, date) => {
-        const assets = get().fixedAssets.filter((a) => a.status === 'active')
-        let count = 0, total = 0
-        assets.forEach((a) => {
-          if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return
-          if (a.purchaseDate && date && a.purchaseDate > date) return
-          if (get().assetDepreciations.some((d) => d.assetId === a.id && d.period === period)) return
-          const cost = a.purchaseCost || 0, salvage = a.salvageValue || 0
-          const months = (a.usefulLifeYears || 0) * 12
-          if (months <= 0) return
-          const remaining = (cost - salvage) - (a.accumulatedDepreciation || 0)
-          const amount = Math.round(Math.min((cost - salvage) / months, remaining) * 100) / 100
-          if (amount <= 0.005) return
-          count += 1; total += amount
-        })
-        return { count, total: Math.round(total * 100) / 100 }
-      },
+      previewDepreciation: (period, date) => get()._depreciationTotals(get().depreciationDue(period, date)),
 
       disposeAsset: (assetId, { date, proceeds, bankAccountId }) => {
         const asset = get().fixedAssets.find((a) => a.id === assetId)
@@ -4054,7 +4061,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 31, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 32, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4242,7 +4249,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 31,
+      version: 32,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -4436,6 +4443,24 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 32) {
+          // Other Income becomes a named role, so the income statement can
+          // keep it out of gross profit the same way it already keeps cost of
+          // sales out of operating expenses.
+          //
+          // Only the role is added. No account changes type and no journal
+          // entry moves, so the trial balance, retained earnings and net
+          // profit are all identical before and after — what changes is that
+          // gross profit and gross margin stop counting FX movements and
+          // disposal gains as trading revenue.
+          //
+          // A company that renamed or re-parented the shipped group keeps its
+          // own structure; the role attaches by id, and its absence just means
+          // the statement behaves exactly as it did before.
+          if (Array.isArray(persisted.accountGroups))
+            persisted.accountGroups = persisted.accountGroups.map((g) =>
+              (g.id === 'grp-oi' && !g.role ? { ...g, role: OTHER_INCOME } : g))
         }
         if (version < 30) {
           // Custom fields gain types and stable ids.
