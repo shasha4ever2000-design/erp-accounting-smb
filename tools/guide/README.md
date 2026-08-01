@@ -1,4 +1,38 @@
-# Building the user guide
+# Building the guides
+
+Two PDFs live in `docs/`, both generated:
+
+| | What it is |
+| --- | --- |
+| `ERP-Accounting-User-Guide.pdf` | Screen by screen — every module, what it is for, how to use it. |
+| `ERP-Every-Transaction.pdf` | Forty worked transactions — the figures, the screen, and a picture of the journal entry each one produces. |
+
+They share this folder. The screen guide uses `seed.mjs` / `capture.mjs` /
+`build_guide.py`; the transaction guide uses `seed-transactions.mjs` /
+`capture-transactions.mjs` / `build_tx_guide.py` / `to-pdf-transactions.mjs`.
+
+## The transaction guide, specifically
+
+`seed-transactions.mjs` performs one example of every transaction and writes
+`tx-manifest.json` recording the journal entries each produced. The build script
+reads that manifest, so the figures quoted in the prose and the screenshots
+underneath them cannot drift apart. Each example also declares how many entries
+it *should* produce; a mismatch is reported rather than silently accepted, which
+is how the guide caught three of its own errors:
+
+- a goods receipt followed by a standalone purchase invoice double-counted
+  inventory. Billing goods already received is `billReceivedPO`, which clears
+  the GRNI liability instead of debiting Inventory a second time.
+- `settings.tax.enabled` is **false** until a region is chosen, so anything that
+  computes its own tax produced zero VAT while hand-passed figures showed 15%.
+- a stock write-off posted a zero-value entry because the seed omitted
+  `unitCost`; the form computes `quantity × unitCost` and refuses a zero, so
+  only a direct store call can do this.
+
+None of those were application bugs, but all three would have been printed as
+fact.
+
+---
 
 `docs/ERP-Accounting-User-Guide.pdf` is generated, not hand-written. Every screenshot in it
 comes from the real application driven by a browser, filled with a demo company that was built
