@@ -2480,6 +2480,66 @@ const AR = {
   'Business (has a tax registration number)': 'منشأة (لديها رقم تسجيل ضريبي)',
   'Individual (national ID)': 'فرد (الرقم القومي)',
   'Foreign customer': 'عميل أجنبي',
+
+  // ── Cash forecast ──
+  'Cash Forecast': 'التنبؤ النقدي',
+  'Projected cash position for the next': 'الوضع النقدي المتوقع للـ',
+  'weeks, from what is already in the books': 'أسبوعاً القادمة، بناءً على ما هو مقيّد بالدفاتر',
+  'Nothing to forecast yet': 'لا توجد بيانات للتنبؤ بعد',
+  'Once you have unpaid invoices, supplier bills, cheques or recurring schedules, this page will project your cash position week by week.':
+    'بمجرد وجود فواتير غير محصلة أو فواتير موردين أو شيكات أو جداول متكررة، ستعرض هذه الصفحة الوضع النقدي المتوقع أسبوعاً بأسبوع.',
+  'Projected shortfall': 'عجز نقدي متوقع',
+  'No shortfall projected': 'لا يوجد عجز متوقع',
+  'Cash goes negative in week': 'يصبح الرصيد النقدي سالباً في الأسبوع',
+  'reaching': 'ليصل إلى',
+  'Runway:': 'مدة الأمان النقدي:',
+  'You are short this week. Act now: chase overdue receipts or defer a payment.':
+    'لديك عجز هذا الأسبوع. تصرّف الآن: حصّل المتأخرات أو أجّل أحد المدفوعات.',
+  'Cash stays positive for all': 'يظل الرصيد النقدي موجباً طوال',
+  'weeks, with a low point of': 'أسبوعاً، وأدنى نقطة',
+  'This covers only what the books already know — it is not a guarantee beyond the window.':
+    'يغطي هذا ما هو مقيّد بالدفاتر فقط — وليس ضماناً لما بعد هذه الفترة.',
+  'Cash today': 'النقدية اليوم',
+  'Expected in': 'متحصلات متوقعة',
+  'Expected out': 'مدفوعات متوقعة',
+  'Cash in': 'النقدية بعد',
+  'Past due and not yet settled': 'مستحق ولم يُسدَّد بعد',
+  'This money was due before today, so its timing is unknown. It is kept out of the weekly projection rather than assumed to arrive — turn it on only if you expect to collect it now.':
+    'استُحقت هذه المبالغ قبل اليوم، لذا توقيتها غير معروف. تُستبعد من التوقع الأسبوعي بدلاً من افتراض وصولها — فعّلها فقط إذا كنت تتوقع تحصيلها الآن.',
+  'Assume collected now': 'افترض تحصيلها الآن',
+  'Projected closing cash': 'الرصيد النقدي الختامي المتوقع',
+  'What this includes': 'ما يشمله هذا التوقع',
+  'Switch a source off to see the position without it.': 'أوقف أي مصدر لترى الوضع بدونه.',
+  'nothing due': 'لا شيء مستحق',
+  'Week by week': 'أسبوعاً بأسبوع',
+  'Select a week to see every movement behind it.': 'اختر أسبوعاً لعرض كل الحركات التي يتضمنها.',
+  'Projected from unpaid invoices and bills, dated cheques, recurring schedules, lease commitments and active payroll. Transfers between your own bank accounts are excluded because they do not change total cash.':
+    'محسوب من الفواتير والمطالبات غير المسددة والشيكات المؤرخة والجداول المتكررة والتزامات الإيجار والرواتب النشطة. التحويلات بين حساباتك البنكية مستبعدة لأنها لا تغيّر إجمالي النقدية.',
+
+  // Forecast sources and how firm each projected figure is
+  'Customer invoices': 'فواتير العملاء',
+  'Cheques received': 'شيكات واردة',
+  'Recurring invoices': 'فواتير متكررة',
+  'Supplier bills': 'فواتير الموردين',
+  'Cheques issued': 'شيكات صادرة',
+  'Recurring expenses': 'مصروفات متكررة',
+  'Leases & rent': 'الإيجارات',
+  'Loan & card payments': 'سداد القروض والبطاقات',
+  'Payroll (estimate)': 'الرواتب (تقديري)',
+  'Committed': 'مؤكد',
+  'Scheduled': 'مجدول',
+  'Estimated': 'تقديري',
+
+  // Short column and unit labels
+  'Week': 'الأسبوع',
+  'Period': 'الفترة',
+  'In': 'وارد',
+  'Out': 'صادر',
+  'w': 'أ',
+  'week': 'أسبوع',
+  'weeks': 'أسبوع',
+  'items': 'أصناف',
+  'net': 'الصافي',
 }
 
 export const useI18n = create(
