@@ -31,7 +31,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
+  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, reopenSetup, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -477,6 +477,19 @@ export default function Settings() {
               </>
             )}
           </div>
+        </Card>
+
+        {/* Re-run the first-run setup. Somebody who skipped it, or who got the
+            country wrong, should not have to reconstruct what it would have
+            set from the individual panels. */}
+        <Card className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Setup guide')}</h2>
+            <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5">
+              {t('Walk through country, tax and business details again — the same three questions asked when this company was created.')}
+            </p>
+          </div>
+          <Btn variant="secondary" onClick={() => { reopenSetup(); window.scrollTo({ top: 0 }) }}>{t('Run setup guide')}</Btn>
         </Card>
 
         {/* Egypt · ETA e-invoicing. The document and its checks live here;

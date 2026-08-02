@@ -1,5 +1,5 @@
 // Shared UI primitives (light + dark mode aware)
-import { Fragment } from 'react'
+import { Fragment, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useT } from '../i18n'
 
@@ -72,49 +72,68 @@ const fieldBase =
 const fieldOk = 'border-slate-300/90 dark:border-surface-600 hover:border-slate-400/80 dark:hover:border-surface-500'
 const fieldErr = 'border-danger-400 dark:border-danger-500/70 bg-danger-50/60 dark:bg-danger-950/30 focus:border-danger-500 focus:ring-danger-500/15'
 
-function FieldLabel({ label, t }) {
+function FieldLabel({ label, htmlFor, t }) {
   if (!label) return null
-  return <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5">{typeof label === 'string' ? t(label) : label}</label>
+  return <label htmlFor={htmlFor} className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5">{typeof label === 'string' ? t(label) : label}</label>
 }
 
-function FieldError({ error }) {
+function FieldError({ error, id }) {
   if (!error) return null
-  return <p className="text-xs font-medium text-danger-600 dark:text-danger-400 mt-1.5 animate-fade-in">{error}</p>
+  return <p id={id} className="text-xs font-medium text-danger-600 dark:text-danger-400 mt-1.5 animate-fade-in">{error}</p>
+}
+
+// Every field gets an id so its label points at it. Without one, clicking a
+// label does not focus its input and a screen reader cannot tell you which
+// field it is reading — which is most of what "usable" means to somebody who
+// cannot see the layout. A caller that supplies its own id keeps it.
+let fieldSeq = 0
+function useFieldId(given) {
+  const [auto] = useState(() => `fld-${++fieldSeq}`)
+  return given || auto
 }
 
 export function Input({ label, error, className = '', ...props }) {
   const t = useT()
+  const id = useFieldId(props.id)
+  const errId = error ? `${id}-err` : undefined
   if (typeof props.placeholder === 'string') props.placeholder = t(props.placeholder)
   return (
     <div className={className}>
-      <FieldLabel label={label} t={t} />
-      <input className={`${fieldBase} ${error ? fieldErr : fieldOk}`} {...props} />
-      <FieldError error={error} />
+      <FieldLabel label={label} htmlFor={id} t={t} />
+      <input id={id} aria-invalid={error ? true : undefined} aria-describedby={errId}
+        className={`${fieldBase} ${error ? fieldErr : fieldOk}`} {...props} />
+      <FieldError error={error} id={errId} />
     </div>
   )
 }
 
 export function Select({ label, error, children, className = '', ...props }) {
   const t = useT()
+  const id = useFieldId(props.id)
+  const errId = error ? `${id}-err` : undefined
   return (
     <div className={className}>
-      <FieldLabel label={label} t={t} />
-      <select className={`${fieldBase} cursor-pointer ${error ? fieldErr : fieldOk}`} {...props}>
+      <FieldLabel label={label} htmlFor={id} t={t} />
+      <select id={id} aria-invalid={error ? true : undefined} aria-describedby={errId}
+        className={`${fieldBase} cursor-pointer ${error ? fieldErr : fieldOk}`} {...props}>
         {children}
       </select>
-      <FieldError error={error} />
+      <FieldError error={error} id={errId} />
     </div>
   )
 }
 
 export function Textarea({ label, error, className = '', ...props }) {
   const t = useT()
+  const id = useFieldId(props.id)
+  const errId = error ? `${id}-err` : undefined
   if (typeof props.placeholder === 'string') props.placeholder = t(props.placeholder)
   return (
     <div className={className}>
-      <FieldLabel label={label} t={t} />
-      <textarea className={`${fieldBase} resize-none leading-relaxed ${error ? fieldErr : fieldOk}`} {...props} />
-      <FieldError error={error} />
+      <FieldLabel label={label} htmlFor={id} t={t} />
+      <textarea id={id} aria-invalid={error ? true : undefined} aria-describedby={errId}
+        className={`${fieldBase} resize-none leading-relaxed ${error ? fieldErr : fieldOk}`} {...props} />
+      <FieldError error={error} id={errId} />
     </div>
   )
 }

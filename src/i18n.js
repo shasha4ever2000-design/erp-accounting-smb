@@ -2130,6 +2130,42 @@ const AR = {
   'This entry falls in a closed accounting period. Post a correcting entry in an open period instead.':
     'يقع هذا القيد في فترة محاسبية مقفلة. رحّل قيداً تصحيحياً في فترة مفتوحة بدلاً من ذلك.',
   'This entry no longer exists.': 'هذا القيد لم يعد موجوداً.',
+  // ── First-run setup guide ──
+  'Where do you trade?': 'أين تمارس نشاطك؟',
+  'This sets your currency, your tax name and rate, and any e-invoicing your country requires. Everything here can be changed later in Settings.':
+    'يحدد هذا عملتك واسم الضريبة ونسبتها وأي فوترة إلكترونية تتطلبها دولتك. يمكن تغيير كل ذلك لاحقاً من الإعدادات.',
+  'Country / tax region': 'الدولة / المنطقة الضريبية',
+  '— Choose your country —': '— اختر دولتك —',
+  'This will set:': 'سيتم ضبط:',
+  'not charged': 'غير مُحتسبة',
+  'ZATCA e-invoicing with a QR code on every invoice': 'الفوترة الإلكترونية (هيئة الزكاة) مع رمز QR على كل فاتورة',
+  'ETA e-invoicing documents': 'مستندات الفوترة الإلكترونية لمصلحة الضرائب',
+  'Without this, tax stays switched off and your invoices will carry none — which is easy to miss until a return is due.':
+    'بدون ذلك تبقى الضريبة معطّلة ولن تحمل فواتيرك أي ضريبة — وهو أمر يسهل إغفاله حتى موعد الإقرار.',
+  'Your business details': 'بيانات نشاطك',
+  'These appear on every invoice you issue. You can leave any of them blank for now.':
+    'تظهر هذه البيانات على كل فاتورة تصدرها. يمكنك ترك أي منها فارغاً الآن.',
+  'Business name': 'اسم النشاط',
+  'VAT registration number': 'رقم التسجيل في ضريبة القيمة المضافة',
+  "You're ready": 'أنت جاهز',
+  'Two things worth knowing before you start entering work.': 'أمران يستحقان المعرفة قبل أن تبدأ إدخال أعمالك.',
+  'Starting with stock or unpaid invoices?': 'هل تبدأ برصيد مخزون أو فواتير غير محصلة؟',
+  'Enter them through Opening Balances, not by typing a quantity onto an item. A quantity typed on an item puts goods on the shelf without putting their value on your balance sheet, and the two then disagree.':
+    'أدخلها من خلال الأرصدة الافتتاحية، لا بكتابة كمية على الصنف. الكمية المكتوبة على الصنف تضع البضاعة في المخزون دون أن تضع قيمتها في ميزانيتك، فيختلف الاثنان.',
+  'Finding your way around': 'التنقّل في البرنامج',
+  'There is a lot here, and you will not need most of it. Press ⌘K (or Ctrl+K) to jump straight to any screen by name, and check Settings › Data Integrity Check any time you want proof the books add up.':
+    'هناك الكثير هنا ولن تحتاج معظمه. اضغط ⌘K (أو Ctrl+K) للانتقال مباشرة إلى أي شاشة بالاسم، وراجع الإعدادات › فحص سلامة البيانات في أي وقت لتتأكد أن الدفاتر متوازنة.',
+  'Skip setup': 'تخطي الإعداد',
+  "I'll set this up later": 'سأقوم بالإعداد لاحقاً',
+  'Continue': 'متابعة',
+  'Start using it': 'ابدأ الاستخدام',
+  'Setup guide': 'دليل الإعداد',
+  'Walk through country, tax and business details again — the same three questions asked when this company was created.':
+    'مراجعة الدولة والضريبة وبيانات النشاط مرة أخرى — نفس الأسئلة الثلاثة التي طُرحت عند إنشاء هذه الشركة.',
+  'Run setup guide': 'تشغيل دليل الإعداد',
+  'This opening quantity is not an accounting entry — the goods appear in stock but their value will not appear on your balance sheet. For stock you already own, use Opening Balances instead.':
+    'هذه الكمية الافتتاحية ليست قيداً محاسبياً — ستظهر البضاعة في المخزون لكن قيمتها لن تظهر في ميزانيتك. للمخزون الذي تملكه بالفعل، استخدم الأرصدة الافتتاحية بدلاً من ذلك.',
+  'Customer and supplier balances agree with the ledger': 'أرصدة العملاء والموردين مطابقة لدفتر الأستاذ',
 
   // ── Egypt · ETA e-invoicing ──
   'Egypt · ETA E-Invoicing': 'مصر · الفوترة الإلكترونية (مصلحة الضرائب)',
