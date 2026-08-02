@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
+import { EDIT_BLOCK_MESSAGE } from '../utils/docEdit'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
 import { CustomFieldInputs } from '../components/CustomFields'
@@ -20,7 +21,10 @@ const MOBILE_LABEL = 'lg:[&>label]:hidden'
 
 export default function PurchaseForm() {
   const navigate = useNavigate()
-  const { suppliers, accounts, inventoryItems, departments, currencies, settings, addPurchase, customFieldsFor } = useStore()
+  // With an :id in the path this form is correcting a bill that is already
+  // posted, rather than entering a new one.
+  const { id: editId } = useParams()
+  const { suppliers, purchases, accounts, inventoryItems, departments, currencies, settings, addPurchase, revisePurchase, purchaseEditBlock, customFieldsFor } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const taxEnabled = settings.tax.enabled
@@ -28,7 +32,17 @@ export default function PurchaseForm() {
 
   const expenseAccounts = accounts.filter((a) => EXPENSE_TYPES.includes(a.type) && !['acc-ar', 'acc-vatin'].includes(a.id))
 
-  const [form, setForm] = useState({
+  const editing = editId ? purchases.find((p) => p.id === editId) : null
+  const editBlocked = editId ? purchaseEditBlock(editId) : null
+
+  const [form, setForm] = useState(() => editing ? {
+    ...editing,
+    docDiscount: editing.docDiscount || 0,
+    shipping: editing.shipping || 0,
+    shippingTaxable: !!editing.shippingTaxable,
+    customFields: editing.customFields || {},
+    items: (editing.items || []).map((l) => ({ ...emptyLine(), ...l })),
+  } : {
     supplierId: '',
     supplierName: '',
     supplierRef: '',
@@ -104,11 +118,14 @@ export default function PurchaseForm() {
     if (!cf.ok) return alert(cf.errors.join('\n'))
     const lock = settings?.accounting?.lockDate
     if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+    const payload = { ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping }
     let res
     try {
-      res = addPurchase({ ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping })
+      res = editId ? revisePurchase(editId, payload) : addPurchase(payload)
     } catch (e) {
-      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+      const msg = String(e.message || '')
+      if (msg.startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+      if (msg.startsWith('EDIT_BLOCKED')) return alert(t(EDIT_BLOCK_MESSAGE[msg.split(':')[1]] || 'This bill can no longer be edited.'))
       throw e
     }
     // Over the approval threshold this bill is parked, not posted — say so
@@ -118,15 +135,31 @@ export default function PurchaseForm() {
       navigate('/approvals')
       return
     }
-    navigate('/purchases')
+    navigate(editId ? `/purchases/${editId}` : '/purchases')
   }
+
+  if (editId && editBlocked) return (
+    <div className="max-w-lg mx-auto text-center py-20 space-y-4">
+      <p className="text-gray-700 dark:text-slate-200 font-medium">{t('This bill cannot be edited')}</p>
+      <p className="text-sm text-gray-500 dark:text-slate-400">{t(EDIT_BLOCK_MESSAGE[editBlocked])}</p>
+      <Btn variant="secondary" onClick={() => navigate(editing ? `/purchases/${editId}` : '/purchases')}>{t('Back')}</Btn>
+    </div>
+  )
 
   return (
     <div>
-      <button onClick={() => navigate('/purchases')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
-        <ArrowLeft size={15} /> {t('Back to Purchases')}
+      <button onClick={() => navigate(editId ? `/purchases/${editId}` : '/purchases')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
+        <ArrowLeft size={15} /> {editId ? t('Back to Bill') : t('Back to Purchases')}
       </button>
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-6">{t('New Purchase Invoice')}</h1>
+      <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">
+        {editId ? `${t('Edit Purchase Invoice')} ${editing?.number || ''}` : t('New Purchase Invoice')}
+      </h1>
+      {editId && (
+        <p className="mb-6 text-xs rounded-lg px-3 py-2 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-100 dark:border-brand-500/20">
+          {t('Saving re-posts this bill: its journal entries and stock movements are replaced with the corrected ones. The bill keeps its number, and the change is recorded in the audit log.')}
+        </p>
+      )}
+      {!editId && <div className="mb-6" />}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-5">
@@ -255,8 +288,8 @@ export default function PurchaseForm() {
               <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2"><span>Total</span><span className="text-orange-600 dark:text-orange-400">{fmtMoney(total, sym)}</span></div>
             </div>
             <div className="mt-5 space-y-2">
-              <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Invoice')}</Btn>
-              <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/purchases')}>{t('Cancel')}</Btn>
+              <Btn className="w-full justify-center" onClick={handleSave}>{editId ? t('Save Changes') : t('Save Purchase Invoice')}</Btn>
+              <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate(editId ? `/purchases/${editId}` : '/purchases')}>{t('Cancel')}</Btn>
             </div>
           </Card>
         </div>

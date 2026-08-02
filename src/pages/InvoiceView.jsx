@@ -13,12 +13,12 @@ import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
-import { ArrowLeft, DollarSign, Printer, Ban, RotateCcw } from 'lucide-react'
+import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw } from 'lucide-react'
 
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, deleteInvoice, voidInvoice, createSalesReturn, recordInvoicePayment, settings } = useStore()
+  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -53,6 +53,7 @@ export default function InvoiceView() {
   )
 
   const customer = customers.find((c) => c.id === invoice.customerId)
+  const editBlocked = invoiceEditBlock(invoice.id)
   const bankAccounts = accounts.filter((a) => a.type === 'asset' && (a.id === 'acc-cash' || a.id === 'acc-bank1' || a.subtype === 'current'))
   const amountDue = invoice.total - invoice.amountPaid
   // Foreign-currency invoice: amounts show in the invoice currency; the receipt can
@@ -130,6 +131,13 @@ export default function InvoiceView() {
           <Btn variant="secondary" size="sm" onClick={() => window.print()}>
             <Printer size={14} /> {t('Download PDF')}
           </Btn>
+          {/* Editing re-posts the invoice, so it is offered only while nothing
+              has been hung off it — the store decides, and says why not. */}
+          {!editBlocked && (
+            <Btn variant="secondary" size="sm" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
+              <Pencil size={14} /> {t('Edit')}
+            </Btn>
+          )}
           {invoice.status !== 'paid' && invoice.status !== 'void' && (
             <Btn size="sm" onClick={openPay}>
               <DollarSign size={14} /> {t('Record Payment')}

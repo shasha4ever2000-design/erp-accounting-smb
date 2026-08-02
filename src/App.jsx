@@ -20,6 +20,7 @@ const QuotationForm = lazy(() => import('./pages/QuotationForm'))
 const CreditNotes = lazy(() => import('./pages/CreditNotes'))
 const Purchases = lazy(() => import('./pages/Purchases'))
 const PurchaseForm = lazy(() => import('./pages/PurchaseForm'))
+const PurchaseView = lazy(() => import('./pages/PurchaseView'))
 const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'))
 const PurchaseOrderForm = lazy(() => import('./pages/PurchaseOrderForm'))
 const DebitNotes = lazy(() => import('./pages/DebitNotes'))
@@ -183,6 +184,8 @@ export default function App() {
         <Route path="/quotations/new" element={<QuotationForm />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/new" element={<InvoiceForm />} />
+        {/* /edit before /:id so "edit" is never read as an invoice id */}
+        <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
         <Route path="/invoices/:id" element={<InvoiceView />} />
         <Route path="/recurring-invoices" element={<RecurringInvoices />} />
         <Route path="/commissions" element={<Commissions />} />
@@ -197,6 +200,8 @@ export default function App() {
         <Route path="/purchase-orders/new" element={<PurchaseOrderForm />} />
         <Route path="/purchases" element={<Purchases />} />
         <Route path="/purchases/new" element={<PurchaseForm />} />
+        <Route path="/purchases/:id/edit" element={<PurchaseForm />} />
+        <Route path="/purchases/:id" element={<PurchaseView />} />
         <Route path="/debit-notes" element={<DebitNotes />} />
         <Route path="/landed-costs" element={<LandedCosts />} />
         <Route path="/recurring-expenses" element={<RecurringExpenses />} />

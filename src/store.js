@@ -5,6 +5,7 @@ import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
 import { idbKvStorage, deferredJSONStorage, flushNow } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
+import { editBlock } from './utils/docEdit'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
@@ -1189,13 +1190,43 @@ export const useStore = create(
         return newJE
       },
 
-      updateJournalEntry: (id, patch) =>
+      /**
+       * Why this entry cannot be edited, or null when it can.
+       *
+       * Only entries somebody typed by hand are editable. An entry the system
+       * posted belongs to a document — correcting it here would leave the
+       * invoice, bill or receipt saying one thing and the ledger another, so
+       * those are corrected at their source. Reversals and already-reversed
+       * entries are history and stay exactly as posted.
+       */
+      journalEditBlock: (id) => {
+        const s = get()
+        const je = s.journalEntries.find((j) => j.id === id)
+        if (!je) return 'missing'
+        // Reversals carry type 'reversal', so these are checked before the
+        // manual test — otherwise a reversal is explained as an entry to correct
+        // at its source document, which is not what it is.
+        if (je.reversedBy) return 'voided'
+        if (je.reverses) return 'reversal'
+        if (je.type !== 'manual') return 'auto'
+        const lock = s.settings?.accounting?.lockDate
+        if (lock && je.date && String(je.date) <= String(lock)) return 'locked'
+        return null
+      },
+
+      updateJournalEntry: (id, patch) => {
+        const before = get().journalEntries.find((j) => j.id === id)
         set((s) => {
           const lock = s.settings?.accounting?.lockDate
           const je = s.journalEntries.find((j) => j.id === id)
           // block editing an entry in a closed period, or moving one into it
           if (lock && ((je?.date && String(je.date) <= String(lock)) || (patch?.date && String(patch.date) <= String(lock))))
             throw new Error(`PERIOD_LOCKED:${lock}`)
+          // A reversal, and the entry it reversed, are settled history.
+          if (je && (je.reversedBy || je.reverses)) throw new Error('JE_IMMUTABLE')
+          // A system-posted entry mirrors a document; hand-editing it would put
+          // the two out of step, so it is corrected from the document instead.
+          if (je && je.type !== 'manual') throw new Error('JE_NOT_MANUAL')
           const merged = je ? { ...je, ...patch } : null
           // a patch must not unbalance the entry or strip its date
           if (merged) {
@@ -1205,7 +1236,10 @@ export const useStore = create(
             if (Math.abs(dr - cr) > 0.05) throw new Error(`JE_UNBALANCED:${(dr - cr).toFixed(2)}`)
           }
           return { journalEntries: s.journalEntries.map((j) => (j.id === id ? merged : j)) }
-        }),
+        })
+        if (before) get().logActivity('Edited journal entry', `${before.number} · ${patch?.description || before.description || ''}`.trim())
+        return get().journalEntries.find((j) => j.id === id)
+      },
 
       deleteJournalEntry: (id) =>
         set((s) => {
@@ -1269,13 +1303,18 @@ export const useStore = create(
        *
        * @returns {Array<{itemId, name, onHand, required, shortBy}>} empty when fine
        */
-      stockShortfall: (items = []) => {
+      stockShortfall: (items = [], { creditFrom = null } = {}) => {
         const stock = get().inventoryItems
+        // Editing a posted document: the version being replaced already took its
+        // stock out, and revising puts it back before re-issuing. Crediting those
+        // quantities here stops every edit warning about a shortfall that the
+        // edit itself resolves.
+        const credited = creditFrom ? explodeLines(creditFrom, stock) : {}
         return Object.entries(explodeLines(items, stock))
           .map(([itemId, qty]) => {
             const it = stock.find((i) => i.id === itemId)
             if (!it) return null
-            const onHand = Number(it.quantity) || 0
+            const onHand = (Number(it.quantity) || 0) + (Number(credited[itemId]) || 0)
             const required = Number(qty) || 0
             if (required <= onHand) return null
             return { itemId, name: it.name || '', onHand, required, shortBy: Math.round((required - onHand) * 1000) / 1000 }
@@ -1283,10 +1322,16 @@ export const useStore = create(
           .filter(Boolean)
       },
 
-      addInvoice: (invoice) => {
+      // `opts.reissue` re-posts an existing invoice under its own identity — same
+      // id, same number, same created date — instead of raising a new one. That
+      // is what makes editing a posted document possible without duplicating any
+      // of the posting logic below: reviseInvoice unposts the old version and
+      // sends the corrected one back through this exact path.
+      addInvoice: (invoice, opts = {}) => {
         const s = get()
+        const reissue = opts.reissue || null
         const { prefix, next } = s.settings.invoice
-        const number = nextNum(prefix, next)
+        const number = reissue ? reissue.number : nextNum(prefix, next)
 
         // Foreign-currency invoices are entered in their own currency; the ledger is
         // always in base currency, so each amount is converted at the invoice's rate
@@ -1361,9 +1406,11 @@ export const useStore = create(
         }
 
         const newInvoice = {
-          ...invoice, id: uuid(), number, status: 'sent', amountPaid: 0, payments: [],
+          ...invoice, id: reissue?.id || uuid(), number, status: 'sent', amountPaid: 0, payments: [],
           exchangeRate: rate, baseTotal: arBase,
-          journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
+          journalEntryId: je.id, cogsJournalEntryId: cogsJeId,
+          createdAt: reissue?.createdAt || new Date().toISOString(),
+          ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
@@ -1379,7 +1426,8 @@ export const useStore = create(
             }
             return { ...it, ...patch }
           }),
-          settings: { ...st.settings, invoice: { ...st.settings.invoice, next: next + 1 } },
+          // A reissue reuses its own number, so the sequence must not advance.
+          settings: reissue ? st.settings : { ...st.settings, invoice: { ...st.settings.invoice, next: next + 1 } },
         }))
         Object.entries(issue).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
@@ -1443,6 +1491,42 @@ export const useStore = create(
       updateInvoice: (id, patch) =>
         set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
 
+      /**
+       * Why this invoice cannot be edited, or null when it can. See utils/docEdit.
+       * The UI asks this before offering an Edit button; reviseInvoice asks it
+       * again before touching anything, so the rule holds even if the UI drifts.
+       */
+      invoiceEditBlock: (id) => {
+        const s = get()
+        const inv = s.invoices.find((i) => i.id === id)
+        const fromOrder = !!inv && (
+          !!inv.salesOrderId ||
+          (s.quotations || []).some((q) => (q.invoiceIds || []).includes(inv.id)) ||
+          (s.salesOrders || []).some((o) => (o.invoiceIds || []).includes(inv.id))
+        )
+        return editBlock(inv, { kind: 'invoice', lockDate: s.settings?.accounting?.lockDate || '', fromOrder })
+      },
+
+      /**
+       * Correct a posted sales invoice in place.
+       *
+       * The invoice keeps its number, id and issue date; everything it posted is
+       * unwound and posted again from the corrected document, so the ledger and
+       * the stock ledger end up exactly as they would have had it been entered
+       * right the first time. Refused — loudly — in any state where that would
+       * not be true (see invoiceEditBlock).
+       */
+      reviseInvoice: (id, doc) => {
+        const block = get().invoiceEditBlock(id)
+        if (block) throw new Error(`EDIT_BLOCKED:${block}`)
+        const inv = get().invoices.find((i) => i.id === id)
+        const keep = { id: inv.id, number: inv.number, createdAt: inv.createdAt, revision: inv.revision || 0 }
+        get().deleteInvoice(id, { silent: true })
+        const next = get().addInvoice({ ...doc }, { reissue: keep })
+        get().logActivity('Edited invoice', `${keep.number} · revision ${keep.revision + 1}`)
+        return next
+      },
+
       // Void an invoice the audit-safe way (ZATCA forbids deleting issued invoices):
       // reverse its sale, COGS and every receipt via reversal entries, put the stock
       // back, and mark it 'void' — the document stays in the list (no numbering gap).
@@ -1479,13 +1563,15 @@ export const useStore = create(
         get().logActivity('Voided invoice', `${inv.number}${reason ? ' · ' + reason : ''}`)
       },
 
-      deleteInvoice: (id) => {
+      deleteInvoice: (id, opts = {}) => {
         const inv = get().invoices.find((i) => i.id === id)
         // every JE this invoice produced: the sale, its COGS, and every receipt
         const payJEs = (inv?.payments || []).map((p) => p.journalEntryId)
         const jeIds = new Set([inv?.journalEntryId, inv?.cogsJournalEntryId, ...payJEs].filter(Boolean))
         get().assertJEsUnlocked(...jeIds)
-        get().logActivity('Deleted invoice', inv?.number || id)
+        // reviseInvoice unposts through here before re-posting; logging a deletion
+        // there would put an event in the audit trail that never happened.
+        if (!opts.silent) get().logActivity('Deleted invoice', inv?.number || id)
         // Restore any stock issued by this invoice's tracked lines.
         const restore = {}
         ;(inv?.items || []).forEach((line) => {
@@ -2616,8 +2702,12 @@ export const useStore = create(
         if (!opts.approved && needsApproval(s.settings?.approvals, 'purchase', amountOf('purchase', purchase))) {
           return { pendingApproval: true, request: get().submitForApproval('purchase', purchase) }
         }
+        // See addInvoice: `opts.reissue` re-posts an existing bill under its own
+        // identity, so revisePurchase can correct a bill without a second copy of
+        // the posting logic and without burning a document number.
+        const reissue = opts.reissue || null
         const { prefix, next } = s.settings.purchase
-        const number = nextNum(prefix, next)
+        const number = reissue ? reissue.number : nextNum(prefix, next)
         // Foreign-currency bills are entered in their own currency; convert every
         // amount to base at the bill's rate (1 for base-currency bills) for the ledger.
         const rate = Number(purchase.exchangeRate) || 1
@@ -2647,9 +2737,11 @@ export const useStore = create(
           reference: number, type: 'purchase', departmentId: purchase.departmentId || null, lines,
         })
         const newPurchase = {
-          ...purchase, id: uuid(), number, status: 'received', amountPaid: 0, payments: [],
+          ...purchase, id: reissue?.id || uuid(), number, status: 'received', amountPaid: 0, payments: [],
           exchangeRate: rate, baseTotal: apBase,
-          journalEntryId: je.id, createdAt: new Date().toISOString(),
+          journalEntryId: je.id,
+          createdAt: reissue?.createdAt || new Date().toISOString(),
+          ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
 
         // Perpetual inventory: receive tracked lines into stock at weighted-average cost.
@@ -2685,7 +2777,8 @@ export const useStore = create(
             }
             return { ...it, ...patch }
           }),
-          settings: { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } },
+          // A reissue reuses its own number, so the sequence must not advance.
+          settings: reissue ? st.settings : { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } },
         }))
         // Movement ledger entries for each received item.
         Object.entries(recv).forEach(([itemId, u]) => {
@@ -2748,6 +2841,31 @@ export const useStore = create(
       updatePurchase: (id, patch) =>
         set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
 
+      /** Why this bill cannot be edited, or null when it can. See utils/docEdit. */
+      purchaseEditBlock: (id) => {
+        const s = get()
+        const pur = s.purchases.find((p) => p.id === id)
+        const fromOrder = !!pur && (
+          !!pur.poId ||
+          (s.purchaseOrders || []).some((po) => (po.purchaseIds || []).includes(pur.id) || po.purchaseId === pur.id)
+        )
+        return editBlock(pur, { kind: 'purchase', lockDate: s.settings?.accounting?.lockDate || '', fromOrder })
+      },
+
+      /** Correct a posted purchase bill in place — the mirror of reviseInvoice. */
+      revisePurchase: (id, doc) => {
+        const block = get().purchaseEditBlock(id)
+        if (block) throw new Error(`EDIT_BLOCKED:${block}`)
+        const pur = get().purchases.find((p) => p.id === id)
+        const keep = { id: pur.id, number: pur.number, createdAt: pur.createdAt, revision: pur.revision || 0 }
+        get().deletePurchase(id, { silent: true })
+        // `approved` so a bill that was already approved once is not sent back
+        // round the approval loop by an edit that may even reduce its value.
+        const next = get().addPurchase({ ...doc }, { reissue: keep, approved: true })
+        get().logActivity('Edited purchase bill', `${keep.number} · revision ${keep.revision + 1}`)
+        return next
+      },
+
       // Void a purchase bill: reverse its bill + payment entries and back out the
       // received stock, marking it 'void' (kept for the audit trail).
       voidPurchase: (id, { date, reason } = {}) => {
@@ -2783,12 +2901,13 @@ export const useStore = create(
         get().logActivity('Voided purchase bill', `${pur.number}${reason ? ' · ' + reason : ''}`)
       },
 
-      deletePurchase: (id) => {
+      deletePurchase: (id, opts = {}) => {
         const pur = get().purchases.find((p) => p.id === id)
         const payJEs = (pur?.payments || []).map((p) => p.journalEntryId)
         const jeIds = new Set([pur?.journalEntryId, ...payJEs].filter(Boolean))
         get().assertJEsUnlocked(...jeIds)
-        get().logActivity('Deleted purchase', pur?.number || id)
+        // See deleteInvoice: revisePurchase unposts through here before re-posting.
+        if (!opts.silent) get().logActivity('Deleted purchase', pur?.number || id)
         // Reverse any perpetual stock received by this purchase.
         const recv = {}
         ;(pur?.items || []).forEach((line) => {

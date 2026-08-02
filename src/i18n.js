@@ -2079,6 +2079,56 @@ const AR = {
   'Number Format': 'تنسيق الأرقام',
   'Western digits (0 1 2 3)': 'الأرقام الغربية (0 1 2 3)',
   'Arabic-Indic digits (٠ ١ ٢ ٣)': 'الأرقام العربية (٠ ١ ٢ ٣)',
+
+  // ── Viewing and editing a posted document ──
+  'Purchase Invoice': 'فاتورة مشتريات',
+  'Purchase invoice not found.': 'فاتورة المشتريات غير موجودة.',
+  'Supplier ref': 'مرجع المورّد',
+  'Posts to': 'يُرحّل إلى',
+  'Stock': 'مخزون',
+  'Exchange rate': 'سعر الصرف',
+  'Exceeds balance due': 'يتجاوز الرصيد المستحق',
+  'Payments': 'المدفوعات',
+  'Edited': 'مُعدّلة',
+  'revision {n}': 'المراجعة {n}',
+  'Edit Invoice': 'تعديل الفاتورة',
+  'Edit Purchase Invoice': 'تعديل فاتورة المشتريات',
+  'Edit Journal Entry': 'تعديل قيد اليومية',
+  'Back to Invoice': 'العودة إلى الفاتورة',
+  'Back to Bill': 'العودة إلى الفاتورة',
+  'This invoice cannot be edited': 'لا يمكن تعديل هذه الفاتورة',
+  'This bill cannot be edited': 'لا يمكن تعديل هذه الفاتورة',
+  'This invoice can no longer be edited.': 'لم يعد بالإمكان تعديل هذه الفاتورة.',
+  'This bill can no longer be edited.': 'لم يعد بالإمكان تعديل هذه الفاتورة.',
+  'This entry cannot be edited.': 'لا يمكن تعديل هذا القيد.',
+  'Saving re-posts this invoice: its journal entries and stock movements are replaced with the corrected ones. The invoice keeps its number, and the change is recorded in the audit log.':
+    'الحفظ يعيد ترحيل هذه الفاتورة: تُستبدل قيود اليومية وحركات المخزون الخاصة بها بالقيود والحركات المصححة. تحتفظ الفاتورة برقمها، ويُسجَّل التعديل في سجل المراجعة.',
+  'Saving re-posts this bill: its journal entries and stock movements are replaced with the corrected ones. The bill keeps its number, and the change is recorded in the audit log.':
+    'الحفظ يعيد ترحيل هذه الفاتورة: تُستبدل قيود اليومية وحركات المخزون الخاصة بها بالقيود والحركات المصححة. تحتفظ الفاتورة برقمها، ويُسجَّل التعديل في سجل المراجعة.',
+  'Saving replaces this entry in the ledger, keeping its number. The change is recorded in the audit log.':
+    'الحفظ يستبدل هذا القيد في دفتر الأستاذ مع الاحتفاظ برقمه. ويُسجَّل التعديل في سجل المراجعة.',
+
+  // Why a document or entry is read-only
+  'This document no longer exists.': 'هذا المستند لم يعد موجوداً.',
+  'This document has been voided. A voided document is kept exactly as it was posted.':
+    'تم إلغاء هذا المستند. ويُحفظ المستند الملغى تماماً كما تم ترحيله.',
+  'Money has already moved against this document. Reverse the payment first, or void it and issue a corrected one.':
+    'تمت حركة نقدية على هذا المستند بالفعل. قم بعكس الدفعة أولاً، أو ألغِ المستند وأصدر مستنداً مصححاً.',
+  'A return has already been raised against this document. Void it and issue a corrected one instead.':
+    'تم إصدار مرتجع على هذا المستند بالفعل. ألغِ المستند وأصدر مستنداً مصححاً بدلاً من ذلك.',
+  'This document falls in a closed accounting period. Void it with a reversal dated in an open period instead.':
+    'يقع هذا المستند في فترة محاسبية مقفلة. ألغِه بقيد عكسي بتاريخ في فترة مفتوحة بدلاً من ذلك.',
+  'This bill came from a goods receipt and clears the GRNI accrual. Correct it on the purchase order it came from.':
+    'صدرت هذه الفاتورة عن إشعار استلام بضاعة وتُسوّي مخصص البضاعة المستلمة غير المفوترة. صححها من أمر الشراء الذي صدرت عنه.',
+  'This document is quantity-matched to an order, and editing it here would leave the two disagreeing. Correct it on the order.':
+    'هذا المستند مطابق بالكميات لأمر، وتعديله هنا سيجعل الاثنين غير متطابقين. صححه من الأمر.',
+  'This entry was posted automatically by a document. Edit the invoice, bill or receipt it came from and the entry will be re-posted with it.':
+    'رُحّل هذا القيد تلقائياً بواسطة مستند. عدّل الفاتورة أو السند الذي صدر عنه وسيُعاد ترحيل القيد معه.',
+  'This entry has already been voided.': 'تم إلغاء هذا القيد بالفعل.',
+  'This is a reversal entry and cannot be changed.': 'هذا قيد عكسي ولا يمكن تغييره.',
+  'This entry falls in a closed accounting period. Post a correcting entry in an open period instead.':
+    'يقع هذا القيد في فترة محاسبية مقفلة. رحّل قيداً تصحيحياً في فترة مفتوحة بدلاً من ذلك.',
+  'This entry no longer exists.': 'هذا القيد لم يعد موجوداً.',
 }
 
 export const useI18n = create(
