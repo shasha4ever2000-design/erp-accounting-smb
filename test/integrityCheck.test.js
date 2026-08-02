@@ -269,3 +269,96 @@ describe('inventory-subledger check', () => {
     expect(run({ inventoryItems: [{ id: 's1', type: 'service' }], journalEntries: [] }).detail).toMatch(/No stock items/)
   })
 })
+
+describe('party-subledger check (AR and AP)', () => {
+  const run = (state) => {
+    const res = runIntegrityCheck({ accounts: [], customers: [], suppliers: [], ...state })
+    return res.checks.find((c) => c.id === 'party-subledgers')
+  }
+  const je = (lines) => ({ id: 'j1', number: 'JE-1', date: '2026-08-01', lines })
+
+  it('passes when the ledger matches what customers owe', () => {
+    expect(run({
+      invoices: [{ id: 'i1', number: 'INV-1', customerId: 'c1', total: 920, amountPaid: 0, status: 'sent' }],
+      journalEntries: [je([{ accountId: 'acc-ar', debit: 920, credit: 0 }, { accountId: 'acc-sales', debit: 0, credit: 920 }])],
+    }).ok).toBe(true)
+  })
+
+  it('passes once a credit note is netted off both sides', () => {
+    expect(run({
+      invoices: [{ id: 'i1', customerId: 'c1', total: 920, amountPaid: 0, status: 'sent' }],
+      creditNotes: [{ id: 'cn1', customerId: 'c1', total: 460, status: 'issued' }],
+      journalEntries: [je([
+        { accountId: 'acc-ar', debit: 920, credit: 0 },
+        { accountId: 'acc-sales', debit: 0, credit: 920 },
+        { accountId: 'acc-ar', debit: 0, credit: 460 },
+        { accountId: 'acc-salesret', debit: 460, credit: 0 },
+      ])],
+    }).ok).toBe(true)
+  })
+
+  it('catches a receivable the customer list does not know about', () => {
+    const c = run({
+      invoices: [{ id: 'i1', customerId: 'c1', total: 500, amountPaid: 0, status: 'sent' }],
+      journalEntries: [je([{ accountId: 'acc-ar', debit: 920, credit: 0 }, { accountId: 'acc-sales', debit: 0, credit: 920 }])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].ref).toBe('Accounts Receivable')
+    expect(c.items[0].detail).toMatch(/420\.00 apart/)
+  })
+
+  it('catches the same break on the payable side', () => {
+    const c = run({
+      purchases: [{ id: 'p1', supplierId: 's1', total: 1150, amountPaid: 0, status: 'received' }],
+      debitNotes: [{ id: 'dn1', supplierId: 's1', total: 345, status: 'issued' }],
+      journalEntries: [je([{ accountId: 'acc-ap', debit: 0, credit: 1150 }, { accountId: 'acc-inv', debit: 1150, credit: 0 }])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].ref).toBe('Accounts Payable')
+    expect(c.items[0].detail).toMatch(/345\.00 apart/)
+  })
+
+  it('ignores parties moved onto their own control account', () => {
+    // Their balance lives elsewhere, so comparing it against the default
+    // control account would report a break that is not one.
+    expect(run({
+      customers: [{ id: 'c1', controlAccountId: 'acc-ar-group' }],
+      invoices: [{ id: 'i1', customerId: 'c1', total: 920, amountPaid: 0, status: 'sent' }],
+      journalEntries: [je([{ accountId: 'acc-ar-group', debit: 920, credit: 0 }, { accountId: 'acc-sales', debit: 0, credit: 920 }])],
+    }).ok).toBe(true)
+  })
+
+  it('does not count voided documents', () => {
+    expect(run({
+      invoices: [
+        { id: 'i1', customerId: 'c1', total: 920, amountPaid: 0, status: 'sent' },
+        { id: 'i2', customerId: 'c1', total: 500, amountPaid: 0, status: 'void' },
+      ],
+      journalEntries: [je([{ accountId: 'acc-ar', debit: 920, credit: 0 }, { accountId: 'acc-sales', debit: 0, credit: 920 }])],
+    }).ok).toBe(true)
+  })
+})
+
+describe('the inventory check explains itself', () => {
+  const run = (state) => runIntegrityCheck({ accounts: [{ id: 'acc-inv', name: 'Inventory' }], ...state })
+    .checks.find((c) => c.id === 'inventory-subledger')
+
+  it('names the item whose opening quantity was never journalled', () => {
+    // The commonest cause by far, and the one a new user hits on day one.
+    const c = run({ inventoryItems: [{ id: 'i1', code: 'SKU-001', quantity: 100, costPrice: 100 }], journalEntries: [] })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].detail).toMatch(/SKU-001/)
+    expect(c.items[0].detail).toMatch(/Opening Balances/)
+  })
+
+  it('does not blame opening quantities when the stock has cost layers', () => {
+    const c = run({
+      inventoryItems: [{ id: 'i1', code: 'SKU-001', quantity: 100, costPrice: 100, costLayers: [{ qty: 100, unitCost: 100 }] }],
+      journalEntries: [{ id: 'j1', number: 'JE-1', date: '2026-08-01', lines: [
+        { accountId: 'acc-inv', debit: 5000, credit: 0 }, { accountId: 'acc-ap', debit: 0, credit: 5000 },
+      ] }],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].detail).not.toMatch(/Opening Balances/)
+  })
+})

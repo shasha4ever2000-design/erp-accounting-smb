@@ -24,7 +24,7 @@ export default function InvoiceForm() {
   // With an :id in the path this form is correcting an invoice that is already
   // posted, rather than raising a new one.
   const { id: editId } = useParams()
-  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
+  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []
@@ -122,7 +122,7 @@ export default function InvoiceForm() {
   const newBase = total * (Number(form.exchangeRate) || 1)
   // When editing, the invoice being replaced is still in the list — counting it
   // as well as its own replacement would report double the real exposure.
-  const credit = creditStatus(selectedCustomer, invoices.filter((i) => i.id !== editId), newBase)
+  const credit = creditStatus(selectedCustomer, invoices.filter((i) => i.id !== editId), newBase, creditNotes)
 
   const handleSave = () => {
     if (!form.customerId) return alert('Please select a customer.')

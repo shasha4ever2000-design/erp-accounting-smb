@@ -11,6 +11,7 @@ import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 import { ETA_RECEIVER_TYPES } from '../utils/etaEinvoice'
+import { customerBalance } from '../utils/partyBalance'
 
 // etaReceiverType decides what Egyptian e-invoicing asks of this customer: a
 // business needs a tax registration number, an individual a national ID, a
@@ -18,7 +19,7 @@ import { ETA_RECEIVER_TYPES } from '../utils/etaEinvoice'
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', paymentTerms: '', etaReceiverType: 'B', customFields: {} }
 
 export default function Customers() {
-  const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
+  const { customers, invoices, creditNotes = [], addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
   const controlOptions = controlAccountsFor(accounts, 'customers')
   const sym = settings.company.currencySymbol
   const t = useT()
@@ -65,11 +66,8 @@ export default function Customers() {
     if (confirm(`Delete customer "${c.name}"?`)) deleteCustomer(c.id)
   }
 
-  const getBalance = (customerId) => {
-    return invoices
-      .filter((i) => i.customerId === customerId && i.status !== 'cancelled' && i.status !== 'void')
-      .reduce((sum, i) => sum + (i.total - i.amountPaid), 0)
-  }
+  // Net of credit notes — see utils/partyBalance for why that has to be shared.
+  const getBalance = (customerId) => customerBalance(customerId, { invoices, creditNotes })
 
   const filtered = customers.filter((c) =>
     !search || c.name.toLowerCase().includes(search.toLowerCase()) || (c.email || '').toLowerCase().includes(search.toLowerCase())

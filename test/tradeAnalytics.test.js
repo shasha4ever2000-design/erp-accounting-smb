@@ -21,7 +21,10 @@ describe('sales analytics', () => {
     expect(s.totalDiscount).toBe(150)
     expect(s.shipping).toBe(25)
     expect(s.count).toBe(2)
-    expect(s.outstanding).toBe(300)         // invoice B: 500 − 200
+    // Invoice B leaves 300, less the 100 credit note — which is what Accounts
+    // Receivable holds. Summing invoices alone reported 300 and disagreed with
+    // the ledger, the statement and the customer list.
+    expect(s.outstanding).toBe(200)
   })
 
   it('ranks top customers and products', () => {
@@ -58,7 +61,8 @@ describe('purchase analytics + PO stats', () => {
     expect(p.returns).toBe(150)
     expect(p.discount).toBe(100)      // doc discount (line net == gross here)
     expect(p.freight).toBe(30)
-    expect(p.payable).toBe(930)
+    // Net of the debit note, to agree with Accounts Payable.
+    expect(p.payable).toBe(780)
     expect(p.topSuppliers[0].name).toBe('X')
   })
 

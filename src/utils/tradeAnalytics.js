@@ -2,6 +2,7 @@
 // documents built across Phases 1–4. Pure functions over plain arrays, so the
 // whole thing is unit-testable and never touches the store.
 import { poMatch } from './fulfillment'
+import { totalReceivable, totalPayable } from './partyBalance'
 
 const sum = (arr, fn) => Math.round(arr.reduce((s, x) => s + (Number(fn(x)) || 0), 0) * 100) / 100
 const active = (docs) => (docs || []).filter((d) => d.status !== 'void' && d.status !== 'cancelled')
@@ -20,7 +21,9 @@ export function salesAnalytics(invoices = [], creditNotes = []) {
     shipping += Number(i.shipping) || 0
   })
   const count = inv.length
-  const outstanding = sum(inv, (i) => Math.max(0, (Number(i.total) || 0) - (Number(i.amountPaid) || 0)))
+  // Net of credit notes, so this agrees with Accounts Receivable and with
+  // every other screen that answers "what is owed?" — see utils/partyBalance.
+  const outstanding = totalReceivable({ invoices: inv, creditNotes: active(creditNotes) })
 
   const byCust = {}
   inv.forEach((i) => { const k = i.customerName || '—'; byCust[k] = (byCust[k] || 0) + (Number(i.total) || 0) })
@@ -68,7 +71,8 @@ export function purchaseAnalytics(purchases = [], debitNotes = []) {
     discount += Number(p.docDiscountAmount) || 0
     freight += Number(p.shipping) || 0
   })
-  const payable = sum(pur, (p) => Math.max(0, (Number(p.total) || 0) - (Number(p.amountPaid) || 0)))
+  // Net of debit notes, to agree with Accounts Payable.
+  const payable = totalPayable({ purchases: pur, debitNotes: active(debitNotes) })
   const bySupp = {}
   pur.forEach((p) => { const k = p.supplierName || '—'; bySupp[k] = (bySupp[k] || 0) + (Number(p.total) || 0) })
   const topSuppliers = Object.entries(bySupp).map(([name, value]) => ({ name, value: Math.round(value * 100) / 100 })).sort((a, b) => b.value - a.value).slice(0, 6)

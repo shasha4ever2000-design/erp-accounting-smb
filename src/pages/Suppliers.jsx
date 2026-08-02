@@ -10,11 +10,12 @@ import { CustomFieldInputs } from '../components/CustomFields'
 import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
+import { supplierBalance } from '../utils/partyBalance'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
 
 export default function Suppliers() {
-  const { suppliers, purchases, addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
+  const { suppliers, purchases, debitNotes = [], addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
   const controlOptions = controlAccountsFor(accounts, 'suppliers')
   const sym = settings.company.currencySymbol
   const t = useT()
@@ -59,11 +60,8 @@ export default function Suppliers() {
     if (confirm(`Delete supplier "${s.name}"?`)) deleteSupplier(s.id)
   }
 
-  const getBalance = (supplierId) => {
-    return purchases
-      .filter((p) => p.supplierId === supplierId && p.status !== 'cancelled' && p.status !== 'void')
-      .reduce((sum, p) => sum + (p.total - p.amountPaid), 0)
-  }
+  // Net of debit notes — see utils/partyBalance for why that has to be shared.
+  const getBalance = (supplierId) => supplierBalance(supplierId, { purchases, debitNotes })
 
   const filtered = suppliers.filter((s) =>
     !search || s.name.toLowerCase().includes(search.toLowerCase()) || (s.email || '').toLowerCase().includes(search.toLowerCase())
