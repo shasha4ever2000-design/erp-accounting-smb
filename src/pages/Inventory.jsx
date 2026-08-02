@@ -220,6 +220,16 @@ export default function Inventory() {
             <Input label="Cost Price" type="number" min="0" step="0.01" value={form.costPrice} onChange={(e) => setField('costPrice', e.target.value)} />
             <Input label="Sale Price" type="number" min="0" step="0.01" value={form.salePrice} onChange={(e) => setField('salePrice', e.target.value)} />
           </div>
+          {/* Stock typed here lands on the shelf without a journal entry
+              behind it, so its value never reaches the balance sheet. That is
+              the first thing a new user does and the last thing they would
+              guess was wrong, so it is said here rather than left to the
+              integrity check to report weeks later. */}
+          {!editing && (parseFloat(form.quantity) || 0) > 0 && (
+            <div className="text-xs rounded-lg px-3 py-2 bg-warning-50 dark:bg-warning-500/10 text-warning-700 dark:text-warning-300 border border-warning-200 dark:border-warning-500/20">
+              {t('This opening quantity is not an accounting entry — the goods appear in stock but their value will not appear on your balance sheet. For stock you already own, use Opening Balances instead.')}
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Qty on Hand" type="number" min="0" step="0.01" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label="Reorder Level" type="number" min="0" step="0.01" value={form.reorderLevel} onChange={(e) => setField('reorderLevel', e.target.value)} />

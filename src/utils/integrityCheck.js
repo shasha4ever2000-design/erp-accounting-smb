@@ -1,3 +1,4 @@
+import { totalReceivable, totalPayable } from './partyBalance'
 // Data-integrity self-check: runs the same invariants the test suite asserts,
 // but against the user's live books, on demand. Pure over plain data so it is
 // unit-testable and can never mutate anything it inspects.
@@ -288,6 +289,15 @@ function checkInventoryAgreesWithLedger(journalEntries, inventoryItems, accounts
   })
 
   const nameOf = (id) => (accounts || []).find((a) => a.id === id)?.name || id
+  // Much the commonest cause of stock exceeding the ledger is an opening
+  // quantity typed straight onto the item, which puts goods on the shelf
+  // without ever posting their value. Saying so turns a red light into an
+  // instruction, rather than leaving someone to guess what went wrong.
+  const unbooked = tracked.filter((i) => (Number(i.quantity) || 0) > 0 && !(i.costLayers || []).length)
+  const hint = unbooked.length
+    ? ` — likely the opening quantity on ${unbooked.slice(0, 3).map((i) => i.code || i.name).join(', ')}${unbooked.length > 3 ? ` and ${unbooked.length - 3} more` : ''}, which was never journalled. Post it through Opening Balances so the value reaches the balance sheet.`
+    : ''
+
   const items = []
   Object.keys(shelf).forEach((acc) => {
     const drift = r2((ledger[acc] || 0) - shelf[acc])
@@ -296,7 +306,7 @@ function checkInventoryAgreesWithLedger(journalEntries, inventoryItems, accounts
       ref: nameOf(acc),
       detail: drift > 0
         ? `Ledger holds ${drift.toFixed(2)} more than the stock is worth`
-        : `Stock is worth ${Math.abs(drift).toFixed(2)} more than the ledger holds`,
+        : `Stock is worth ${Math.abs(drift).toFixed(2)} more than the ledger holds${hint}`,
     })
   })
 
@@ -312,11 +322,63 @@ function checkInventoryAgreesWithLedger(journalEntries, inventoryItems, accounts
 }
 
 /**
+ * Accounts Receivable and Accounts Payable must equal their subledgers.
+ *
+ * These are the two accounts an accountant reconciles first and the two this
+ * check list was missing. A break means the customer or supplier list disagrees
+ * with the balance sheet — every entry still balances, so nothing else here
+ * notices, while the aged debt report and the accounts quietly tell different
+ * stories.
+ */
+function checkPartySubledgers(journalEntries, invoices, creditNotes, purchases, debitNotes, customers, suppliers) {
+  const items = []
+  const ledgerOf = (accId, sign) => {
+    let n = 0
+    ;(journalEntries || []).forEach((je) => {
+      if (je?.void) return
+      ;(je.lines || []).forEach((l) => { if (l?.accountId === accId) n += (+l.debit || 0) - (+l.credit || 0) })
+    })
+    return r2(n * sign)
+  }
+
+  // Only the parties still on the default control account are compared here;
+  // one moved to a control account of its own is that account's business.
+  const onDefault = (list, id) => !(list || []).find((x) => x.id === id)?.controlAccountId
+  const ar = ledgerOf('acc-ar', 1)
+  const arSub = totalReceivable({
+    invoices: (invoices || []).filter((i) => onDefault(customers, i.customerId)),
+    creditNotes: (creditNotes || []).filter((c) => onDefault(customers, c.customerId)),
+  })
+  if (Math.abs(r2(ar - arSub)) >= 0.01) {
+    items.push({ ref: 'Accounts Receivable', detail: `Ledger ${ar.toFixed(2)} vs customers ${arSub.toFixed(2)} — ${Math.abs(r2(ar - arSub)).toFixed(2)} apart` })
+  }
+
+  const ap = ledgerOf('acc-ap', -1)
+  const apSub = totalPayable({
+    purchases: (purchases || []).filter((p) => onDefault(suppliers, p.supplierId)),
+    debitNotes: (debitNotes || []).filter((d) => onDefault(suppliers, d.supplierId)),
+  })
+  if (Math.abs(r2(ap - apSub)) >= 0.01) {
+    items.push({ ref: 'Accounts Payable', detail: `Ledger ${ap.toFixed(2)} vs suppliers ${apSub.toFixed(2)} — ${Math.abs(r2(ap - apSub)).toFixed(2)} apart` })
+  }
+
+  return {
+    id: 'party-subledgers',
+    label: 'Customer and supplier balances agree with the ledger',
+    ok: items.length === 0,
+    detail: items.length === 0
+      ? `AR ${ar.toFixed(2)} · AP ${ap.toFixed(2)}`
+      : `${items.length} control account(s) disagree with their subledger`,
+    items,
+  }
+}
+
+/**
  * Run every check against a store snapshot.
  * @returns { ok, passed, failed, checks[], ranAt }
  */
 export function runIntegrityCheck(state) {
-  const { accounts, journalEntries, inventoryItems, invoices, purchases, settings, capitalAccounts } = state || {}
+  const { accounts, journalEntries, inventoryItems, invoices, purchases, creditNotes, debitNotes, customers, suppliers, settings, capitalAccounts } = state || {}
   const checks = [
     checkEntriesBalance(journalEntries),
     checkLedgerNetsZero(journalEntries),
@@ -326,6 +388,7 @@ export function runIntegrityCheck(state) {
     checkNoBadNumbers(journalEntries),
     checkNoNegativeStock(inventoryItems),
     checkInventoryAgreesWithLedger(journalEntries, inventoryItems, accounts),
+    checkPartySubledgers(journalEntries, invoices, creditNotes, purchases, debitNotes, customers, suppliers),
     checkNoOverpayments(invoices, purchases),
     checkLockRespected(journalEntries, settings?.accounting?.lockDate),
     checkOpeningBalanceEquityCleared(journalEntries, settings),

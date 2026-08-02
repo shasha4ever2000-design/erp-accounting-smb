@@ -138,6 +138,9 @@ const DEFAULT_SETTINGS = {
   terms:         defaultTerms(),
   cycleCount:    { policy: defaultCyclePolicy(), batchSize: 20 },
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
+  // First-run setup. Until this is answered the wizard asks; 'skipped' counts
+  // as answered, because being asked twice is worse than never being asked.
+  setup:         { state: 'pending', at: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
   // Egyptian Tax Authority e-invoicing. See utils/etaEinvoice — this app shapes
   // and validates the document; signing and submission stay with the taxpayer.
@@ -228,6 +231,14 @@ export const useStore = create(
 
       // The nested address and tax-code maps are merged a level deeper, so
       // setting one field of an address does not wipe the rest of it.
+      /** 'done' or 'skipped' — either way, stop asking. */
+      markSetupDone: (state = 'done') =>
+        set((s) => ({ settings: { ...s.settings, setup: { state, at: new Date().toISOString() } } })),
+
+      /** Let Settings offer the wizard again once it has been dismissed. */
+      reopenSetup: () =>
+        set((s) => ({ settings: { ...s.settings, setup: { state: 'pending', at: '' } } })),
+
       updateEta: (patch) =>
         set((s) => {
           const cur = s.settings.eta || {}
@@ -4687,7 +4698,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 37, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 38, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4884,7 +4895,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 37,
+      version: 38,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5081,6 +5092,14 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 38) {
+          // An existing company has been in use for a while — it does not need
+          // a wizard explaining what it already has.
+          persisted.settings = {
+            ...persisted.settings,
+            setup: persisted.settings?.setup || { state: 'done', at: '' },
+          }
         }
         if (version < 37) {
           // Egyptian e-invoicing settings. Off unless switched on, so nobody

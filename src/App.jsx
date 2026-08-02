@@ -6,6 +6,7 @@ import { useT } from './i18n'
 import { CalendarClock, X } from 'lucide-react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard' // eager: default landing route
+import SetupWizard from './components/SetupWizard'
 
 // Every other page is code-split into its own chunk and loaded on demand,
 // so the initial bundle only carries the dashboard + shared runtime.
@@ -93,6 +94,7 @@ export default function App() {
   const theme = useStore((s) => s.settings.theme || 'light')
   const companyName = useStore((s) => s.settings.company.name)
   const updateCompany = useStore((s) => s.updateCompany)
+  const setupPending = useStore((s) => (s.settings.setup?.state || 'pending') === 'pending')
   const t = useT()
   const [schedulerResult, setSchedulerResult] = useState(null)
 
@@ -163,6 +165,10 @@ export default function App() {
 
   return (
     <Layout>
+      {/* Asked once per company, before anything else is on screen — the
+          answers decide currency, tax and e-invoicing, and getting them wrong
+          is only discovered when a return is due. */}
+      {setupPending && <SetupWizard onClose={() => {}} />}
       <Suspense fallback={<PageLoader />}>
       <Routes>
         <Route path="/" element={<Dashboard />} />
