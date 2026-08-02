@@ -13,12 +13,13 @@ import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
-import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw } from 'lucide-react'
+import { buildEtaInvoice, validateEtaInvoice, etaFilename } from '../utils/etaEinvoice'
+import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, FileJson } from 'lucide-react'
 
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings } = useStore()
+  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -54,6 +55,28 @@ export default function InvoiceView() {
 
   const customer = customers.find((c) => c.id === invoice.customerId)
   const editBlocked = invoiceEditBlock(invoice.id)
+
+  // Egyptian e-invoicing. The document is built and checked here; signing and
+  // submission belong to the taxpayer, so this hands over a file rather than
+  // pretending to file it.
+  const etaOn = !!settings.eta?.enabled
+  const etaCtx = { eta: settings.eta || {}, company, customer, items: inventoryItems }
+  const etaErrors = etaOn ? validateEtaInvoice(invoice, etaCtx) : []
+  const exportEta = () => {
+    if (etaErrors.length) {
+      return alert(`${t('This invoice is not ready to file:')}\n\n${etaErrors.map((e) => `• ${t(e.message)}`).join('\n')}`)
+    }
+    const doc = buildEtaInvoice(invoice, etaCtx)
+    const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = etaFilename(invoice)
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
   const bankAccounts = accounts.filter((a) => a.type === 'asset' && (a.id === 'acc-cash' || a.id === 'acc-bank1' || a.subtype === 'current'))
   const amountDue = invoice.total - invoice.amountPaid
   // Foreign-currency invoice: amounts show in the invoice currency; the receipt can
@@ -136,6 +159,18 @@ export default function InvoiceView() {
           {!editBlocked && (
             <Btn variant="secondary" size="sm" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
               <Pencil size={14} /> {t('Edit')}
+            </Btn>
+          )}
+          {/* The count on the button is the point: it says what still needs
+              doing before this can be filed, without opening anything. */}
+          {etaOn && invoice.status !== 'void' && (
+            <Btn variant="secondary" size="sm" onClick={exportEta} title={t('Download the ETA JSON document')}>
+              <FileJson size={14} /> {t('ETA JSON')}
+              {etaErrors.length > 0 && (
+                <span className="ms-1 text-[10px] font-semibold px-1.5 py-px rounded-full bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-300">
+                  {etaErrors.length}
+                </span>
+              )}
             </Btn>
           )}
           {invoice.status !== 'paid' && invoice.status !== 'void' && (
