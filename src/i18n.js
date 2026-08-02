@@ -2481,6 +2481,18 @@ const AR = {
   'Individual (national ID)': 'فرد (الرقم القومي)',
   'Foreign customer': 'عميل أجنبي',
 
+  // ── Profitability / margin reports ──
+  'Margin by Customer': 'هامش الربح حسب العميل',
+  'Margin by Item': 'هامش الربح حسب الصنف',
+  'Not attributed to an item': 'غير منسوب إلى صنف',
+  'Margin %': 'نسبة الهامش',
+  'Gross profit': 'مجمل الربح',
+  'Top 5 produce': 'أعلى 5 يحققون',
+  'of gross profit': 'من مجمل الربح',
+  'row loses money': 'بند يحقق خسارة',
+  'rows lose money': 'بنود تحقق خسارة',
+  'row(s) use an apportioned cost — marked ~': 'بند/بنود بتكلفة موزّعة تقديرياً — بعلامة ~',
+
   // ── Cash forecast ──
   'Cash Forecast': 'التنبؤ النقدي',
   'Projected cash position for the next': 'الوضع النقدي المتوقع للـ',

@@ -15,6 +15,7 @@ import { ChevronRight } from 'lucide-react'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 import { narrate } from '../utils/jeNarration'
+import { marginByCustomer, marginByItem, marginSummary } from '../utils/margin'
 
 const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)', group: 'Financial Statements' },
@@ -29,6 +30,8 @@ const REPORTS = [
   { id: 'sales-item', label: 'Sales by Item', group: 'Sales & Purchases' },
   { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
   { id: 'exp-cat', label: 'Expenses by Category', group: 'Sales & Purchases' },
+  { id: 'margin-cust', label: 'Margin by Customer', group: 'Profitability' },
+  { id: 'margin-item', label: 'Margin by Item', group: 'Profitability' },
   { id: 'budget-var', label: 'Budget vs Actual', group: 'Performance' },
   { id: 'pl-comp', label: 'Comparative P&L', group: 'Performance' },
   { id: 'dept-pl', label: 'Departmental P&L', group: 'Performance' },
@@ -1109,6 +1112,21 @@ export default function Reports() {
   // ─── Analytical reports (Sales/Purchases/Expenses) ───────────────
   const inRange = (d) => (!startDate || d >= startDate) && (!endDate || d <= endDate)
 
+  // ── Profitability ──
+  // Margin needs the cost of each sale, which lives on the document (recorded
+  // when it posted) or, for older documents, on its COGS journal entry.
+  const marginData = useMemo(
+    () => ({ invoices, creditNotes, journalEntries, inventoryItems }),
+    [invoices, creditNotes, journalEntries, inventoryItems])
+
+  const marginCust = useMemo(
+    () => marginByCustomer(marginData, { from: startDate, to: endDate }),
+    [marginData, startDate, endDate])
+
+  const marginItem = useMemo(
+    () => marginByItem(marginData, { from: startDate, to: endDate }),
+    [marginData, startDate, endDate])
+
   const salesByCustomer = useMemo(() => {
     const map = {}
     invoices.filter((i) => i.status !== 'cancelled' && i.status !== 'void' && inRange(i.date)).forEach((i) => {
@@ -1197,6 +1215,76 @@ export default function Reports() {
         </table>
       </div>
     </Card>
+  )
+
+  // Margin reports rank by gross profit rather than revenue, and say plainly
+  // when a figure leans on an apportioned cost rather than a recorded one.
+  const fmtPct = (v) => (v === null || v === undefined ? '—' : `${(v * 100).toFixed(1)}%`)
+
+  const MarginNotice = ({ rows }) => {
+    const s = marginSummary(rows)
+    if (!rows.length) return null
+    return (
+      <div className="px-6 pt-4 flex flex-wrap gap-x-6 gap-y-1.5 text-xs text-gray-500 dark:text-slate-400">
+        <span>{t('Gross profit')}: <strong className="text-gray-800 dark:text-slate-100">{fmtMoney(s.profit, sym)}</strong> ({fmtPct(s.pct)})</span>
+        {s.top5Share !== null && (
+          <span>{t('Top 5 produce')} <strong className="text-gray-800 dark:text-slate-100">{fmtPct(s.top5Share)}</strong> {t('of gross profit')}</span>
+        )}
+        {s.lossMakers.length > 0 && (
+          <span className="text-danger-600 dark:text-danger-400">
+            {s.lossMakers.length} {s.lossMakers.length === 1 ? t('row loses money') : t('rows lose money')}
+          </span>
+        )}
+        {s.estimatedRows > 0 && (
+          <span className="text-warning-600 dark:text-warning-400">
+            {s.estimatedRows} {t('row(s) use an apportioned cost — marked ~')}
+          </span>
+        )}
+      </div>
+    )
+  }
+
+  const marginRow = (r, first) => [
+    r.estimated ? `~ ${first}` : first,
+    fmtMoney(r.revenue, sym),
+    fmtMoney(r.cost, sym),
+    fmtMoney(r.profit, sym),
+    fmtPct(r.pct),
+  ]
+
+  const MarginByCustomerReport = () => (
+    <>
+      <MarginNotice rows={marginCust} />
+      <AnalyticalReport title="Margin by Customer"
+        headers={['Customer', 'Revenue', 'Cost of Sales', 'Gross Profit', 'Margin %']}
+        chartData={marginCust.filter((r) => r.profit > 0).map((r) => ({ name: r.label, value: r.profit }))}
+        rows={marginCust.map((r) => marginRow(r, r.label))}
+        totalsRow={['Total',
+          fmtMoney(marginCust.reduce((s, r) => s + r.revenue, 0), sym),
+          fmtMoney(marginCust.reduce((s, r) => s + r.cost, 0), sym),
+          fmtMoney(marginCust.reduce((s, r) => s + r.profit, 0), sym),
+          fmtPct(marginSummary(marginCust).pct)]} />
+    </>
+  )
+
+  const MarginByItemReport = () => (
+    <>
+      <MarginNotice rows={marginItem} />
+      <AnalyticalReport title="Margin by Item"
+        headers={['Item', 'Qty', 'Revenue', 'Cost of Sales', 'Gross Profit', 'Margin %']}
+        chartData={marginItem.filter((r) => r.profit > 0).map((r) => ({ name: r.label, value: r.profit }))}
+        rows={marginItem.map((r) => [
+          r.estimated ? `~ ${r.label}` : r.label,
+          r.qty,
+          fmtMoney(r.revenue, sym), fmtMoney(r.cost, sym), fmtMoney(r.profit, sym), fmtPct(r.pct),
+        ])}
+        totalsRow={['Total',
+          marginItem.reduce((s, r) => s + r.qty, 0),
+          fmtMoney(marginItem.reduce((s, r) => s + r.revenue, 0), sym),
+          fmtMoney(marginItem.reduce((s, r) => s + r.cost, 0), sym),
+          fmtMoney(marginItem.reduce((s, r) => s + r.profit, 0), sym),
+          fmtPct(marginSummary(marginItem).pct)]} />
+    </>
   )
 
   const SalesByCustomerReport = () => (
@@ -1627,6 +1715,8 @@ export default function Reports() {
         {report === 'sales-item' && <SalesByItemReport />}
         {report === 'purch-supp' && <PurchasesBySupplierReport />}
         {report === 'exp-cat' && <ExpenseByCategoryReport />}
+        {report === 'margin-cust' && <MarginByCustomerReport />}
+        {report === 'margin-item' && <MarginByItemReport />}
         {report === 'budget-var' && <BudgetVarReport />}
         {report === 'pl-comp' && <ComparativePLReport />}
         {report === 'dept-pl' && <DeptPLReport />}
