@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState , lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
@@ -11,10 +11,14 @@ import {
   TrendingUp, TrendingDown, AlertCircle, CheckCircle2,
   FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles, ChevronRight,
 } from 'lucide-react'
-import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from 'recharts'
 import { format, subMonths, parseISO, isValid } from 'date-fns'
+
+// recharts is 404 KB and this is the one eagerly-loaded page, so it is fetched
+// only when there is actually a chart to draw.
+const TrendChart = lazy(() => import('../components/TrendChart'))
+const ChartSkeleton = () => (
+  <div className="h-[220px] rounded-lg bg-slate-100/70 dark:bg-surface-800/60 animate-pulse" />
+)
 
 export default function Dashboard() {
   const { invoices, purchases, accounts, journalEntries, getAllBalances, settings, recurringInvoices, leases } = useStore()
@@ -362,26 +366,18 @@ export default function Dashboard() {
               <span className="inline-flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-danger-500" /> {t('Expenses')}</span>
             </div>
           </div>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={chartData} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="rev" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.22} />
-                  <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="exp" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#ef4444" stopOpacity={0.14} />
-                  <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-              <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} dy={4} />
-              <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} width={72} />
-              <Tooltip formatter={(v) => fmtMoney(v, sym)} {...tooltipStyle} />
-              <Area type="monotone" dataKey="Revenue" stroke="#3b82f6" fill="url(#rev)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
-              <Area type="monotone" dataKey="Expenses" stroke="#ef4444" fill="url(#exp)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
-            </AreaChart>
-          </ResponsiveContainer>
+          <Suspense fallback={<ChartSkeleton />}>
+            <TrendChart
+              data={chartData}
+              series={[
+                { key: 'Revenue',  stroke: '#3b82f6', gradientId: 'rev', fillOpacity: 0.22 },
+                { key: 'Expenses', stroke: '#ef4444', gradientId: 'exp', fillOpacity: 0.14 },
+              ]}
+              formatValue={(v) => fmtMoney(v, sym)}
+              formatAxis={(v) => `${sym}${v.toLocaleString()}`}
+              theme={{ dark, gridStroke, tickFill, tooltipStyle }}
+            />
+          </Suspense>
         </Card>
 
         {/* Quick links */}
@@ -422,21 +418,15 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={forecast} margin={{ top: 4, right: 0, left: 0, bottom: 0 }}>
-            <defs>
-              <linearGradient id="fc" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#14b8a6" stopOpacity={0.2} />
-                <stop offset="95%" stopColor="#14b8a6" stopOpacity={0} />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 12, fill: tickFill }} axisLine={false} tickLine={false} dy={4} />
-            <YAxis tick={{ fontSize: 11, fill: tickFill }} axisLine={false} tickLine={false} tickFormatter={(v) => `${sym}${v.toLocaleString()}`} width={72} />
-            <Tooltip formatter={(v) => fmtMoney(v, sym)} labelFormatter={(l) => l} {...tooltipStyle} />
-            <Area type="monotone" dataKey="Projected" stroke="#0d9488" fill="url(#fc)" strokeWidth={2.25} dot={false} activeDot={{ r: 4, strokeWidth: 2, stroke: dark ? '#0f172a' : '#fff' }} />
-          </AreaChart>
-        </ResponsiveContainer>
+        <Suspense fallback={<ChartSkeleton />}>
+          <TrendChart
+            data={forecast}
+            series={[{ key: 'Projected', stroke: '#14b8a6', gradientId: 'fc', fillOpacity: 0.2 }]}
+            formatValue={(v) => fmtMoney(v, sym)}
+            formatAxis={(v) => `${sym}${v.toLocaleString()}`}
+            theme={{ dark, gridStroke, tickFill, tooltipStyle }}
+          />
+        </Suspense>
       </Card>
 
       {/* Recent Invoices */}
