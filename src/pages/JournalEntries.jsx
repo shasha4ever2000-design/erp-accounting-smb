@@ -7,12 +7,23 @@ import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td,
 import AttachmentButton from '../components/Attachments'
 import { Plus, Ban, Eye, Pencil, Search, Trash2 } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
+import { narrate } from '../utils/jeNarration'
 
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
 const blankForm = () => ({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
 
 // Why an entry is read-only. Auto-posted entries mirror a document and are
 // corrected there; reversals and reversed entries are settled history.
+// Entry types are stored as codes; these are the words for them.
+const JE_TYPE_LABEL = {
+  manual: 'Manual', invoice: 'Invoice', receipt: 'Receipt', purchase: 'Purchase',
+  payment_out: 'Payment', money_in: 'Money in', money_out: 'Money out',
+  cogs: 'Cost of sales', credit_note: 'Credit note', debit_note: 'Debit note',
+  reversal: 'Reversal', stock_adj: 'Stock adjustment', stock_count: 'Stock count',
+  payroll: 'Payroll', depreciation: 'Depreciation', opening: 'Opening balances',
+  work_order_issue: 'Work order', work_order_complete: 'Work order',
+}
+
 const JE_BLOCK_MESSAGE = {
   auto: 'This entry was posted automatically by a document. Edit the invoice, bill or receipt it came from and the entry will be re-posted with it.',
   voided: 'This entry has already been voided.',
@@ -131,7 +142,7 @@ export default function JournalEntries() {
   }
 
   const sorted = [...journalEntries]
-    .filter((je) => !search || je.number.toLowerCase().includes(search.toLowerCase()) || je.description.toLowerCase().includes(search.toLowerCase()))
+    .filter((je) => !search || je.number.toLowerCase().includes(search.toLowerCase()) || (je.description || '').toLowerCase().includes(search.toLowerCase()) || narrate(je.description, t).toLowerCase().includes(search.toLowerCase()))
     .sort((a, b) => b.createdAt?.localeCompare(a.createdAt))
 
   const accName = (id) => accounts.find((a) => a.id === id)?.name || id
@@ -147,7 +158,7 @@ export default function JournalEntries() {
       <div className="relative mb-4 max-w-sm">
         <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
         <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
-          placeholder="Search entries..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          placeholder={t('Search entries...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
       <Card>
@@ -163,12 +174,12 @@ export default function JournalEntries() {
                   <Td className="font-mono text-gray-600 dark:text-slate-300 text-xs">{je.number}</Td>
                   <Td className="text-gray-500 dark:text-slate-400">{fmtDate(je.date)}</Td>
                   <Td className="font-medium text-gray-800 dark:text-slate-100">
-                    {je.description}
+                    {narrate(je.description, t)}
                     {je.reversedBy && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Voided')}</Badge>}
                     {je.reverses && <Badge className="ms-2 bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{t('Reversal')}</Badge>}
                   </Td>
                   <Td className="text-gray-400 dark:text-slate-500 text-xs">{je.reference || '—'}</Td>
-                  <Td><Badge className={typeColors[je.type] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{je.type?.replace('_', ' ')}</Badge></Td>
+                  <Td><Badge className={typeColors[je.type] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{t(JE_TYPE_LABEL[je.type] || (je.type || '').replace(/_/g, ' '))}</Badge></Td>
                   <Td right className="font-mono text-gray-700 dark:text-slate-200">{fmtMoney(dr, sym)}</Td>
                   <Td right className="font-mono text-gray-700 dark:text-slate-200">{fmtMoney(cr, sym)}</Td>
                   <Td right>
@@ -299,7 +310,7 @@ export default function JournalEntries() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div><p className="text-gray-400 dark:text-slate-500">{t('Date')}</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
               <div><p className="text-gray-400 dark:text-slate-500">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
-              <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>
+              <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{narrate(viewEntry.description, t)}</p></div>
             </div>
             <table className="w-full text-sm border border-slate-200 dark:border-surface-700 rounded-lg overflow-hidden">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
