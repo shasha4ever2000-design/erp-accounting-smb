@@ -76,6 +76,7 @@ const Commissions = lazy(() => import('./pages/Commissions'))
 const LandedCosts = lazy(() => import('./pages/LandedCosts'))
 const RecurringExpenses = lazy(() => import('./pages/RecurringExpenses'))
 const FinancialHealth = lazy(() => import('./pages/FinancialHealth'))
+const CashForecast = lazy(() => import('./pages/CashForecast'))
 const Consolidation = lazy(() => import('./pages/Consolidation'))
 const AuditLog = lazy(() => import('./pages/AuditLog'))
 const Requisitions = lazy(() => import('./pages/Requisitions'))
@@ -255,6 +256,7 @@ export default function App() {
         <Route path="/analytics" element={<Analytics />} />
         <Route path="/trade-analytics" element={<TradeAnalytics />} />
         <Route path="/financial-health" element={<FinancialHealth />} />
+        <Route path="/cash-forecast" element={<CashForecast />} />
         <Route path="/consolidation" element={<Consolidation />} />
         <Route path="/currencies" element={<Currencies />} />
         <Route path="/revaluation" element={<Revaluation />} />

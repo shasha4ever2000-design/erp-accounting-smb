@@ -40,6 +40,7 @@ const COMMANDS = [
   { label: 'Employees', path: '/employees', group: 'Go to' },
   { label: 'Payroll', path: '/payroll', group: 'Go to' },
   { label: 'Business Analytics', path: '/analytics', group: 'Go to' },
+  { label: 'Cash Forecast', path: '/cash-forecast', group: 'Go to' },
   { label: 'Currencies & Exchange Rates', path: '/currencies', group: 'Go to' },
   { label: 'Statements of Account', path: '/statements', group: 'Go to' },
   { label: 'Year-End Close', path: '/year-end', group: 'Go to' },

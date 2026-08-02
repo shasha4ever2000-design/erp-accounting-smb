@@ -47,6 +47,7 @@ import {
   validateField as validateCustomField, migrateLegacy as migrateCustomFieldSettings,
 } from './utils/customFields'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor, OTHER_INCOME } from './utils/accountTree'
+import { advanceDate } from './utils/cashForecast'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
   movementLines, allocateProfit, profitAllocationLines,
@@ -4230,22 +4231,12 @@ export const useStore = create(
         return set((s) => ({ recurringInvoices: s.recurringInvoices.filter((r) => r.id !== id) }))
       },
 
-      advanceDate: (dateStr, frequency) => {
-        const d = new Date(dateStr)
-        if (frequency === 'weekly') d.setUTCDate(d.getUTCDate() + 7)
-        else if (frequency === 'biweekly') d.setUTCDate(d.getUTCDate() + 14)
-        else {
-          // month-based: preserve the day-of-month, clamped to the target month's
-          // last day so Jan 31 → Feb 28/29 (never drifts to Mar 3 or skips February)
-          const add = frequency === 'quarterly' ? 3 : frequency === 'yearly' ? 12 : 1
-          const day = d.getUTCDate()
-          d.setUTCDate(1)
-          d.setUTCMonth(d.getUTCMonth() + add)
-          const lastDay = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate()
-          d.setUTCDate(Math.min(day, lastDay))
-        }
-        return d.toISOString().slice(0, 10)
-      },
+      // Month-based steps preserve the day-of-month, clamped to the target
+      // month's last day so Jan 31 → Feb 28/29 (never drifts into March, never
+      // skips February). The rule lives in utils/cashForecast.js because the
+      // cash forecast has to predict exactly what this posts — sharing one
+      // function is what stops the projection and the posting from diverging.
+      advanceDate: (dateStr, frequency) => advanceDate(dateStr, frequency),
 
       // ─── RECURRING JOURNAL ENTRIES ─────────────────────────────────
       // Templated journal entries (e.g. monthly rent accrual, amortization)

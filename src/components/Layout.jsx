@@ -89,6 +89,7 @@ const NAV = [
   { label: 'Analytics',          path: '/analytics',         icon: PieChart },
   { label: 'Sales & Purchasing', path: '/trade-analytics',   icon: GitCompareArrows },
   { label: 'Financial Health',   path: '/financial-health',  icon: Activity },
+  { label: 'Cash Forecast',      path: '/cash-forecast',     icon: CalendarClock },
   { label: 'Group Consolidation',path: '/consolidation',     icon: Layers },
   { label: 'Currencies',         path: '/currencies',        icon: Coins },
   { label: 'FX Revaluation',     path: '/revaluation',       icon: ArrowLeftRight },
