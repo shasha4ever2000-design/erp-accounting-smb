@@ -49,6 +49,7 @@ import {
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor, OTHER_INCOME } from './utils/accountTree'
 import { advanceDate } from './utils/cashForecast'
 import { initialMeasurement, recognitionLines, periodLines } from './utils/ifrs16'
+import { DEFAULT_MATRIX as DEFAULT_ECL_MATRIX, ageReceivables, computeEcl, eclMovement, provisionLines } from './utils/ecl'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
   movementLines, allocateProfit, profitAllocationLines,
@@ -76,6 +77,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-depr',   code: '1610', name: 'Accumulated Depreciation',   type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
   { id: 'acc-roudepr',code: '1621', name: 'Accumulated Depreciation – Right-of-Use', type: 'asset', subtype: 'non_current', isSystem: false },
+  { id: 'acc-ecl',    code: '1105', name: 'Allowance for Expected Credit Losses', type: 'asset', subtype: 'current', isSystem: false },
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
@@ -111,6 +113,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-shipinc', code: '4020', name: 'Shipping & Delivery Income',type: 'revenue',   subtype: 'revenue',     isSystem: false },
   // EXPENSES
   { id: 'acc-cogs',   code: '5001', name: 'Cost of Goods Sold',         type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-baddebt',code: '5017', name: 'Expected Credit Losses',     type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-salary', code: '5002', name: 'Salaries & Wages',           type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-rent',   code: '5003', name: 'Rent Expense',               type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-util',   code: '5004', name: 'Utilities',                  type: 'expense',   subtype: 'expense',     isSystem: false },
@@ -173,6 +176,9 @@ const DEFAULT_SETTINGS = {
   opening:       { date: '', posted: false, journalEntryId: null, postedAt: '', counts: null }, // migration cutover
   payroll:       { prefix: 'PR-',    next: 1 },
   hr:            { eosb: defaultEosbSettings(), restDays: [5, 6], deductLate: false, lateGraceMinutes: 0 },
+  // IFRS 9 requires an entity's own observed loss experience, so these
+  // are a starting point to be replaced, not a recommendation.
+  ecl:           { enabled: false, matrix: { ...DEFAULT_ECL_MATRIX }, lastAssessedAt: '' },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
   lease:         { prefix: 'LEASE-', next: 1 },
@@ -3740,6 +3746,46 @@ export const useStore = create(
           }
         }),
 
+      // ─── IFRS 9 EXPECTED CREDIT LOSSES ─────────────────────────────
+
+      updateEclSettings: (patch) =>
+        set((s) => ({ settings: { ...s.settings, ecl: { ...(s.settings.ecl || {}), ...patch } } })),
+
+      /** The current aged book and the allowance it implies, as a working. */
+      eclAssessment: (asOf) => {
+        const s = get()
+        const at = asOf || new Date().toISOString().slice(0, 10)
+        const aged = ageReceivables(s.invoices, { asOf: at, customers: s.customers })
+        const ecl = computeEcl(aged, s.settings.ecl?.matrix)
+        // The allowance is a contra-asset, so its ledger balance is a credit.
+        const bal = s.getAllBalances(undefined, at)['acc-ecl'] || { dr: 0, cr: 0 }
+        const existing = Math.round((bal.cr - bal.dr) * 100) / 100
+        return { asOf: at, aged, ecl, ...eclMovement(ecl.total, existing) }
+      },
+
+      /**
+       * Adjust the allowance to the level the aged book requires.
+       *
+       * Posts the movement, never the requirement: charging the full expected
+       * loss at every assessment would compound the allowance until
+       * receivables were carried at nothing, and every entry would balance the
+       * whole way down.
+       */
+      postEclProvision: (opts = {}) => {
+        const assessment = get().eclAssessment(opts.asOf)
+        const lines = provisionLines(assessment.movement)
+        if (!lines.length) return null
+        const je = get().addJournalEntry({
+          date: assessment.asOf,
+          description: `Expected credit loss assessment at ${assessment.asOf}`,
+          reference: '', type: 'ecl', lines,
+        })
+        set((st) => ({
+          settings: { ...st.settings, ecl: { ...(st.settings.ecl || {}), lastAssessedAt: assessment.asOf } },
+        }))
+        return je
+      },
+
       // ─── LEASES ────────────────────────────────────────────────────
       leases: [],
 
@@ -4800,7 +4846,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 39, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 40, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4997,7 +5043,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 39,
+      version: 40,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5194,6 +5240,20 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 40) {
+          // IFRS 9 expected credit losses. Off unless switched on: recognising
+          // an allowance changes the carrying value of receivables, and that
+          // is an accounting-policy decision, not an upgrade side effect.
+          const add = (a) => {
+            if (Array.isArray(persisted.accounts) && !persisted.accounts.some((x) => x.id === a.id)) persisted.accounts.push(a)
+          }
+          add({ id: 'acc-ecl', code: '1105', name: 'Allowance for Expected Credit Losses', type: 'asset', subtype: 'current', isSystem: false })
+          add({ id: 'acc-baddebt', code: '5017', name: 'Expected Credit Losses', type: 'expense', subtype: 'expense', isSystem: false })
+          persisted.settings = {
+            ...persisted.settings,
+            ecl: persisted.settings?.ecl || { enabled: false, matrix: { ...DEFAULT_ECL_MATRIX }, lastAssessedAt: '' },
+          }
         }
         if (version < 39) {
           // IFRS 16 needs somewhere to accumulate right-of-use depreciation,
