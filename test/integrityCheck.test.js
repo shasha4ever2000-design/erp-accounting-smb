@@ -211,3 +211,61 @@ describe('Opening Balance Equity check', () => {
     expect(c.ok).toBe(true)
   })
 })
+
+describe('inventory-subledger check', () => {
+  const run = (state) => {
+    const res = runIntegrityCheck({ accounts: [{ id: 'acc-inv', name: 'Inventory' }, { id: 'acc-rawmat', name: 'Raw Materials' }], ...state })
+    return res.checks.find((c) => c.id === 'inventory-subledger')
+  }
+  const entry = (lines) => ({ id: 'j1', number: 'JE-1', date: '2026-08-01', lines })
+
+  it('passes when the ledger is worth what the shelf is worth', () => {
+    const c = run({
+      inventoryItems: [{ id: 'i1', code: 'W1', quantity: 10, costPrice: 100 }],
+      journalEntries: [entry([{ accountId: 'acc-inv', debit: 1000, credit: 0 }, { accountId: 'acc-ap', debit: 0, credit: 1000 }])],
+    })
+    expect(c.ok).toBe(true)
+  })
+
+  it('catches stock that moved without an entry behind it', () => {
+    const c = run({
+      inventoryItems: [{ id: 'i1', code: 'W1', quantity: 15, costPrice: 100 }],   // 5 arrived unbooked
+      journalEntries: [entry([{ accountId: 'acc-inv', debit: 1000, credit: 0 }, { accountId: 'acc-ap', debit: 0, credit: 1000 }])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].detail).toMatch(/Stock is worth 500\.00 more/)
+  })
+
+  it('catches an entry that posted with no stock behind it', () => {
+    const c = run({
+      inventoryItems: [{ id: 'i1', code: 'W1', quantity: 10, costPrice: 100 }],
+      journalEntries: [entry([{ accountId: 'acc-inv', debit: 1400, credit: 0 }, { accountId: 'acc-ap', debit: 0, credit: 1400 }])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items[0].detail).toMatch(/Ledger holds 400\.00 more/)
+  })
+
+  it('does not let two accounts cancel each other out', () => {
+    // Inventory is 500 short and Raw Materials 500 over: the total is right and
+    // both accounts are wrong, which is precisely the failure to report.
+    const c = run({
+      inventoryItems: [
+        { id: 'i1', code: 'W1', quantity: 10, costPrice: 100 },
+        { id: 'i2', code: 'R1', quantity: 10, costPrice: 100, inventoryAccountId: 'acc-rawmat' },
+      ],
+      journalEntries: [entry([
+        { accountId: 'acc-inv', debit: 500, credit: 0 },
+        { accountId: 'acc-rawmat', debit: 1500, credit: 0 },
+        { accountId: 'acc-ap', debit: 0, credit: 2000 },
+      ])],
+    })
+    expect(c.ok).toBe(false)
+    expect(c.items).toHaveLength(2)
+    expect(c.items.map((i) => i.ref).sort()).toEqual(['Inventory', 'Raw Materials'])
+  })
+
+  it('says nothing when there is no stock to reconcile', () => {
+    expect(run({ inventoryItems: [], journalEntries: [] }).ok).toBe(true)
+    expect(run({ inventoryItems: [{ id: 's1', type: 'service' }], journalEntries: [] }).detail).toMatch(/No stock items/)
+  })
+})

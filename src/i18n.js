@@ -1609,6 +1609,7 @@ const AR = {
   'Account codes are unique': 'أكواد الحسابات فريدة',
   'No corrupted amounts': 'لا توجد مبالغ تالفة',
   'No item has negative stock': 'لا يوجد صنف برصيد سالب',
+  'Stock on hand agrees with the inventory accounts': 'المخزون المتاح مطابق لحسابات المخزون',
   'No document is paid more than its total': 'لا يوجد مستند مدفوع بأكثر من إجماليه',
   'Closed periods contain no later edits': 'الفترات المقفلة لا تحتوي على تعديلات لاحقة',
   'Difference': 'الفرق',

@@ -3844,71 +3844,137 @@ export const useStore = create(
           workOrders: s.workOrders.map((w) => w.id === id ? { ...w, status: 'in_progress', startedAt: new Date().toISOString() } : w),
         })),
 
+      /**
+       * Build the order: issue the materials, and put the finished goods on the
+       * shelf at what they actually cost to make.
+       *
+       * A work order is an issue plus a receipt, so it goes through the same
+       * machinery as a sale and a purchase rather than its own arithmetic. That
+       * matters in three ways it used to get wrong:
+       *
+       *   · A tracked component is relieved at the cost it is actually carried
+       *     at (weighted-average or FIFO, per the costing setting), not at the
+       *     unit cost typed on the order when it was raised. A standard cost
+       *     that has since drifted used to leave the Inventory account and the
+       *     stock ledger permanently disagreeing by the difference.
+       *   · It relieves the account the stock is carried in — the item's own
+       *     inventory account. Crediting a fixed "Raw Materials" account for
+       *     stock held in Inventory used to drive Raw Materials negative on the
+       *     balance sheet while Inventory kept value for goods long consumed.
+       *   · Cost layers move with the quantity, so FIFO stays honest: components
+       *     no longer leave phantom layers behind, and a finished good is
+       *     received with layers of its own instead of none.
+       *
+       * Components with no stock item (labour, an untracked consumable) keep
+       * their typed cost and their own material account — there is no shelf to
+       * price them from, and the credit is the only record of them.
+       */
       completeWorkOrder: (id, completionDate) => {
         const wo = get().workOrders.find((w) => w.id === id)
         if (!wo || wo.status === 'completed') return
         const qty = wo.targetQuantity || 1
-
-        const rawLines = []
-        let totalMaterialCost = 0
-        ;(wo.components || []).forEach((comp) => {
-          const lineAmt = (comp.unitCost || 0) * (comp.quantity || 0) * qty
-          totalMaterialCost += lineAmt
-          if (lineAmt > 0)
-            rawLines.push({ accountId: comp.materialAccountId || 'acc-rawmat', debit: 0, credit: lineAmt, description: comp.name })
-        })
-
-        const wipAccId     = wo.wipAccountId     || 'acc-wip'
-        const finGoodsAccId = wo.finGoodsAccountId || 'acc-fingoods'
-
-        const lines = [
-          { accountId: wipAccId, debit: totalMaterialCost, credit: 0, description: `WO ${wo.number} – Materials to WIP` },
-          ...rawLines,
-        ]
-        const je1 = get().addJournalEntry({
-          date: completionDate || new Date().toISOString().slice(0, 10),
-          description: `Work Order ${wo.number} – Issue Materials`,
-          reference: wo.number, type: 'work_order_issue', lines,
-        })
-        const je2 = get().addJournalEntry({
-          date: completionDate || new Date().toISOString().slice(0, 10),
-          description: `Work Order ${wo.number} – Finished Goods`,
-          reference: wo.number, type: 'work_order_complete',
-          lines: [
-            { accountId: finGoodsAccId, debit: totalMaterialCost,  credit: 0,                   description: `Finished: ${wo.outputName}` },
-            { accountId: wipAccId,      debit: 0,                  credit: totalMaterialCost, description: `Finished: ${wo.outputName}` },
-          ],
-        })
-
-        const outputQty = (wo.outputQuantity || 1) * qty
         const compDate = completionDate || new Date().toISOString().slice(0, 10)
-        // consume raw-material components from stock (mirrors the credit to raw materials)
+        const method = get().costingMethod()
+        const items = get().inventoryItems
+
+        // What the build consumes, per stock item.
         const consume = {}
         ;(wo.components || []).forEach((comp) => {
           if (!comp.itemId) return
           const used = (comp.quantity || 0) * qty
-          if (used <= 0) return
-          consume[comp.itemId] = (consume[comp.itemId] || 0) + used
-          get().logStockMovement({ itemId: comp.itemId, itemName: comp.name, date: compDate, type: 'consumption', qtyChange: -used, ref: wo.number, note: 'Work order material' })
+          if (used > 0) consume[comp.itemId] = (consume[comp.itemId] || 0) + used
+        })
+
+        // Price the tracked components off the shelf, and the untracked ones at
+        // the cost typed on the order.
+        const creditByAcc = {}
+        const costPatch = {}          // itemId -> { costLayers, costPrice }
+        let totalMaterialCost = 0
+        Object.entries(consume).forEach(([itemId, used]) => {
+          const it = items.find((i) => i.id === itemId)
+          if (!it) return
+          const priced = issueFrom(
+            { ...it, costLayers: it.costLayers || layersFromBalance(it.quantity, it.costPrice) },
+            { qty: used, method }
+          )
+          costPatch[itemId] = priced.patch
+          totalMaterialCost += priced.cost
+          // 'acc-inv' is where every other path puts stock that carries no
+          // account of its own, so it is where this one must take it from.
+          const acc = it.inventoryAccountId || 'acc-inv'
+          creditByAcc[acc] = (creditByAcc[acc] || 0) + priced.cost
+        })
+        ;(wo.components || []).forEach((comp) => {
+          if (comp.itemId) return
+          const lineAmt = (comp.unitCost || 0) * (comp.quantity || 0) * qty
+          if (lineAmt <= 0) return
+          totalMaterialCost += lineAmt
+          const acc = comp.materialAccountId || 'acc-rawmat'
+          creditByAcc[acc] = (creditByAcc[acc] || 0) + lineAmt
+        })
+        totalMaterialCost = Math.round(totalMaterialCost * 100) / 100
+
+        const wipAccId = wo.wipAccountId || 'acc-wip'
+        const outItem = items.find((i) => i.id === wo.outputItemId)
+        // The finished good lands where its own stock is valued. The order's
+        // chosen account only stands in when the output is not a stock item.
+        const finGoodsAccId = outItem
+          ? (outItem.inventoryAccountId || 'acc-inv')
+          : (wo.finGoodsAccountId || 'acc-fingoods')
+
+        const je1 = get().addJournalEntry({
+          date: compDate,
+          description: `Work Order ${wo.number} – Issue Materials`,
+          reference: wo.number, type: 'work_order_issue',
+          lines: [
+            { accountId: wipAccId, debit: totalMaterialCost, credit: 0, description: `WO ${wo.number} – Materials to WIP` },
+            ...Object.entries(creditByAcc).map(([accountId, amt]) =>
+              ({ accountId, debit: 0, credit: Math.round(amt * 100) / 100, description: `WO ${wo.number} – Materials issued` })),
+          ],
+        })
+        const je2 = get().addJournalEntry({
+          date: compDate,
+          description: `Work Order ${wo.number} – Finished Goods`,
+          reference: wo.number, type: 'work_order_complete',
+          lines: [
+            { accountId: finGoodsAccId, debit: totalMaterialCost, credit: 0, description: `Finished: ${wo.outputName}` },
+            { accountId: wipAccId, debit: 0, credit: totalMaterialCost, description: `Finished: ${wo.outputName}` },
+          ],
+        })
+
+        const outputQty = (wo.outputQuantity || 1) * qty
+        Object.entries(consume).forEach(([itemId, used]) => {
+          const it = items.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: compDate, type: 'consumption', qtyChange: -used, ref: wo.number, note: 'Work order material' })
         })
         get().logStockMovement({ itemId: wo.outputItemId, itemName: wo.outputName, date: compDate, type: 'production', qtyChange: outputQty, ref: wo.number, note: 'Work order output' })
+
         set((st) => ({
           workOrders: st.workOrders.map((w) =>
             w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
           ),
           inventoryItems: st.inventoryItems.map((item) => {
             if (!consume[item.id] && item.id !== wo.outputItemId) return item
-            const patch = { quantity: item.quantity || 0 }
-            if (consume[item.id]) patch.quantity -= consume[item.id]
+            let patch = { quantity: item.quantity || 0 }
+            if (consume[item.id]) {
+              patch.quantity -= consume[item.id]
+              patch = { ...patch, ...(costPatch[item.id] || {}) }
+            }
             if (item.id === wo.outputItemId) {
-              // roll the finished good's cost into a weighted-average so it later
-              // sells with a real COGS (the total material cost / units produced)
-              const oldQty = item.quantity || 0
+              // Received like any other receipt, so the finished good carries
+              // layers of its own and a blended cost that reflects what it took
+              // to make — which is what its COGS will be when it sells.
+              const oldQty = patch.quantity
               const newQty = oldQty + outputQty
-              patch.quantity += outputQty
-              patch.costPrice = newQty > 0
+              const wacCost = newQty > 0
                 ? Math.round(((oldQty * (item.costPrice || 0) + totalMaterialCost) / newQty) * 100) / 100
                 : (item.costPrice || 0)
+              const seeded = { ...item, ...patch, costLayers: patch.costLayers || item.costLayers || layersFromBalance(oldQty, item.costPrice) }
+              patch = {
+                ...patch,
+                quantity: newQty,
+                ...receiveInto(seeded, { qty: outputQty, value: totalMaterialCost, date: compDate, ref: wo.number, method, wacCost }),
+              }
             }
             return { ...item, ...patch }
           }),
