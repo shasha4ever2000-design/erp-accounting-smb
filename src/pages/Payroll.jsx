@@ -54,7 +54,7 @@ function lineFromEmployee(emp, { contract = null, impact = null } = {}) {
   }
 }
 const grossOf = (l) => num(l.basic) + num(l.housing) + num(l.transport) + num(l.other) + num(l.overtime)
-const dedOf = (l) => num(l.late) + num(l.absent) + num(l.penalty) + num(l.gosi) + num(l.tax)
+const dedOf = (l) => num(l.late) + num(l.absent) + num(l.penalty) + num(l.gosi) + num(l.tax) + num(l.loan)
 const netOf = (l) => grossOf(l) - dedOf(l)
 
 const thisMonth = () => new Date().toISOString().slice(0, 7)
@@ -68,7 +68,7 @@ export default function Payroll() {
   const t = useT()
   const { employees, payrollRuns, bankAccounts, settings, employmentContracts, attendance,
           addPayrollRun, processPayrollRun, payPayrollRun, deletePayrollRun,
-          contractFor, attendanceImpact } = useStore()
+          contractFor, attendanceImpact, advanceDueFor } = useStore()
   const sym = settings.company.currencySymbol
 
   const [newModal, setNewModal]     = useState(false)
@@ -84,10 +84,17 @@ export default function Payroll() {
 
   // Build the grid for a pay month: contract salary, plus whatever the
   // attendance sheet for that month says about absence and overtime.
-  const buildLines = (month) => activeEmps.map((e) => lineFromEmployee(e, {
-    contract: contractFor(e.id, `${month}-28`),
-    impact: attendanceImpact(e.id, month),
-  }))
+  // Any salary advance instalment falls out of this month's pay automatically,
+  // capped at what is left after the other deductions so net pay can never go
+  // negative. It stays editable — a month can always be skipped.
+  const buildLines = (month) => activeEmps.map((e) => {
+    const l = lineFromEmployee(e, {
+      contract: contractFor(e.id, `${month}-28`),
+      impact: attendanceImpact(e.id, month),
+    })
+    const payable = grossOf(l) - dedOf(l)
+    return { ...l, loan: advanceDueFor(e.id, Math.max(0, payable)).total }
+  })
 
   const openNewRun = () => {
     const month = thisMonth()
@@ -108,6 +115,7 @@ export default function Payroll() {
   const unmarkedTotal = runLines.reduce((s, l) => s + (l.unmarkedDays || 0), 0)
   const totalDed   = runLines.reduce((s, l) => s + dedOf(l), 0)
   const totalNet   = runLines.reduce((s, l) => s + netOf(l), 0)
+  const totalLoan  = runLines.reduce((s, l) => s + num(l.loan), 0)
 
   const handleCreateRun = () => {
     if (!period.trim()) return alert('Enter the payroll period (e.g. "June 2026").')
@@ -115,7 +123,7 @@ export default function Payroll() {
     // Freeze computed totals onto each line so downstream postings/reports are stable.
     const lines = runLines.map((l) => ({
       ...l, basic: num(l.basic), housing: num(l.housing), transport: num(l.transport), other: num(l.other),
-      late: num(l.late), absent: num(l.absent), penalty: num(l.penalty), gosi: num(l.gosi), gosiEmployer: num(l.gosiEmployer), tax: num(l.tax),
+      late: num(l.late), absent: num(l.absent), penalty: num(l.penalty), gosi: num(l.gosi), gosiEmployer: num(l.gosiEmployer), tax: num(l.tax), loan: num(l.loan),
       gross: grossOf(l), totalDeductions: dedOf(l), net: netOf(l),
     }))
     addPayrollRun({ period, periodMonth, payDate, lines })
@@ -233,6 +241,7 @@ export default function Payroll() {
                       <th className="px-2 py-2">{t('Penalty')}</th>
                       <th className="px-2 py-2">{t('GOSI')}</th>
                       <th className="px-2 py-2">{t('Tax')}</th>
+                      <th className="px-2 py-2">{t('Advance')}</th>
                       <th className="px-2 py-2 text-right bg-blue-50/60 dark:bg-blue-900/10">{t('Net')}</th>
                     </tr>
                   </thead>
@@ -251,6 +260,7 @@ export default function Payroll() {
                         <td className="px-2 py-1.5"><NumCell v={l.penalty} onChange={(v) => setCell(i, 'penalty', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.gosi} onChange={(v) => setCell(i, 'gosi', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.tax} onChange={(v) => setCell(i, 'tax', v)} muted /></td>
+                        <td className="px-2 py-1.5"><NumCell v={l.loan ?? 0} onChange={(v) => setCell(i, 'loan', v)} muted /></td>
                         <td className="px-2 py-1.5 text-right font-bold text-green-700 dark:text-green-400">{fmtMoney(netOf(l), sym)}</td>
                       </tr>
                     ))}
@@ -260,7 +270,7 @@ export default function Payroll() {
                       <td className="px-2 py-2 sticky left-0 bg-gray-50 dark:bg-slate-800/60">{t('Totals')}</td>
                       <td colSpan={5} />
                       <td className="px-2 py-2 text-right">{fmtMoney(totalGross, sym)}</td>
-                      <td colSpan={5} className="px-2 py-2 text-right text-red-500 dark:text-red-400">-{fmtMoney(totalDed, sym)}</td>
+                      <td colSpan={6} className="px-2 py-2 text-right text-red-500 dark:text-red-400">-{fmtMoney(totalDed, sym)}</td>
                       <td className="px-2 py-2 text-right text-green-700 dark:text-green-400">{fmtMoney(totalNet, sym)}</td>
                     </tr>
                   </tfoot>
@@ -268,6 +278,7 @@ export default function Payroll() {
               </div>
               <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2">
                 {t('On processing: Dr Salaries')} ({fmtMoney(totalGross - runLines.reduce((s,l)=>s+num(l.late)+num(l.absent)+num(l.penalty),0), sym)}) → {t('Cr Net Pay')} ({fmtMoney(totalNet, sym)}) + {t('Cr Tax & GOSI Payable')}
+                {totalLoan > 0 && <> + {t('Cr Employee Advances')} ({fmtMoney(totalLoan, sym)})</>}
               </p>
             </>
           )}

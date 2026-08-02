@@ -20,6 +20,7 @@ const QuotationForm = lazy(() => import('./pages/QuotationForm'))
 const CreditNotes = lazy(() => import('./pages/CreditNotes'))
 const Purchases = lazy(() => import('./pages/Purchases'))
 const PurchaseForm = lazy(() => import('./pages/PurchaseForm'))
+const PurchaseView = lazy(() => import('./pages/PurchaseView'))
 const PurchaseOrders = lazy(() => import('./pages/PurchaseOrders'))
 const PurchaseOrderForm = lazy(() => import('./pages/PurchaseOrderForm'))
 const DebitNotes = lazy(() => import('./pages/DebitNotes'))
@@ -39,6 +40,7 @@ const SalesOrders = lazy(() => import('./pages/SalesOrders'))
 const StockCounts = lazy(() => import('./pages/StockCounts'))
 const Cheques = lazy(() => import('./pages/Cheques'))
 const Advances = lazy(() => import('./pages/Advances'))
+const EmployeeAdvances = lazy(() => import('./pages/EmployeeAdvances'))
 const PurchaseQuotes = lazy(() => import('./pages/PurchaseQuotes'))
 const PrepaidExpenses = lazy(() => import('./pages/PrepaidExpenses'))
 const Leases = lazy(() => import('./pages/Leases'))
@@ -182,6 +184,8 @@ export default function App() {
         <Route path="/quotations/new" element={<QuotationForm />} />
         <Route path="/invoices" element={<Invoices />} />
         <Route path="/invoices/new" element={<InvoiceForm />} />
+        {/* /edit before /:id so "edit" is never read as an invoice id */}
+        <Route path="/invoices/:id/edit" element={<InvoiceForm />} />
         <Route path="/invoices/:id" element={<InvoiceView />} />
         <Route path="/recurring-invoices" element={<RecurringInvoices />} />
         <Route path="/commissions" element={<Commissions />} />
@@ -196,6 +200,8 @@ export default function App() {
         <Route path="/purchase-orders/new" element={<PurchaseOrderForm />} />
         <Route path="/purchases" element={<Purchases />} />
         <Route path="/purchases/new" element={<PurchaseForm />} />
+        <Route path="/purchases/:id/edit" element={<PurchaseForm />} />
+        <Route path="/purchases/:id" element={<PurchaseView />} />
         <Route path="/debit-notes" element={<DebitNotes />} />
         <Route path="/landed-costs" element={<LandedCosts />} />
         <Route path="/recurring-expenses" element={<RecurringExpenses />} />
@@ -215,6 +221,7 @@ export default function App() {
         <Route path="/stock-counts" element={<StockCounts />} />
         <Route path="/cheques" element={<Cheques />} />
         <Route path="/advances" element={<Advances />} />
+        <Route path="/employee-advances" element={<EmployeeAdvances />} />
         <Route path="/purchase-quotes" element={<PurchaseQuotes />} />
         <Route path="/manufacturing" element={<Manufacturing />} />
 

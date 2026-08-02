@@ -7,3 +7,6 @@ release/
 *.local
 .DS_Store
 Thumbs.db
+
+# Generated user-guide build artifacts (see tools/guide/README.md)
+.guide-build/

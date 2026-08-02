@@ -9,11 +9,11 @@ import ExportMenu from '../components/ExportMenu'
 import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
-import { Plus, Search, DollarSign, Ban, RotateCcw } from 'lucide-react'
+import { Plus, Search, DollarSign, Ban, Pencil, RotateCcw } from 'lucide-react'
 import { today } from '../utils/formatters'
 
 export default function Purchases() {
-  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, settings } = useStore()
+  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
   const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
@@ -151,7 +151,7 @@ export default function Purchases() {
               const status = p.isOverdue && p.status !== 'paid' ? 'overdue' : p.status
               const balance = p.total - p.amountPaid
               return (
-                <Tr key={p.id}>
+                <Tr key={p.id} onClick={() => navigate(`/purchases/${p.id}`)}>
                   <Td className="font-mono font-semibold text-orange-600 dark:text-orange-400">{p.number}</Td>
                   <Td className="font-medium text-gray-900 dark:text-slate-100">{p.supplierName}</Td>
                   <Td className="text-gray-400 dark:text-slate-500 text-xs">{p.supplierRef || '—'}</Td>
@@ -161,8 +161,15 @@ export default function Purchases() {
                   <Td right className={`tabular-nums ${balance > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-400 dark:text-slate-500'}`}>{fmtMoney(balance, sym)}</Td>
                   <Td><Badge className={statusColor(status)}>{status}</Badge></Td>
                   <Td right>
-                    <div className="flex items-center justify-end gap-1">
+                    {/* The row opens the bill; the buttons in it do their own
+                        thing and must not also navigate. */}
+                    <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                       <AttachmentButton entityType="purchase" entityId={p.id} />
+                      {!purchaseEditBlock(p.id) && (
+                        <Btn size="sm" variant="ghost" onClick={() => navigate(`/purchases/${p.id}/edit`)} title={t('Edit')}>
+                          <Pencil size={13} className="text-brand-500" />
+                        </Btn>
+                      )}
                       {p.status !== 'paid' && p.status !== 'void' && (
                         <Btn size="sm" variant="ghost" onClick={() => openPay(p)} title="Record Payment">
                           <DollarSign size={13} className="text-green-600 dark:text-green-400" />

@@ -5,21 +5,55 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Ban, Eye, Search, Trash2 } from 'lucide-react'
+import { Plus, Ban, Eye, Pencil, Search, Trash2 } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
+const blankForm = () => ({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
+
+// Why an entry is read-only. Auto-posted entries mirror a document and are
+// corrected there; reversals and reversed entries are settled history.
+const JE_BLOCK_MESSAGE = {
+  auto: 'This entry was posted automatically by a document. Edit the invoice, bill or receipt it came from and the entry will be re-posted with it.',
+  voided: 'This entry has already been voided.',
+  reversal: 'This is a reversal entry and cannot be changed.',
+  locked: 'This entry falls in a closed accounting period. Post a correcting entry in an open period instead.',
+  missing: 'This entry no longer exists.',
+}
 
 export default function JournalEntries() {
   const t = useT()
   const navigate = useNavigate()
-  const { journalEntries, accounts, departments, addJournalEntry, voidJournalEntry, settings } = useStore()
+  const { journalEntries, accounts, departments, addJournalEntry, updateJournalEntry, journalEditBlock, voidJournalEntry, settings } = useStore()
   const sym = settings.company.currencySymbol
   const [modal, setModal] = useState(false)
+  // The id being edited, or null when the modal is raising a new entry. The two
+  // share one form because they are the same entry either way — only where it
+  // lands at the end differs.
+  const [editId, setEditId] = useState(null)
   const [viewEntry, setViewEntry] = useState(null)
   const [search, setSearch] = useState('')
-  const [form, setForm] = useState({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
+  const [form, setForm] = useState(blankForm())
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
+
+  const openNew = () => { setEditId(null); setForm(blankForm()); setModal(true) }
+
+  const openEdit = (je) => {
+    const block = journalEditBlock(je.id)
+    if (block) return alert(t(JE_BLOCK_MESSAGE[block] || 'This entry cannot be edited.'))
+    setEditId(je.id)
+    setForm({
+      date: je.date, description: je.description || '', reference: je.reference || '',
+      departmentId: je.departmentId || '',
+      lines: (je.lines || []).map((l) => ({
+        id: l.id || uuid(), accountId: l.accountId || '',
+        debit: l.debit ? String(l.debit) : '', credit: l.credit ? String(l.credit) : '',
+        description: l.description || '',
+      })),
+    })
+    setViewEntry(null)
+    setModal(true)
+  }
 
   const updateLine = (lineId, key, value) => {
     setForm((f) => ({
@@ -52,18 +86,23 @@ export default function JournalEntries() {
       .map((l) => ({ ...l, debit: parseFloat(l.debit) || 0, credit: parseFloat(l.credit) || 0 }))
     let res
     try {
-      res = addJournalEntry({ ...form, lines, type: 'manual' })
+      res = editId
+        ? updateJournalEntry(editId, { date: form.date, description: form.description, reference: form.reference, departmentId: form.departmentId || null, lines })
+        : addJournalEntry({ ...form, lines, type: 'manual' })
     } catch (e) {
       const msg = String(e.message || '')
       if (msg.startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate))
       // Never let a posting rejection escape as an uncaught error — that leaves
       // the modal open with no feedback at all.
       if (msg.startsWith('JE_UNBALANCED')) return alert(t('Debits must equal credits.'))
+      if (msg.startsWith('JE_NOT_MANUAL')) return alert(t(JE_BLOCK_MESSAGE.auto))
+      if (msg.startsWith('JE_IMMUTABLE')) return alert(t(JE_BLOCK_MESSAGE.reversal))
       alert(t('Could not post this entry') + ': ' + msg)
       return
     }
     setModal(false)
-    setForm({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
+    setEditId(null)
+    setForm(blankForm())
     if (res?.pendingApproval) {
       alert(t('This entry is over the approval threshold and has been sent for approval. It will post to the ledger once approved.'))
       navigate('/approvals')
@@ -102,7 +141,7 @@ export default function JournalEntries() {
       <PageHeader
         title="Journal Entries"
         subtitle={`${journalEntries.length} ${t('entries')}`}
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('Manual Entry')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('Manual Entry')}</Btn>}
       />
 
       <div className="relative mb-4 max-w-sm">
@@ -135,9 +174,12 @@ export default function JournalEntries() {
                   <Td right>
                     <div className="flex justify-end items-center gap-1">
                       <AttachmentButton entityType="journal" entityId={je.id} />
-                      <Btn size="sm" variant="ghost" onClick={() => setViewEntry(je)}><Eye size={13} /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => setViewEntry(je)} title={t('View')}><Eye size={13} /></Btn>
                       {je.type === 'manual' && !je.reversedBy && !je.reverses && (
-                        <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-rose-400" /></Btn>
+                        <>
+                          <Btn size="sm" variant="ghost" onClick={() => openEdit(je)} title={t('Edit')}><Pencil size={13} className="text-brand-500" /></Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-rose-400" /></Btn>
+                        </>
                       )}
                     </div>
                   </Td>
@@ -148,9 +190,19 @@ export default function JournalEntries() {
         )}
       </Card>
 
-      {/* New Manual Entry Modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title="New Journal Entry" width="max-w-2xl">
+      {/* Manual entry — raising a new one, or correcting one already posted */}
+      <Modal
+        open={modal}
+        onClose={() => { setModal(false); setEditId(null) }}
+        title={editId ? `${t('Edit Journal Entry')} ${journalEntries.find((j) => j.id === editId)?.number || ''}` : t('New Journal Entry')}
+        width="max-w-2xl"
+      >
         <div className="space-y-4">
+          {editId && (
+            <p className="text-xs rounded-lg px-3 py-2 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-100 dark:border-brand-500/20">
+              {t('Saving replaces this entry in the ledger, keeping its number. The change is recorded in the audit log.')}
+            </p>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Reference" value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder="e.g. ADJ-001" />
@@ -173,9 +225,9 @@ export default function JournalEntries() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Account</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Debit</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Credit</th>
+                  <th className="text-start px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Account')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Debit')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Credit')}</th>
                   <th className="px-2 py-2 w-8" />
                 </tr>
               </thead>
@@ -234,27 +286,27 @@ export default function JournalEntries() {
           )}
           <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add Line')}</Btn>
           <div className="flex justify-end gap-2 pt-1">
-            <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn disabled={!balanced} onClick={handleSave}>{t('Post Entry')}</Btn>
+            <Btn variant="secondary" onClick={() => { setModal(false); setEditId(null) }}>{t('Cancel')}</Btn>
+            <Btn disabled={!balanced} onClick={handleSave}>{editId ? t('Save Changes') : t('Post Entry')}</Btn>
           </div>
         </div>
       </Modal>
 
       {/* View Entry Modal */}
-      <Modal open={!!viewEntry} onClose={() => setViewEntry(null)} title={`Journal Entry ${viewEntry?.number}`} width="max-w-xl">
+      <Modal open={!!viewEntry} onClose={() => setViewEntry(null)} title={`${t('Journal Entry')} ${viewEntry?.number || ''}`} width="max-w-xl">
         {viewEntry && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div><p className="text-gray-400 dark:text-slate-500">Date</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
+              <div><p className="text-gray-400 dark:text-slate-500">{t('Date')}</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
               <div><p className="text-gray-400 dark:text-slate-500">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
               <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{viewEntry.description}</p></div>
             </div>
             <table className="w-full text-sm border border-slate-200 dark:border-surface-700 rounded-lg overflow-hidden">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Account</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Debit</th>
-                  <th className="text-right px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">Credit</th>
+                  <th className="text-start px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Account')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Debit')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Credit')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -267,6 +319,14 @@ export default function JournalEntries() {
                 ))}
               </tbody>
             </table>
+            <div className="flex justify-end gap-2">
+              {!journalEditBlock(viewEntry.id) && (
+                <Btn variant="secondary" size="sm" onClick={() => openEdit(viewEntry)}><Pencil size={13} /> {t('Edit')}</Btn>
+              )}
+              {/* 'Close' is taken by the year-end close and translates as
+                  "إقفال"; dismissing a read-only view is 'Done'. */}
+              <Btn variant="secondary" size="sm" onClick={() => setViewEntry(null)}>{t('Done')}</Btn>
+            </div>
           </div>
         )}
       </Modal>

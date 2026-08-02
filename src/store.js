@@ -5,6 +5,7 @@ import { currentCompanyKey } from './boot'
 import { useAuth } from './auth'
 import { idbKvStorage, deferredJSONStorage, flushNow } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
+import { editBlock } from './utils/docEdit'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
@@ -14,6 +15,11 @@ import {
   ADVANCE_ACCOUNT, validateAdvance, advanceBalance, appliedTotal, applicableAmount,
   customerCredit, receiveLines, refundLines,
 } from './utils/advances'
+import {
+  ADVANCE_ACCOUNT as EMP_ADV_ACCOUNT, validateAdvance as validateEmpAdvance,
+  advanceBalance as empAdvanceBalance, dueFromPayroll, owedBy, totalOutstanding,
+  issueLines as empIssueLines, repayLines as empRepayLines, writeOffLines as empWriteOffLines,
+} from './utils/employeeAdvances'
 import {
   COUNT_STATUS, buildSheet as buildCountSheet, validateCount,
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
@@ -55,6 +61,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-bank1',  code: '1002', name: 'Main Bank Account',          type: 'asset',     subtype: 'current',     isSystem: false },
   { id: 'acc-ar',     code: '1100', name: 'Accounts Receivable',        type: 'asset',     subtype: 'current',     isSystem: true, controlFor: 'customers'  },
   { id: 'acc-chq-in', code: '1150', name: 'Cheques Under Collection',     type: 'asset',     subtype: 'current',     isSystem: true  },
+  { id: 'acc-empadv', code: '1250', name: 'Employee Advances',            type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-vatin',  code: '1300', name: 'Tax Receivable (Input)',      type: 'asset',     subtype: 'current',     isSystem: true  },
   { id: 'acc-inv',    code: '1400', name: 'Inventory',                   type: 'asset',     subtype: 'current',     isSystem: false, controlFor: 'inventoryItems' },
   { id: 'acc-rawmat', code: '1410', name: 'Raw Materials',               type: 'asset',     subtype: 'current',     isSystem: false },
@@ -1183,13 +1190,43 @@ export const useStore = create(
         return newJE
       },
 
-      updateJournalEntry: (id, patch) =>
+      /**
+       * Why this entry cannot be edited, or null when it can.
+       *
+       * Only entries somebody typed by hand are editable. An entry the system
+       * posted belongs to a document — correcting it here would leave the
+       * invoice, bill or receipt saying one thing and the ledger another, so
+       * those are corrected at their source. Reversals and already-reversed
+       * entries are history and stay exactly as posted.
+       */
+      journalEditBlock: (id) => {
+        const s = get()
+        const je = s.journalEntries.find((j) => j.id === id)
+        if (!je) return 'missing'
+        // Reversals carry type 'reversal', so these are checked before the
+        // manual test — otherwise a reversal is explained as an entry to correct
+        // at its source document, which is not what it is.
+        if (je.reversedBy) return 'voided'
+        if (je.reverses) return 'reversal'
+        if (je.type !== 'manual') return 'auto'
+        const lock = s.settings?.accounting?.lockDate
+        if (lock && je.date && String(je.date) <= String(lock)) return 'locked'
+        return null
+      },
+
+      updateJournalEntry: (id, patch) => {
+        const before = get().journalEntries.find((j) => j.id === id)
         set((s) => {
           const lock = s.settings?.accounting?.lockDate
           const je = s.journalEntries.find((j) => j.id === id)
           // block editing an entry in a closed period, or moving one into it
           if (lock && ((je?.date && String(je.date) <= String(lock)) || (patch?.date && String(patch.date) <= String(lock))))
             throw new Error(`PERIOD_LOCKED:${lock}`)
+          // A reversal, and the entry it reversed, are settled history.
+          if (je && (je.reversedBy || je.reverses)) throw new Error('JE_IMMUTABLE')
+          // A system-posted entry mirrors a document; hand-editing it would put
+          // the two out of step, so it is corrected from the document instead.
+          if (je && je.type !== 'manual') throw new Error('JE_NOT_MANUAL')
           const merged = je ? { ...je, ...patch } : null
           // a patch must not unbalance the entry or strip its date
           if (merged) {
@@ -1199,7 +1236,10 @@ export const useStore = create(
             if (Math.abs(dr - cr) > 0.05) throw new Error(`JE_UNBALANCED:${(dr - cr).toFixed(2)}`)
           }
           return { journalEntries: s.journalEntries.map((j) => (j.id === id ? merged : j)) }
-        }),
+        })
+        if (before) get().logActivity('Edited journal entry', `${before.number} · ${patch?.description || before.description || ''}`.trim())
+        return get().journalEntries.find((j) => j.id === id)
+      },
 
       deleteJournalEntry: (id) =>
         set((s) => {
@@ -1263,13 +1303,18 @@ export const useStore = create(
        *
        * @returns {Array<{itemId, name, onHand, required, shortBy}>} empty when fine
        */
-      stockShortfall: (items = []) => {
+      stockShortfall: (items = [], { creditFrom = null } = {}) => {
         const stock = get().inventoryItems
+        // Editing a posted document: the version being replaced already took its
+        // stock out, and revising puts it back before re-issuing. Crediting those
+        // quantities here stops every edit warning about a shortfall that the
+        // edit itself resolves.
+        const credited = creditFrom ? explodeLines(creditFrom, stock) : {}
         return Object.entries(explodeLines(items, stock))
           .map(([itemId, qty]) => {
             const it = stock.find((i) => i.id === itemId)
             if (!it) return null
-            const onHand = Number(it.quantity) || 0
+            const onHand = (Number(it.quantity) || 0) + (Number(credited[itemId]) || 0)
             const required = Number(qty) || 0
             if (required <= onHand) return null
             return { itemId, name: it.name || '', onHand, required, shortBy: Math.round((required - onHand) * 1000) / 1000 }
@@ -1277,10 +1322,16 @@ export const useStore = create(
           .filter(Boolean)
       },
 
-      addInvoice: (invoice) => {
+      // `opts.reissue` re-posts an existing invoice under its own identity — same
+      // id, same number, same created date — instead of raising a new one. That
+      // is what makes editing a posted document possible without duplicating any
+      // of the posting logic below: reviseInvoice unposts the old version and
+      // sends the corrected one back through this exact path.
+      addInvoice: (invoice, opts = {}) => {
         const s = get()
+        const reissue = opts.reissue || null
         const { prefix, next } = s.settings.invoice
-        const number = nextNum(prefix, next)
+        const number = reissue ? reissue.number : nextNum(prefix, next)
 
         // Foreign-currency invoices are entered in their own currency; the ledger is
         // always in base currency, so each amount is converted at the invoice's rate
@@ -1355,9 +1406,11 @@ export const useStore = create(
         }
 
         const newInvoice = {
-          ...invoice, id: uuid(), number, status: 'sent', amountPaid: 0, payments: [],
+          ...invoice, id: reissue?.id || uuid(), number, status: 'sent', amountPaid: 0, payments: [],
           exchangeRate: rate, baseTotal: arBase,
-          journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
+          journalEntryId: je.id, cogsJournalEntryId: cogsJeId,
+          createdAt: reissue?.createdAt || new Date().toISOString(),
+          ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((st) => ({
@@ -1373,7 +1426,8 @@ export const useStore = create(
             }
             return { ...it, ...patch }
           }),
-          settings: { ...st.settings, invoice: { ...st.settings.invoice, next: next + 1 } },
+          // A reissue reuses its own number, so the sequence must not advance.
+          settings: reissue ? st.settings : { ...st.settings, invoice: { ...st.settings.invoice, next: next + 1 } },
         }))
         Object.entries(issue).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
@@ -1437,6 +1491,42 @@ export const useStore = create(
       updateInvoice: (id, patch) =>
         set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
 
+      /**
+       * Why this invoice cannot be edited, or null when it can. See utils/docEdit.
+       * The UI asks this before offering an Edit button; reviseInvoice asks it
+       * again before touching anything, so the rule holds even if the UI drifts.
+       */
+      invoiceEditBlock: (id) => {
+        const s = get()
+        const inv = s.invoices.find((i) => i.id === id)
+        const fromOrder = !!inv && (
+          !!inv.salesOrderId ||
+          (s.quotations || []).some((q) => (q.invoiceIds || []).includes(inv.id)) ||
+          (s.salesOrders || []).some((o) => (o.invoiceIds || []).includes(inv.id))
+        )
+        return editBlock(inv, { kind: 'invoice', lockDate: s.settings?.accounting?.lockDate || '', fromOrder })
+      },
+
+      /**
+       * Correct a posted sales invoice in place.
+       *
+       * The invoice keeps its number, id and issue date; everything it posted is
+       * unwound and posted again from the corrected document, so the ledger and
+       * the stock ledger end up exactly as they would have had it been entered
+       * right the first time. Refused — loudly — in any state where that would
+       * not be true (see invoiceEditBlock).
+       */
+      reviseInvoice: (id, doc) => {
+        const block = get().invoiceEditBlock(id)
+        if (block) throw new Error(`EDIT_BLOCKED:${block}`)
+        const inv = get().invoices.find((i) => i.id === id)
+        const keep = { id: inv.id, number: inv.number, createdAt: inv.createdAt, revision: inv.revision || 0 }
+        get().deleteInvoice(id, { silent: true })
+        const next = get().addInvoice({ ...doc }, { reissue: keep })
+        get().logActivity('Edited invoice', `${keep.number} · revision ${keep.revision + 1}`)
+        return next
+      },
+
       // Void an invoice the audit-safe way (ZATCA forbids deleting issued invoices):
       // reverse its sale, COGS and every receipt via reversal entries, put the stock
       // back, and mark it 'void' — the document stays in the list (no numbering gap).
@@ -1473,13 +1563,15 @@ export const useStore = create(
         get().logActivity('Voided invoice', `${inv.number}${reason ? ' · ' + reason : ''}`)
       },
 
-      deleteInvoice: (id) => {
+      deleteInvoice: (id, opts = {}) => {
         const inv = get().invoices.find((i) => i.id === id)
         // every JE this invoice produced: the sale, its COGS, and every receipt
         const payJEs = (inv?.payments || []).map((p) => p.journalEntryId)
         const jeIds = new Set([inv?.journalEntryId, inv?.cogsJournalEntryId, ...payJEs].filter(Boolean))
         get().assertJEsUnlocked(...jeIds)
-        get().logActivity('Deleted invoice', inv?.number || id)
+        // reviseInvoice unposts through here before re-posting; logging a deletion
+        // there would put an event in the audit trail that never happened.
+        if (!opts.silent) get().logActivity('Deleted invoice', inv?.number || id)
         // Restore any stock issued by this invoice's tracked lines.
         const restore = {}
         ;(inv?.items || []).forEach((line) => {
@@ -1504,6 +1596,115 @@ export const useStore = create(
             return { ...it, ...patch }
           }),
         }))
+      },
+
+      // ─── EMPLOYEE ADVANCES (salary advances / staff loans) ─────────
+      //
+      // The mirror of a customer advance: money handed over that has not been
+      // worked off yet, so an asset rather than a liability. It winds down
+      // through payroll — see the deduction in processPayrollRun, which is
+      // what stops an advance being a journal entry somebody has to remember
+      // every month. See utils/employeeAdvances.js.
+      employeeAdvances: [],
+
+      issueEmployeeAdvance: (input) => {
+        const check = validateEmpAdvance(input)
+        if (!check.ok) throw new Error(`EMPADV_INVALID:${check.error}`)
+        const amount = Math.round((Number(input.amount) || 0) * 100) / 100
+        const ref = `Advance to ${input.employeeName || ''}`.trim()
+
+        const je = get().addJournalEntry({
+          date: input.date, description: ref, type: 'employee_advance',
+          lines: empIssueLines(amount, input.bankAccountId, ref),
+        })
+        const advance = {
+          ...input, id: uuid(), amount,
+          instalment: Math.round((Number(input.instalment) || 0) * 100) / 100,
+          repayments: [], status: 'open',
+          journalEntryId: je.id, createdAt: new Date().toISOString(),
+        }
+        set((s) => ({ employeeAdvances: [...s.employeeAdvances, advance] }))
+        get().logActivity('Issued employee advance', `${input.employeeName || ''} · ${amount}`, {
+          entity: 'employeeAdvance', entityId: advance.id,
+        })
+        return advance
+      },
+
+      /** Cash handed back outside payroll. */
+      repayEmployeeAdvance: (id, { amount, date, bankAccountId } = {}) => {
+        const adv = get().employeeAdvances.find((a) => a.id === id)
+        if (!adv) return
+        const owed = empAdvanceBalance(adv)
+        const want = amount == null ? owed : Math.round((Number(amount) || 0) * 100) / 100
+        const take = Math.min(owed, want)
+        if (take <= 0.005) throw new Error('EMPADV_NOTHING_OWED')
+        const bank = bankAccountId || adv.bankAccountId
+        if (!bank) throw new Error('EMPADV_NO_BANK')
+
+        const when = date || new Date().toISOString().slice(0, 10)
+        const ref = `Advance repayment – ${adv.employeeName || ''}`.trim()
+        const je = get().addJournalEntry({
+          date: when, description: ref, type: 'employee_advance', lines: empRepayLines(take, bank, ref),
+        })
+        get()._recordAdvanceRepayments([{ advanceId: id, amount: take }], { date: when, source: 'cash', journalEntryId: je.id })
+        return { amount: take, journalEntryId: je.id }
+      },
+
+      /** Give up on recovering one — the point at which it becomes a cost. */
+      writeOffEmployeeAdvance: (id, { date, expenseAccountId, reason } = {}) => {
+        const adv = get().employeeAdvances.find((a) => a.id === id)
+        if (!adv) return
+        const owed = empAdvanceBalance(adv)
+        if (owed <= 0.005) throw new Error('EMPADV_NOTHING_OWED')
+        const when = date || new Date().toISOString().slice(0, 10)
+        const ref = `Advance written off – ${adv.employeeName || ''}${reason ? ` (${reason})` : ''}`
+        const je = get().addJournalEntry({
+          date: when, description: ref, type: 'employee_advance',
+          lines: empWriteOffLines(owed, expenseAccountId, ref),
+        })
+        set((s) => ({
+          employeeAdvances: s.employeeAdvances.map((a) => (a.id === id
+            ? { ...a, status: 'written_off', writeOffJournalEntryId: je.id, writeOffReason: reason || '' } : a)),
+        }))
+        get().logActivity('Wrote off employee advance', `${adv.employeeName || ''} · ${owed}`, {
+          entity: 'employeeAdvance', entityId: id, severity: 'warning',
+        })
+        return { amount: owed, journalEntryId: je.id }
+      },
+
+      /** Shared by the payroll deduction and cash repayment. Posts nothing. */
+      _recordAdvanceRepayments: (parts, { date, source, payrollRunId, journalEntryId }) => {
+        if (!parts?.length) return
+        const by = Object.fromEntries(parts.map((p) => [p.advanceId, p.amount]))
+        set((s) => ({
+          employeeAdvances: s.employeeAdvances.map((a) => {
+            const amt = by[a.id]
+            if (!amt) return a
+            const repayments = [...(a.repayments || []), { id: uuid(), amount: amt, date, source, payrollRunId, journalEntryId }]
+            const settled = (Number(a.amount) || 0) - repayments.reduce((x, r) => x + r.amount, 0) <= 0.005
+            return { ...a, repayments, status: settled ? 'settled' : a.status }
+          }),
+        }))
+      },
+
+      /** What payroll should take off one employee this run. */
+      advanceDueFor: (employeeId, cap) => dueFromPayroll(get().employeeAdvances, employeeId, { cap }),
+
+      /** What an employee still owes, for the payroll form and the register. */
+      advanceOwedBy: (employeeId) => owedBy(get().employeeAdvances, employeeId),
+
+      totalEmployeeAdvances: () => totalOutstanding(get().employeeAdvances),
+
+      deleteEmployeeAdvance: (id) => {
+        const adv = get().employeeAdvances.find((a) => a.id === id)
+        if (!adv) return
+        if ((adv.repayments || []).length > 0 || adv.status === 'written_off')
+          throw new Error('EMPADV_IN_USE')
+        get().recycleRecord('employeeAdvances', id)
+        set((s) => ({ employeeAdvances: s.employeeAdvances.filter((a) => a.id !== id) }))
+        get().logActivity('Deleted employee advance', `${adv.employeeName || ''}`, {
+          entity: 'employeeAdvance', entityId: id, severity: 'warning',
+        })
       },
 
       // ─── CUSTOMER ADVANCES (deposits / money on account) ───────────
@@ -2501,8 +2702,12 @@ export const useStore = create(
         if (!opts.approved && needsApproval(s.settings?.approvals, 'purchase', amountOf('purchase', purchase))) {
           return { pendingApproval: true, request: get().submitForApproval('purchase', purchase) }
         }
+        // See addInvoice: `opts.reissue` re-posts an existing bill under its own
+        // identity, so revisePurchase can correct a bill without a second copy of
+        // the posting logic and without burning a document number.
+        const reissue = opts.reissue || null
         const { prefix, next } = s.settings.purchase
-        const number = nextNum(prefix, next)
+        const number = reissue ? reissue.number : nextNum(prefix, next)
         // Foreign-currency bills are entered in their own currency; convert every
         // amount to base at the bill's rate (1 for base-currency bills) for the ledger.
         const rate = Number(purchase.exchangeRate) || 1
@@ -2532,9 +2737,11 @@ export const useStore = create(
           reference: number, type: 'purchase', departmentId: purchase.departmentId || null, lines,
         })
         const newPurchase = {
-          ...purchase, id: uuid(), number, status: 'received', amountPaid: 0, payments: [],
+          ...purchase, id: reissue?.id || uuid(), number, status: 'received', amountPaid: 0, payments: [],
           exchangeRate: rate, baseTotal: apBase,
-          journalEntryId: je.id, createdAt: new Date().toISOString(),
+          journalEntryId: je.id,
+          createdAt: reissue?.createdAt || new Date().toISOString(),
+          ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
 
         // Perpetual inventory: receive tracked lines into stock at weighted-average cost.
@@ -2570,7 +2777,8 @@ export const useStore = create(
             }
             return { ...it, ...patch }
           }),
-          settings: { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } },
+          // A reissue reuses its own number, so the sequence must not advance.
+          settings: reissue ? st.settings : { ...st.settings, purchase: { ...st.settings.purchase, next: next + 1 } },
         }))
         // Movement ledger entries for each received item.
         Object.entries(recv).forEach(([itemId, u]) => {
@@ -2633,6 +2841,31 @@ export const useStore = create(
       updatePurchase: (id, patch) =>
         set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
 
+      /** Why this bill cannot be edited, or null when it can. See utils/docEdit. */
+      purchaseEditBlock: (id) => {
+        const s = get()
+        const pur = s.purchases.find((p) => p.id === id)
+        const fromOrder = !!pur && (
+          !!pur.poId ||
+          (s.purchaseOrders || []).some((po) => (po.purchaseIds || []).includes(pur.id) || po.purchaseId === pur.id)
+        )
+        return editBlock(pur, { kind: 'purchase', lockDate: s.settings?.accounting?.lockDate || '', fromOrder })
+      },
+
+      /** Correct a posted purchase bill in place — the mirror of reviseInvoice. */
+      revisePurchase: (id, doc) => {
+        const block = get().purchaseEditBlock(id)
+        if (block) throw new Error(`EDIT_BLOCKED:${block}`)
+        const pur = get().purchases.find((p) => p.id === id)
+        const keep = { id: pur.id, number: pur.number, createdAt: pur.createdAt, revision: pur.revision || 0 }
+        get().deletePurchase(id, { silent: true })
+        // `approved` so a bill that was already approved once is not sent back
+        // round the approval loop by an edit that may even reduce its value.
+        const next = get().addPurchase({ ...doc }, { reissue: keep, approved: true })
+        get().logActivity('Edited purchase bill', `${keep.number} · revision ${keep.revision + 1}`)
+        return next
+      },
+
       // Void a purchase bill: reverse its bill + payment entries and back out the
       // received stock, marking it 'void' (kept for the audit trail).
       voidPurchase: (id, { date, reason } = {}) => {
@@ -2668,12 +2901,13 @@ export const useStore = create(
         get().logActivity('Voided purchase bill', `${pur.number}${reason ? ' · ' + reason : ''}`)
       },
 
-      deletePurchase: (id) => {
+      deletePurchase: (id, opts = {}) => {
         const pur = get().purchases.find((p) => p.id === id)
         const payJEs = (pur?.payments || []).map((p) => p.journalEntryId)
         const jeIds = new Set([pur?.journalEntryId, ...payJEs].filter(Boolean))
         get().assertJEsUnlocked(...jeIds)
-        get().logActivity('Deleted purchase', pur?.number || id)
+        // See deleteInvoice: revisePurchase unposts through here before re-posting.
+        if (!opts.silent) get().logActivity('Deleted purchase', pur?.number || id)
         // Reverse any perpetual stock received by this purchase.
         const recv = {}
         ;(pur?.items || []).forEach((line) => {
@@ -3030,6 +3264,12 @@ export const useStore = create(
         const totalGosiEmployer = run.lines.reduce((a, l) => a + n(l, 'gosiEmployer'), 0)
         const totalOtherDed  = run.lines.reduce((a, l) => a + otherDedOf(l), 0)
         const totalNet       = run.lines.reduce((a, l) => a + n(l, 'net'), 0)
+        // Salary-advance recovery. The line's `loan` field has already been
+        // taken off its net pay by the payroll form, so the credit that would
+        // have gone to the employee goes against the advance instead — the
+        // entry balances by construction. A run where nobody owes anything
+        // has totalLoan 0 and posts exactly as it did before.
+        const totalLoan = Math.round(run.lines.reduce((a, l) => a + n(l, 'loan'), 0) * 100) / 100
         // Salary cost = earnings not withheld from unpaid deductions (late/absent/penalty
         // reduce the expense; tax & GOSI become payroll liabilities).
         const salaryExpense = totalGross - totalOtherDed
@@ -3041,6 +3281,8 @@ export const useStore = create(
           lines.push({ accountId: 'acc-paye',  debit: 0, credit: totalTax,     description: `Payroll ${run.number} – Income Tax` })
         if (totalGosiEmp > 0)
           lines.push({ accountId: 'acc-sspay', debit: 0, credit: totalGosiEmp, description: `Payroll ${run.number} – GOSI (employee)` })
+        if (totalLoan > 0)
+          lines.push({ accountId: EMP_ADV_ACCOUNT, debit: 0, credit: totalLoan, description: `Payroll ${run.number} – Advance recovery` })
         if (totalGosiEmployer > 0) {
           lines.push({ accountId: 'acc-gosiemp', debit: totalGosiEmployer, credit: 0,                   description: `Payroll ${run.number} – GOSI (employer)` })
           lines.push({ accountId: 'acc-sspay',   debit: 0,                  credit: totalGosiEmployer, description: `Payroll ${run.number} – GOSI (employer)` })
@@ -3050,6 +3292,19 @@ export const useStore = create(
           description: `Payroll Run ${run.number} – ${run.period}`,
           reference: run.number, type: 'payroll', lines,
         })
+        // Wind the advances down by what this run actually recovered, oldest
+        // first, capped at each employee's own deduction so one person's
+        // advance can never be repaid out of another's pay.
+        if (totalLoan > 0) {
+          run.lines.forEach((l) => {
+            const take = n(l, 'loan')
+            if (take <= 0.005 || !l.employeeId) return
+            const { parts } = get().advanceDueFor(l.employeeId, take)
+            get()._recordAdvanceRepayments(parts, {
+              date: run.payDate, source: 'payroll', payrollRunId: runId, journalEntryId: je.id,
+            })
+          })
+        }
         set((st) => ({
           payrollRuns: st.payrollRuns.map((r) =>
             r.id === runId ? { ...r, status: 'processed', journalEntryId: je.id } : r
@@ -3589,71 +3844,137 @@ export const useStore = create(
           workOrders: s.workOrders.map((w) => w.id === id ? { ...w, status: 'in_progress', startedAt: new Date().toISOString() } : w),
         })),
 
+      /**
+       * Build the order: issue the materials, and put the finished goods on the
+       * shelf at what they actually cost to make.
+       *
+       * A work order is an issue plus a receipt, so it goes through the same
+       * machinery as a sale and a purchase rather than its own arithmetic. That
+       * matters in three ways it used to get wrong:
+       *
+       *   · A tracked component is relieved at the cost it is actually carried
+       *     at (weighted-average or FIFO, per the costing setting), not at the
+       *     unit cost typed on the order when it was raised. A standard cost
+       *     that has since drifted used to leave the Inventory account and the
+       *     stock ledger permanently disagreeing by the difference.
+       *   · It relieves the account the stock is carried in — the item's own
+       *     inventory account. Crediting a fixed "Raw Materials" account for
+       *     stock held in Inventory used to drive Raw Materials negative on the
+       *     balance sheet while Inventory kept value for goods long consumed.
+       *   · Cost layers move with the quantity, so FIFO stays honest: components
+       *     no longer leave phantom layers behind, and a finished good is
+       *     received with layers of its own instead of none.
+       *
+       * Components with no stock item (labour, an untracked consumable) keep
+       * their typed cost and their own material account — there is no shelf to
+       * price them from, and the credit is the only record of them.
+       */
       completeWorkOrder: (id, completionDate) => {
         const wo = get().workOrders.find((w) => w.id === id)
         if (!wo || wo.status === 'completed') return
         const qty = wo.targetQuantity || 1
-
-        const rawLines = []
-        let totalMaterialCost = 0
-        ;(wo.components || []).forEach((comp) => {
-          const lineAmt = (comp.unitCost || 0) * (comp.quantity || 0) * qty
-          totalMaterialCost += lineAmt
-          if (lineAmt > 0)
-            rawLines.push({ accountId: comp.materialAccountId || 'acc-rawmat', debit: 0, credit: lineAmt, description: comp.name })
-        })
-
-        const wipAccId     = wo.wipAccountId     || 'acc-wip'
-        const finGoodsAccId = wo.finGoodsAccountId || 'acc-fingoods'
-
-        const lines = [
-          { accountId: wipAccId, debit: totalMaterialCost, credit: 0, description: `WO ${wo.number} – Materials to WIP` },
-          ...rawLines,
-        ]
-        const je1 = get().addJournalEntry({
-          date: completionDate || new Date().toISOString().slice(0, 10),
-          description: `Work Order ${wo.number} – Issue Materials`,
-          reference: wo.number, type: 'work_order_issue', lines,
-        })
-        const je2 = get().addJournalEntry({
-          date: completionDate || new Date().toISOString().slice(0, 10),
-          description: `Work Order ${wo.number} – Finished Goods`,
-          reference: wo.number, type: 'work_order_complete',
-          lines: [
-            { accountId: finGoodsAccId, debit: totalMaterialCost,  credit: 0,                   description: `Finished: ${wo.outputName}` },
-            { accountId: wipAccId,      debit: 0,                  credit: totalMaterialCost, description: `Finished: ${wo.outputName}` },
-          ],
-        })
-
-        const outputQty = (wo.outputQuantity || 1) * qty
         const compDate = completionDate || new Date().toISOString().slice(0, 10)
-        // consume raw-material components from stock (mirrors the credit to raw materials)
+        const method = get().costingMethod()
+        const items = get().inventoryItems
+
+        // What the build consumes, per stock item.
         const consume = {}
         ;(wo.components || []).forEach((comp) => {
           if (!comp.itemId) return
           const used = (comp.quantity || 0) * qty
-          if (used <= 0) return
-          consume[comp.itemId] = (consume[comp.itemId] || 0) + used
-          get().logStockMovement({ itemId: comp.itemId, itemName: comp.name, date: compDate, type: 'consumption', qtyChange: -used, ref: wo.number, note: 'Work order material' })
+          if (used > 0) consume[comp.itemId] = (consume[comp.itemId] || 0) + used
+        })
+
+        // Price the tracked components off the shelf, and the untracked ones at
+        // the cost typed on the order.
+        const creditByAcc = {}
+        const costPatch = {}          // itemId -> { costLayers, costPrice }
+        let totalMaterialCost = 0
+        Object.entries(consume).forEach(([itemId, used]) => {
+          const it = items.find((i) => i.id === itemId)
+          if (!it) return
+          const priced = issueFrom(
+            { ...it, costLayers: it.costLayers || layersFromBalance(it.quantity, it.costPrice) },
+            { qty: used, method }
+          )
+          costPatch[itemId] = priced.patch
+          totalMaterialCost += priced.cost
+          // 'acc-inv' is where every other path puts stock that carries no
+          // account of its own, so it is where this one must take it from.
+          const acc = it.inventoryAccountId || 'acc-inv'
+          creditByAcc[acc] = (creditByAcc[acc] || 0) + priced.cost
+        })
+        ;(wo.components || []).forEach((comp) => {
+          if (comp.itemId) return
+          const lineAmt = (comp.unitCost || 0) * (comp.quantity || 0) * qty
+          if (lineAmt <= 0) return
+          totalMaterialCost += lineAmt
+          const acc = comp.materialAccountId || 'acc-rawmat'
+          creditByAcc[acc] = (creditByAcc[acc] || 0) + lineAmt
+        })
+        totalMaterialCost = Math.round(totalMaterialCost * 100) / 100
+
+        const wipAccId = wo.wipAccountId || 'acc-wip'
+        const outItem = items.find((i) => i.id === wo.outputItemId)
+        // The finished good lands where its own stock is valued. The order's
+        // chosen account only stands in when the output is not a stock item.
+        const finGoodsAccId = outItem
+          ? (outItem.inventoryAccountId || 'acc-inv')
+          : (wo.finGoodsAccountId || 'acc-fingoods')
+
+        const je1 = get().addJournalEntry({
+          date: compDate,
+          description: `Work Order ${wo.number} – Issue Materials`,
+          reference: wo.number, type: 'work_order_issue',
+          lines: [
+            { accountId: wipAccId, debit: totalMaterialCost, credit: 0, description: `WO ${wo.number} – Materials to WIP` },
+            ...Object.entries(creditByAcc).map(([accountId, amt]) =>
+              ({ accountId, debit: 0, credit: Math.round(amt * 100) / 100, description: `WO ${wo.number} – Materials issued` })),
+          ],
+        })
+        const je2 = get().addJournalEntry({
+          date: compDate,
+          description: `Work Order ${wo.number} – Finished Goods`,
+          reference: wo.number, type: 'work_order_complete',
+          lines: [
+            { accountId: finGoodsAccId, debit: totalMaterialCost, credit: 0, description: `Finished: ${wo.outputName}` },
+            { accountId: wipAccId, debit: 0, credit: totalMaterialCost, description: `Finished: ${wo.outputName}` },
+          ],
+        })
+
+        const outputQty = (wo.outputQuantity || 1) * qty
+        Object.entries(consume).forEach(([itemId, used]) => {
+          const it = items.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: compDate, type: 'consumption', qtyChange: -used, ref: wo.number, note: 'Work order material' })
         })
         get().logStockMovement({ itemId: wo.outputItemId, itemName: wo.outputName, date: compDate, type: 'production', qtyChange: outputQty, ref: wo.number, note: 'Work order output' })
+
         set((st) => ({
           workOrders: st.workOrders.map((w) =>
             w.id === id ? { ...w, status: 'completed', completedAt: new Date().toISOString(), actualCost: totalMaterialCost, jeIssueId: je1.id, jeCompleteId: je2.id, completionDate } : w
           ),
           inventoryItems: st.inventoryItems.map((item) => {
             if (!consume[item.id] && item.id !== wo.outputItemId) return item
-            const patch = { quantity: item.quantity || 0 }
-            if (consume[item.id]) patch.quantity -= consume[item.id]
+            let patch = { quantity: item.quantity || 0 }
+            if (consume[item.id]) {
+              patch.quantity -= consume[item.id]
+              patch = { ...patch, ...(costPatch[item.id] || {}) }
+            }
             if (item.id === wo.outputItemId) {
-              // roll the finished good's cost into a weighted-average so it later
-              // sells with a real COGS (the total material cost / units produced)
-              const oldQty = item.quantity || 0
+              // Received like any other receipt, so the finished good carries
+              // layers of its own and a blended cost that reflects what it took
+              // to make — which is what its COGS will be when it sells.
+              const oldQty = patch.quantity
               const newQty = oldQty + outputQty
-              patch.quantity += outputQty
-              patch.costPrice = newQty > 0
+              const wacCost = newQty > 0
                 ? Math.round(((oldQty * (item.costPrice || 0) + totalMaterialCost) / newQty) * 100) / 100
                 : (item.costPrice || 0)
+              const seeded = { ...item, ...patch, costLayers: patch.costLayers || item.costLayers || layersFromBalance(oldQty, item.costPrice) }
+              patch = {
+                ...patch,
+                quantity: newQty,
+                ...receiveInto(seeded, { qty: outputQty, value: totalMaterialCost, date: compDate, ref: wo.number, method, wacCost }),
+              }
             }
             return { ...item, ...patch }
           }),
@@ -4345,9 +4666,9 @@ export const useStore = create(
           'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
           'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
           'salesOrders', 'purchaseQuotes', 'stockCounts',
-          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances',
+          'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 35, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 36, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4407,8 +4728,11 @@ export const useStore = create(
         const entry = store.items.find((e) => e.id === id)
         if (!entry) throw new Error('Snapshot not found')
         get().importData(entry.data)
-        // Give the persist middleware a moment to flush the restored state, then reload.
-        if (typeof window !== 'undefined') setTimeout(() => window.location.reload(), 900)
+        // Writes are coalesced, so the restored state is still only in memory.
+        // Flush it before reloading — a timer here is a race, and losing it
+        // would mean a restore that silently restored nothing.
+        await flushNow()
+        if (typeof window !== 'undefined') window.location.reload()
         return true
       },
 
@@ -4541,7 +4865,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 35,
+      version: 36,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -4738,6 +5062,14 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 36) {
+          // Employee salary advances. An asset — money handed over that has
+          // not yet been worked off — winding down through payroll.
+          if (!persisted.employeeAdvances) persisted.employeeAdvances = []
+          const a = { id: 'acc-empadv', code: '1250', name: 'Employee Advances', type: 'asset', subtype: 'current', isSystem: true }
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((x) => x.id === a.id))
+            persisted.accounts.push(a)
         }
         if (version < 35) {
           // FIFO becomes an option. Existing items get one cost layer seeded

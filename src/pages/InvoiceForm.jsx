@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '../store'
+import { EDIT_BLOCK_MESSAGE } from '../utils/docEdit'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
 import { CustomFieldInputs } from '../components/CustomFields'
@@ -20,7 +21,10 @@ const MOBILE_LABEL = 'lg:[&>label]:hidden'
 
 export default function InvoiceForm() {
   const navigate = useNavigate()
-  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice, customFieldsFor, stockShortfall } = useStore()
+  // With an :id in the path this form is correcting an invoice that is already
+  // posted, rather than raising a new one.
+  const { id: editId } = useParams()
+  const { customers, invoices, accounts, inventoryItems, departments, currencies, settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []
@@ -29,7 +33,17 @@ export default function InvoiceForm() {
 
   const revenueAccounts = accounts.filter((a) => a.type === 'revenue')
 
-  const [form, setForm] = useState({
+  const editing = editId ? invoices.find((i) => i.id === editId) : null
+  const editBlocked = editId ? invoiceEditBlock(editId) : null
+
+  const [form, setForm] = useState(() => editing ? {
+    ...editing,
+    docDiscount: editing.docDiscount || 0,
+    shipping: editing.shipping || 0,
+    shippingTaxable: !!editing.shippingTaxable,
+    customFields: editing.customFields || {},
+    items: (editing.items || []).map((l) => ({ ...emptyLine(), ...l })),
+  } : {
     customerId: '',
     customerName: '',
     date: today(),
@@ -106,7 +120,9 @@ export default function InvoiceForm() {
   // Live credit check for the selected customer (this invoice's base value included).
   const selectedCustomer = customers.find((c) => c.id === form.customerId)
   const newBase = total * (Number(form.exchangeRate) || 1)
-  const credit = creditStatus(selectedCustomer, invoices, newBase)
+  // When editing, the invoice being replaced is still in the list — counting it
+  // as well as its own replacement would report double the real exposure.
+  const credit = creditStatus(selectedCustomer, invoices.filter((i) => i.id !== editId), newBase)
 
   const handleSave = () => {
     if (!form.customerId) return alert('Please select a customer.')
@@ -127,7 +143,7 @@ export default function InvoiceForm() {
     // Selling stock that isn't there is allowed, but it skews the weighted
     // average cost of the next receipt, so say so before it happens rather
     // than leaving it for the integrity check to report later.
-    const short = stockShortfall(form.items)
+    const short = stockShortfall(form.items, { creditFrom: editing?.items || null })
     if (short.length) {
       const detail = short.map((s) => `• ${s.name}: ${t('{on} in stock, {req} needed').replace('{on}', s.onHand).replace('{req}', s.required)}`).join('\n')
       if (!confirm(`${t('This invoice sells more than you have in stock:')}\n\n${detail}\n\n${t('Stock will go negative and item costs may be distorted until you receive more. Create it anyway?')}`)) return
@@ -135,22 +151,41 @@ export default function InvoiceForm() {
 
     const lock = settings?.accounting?.lockDate
     if (lock && form.date && String(form.date) <= String(lock)) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+    const payload = { ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping }
     try {
-      addInvoice({ ...form, subtotal, taxAmount: taxTotal, total, docDiscount: Number(form.docDiscount) || 0, docDiscountAmount: totals.docDiscountAmount, shipping: totals.shipping })
+      if (editId) reviseInvoice(editId, payload)
+      else addInvoice(payload)
     } catch (e) {
-      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+      const msg = String(e.message || '')
+      if (msg.startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lock))
+      if (msg.startsWith('EDIT_BLOCKED')) return alert(t(EDIT_BLOCK_MESSAGE[msg.split(':')[1]] || 'This invoice can no longer be edited.'))
       throw e
     }
-    navigate('/invoices')
+    navigate(editId ? `/invoices/${editId}` : '/invoices')
   }
+
+  if (editId && editBlocked) return (
+    <div className="max-w-lg mx-auto text-center py-20 space-y-4">
+      <p className="text-gray-700 dark:text-slate-200 font-medium">{t('This invoice cannot be edited')}</p>
+      <p className="text-sm text-gray-500 dark:text-slate-400">{t(EDIT_BLOCK_MESSAGE[editBlocked])}</p>
+      <Btn variant="secondary" onClick={() => navigate(editing ? `/invoices/${editId}` : '/invoices')}>{t('Back')}</Btn>
+    </div>
+  )
 
   return (
     <div>
       <div className="mb-6">
-        <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
-          <ArrowLeft size={15} /> {t('Back to Invoices')}
+        <button onClick={() => navigate(editId ? `/invoices/${editId}` : '/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
+          <ArrowLeft size={15} /> {editId ? t('Back to Invoice') : t('Back to Invoices')}
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{t('New Sales Invoice')}</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+          {editId ? `${t('Edit Invoice')} ${editing?.number || ''}` : t('New Sales Invoice')}
+        </h1>
+        {editId && (
+          <p className="mt-2 text-xs rounded-lg px-3 py-2 bg-brand-50 dark:bg-brand-500/10 text-brand-700 dark:text-brand-300 border border-brand-100 dark:border-brand-500/20">
+            {t('Saving re-posts this invoice: its journal entries and stock movements are replaced with the corrected ones. The invoice keeps its number, and the change is recorded in the audit log.')}
+          </p>
+        )}
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
@@ -378,9 +413,9 @@ export default function InvoiceForm() {
             </div>
             <div className="mt-5 space-y-2">
               <Btn className="w-full justify-center" onClick={handleSave}>
-                {t('Save Invoice')}
+                {editId ? t('Save Changes') : t('Save Invoice')}
               </Btn>
-              <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/invoices')}>
+              <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate(editId ? `/invoices/${editId}` : '/invoices')}>
                 {t('Cancel')}
               </Btn>
             </div>

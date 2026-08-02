@@ -252,6 +252,66 @@ function checkCapitalSubledgerAgrees(journalEntries, capitalAccounts) {
 }
 
 /**
+ * The stock on the shelf must be worth what the inventory accounts say.
+ *
+ * This is the inventory control-account reconciliation, and it is the check
+ * that catches a whole family of quiet failures: stock moved without a journal
+ * entry, an entry posted without moving stock, goods relieved at a stale
+ * standard cost, or a build crediting an account the stock was never carried
+ * in. None of those unbalance a journal entry, so every other check here passes
+ * while the balance sheet slowly stops describing the warehouse.
+ *
+ * Each item is compared against the account it is actually carried in, so an
+ * item routed to Raw Materials is not netted off against one in Inventory —
+ * two errors in opposite directions must not cancel out and look like health.
+ */
+function checkInventoryAgreesWithLedger(journalEntries, inventoryItems, accounts) {
+  const label = 'Stock on hand agrees with the inventory accounts'
+  const tracked = (inventoryItems || []).filter((i) => i.type !== 'service' && !i.isKit)
+  if (!tracked.length)
+    return { id: 'inventory-subledger', label, ok: true, detail: 'No stock items', items: [] }
+
+  // What the shelf is worth, per inventory account.
+  const shelf = {}
+  tracked.forEach((i) => {
+    const acc = i.inventoryAccountId || 'acc-inv'
+    shelf[acc] = (shelf[acc] || 0) + (Number(i.quantity) || 0) * (Number(i.costPrice) || 0)
+  })
+  // What the ledger says those accounts hold.
+  const ledger = {}
+  ;(journalEntries || []).forEach((je) => {
+    if (je?.void) return
+    ;(je.lines || []).forEach((l) => {
+      if (!(l?.accountId in shelf)) return
+      ledger[l.accountId] = (ledger[l.accountId] || 0) + (+l.debit || 0) - (+l.credit || 0)
+    })
+  })
+
+  const nameOf = (id) => (accounts || []).find((a) => a.id === id)?.name || id
+  const items = []
+  Object.keys(shelf).forEach((acc) => {
+    const drift = r2((ledger[acc] || 0) - shelf[acc])
+    if (Math.abs(drift) < 0.01) return
+    items.push({
+      ref: nameOf(acc),
+      detail: drift > 0
+        ? `Ledger holds ${drift.toFixed(2)} more than the stock is worth`
+        : `Stock is worth ${Math.abs(drift).toFixed(2)} more than the ledger holds`,
+    })
+  })
+
+  return {
+    id: 'inventory-subledger',
+    label,
+    ok: items.length === 0,
+    detail: items.length === 0
+      ? `${tracked.length} item(s) reconcile`
+      : `${items.length} inventory account(s) disagree with the shelf`,
+    items,
+  }
+}
+
+/**
  * Run every check against a store snapshot.
  * @returns { ok, passed, failed, checks[], ranAt }
  */
@@ -265,6 +325,7 @@ export function runIntegrityCheck(state) {
     checkUniqueAccountCodes(accounts),
     checkNoBadNumbers(journalEntries),
     checkNoNegativeStock(inventoryItems),
+    checkInventoryAgreesWithLedger(journalEntries, inventoryItems, accounts),
     checkNoOverpayments(invoices, purchases),
     checkLockRespected(journalEntries, settings?.accounting?.lockDate),
     checkOpeningBalanceEquityCleared(journalEntries, settings),

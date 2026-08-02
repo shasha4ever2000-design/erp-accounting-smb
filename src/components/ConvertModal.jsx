@@ -73,6 +73,17 @@ export default function ConvertModal({ open, onClose, doc, docKey, sym, title, c
               </tbody>
             </table>
           </div>
+          {/* Receiving a line that carries no stock item books it to an expense
+              account instead of Inventory, and moves no stock. That is legitimate
+              for services, and a silent disaster for goods — so say which is
+              which before the receipt is confirmed, not after. */}
+          {docKey === 'receivedQty' && (doc.items || []).some((l) => !l.itemId && (Number(qty[l.id]) || 0) > 0) && (
+            <div className="text-xs rounded-lg px-3 py-2 bg-warning-50 dark:bg-warning-500/10 text-warning-700 dark:text-warning-300 border border-warning-200 dark:border-warning-500/20">
+              <b>{t('Not going into stock:')}</b>{' '}
+              {(doc.items || []).filter((l) => !l.itemId && (Number(qty[l.id]) || 0) > 0).map((l) => l.description || '—').join(', ')}
+              {' — '}{t('these lines are not linked to a stock item, so they post to an expense account and inventory will not change. Edit the order and pick the stock item if that is not what you want.')}
+            </div>
+          )}
           <div className="flex items-center justify-between pt-3 border-t border-gray-100 dark:border-surface-700">
             <span className="text-sm text-gray-500 dark:text-slate-400">{t('This conversion')}</span>
             <span className="text-lg font-bold text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(preview.total, sym)}</span>

@@ -1609,6 +1609,7 @@ const AR = {
   'Account codes are unique': 'أكواد الحسابات فريدة',
   'No corrupted amounts': 'لا توجد مبالغ تالفة',
   'No item has negative stock': 'لا يوجد صنف برصيد سالب',
+  'Stock on hand agrees with the inventory accounts': 'المخزون المتاح مطابق لحسابات المخزون',
   'No document is paid more than its total': 'لا يوجد مستند مدفوع بأكثر من إجماليه',
   'Closed periods contain no later edits': 'الفترات المقفلة لا تحتوي على تعديلات لاحقة',
   'Difference': 'الفرق',
@@ -2003,6 +2004,37 @@ const AR = {
   'Issues stock & posts COGS at average cost': 'يصرف المخزون ويسجل تكلفة البضاعة بمتوسط التكلفة',
   'Purchase': 'شراء',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
+  'Journal Entry': 'قيد يومية',
+  'Stock item': 'صنف مخزني',
+  'Not going into stock:': 'لن يدخل المخزون:',
+  'these lines are not linked to a stock item, so they post to an expense account and inventory will not change. Edit the order and pick the stock item if that is not what you want.':
+    'هذه البنود غير مرتبطة بصنف مخزني، لذا تُرحَّل إلى حساب مصروف ولن يتغيّر المخزون. عدّل أمر الشراء واختر الصنف المخزني إن لم يكن هذا ما تقصده.',
+
+  // ── Employee advances / staff loans ──
+  'Employee Advances': 'سلف الموظفين',
+  'Salary advances and staff loans — recovered automatically from payroll': 'سلف الرواتب وقروض الموظفين — تُسترد تلقائياً من مسير الرواتب',
+  'Issue advance': 'صرف سلفة', 'Advance': 'سلفة',
+  'Cr Employee Advances': 'دائن سلف الموظفين',
+  'owed back by staff': 'مستحقة على الموظفين', 'Staff repaying': 'موظفون يسددون',
+  'No advances yet': 'لا توجد سلف بعد',
+  'An advance is money lent to an employee, not a cost. It is held as an asset and comes back through payroll a bit at a time, so nobody has to remember the deduction each month.': 'السلفة مبلغ مُقرض للموظف وليست مصروفاً. تُسجَّل كأصل وتُسترد من الراتب على أقساط، فلا يحتاج أحد لتذكّر الاستقطاع كل شهر.',
+  'Advanced': 'المصروف', 'Repaid': 'المسدَّد', 'Per payroll': 'لكل مسير',
+  'whole balance': 'كامل الرصيد', 'run left': 'مسير متبقٍ', 'runs left': 'مسيرات متبقية',
+  'Repaying': 'قيد السداد', 'Written off': 'مشطوبة',
+  'Repay': 'سداد', 'Write off': 'شطب', 'Record repayment': 'تسجيل السداد',
+  'Delete this advance? Its journal entry goes to the recycle bin.': 'حذف هذه السلفة؟ سيُنقل قيدها إلى سلة المحذوفات.',
+  'Some of this advance has already been repaid, so it stays on the record.': 'تم سداد جزء من هذه السلفة، لذلك تبقى في السجل.',
+  'Date paid out': 'تاريخ الصرف', 'Deduct per payroll': 'الاستقطاع لكل مسير', 'Whole amount': 'كامل المبلغ',
+  'Advance against salary': 'سلفة على الراتب',
+  'This employee already owes {amt}.': 'على هذا الموظف بالفعل {amt}.',
+  'Recorded as an asset, not a payroll cost — the money is still yours until it is worked off. Payroll deducts the instalment automatically.': 'تُسجَّل كأصل لا كتكلفة رواتب — المبلغ ما زال ملكك حتى يُستوفى. ويستقطع مسير الرواتب القسط تلقائياً.',
+  'Repay in cash': 'سداد نقدي',
+  '{name} · {amt} outstanding': '{name} · {amt} مستحقة',
+  'For money handed back outside payroll. Payroll deductions are recorded automatically.': 'للمبالغ المعادة خارج مسير الرواتب. أما استقطاعات المسير فتُسجَّل تلقائياً.',
+  'This advance is already fully repaid.': 'تم سداد هذه السلفة بالكامل.',
+  'Choose the account the money was paid into.': 'اختر الحساب الذي أُودع فيه المبلغ.',
+  'Write off advance': 'شطب السلفة', 'Charge to': 'تُحمّل على', 'Left without notice': 'ترك العمل دون إشعار',
+  'This is the point the advance becomes a cost. It cannot be undone from here — the entry would have to be reversed manually.': 'عند هذه النقطة تتحول السلفة إلى تكلفة. ولا يمكن التراجع من هنا — يلزم عكس القيد يدوياً.',
 
   // ── Print / PDF ──
   'Download PDF': 'تنزيل PDF', 'Back': 'رجوع',
@@ -2048,6 +2080,56 @@ const AR = {
   'Number Format': 'تنسيق الأرقام',
   'Western digits (0 1 2 3)': 'الأرقام الغربية (0 1 2 3)',
   'Arabic-Indic digits (٠ ١ ٢ ٣)': 'الأرقام العربية (٠ ١ ٢ ٣)',
+
+  // ── Viewing and editing a posted document ──
+  'Purchase Invoice': 'فاتورة مشتريات',
+  'Purchase invoice not found.': 'فاتورة المشتريات غير موجودة.',
+  'Supplier ref': 'مرجع المورّد',
+  'Posts to': 'يُرحّل إلى',
+  'Stock': 'مخزون',
+  'Exchange rate': 'سعر الصرف',
+  'Exceeds balance due': 'يتجاوز الرصيد المستحق',
+  'Payments': 'المدفوعات',
+  'Edited': 'مُعدّلة',
+  'revision {n}': 'المراجعة {n}',
+  'Edit Invoice': 'تعديل الفاتورة',
+  'Edit Purchase Invoice': 'تعديل فاتورة المشتريات',
+  'Edit Journal Entry': 'تعديل قيد اليومية',
+  'Back to Invoice': 'العودة إلى الفاتورة',
+  'Back to Bill': 'العودة إلى الفاتورة',
+  'This invoice cannot be edited': 'لا يمكن تعديل هذه الفاتورة',
+  'This bill cannot be edited': 'لا يمكن تعديل هذه الفاتورة',
+  'This invoice can no longer be edited.': 'لم يعد بالإمكان تعديل هذه الفاتورة.',
+  'This bill can no longer be edited.': 'لم يعد بالإمكان تعديل هذه الفاتورة.',
+  'This entry cannot be edited.': 'لا يمكن تعديل هذا القيد.',
+  'Saving re-posts this invoice: its journal entries and stock movements are replaced with the corrected ones. The invoice keeps its number, and the change is recorded in the audit log.':
+    'الحفظ يعيد ترحيل هذه الفاتورة: تُستبدل قيود اليومية وحركات المخزون الخاصة بها بالقيود والحركات المصححة. تحتفظ الفاتورة برقمها، ويُسجَّل التعديل في سجل المراجعة.',
+  'Saving re-posts this bill: its journal entries and stock movements are replaced with the corrected ones. The bill keeps its number, and the change is recorded in the audit log.':
+    'الحفظ يعيد ترحيل هذه الفاتورة: تُستبدل قيود اليومية وحركات المخزون الخاصة بها بالقيود والحركات المصححة. تحتفظ الفاتورة برقمها، ويُسجَّل التعديل في سجل المراجعة.',
+  'Saving replaces this entry in the ledger, keeping its number. The change is recorded in the audit log.':
+    'الحفظ يستبدل هذا القيد في دفتر الأستاذ مع الاحتفاظ برقمه. ويُسجَّل التعديل في سجل المراجعة.',
+
+  // Why a document or entry is read-only
+  'This document no longer exists.': 'هذا المستند لم يعد موجوداً.',
+  'This document has been voided. A voided document is kept exactly as it was posted.':
+    'تم إلغاء هذا المستند. ويُحفظ المستند الملغى تماماً كما تم ترحيله.',
+  'Money has already moved against this document. Reverse the payment first, or void it and issue a corrected one.':
+    'تمت حركة نقدية على هذا المستند بالفعل. قم بعكس الدفعة أولاً، أو ألغِ المستند وأصدر مستنداً مصححاً.',
+  'A return has already been raised against this document. Void it and issue a corrected one instead.':
+    'تم إصدار مرتجع على هذا المستند بالفعل. ألغِ المستند وأصدر مستنداً مصححاً بدلاً من ذلك.',
+  'This document falls in a closed accounting period. Void it with a reversal dated in an open period instead.':
+    'يقع هذا المستند في فترة محاسبية مقفلة. ألغِه بقيد عكسي بتاريخ في فترة مفتوحة بدلاً من ذلك.',
+  'This bill came from a goods receipt and clears the GRNI accrual. Correct it on the purchase order it came from.':
+    'صدرت هذه الفاتورة عن إشعار استلام بضاعة وتُسوّي مخصص البضاعة المستلمة غير المفوترة. صححها من أمر الشراء الذي صدرت عنه.',
+  'This document is quantity-matched to an order, and editing it here would leave the two disagreeing. Correct it on the order.':
+    'هذا المستند مطابق بالكميات لأمر، وتعديله هنا سيجعل الاثنين غير متطابقين. صححه من الأمر.',
+  'This entry was posted automatically by a document. Edit the invoice, bill or receipt it came from and the entry will be re-posted with it.':
+    'رُحّل هذا القيد تلقائياً بواسطة مستند. عدّل الفاتورة أو السند الذي صدر عنه وسيُعاد ترحيل القيد معه.',
+  'This entry has already been voided.': 'تم إلغاء هذا القيد بالفعل.',
+  'This is a reversal entry and cannot be changed.': 'هذا قيد عكسي ولا يمكن تغييره.',
+  'This entry falls in a closed accounting period. Post a correcting entry in an open period instead.':
+    'يقع هذا القيد في فترة محاسبية مقفلة. رحّل قيداً تصحيحياً في فترة مفتوحة بدلاً من ذلك.',
+  'This entry no longer exists.': 'هذا القيد لم يعد موجوداً.',
 }
 
 export const useI18n = create(

@@ -31,3 +31,9 @@ globalThis.window.dispatchEvent = (event) => {
   return true
 }
 globalThis.window.matchMedia = () => ({ matches: false, addEventListener() {}, removeEventListener() {} })
+
+// Code paths that end in a page reload (restoring a backup or a snapshot) need
+// somewhere for that call to land, so a test can run them and then assert on
+// what happened *before* the reload — flushing the restored state, in
+// particular.
+globalThis.window.location = globalThis.window.location || { reload() {}, href: 'http://localhost/' }

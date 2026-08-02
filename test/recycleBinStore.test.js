@@ -195,7 +195,7 @@ describe('every covered entity actually snapshots on delete', () => {
       timeEntries: 'deleteTimeEntry', scheduledTransfers: 'deleteScheduledTransfer',
       capitalAccounts: 'deleteCapitalAccount',
       salesOrders: 'deleteSalesOrder', purchaseQuotes: 'deletePurchaseQuote',
-      stockCounts: 'deleteStockCount', cheques: 'deleteCheque', customerAdvances: 'deleteAdvance',
+      stockCounts: 'deleteStockCount', cheques: 'deleteCheque', customerAdvances: 'deleteAdvance', employeeAdvances: 'deleteEmployeeAdvance',
     }
     Object.keys(RECYCLABLE).forEach((entity) => {
       expect(wired[entity], `${entity} has no delete action mapped`).toBeTruthy()
