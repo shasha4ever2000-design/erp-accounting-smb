@@ -5,6 +5,7 @@ import { useT } from '../i18n'
 import { Input } from './UI'
 import ExportMenu from './ExportMenu'
 import { X, ArrowUpRight, ArrowDownRight, ArrowRight } from 'lucide-react'
+import { narrate } from '../utils/jeNarration'
 
 // Per-account-type accent, so the drawer reads at a glance which side of the
 // books you are looking at (assets blue, liabilities orange, and so on).
@@ -73,7 +74,7 @@ export default function AccountLedgerModal({ open, onClose, account, accounts, j
       if (je.date < rangeStart) { opening += move; return }
       if (je.date > rangeEnd) return
       const contra = je.lines.filter((x) => !inGroup(x.accountId)).map((x) => accById[x.accountId]).filter(Boolean)
-      rows.push({ id: je.id, date: je.date, ref: je.number, type: je.type, desc: descPick || je.description, dr, cr, move, contra })
+      rows.push({ id: je.id, date: je.date, ref: je.number, type: je.type, desc: narrate(descPick || je.description, t), dr, cr, move, contra })
     })
 
     let running = opening

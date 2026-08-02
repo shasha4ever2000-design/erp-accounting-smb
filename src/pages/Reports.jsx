@@ -14,6 +14,7 @@ import AccountLedgerModal from '../components/AccountLedgerModal'
 import { ChevronRight } from 'lucide-react'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
+import { narrate } from '../utils/jeNarration'
 
 const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)', group: 'Financial Statements' },
@@ -582,7 +583,7 @@ export default function Reports() {
         const cr = l.credit || 0
         if (['asset', 'expense'].includes(acc?.type)) running += dr - cr
         else running += cr - dr
-        lines.push({ date: je.date, desc: je.description, ref: je.number, dr, cr, running })
+        lines.push({ date: je.date, desc: narrate(je.description, t), ref: je.number, dr, cr, running })
       })
     })
 
@@ -809,7 +810,7 @@ export default function Reports() {
       if (delta === 0) return
       if (je.date < startDate) { opening += delta; return }
       if (je.date > endDate) return
-      cats[classify(je)].push({ date: je.date, desc: je.description, ref: je.number, amount: delta })
+      cats[classify(je)].push({ date: je.date, desc: narrate(je.description, t), ref: je.number, amount: delta })
     })
     const catTotal = (c) => cats[c].reduce((s, x) => s + x.amount, 0)
     const net = catTotal('operating') + catTotal('investing') + catTotal('financing')
