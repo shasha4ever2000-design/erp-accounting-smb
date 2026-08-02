@@ -1,5 +1,5 @@
 // Shared UI primitives (light + dark mode aware)
-import { Fragment, useState } from 'react'
+import { Fragment, Children, cloneElement, isValidElement, useState } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useT } from '../i18n'
 
@@ -107,6 +107,29 @@ export function Input({ label, error, className = '', ...props }) {
   )
 }
 
+// A dropdown's options are as much a label as the one above it: a field
+// reading "نوع التوظيف" over a list saying "Full-time" is still an English
+// form. Options carrying data — an account name, a customer — pass through
+// untouched, because t() returns anything it has no translation for.
+function translateOptions(children, t) {
+  return Children.map(children, (child) => {
+    if (!isValidElement(child)) return child
+    if (child.type === 'optgroup') {
+      return cloneElement(child, {
+        label: typeof child.props.label === 'string' ? t(child.props.label) : child.props.label,
+        children: translateOptions(child.props.children, t),
+      })
+    }
+    if (child.type !== 'option') return child
+    const kids = child.props.children
+    if (typeof kids !== 'string') return child
+    const trimmed = kids.trim()
+    if (!trimmed) return child
+    const out = t(trimmed)
+    return out === trimmed ? child : cloneElement(child, { children: kids.replace(trimmed, out) })
+  })
+}
+
 export function Select({ label, error, children, className = '', ...props }) {
   const t = useT()
   const id = useFieldId(props.id)
@@ -116,7 +139,7 @@ export function Select({ label, error, children, className = '', ...props }) {
       <FieldLabel label={label} htmlFor={id} t={t} />
       <select id={id} aria-invalid={error ? true : undefined} aria-describedby={errId}
         className={`${fieldBase} cursor-pointer ${error ? fieldErr : fieldOk}`} {...props}>
-        {children}
+        {translateOptions(children, t)}
       </select>
       <FieldError error={error} id={errId} />
     </div>
