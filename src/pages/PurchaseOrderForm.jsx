@@ -41,13 +41,16 @@ export default function PurchaseOrderForm() {
     }))
   }
 
+  // Linking a line to a stock item is what makes receiving it move stock —
+  // receiveGoods posts to Inventory only when the line carries an itemId, and
+  // otherwise books it to the line's expense account. So the choice has to be
+  // reversible, and it has to be visible: see the note rendered per line below.
   const pickItem = (lineId, itemId) => {
     const item = inventoryItems.find((i) => i.id === itemId)
-    if (!item) return
     setLines((ls) => ls.map((l) => {
       if (l.id !== lineId) return l
+      if (!item) return { ...l, itemId: '', accountId: 'acc-admin' }   // back to an expense line
       const qty = parseFloat(l.quantity) || 1
-      // Carry itemId so a converted bill receives stock into inventory (perpetual).
       return { ...l, itemId, description: item.name, unitPrice: item.costPrice || 0, subtotal: qty * (item.costPrice || 0), accountId: item.inventoryAccountId || 'acc-inv', taxRate: item.taxRate || 0 }
     }))
   }
@@ -103,15 +106,17 @@ export default function PurchaseOrderForm() {
               <div key={line.id} className="border border-slate-200/70 dark:border-surface-700 rounded-xl p-3 space-y-2 bg-slate-50 dark:bg-surface-800/60">
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                   <div className="col-span-2">
-                    <Select label="Product (optional)" value="" onChange={(e) => pickItem(line.id, e.target.value)}>
-                      <option value="">{t('Pick from inventory...')}</option>
-                      {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
+                    <Select label={t('Stock item')} value={line.itemId || ''} onChange={(e) => pickItem(line.id, e.target.value)}>
+                      <option value="">{t('— Expense / non-stock —')}</option>
+                      {inventoryItems.map((i) => <option key={i.id} value={i.id}>📦 {i.name}</option>)}
                     </Select>
                   </div>
                   <div className="col-span-2">
-                    <Select label="Expense / Asset Account" value={line.accountId} onChange={(e) => setLine(line.id, 'accountId', e.target.value)}>
-                      {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
-                    </Select>
+                    {line.itemId
+                      ? <p className="text-[11px] text-blue-600 dark:text-blue-400 px-1 pt-6">{t('Received into stock (perpetual, weighted-average)')}</p>
+                      : <Select label={t('Expense / Asset Account')} value={line.accountId} onChange={(e) => setLine(line.id, 'accountId', e.target.value)}>
+                          {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
+                        </Select>}
                   </div>
                 </div>
                 <Input label="Description *" value={line.description} onChange={(e) => setLine(line.id, 'description', e.target.value)} placeholder="Item / service description" />

@@ -2004,6 +2004,10 @@ const AR = {
   'Purchase': 'شراء',
   'Account': 'الحساب', 'Debit': 'مدين', 'Credit': 'دائن', 'Expense': 'مصروف', 'Section': 'القسم',
   'Journal Entry': 'قيد يومية',
+  'Stock item': 'صنف مخزني',
+  'Not going into stock:': 'لن يدخل المخزون:',
+  'these lines are not linked to a stock item, so they post to an expense account and inventory will not change. Edit the order and pick the stock item if that is not what you want.':
+    'هذه البنود غير مرتبطة بصنف مخزني، لذا تُرحَّل إلى حساب مصروف ولن يتغيّر المخزون. عدّل أمر الشراء واختر الصنف المخزني إن لم يكن هذا ما تقصده.',
 
   // ── Employee advances / staff loans ──
   'Employee Advances': 'سلف الموظفين',
