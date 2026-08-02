@@ -2130,6 +2130,42 @@ const AR = {
   'This entry falls in a closed accounting period. Post a correcting entry in an open period instead.':
     'يقع هذا القيد في فترة محاسبية مقفلة. رحّل قيداً تصحيحياً في فترة مفتوحة بدلاً من ذلك.',
   'This entry no longer exists.': 'هذا القيد لم يعد موجوداً.',
+
+  // ── Egypt · ETA e-invoicing ──
+  'Egypt · ETA E-Invoicing': 'مصر · الفوترة الإلكترونية (مصلحة الضرائب)',
+  'Apply Egypt preset': 'تطبيق إعدادات مصر',
+  'Enable ETA e-invoicing': 'تفعيل الفوترة الإلكترونية',
+  'Build the JSON document the Egyptian Tax Authority expects, and check it before you file. Signing needs your e-signature token and submission happens on the ETA portal, so this prepares the document rather than sending it.':
+    'إنشاء مستند JSON بالشكل الذي تطلبه مصلحة الضرائب المصرية، والتحقق منه قبل التقديم. التوقيع يتطلب رمز التوقيع الإلكتروني الخاص بك ويتم الإرسال عبر بوابة المصلحة، لذا يقوم البرنامج بتجهيز المستند لا بإرساله.',
+  'Taxpayer Registration Number': 'رقم التسجيل الضريبي',
+  'Activity Code': 'كود النشاط',
+  'Branch ID': 'كود الفرع',
+  'Issuer address': 'عنوان المُصدِر',
+  'Governorate': 'المحافظة',
+  'City / Region': 'المدينة / المنطقة',
+  'Street': 'الشارع',
+  'Building Number': 'رقم المبنى',
+  'Default item code type': 'نوع كود الصنف الافتراضي',
+  'Document type version': 'إصدار نوع المستند',
+  'VAT sub-type codes': 'أكواد النوع الفرعي للضريبة',
+  'Standard rate': 'النسبة العامة',
+  'Zero-rated': 'خاضع بنسبة صفر',
+  'Exempt': 'معفى',
+  'Check the sub-type codes against your own ETA profile — the right code depends on your registered activity, and a wrong one passes every check here and is still refused by the Authority.':
+    'راجع الأكواد الفرعية مع ملفك لدى المصلحة — الكود الصحيح يعتمد على نشاطك المسجل، والكود الخاطئ يجتاز كل الفحوصات هنا وترفضه المصلحة.',
+  'Each stock item also needs an EGS or GS1 code (Inventory › edit an item). A line without one is rejected.':
+    'كل صنف مخزني يحتاج أيضاً كود EGS أو GS1 (المخزون › تعديل صنف). أي بند بدون كود يُرفض.',
+  'ETA item code': 'كود الصنف لدى المصلحة',
+  'ETA code type': 'نوع الكود',
+  'ETA receiver type': 'نوع المستلم',
+  'ETA JSON': 'ملف المصلحة',
+  'Download the ETA JSON document': 'تنزيل مستند JSON الخاص بالمصلحة',
+  'This invoice is not ready to file:': 'هذه الفاتورة غير جاهزة للتقديم:',
+  'EGS — Egyptian Goods & Services code': 'EGS — كود السلع والخدمات المصري',
+  'GS1 — global trade item number (barcode)': 'GS1 — الرقم العالمي للصنف (الباركود)',
+  'Business (has a tax registration number)': 'منشأة (لديها رقم تسجيل ضريبي)',
+  'Individual (national ID)': 'فرد (الرقم القومي)',
+  'Foreign customer': 'عميل أجنبي',
 }
 
 export const useI18n = create(

@@ -6,6 +6,7 @@ import { useAuth } from './auth'
 import { idbKvStorage, deferredJSONStorage, flushNow } from './utils/idbKvStorage'
 import { docFulfillment, defaultSelection, buildConversion } from './utils/fulfillment'
 import { editBlock } from './utils/docEdit'
+import { ETA_DEFAULT_TAX_SUBTYPES } from './utils/etaEinvoice'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
 import { weightedAverageCost } from './utils/inventoryCost'
@@ -138,6 +139,12 @@ const DEFAULT_SETTINGS = {
   cycleCount:    { policy: defaultCyclePolicy(), batchSize: 20 },
   tax:           { enabled: false, rate: 15, name: 'VAT', system: 'vat', country: '' },
   zatca:         { enabled: false, vatNumber: '', crNumber: '', showQr: true },
+  // Egyptian Tax Authority e-invoicing. See utils/etaEinvoice — this app shapes
+  // and validates the document; signing and submission stay with the taxpayer.
+  eta:           { enabled: false, taxpayerId: '', activityCode: '', branchId: '0',
+                   documentTypeVersion: '1.0', defaultItemCodeType: 'EGS',
+                   address: { country: 'EG', governate: '', regionCity: '', street: '', buildingNumber: '', postalCode: '' },
+                   taxSubTypes: { ...ETA_DEFAULT_TAX_SUBTYPES } },
   wht:           { enabled: false, rate: 5, name: 'Withholding Tax' },
   inventory:     { costingMethod: 'wac' },
   customFields:  Object.fromEntries(CF_ENTITIES.map((e) => [e.id, []])),
@@ -218,6 +225,18 @@ export const useStore = create(
 
       updateZatca: (patch) =>
         set((s) => ({ settings: { ...s.settings, zatca: { ...(s.settings.zatca || {}), ...patch } } })),
+
+      // The nested address and tax-code maps are merged a level deeper, so
+      // setting one field of an address does not wipe the rest of it.
+      updateEta: (patch) =>
+        set((s) => {
+          const cur = s.settings.eta || {}
+          return { settings: { ...s.settings, eta: {
+            ...cur, ...patch,
+            address: { ...(cur.address || {}), ...(patch.address || {}) },
+            taxSubTypes: { ...ETA_DEFAULT_TAX_SUBTYPES, ...(cur.taxSubTypes || {}), ...(patch.taxSubTypes || {}) },
+          } } }
+        }),
 
       updateCustomFields: (patch) =>
         set((s) => ({ settings: { ...s.settings, customFields: { ...(s.settings.customFields || {}), ...patch } } })),
@@ -4668,7 +4687,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 36, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 37, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4865,7 +4884,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 36,
+      version: 37,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5062,6 +5081,24 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 37) {
+          // Egyptian e-invoicing settings. Off unless switched on, so nobody
+          // outside Egypt gains a section they have no use for.
+          //
+          // Spread rather than assign into persisted.settings: a partial blob
+          // may carry no settings at all, and reaching into an undefined one
+          // throws — which aborts the whole migration chain, taking every
+          // earlier version's work with it.
+          persisted.settings = {
+            ...persisted.settings,
+            eta: persisted.settings?.eta || {
+              enabled: false, taxpayerId: '', activityCode: '', branchId: '0',
+              documentTypeVersion: '1.0', defaultItemCodeType: 'EGS',
+              address: { country: 'EG', governate: '', regionCity: '', street: '', buildingNumber: '', postalCode: '' },
+              taxSubTypes: { ...ETA_DEFAULT_TAX_SUBTYPES },
+            },
+          }
         }
         if (version < 36) {
           // Employee salary advances. An asset — money handed over that has

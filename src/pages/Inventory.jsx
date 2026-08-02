@@ -10,6 +10,7 @@ import { useT } from '../i18n'
 import { CustomFieldInputs } from '../components/CustomFields'
 import { validateValues } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
+import { ETA_ITEM_CODE_TYPES } from '../utils/etaEinvoice'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
 
 const emptyForm = {
@@ -17,6 +18,9 @@ const emptyForm = {
   costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
   taxRate: 0, isKit: false, components: [],
+  // Egyptian e-invoicing: ETA rejects an invoice line whose item carries no
+  // EGS or GS1 code. Only asked for when ETA filing is switched on.
+  etaItemCode: '', etaItemCodeType: '',
   customFields: {},
 }
 
@@ -202,6 +206,15 @@ export default function Inventory() {
             <Input label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)} placeholder="e.g. Raw Materials, Finished Goods" />
             <Input label="Barcode" value={form.barcode} onChange={(e) => setField('barcode', e.target.value)} placeholder="EAN / UPC / scan" />
           </div>
+          {/* Only Egyptian filers need this, and only they should be asked. */}
+          {settings.eta?.enabled && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Input label={t('ETA item code')} value={form.etaItemCode} onChange={(e) => setField('etaItemCode', e.target.value)} placeholder="EGS or GS1 code" />
+              <Select label={t('ETA code type')} value={form.etaItemCodeType || settings.eta?.defaultItemCodeType || 'EGS'} onChange={(e) => setField('etaItemCodeType', e.target.value)}>
+                {ETA_ITEM_CODE_TYPES.map((c) => <option key={c.id} value={c.id}>{t(c.label)}</option>)}
+              </Select>
+            </div>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Unit" value={form.unit} onChange={(e) => setField('unit', e.target.value)} placeholder="pcs, kg, hr..." />
             <Input label="Cost Price" type="number" min="0" step="0.01" value={form.costPrice} onChange={(e) => setField('costPrice', e.target.value)} />

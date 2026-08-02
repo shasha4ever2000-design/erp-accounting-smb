@@ -10,8 +10,12 @@ import { CustomFieldInputs } from '../components/CustomFields'
 import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
+import { ETA_RECEIVER_TYPES } from '../utils/etaEinvoice'
 
-const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
+// etaReceiverType decides what Egyptian e-invoicing asks of this customer: a
+// business needs a tax registration number, an individual a national ID, a
+// foreign customer neither. Ignored outside Egypt.
+const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', paymentTerms: '', etaReceiverType: 'B', customFields: {} }
 
 export default function Customers() {
   const { customers, invoices, addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
@@ -24,7 +28,7 @@ export default function Customers() {
   const [search, setSearch] = useState('')
 
   const openNew = () => { setEditing(null); setForm(emptyForm); setModal(true) }
-  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', controlAccountId: c.controlAccountId || '', paymentTerms: typeof c.paymentTerms === 'string' ? c.paymentTerms : '', customFields: c.customFields || {} }); setModal(true) }
+  const openEdit = (c) => { setEditing(c); setForm({ name: c.name, email: c.email || '', phone: c.phone || '', address: c.address || '', taxId: c.taxId || '', creditLimit: c.creditLimit ?? '', priceListPct: c.priceListPct ?? '', notes: c.notes || '', controlAccountId: c.controlAccountId || '', paymentTerms: typeof c.paymentTerms === 'string' ? c.paymentTerms : '', etaReceiverType: c.etaReceiverType || 'B', customFields: c.customFields || {} }); setModal(true) }
   const close = () => setModal(false)
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
   const setCustom = (id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))
@@ -164,6 +168,12 @@ export default function Customers() {
             <Input label="Phone" value={form.phone} onChange={(e) => setField('phone', e.target.value)} placeholder="+1 234 567 890" />
           </div>
           <Input label="Tax / VAT ID" value={form.taxId} onChange={(e) => setField('taxId', e.target.value)} placeholder="Tax registration number" />
+          {/* Only Egyptian filers need this, and only they are asked. */}
+          {settings.eta?.enabled && (
+            <Select label={t('ETA receiver type')} value={form.etaReceiverType} onChange={(e) => setField('etaReceiverType', e.target.value)}>
+              {ETA_RECEIVER_TYPES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
+            </Select>
+          )}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Credit limit')} (${sym})`} type="number" min="0" step="0.01" value={form.creditLimit} onChange={(e) => setField('creditLimit', e.target.value)} placeholder={t('0 = no limit')} />
             <Select label={t('Payment terms')} value={form.paymentTerms} onChange={(e) => setField('paymentTerms', e.target.value)}>

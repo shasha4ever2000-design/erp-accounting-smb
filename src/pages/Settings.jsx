@@ -9,6 +9,7 @@ import { encryptBackup, decryptBackup, parseBackupText } from '../utils/backup'
 import { flushNow } from '../utils/idbKvStorage'
 import { COSTING_METHODS } from '../utils/fifo'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
+import { ETA_ITEM_CODE_TYPES, ETA_DEFAULT_TAX_SUBTYPES } from '../utils/etaEinvoice'
 import { APPROVAL_KINDS, defaultApprovalSettings } from '../utils/approvals'
 import CloudSyncCard from '../components/CloudSyncCard'
 import IntegrityCheckCard from '../components/IntegrityCheckCard'
@@ -30,7 +31,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
+  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -42,6 +43,16 @@ export default function Settings() {
   const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
   const [wht, setWht] = useState({ enabled: false, rate: 5, name: 'Withholding Tax', ...(settings.wht || {}) })
   const setWhtField = (k, v) => setWht((w) => ({ ...w, [k]: v }))
+  const [eta, setEta] = useState({
+    enabled: false, taxpayerId: '', activityCode: '', branchId: '0',
+    documentTypeVersion: '1.0', defaultItemCodeType: 'EGS',
+    ...(settings.eta || {}),
+    address: { country: 'EG', governate: '', regionCity: '', street: '', buildingNumber: '', ...(settings.eta?.address || {}) },
+    taxSubTypes: { ...ETA_DEFAULT_TAX_SUBTYPES, ...(settings.eta?.taxSubTypes || {}) },
+  })
+  const setEtaField = (k, v) => setEta((s) => ({ ...s, [k]: v }))
+  const setEtaAddr  = (k, v) => setEta((s) => ({ ...s, address: { ...s.address, [k]: v } }))
+  const setEtaSub   = (k, v) => setEta((s) => ({ ...s, taxSubTypes: { ...s.taxSubTypes, [k]: v } }))
   // Custom fields save through the store as they are edited — see
   // CustomFieldsManager — so there is no local copy to reconcile here.
   const [showKey, setShowKey] = useState(false)
@@ -84,6 +95,10 @@ export default function Settings() {
     if (r.currency) setCompany((c) => ({ ...c, currency: r.currency, currencySymbol: CURRENCIES.find((cu) => cu.code === r.currency)?.symbol || r.currency }))
     if (r.zatca) setZatca((z) => ({ ...z, enabled: true, showQr: true }))
     else if (tax.country && tax.country !== id) setZatca((z) => ({ ...z, enabled: false }))
+    // Egypt mandates ETA filing, so picking Egypt turns it on; picking anywhere
+    // else turns it back off rather than leaving a section nobody needs.
+    if (r.id === 'EG') setEta((e) => ({ ...e, enabled: true }))
+    else if (tax.country && tax.country !== id) setEta((e) => ({ ...e, enabled: false }))
   }
 
   const [encryptExport, setEncryptExport] = useState(false)
@@ -202,6 +217,7 @@ export default function Settings() {
     updateInvoiceSettings(invoice)
     updateAiSettings(ai)
     updateZatca(zatca)
+    updateEta(eta)
     updateWht(wht)
     // keep the company-picker label in sync with the company name
     try {
@@ -457,6 +473,60 @@ export default function Settings() {
                   <p className="font-medium">{t('The QR code encodes (per ZATCA Phase 1):')}</p>
                   <p>{t('• Seller name & VAT number · Invoice timestamp · Total with VAT · VAT amount')}</p>
                   <p>{t('Use the "Apply Saudi preset" button above to set SAR, 15% VAT and this section together, then Save.')}</p>
+                </div>
+              </>
+            )}
+          </div>
+        </Card>
+
+        {/* Egypt · ETA e-invoicing. The document and its checks live here;
+            signing and submission stay with the taxpayer, and the panel says so
+            rather than implying this files anything. */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-amber-500 to-red-600 flex items-center justify-center text-white text-[10px] font-bold">EG</div>
+              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Egypt · ETA E-Invoicing')}</h2>
+            </div>
+            <Btn size="sm" variant="secondary" onClick={() => applyTaxRegion('EG')}>{t('Apply Egypt preset')}</Btn>
+          </div>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+            {t('Build the JSON document the Egyptian Tax Authority expects, and check it before you file. Signing needs your e-signature token and submission happens on the ETA portal, so this prepares the document rather than sending it.')}
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <input type="checkbox" id="etaEnabled" checked={eta.enabled} onChange={(e) => setEtaField('enabled', e.target.checked)} className="w-4 h-4 rounded text-amber-600 dark:text-amber-400 focus:ring-amber-500" />
+              <label htmlFor="etaEnabled" className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Enable ETA e-invoicing')}</label>
+            </div>
+            {eta.enabled && (
+              <>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Input label={t('Taxpayer Registration Number')} value={eta.taxpayerId} onChange={(e) => setEtaField('taxpayerId', e.target.value)} placeholder="100200300" />
+                  <Input label={t('Activity Code')} value={eta.activityCode} onChange={(e) => setEtaField('activityCode', e.target.value)} placeholder="4620" />
+                  <Input label={t('Branch ID')} value={eta.branchId} onChange={(e) => setEtaField('branchId', e.target.value)} placeholder="0" />
+                </div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide pt-1">{t('Issuer address')}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Input label={t('Governorate')} value={eta.address?.governate || ''} onChange={(e) => setEtaAddr('governate', e.target.value)} placeholder="Cairo" />
+                  <Input label={t('City / Region')} value={eta.address?.regionCity || ''} onChange={(e) => setEtaAddr('regionCity', e.target.value)} placeholder="Nasr City" />
+                  <Input label={t('Street')} value={eta.address?.street || ''} onChange={(e) => setEtaAddr('street', e.target.value)} />
+                  <Input label={t('Building Number')} value={eta.address?.buildingNumber || ''} onChange={(e) => setEtaAddr('buildingNumber', e.target.value)} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Select label={t('Default item code type')} value={eta.defaultItemCodeType} onChange={(e) => setEtaField('defaultItemCodeType', e.target.value)}>
+                    {ETA_ITEM_CODE_TYPES.map((c) => <option key={c.id} value={c.id}>{t(c.label)}</option>)}
+                  </Select>
+                  <Input label={t('Document type version')} value={eta.documentTypeVersion} onChange={(e) => setEtaField('documentTypeVersion', e.target.value)} placeholder="1.0" />
+                </div>
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide pt-1">{t('VAT sub-type codes')}</p>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <Input label={t('Standard rate')} value={eta.taxSubTypes?.standard || ''} onChange={(e) => setEtaSub('standard', e.target.value)} />
+                  <Input label={t('Zero-rated')} value={eta.taxSubTypes?.zero || ''} onChange={(e) => setEtaSub('zero', e.target.value)} />
+                  <Input label={t('Exempt')} value={eta.taxSubTypes?.exempt || ''} onChange={(e) => setEtaSub('exempt', e.target.value)} />
+                </div>
+                <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-300 space-y-1">
+                  <p>{t('Check the sub-type codes against your own ETA profile — the right code depends on your registered activity, and a wrong one passes every check here and is still refused by the Authority.')}</p>
+                  <p>{t('Each stock item also needs an EGS or GS1 code (Inventory › edit an item). A line without one is rejected.')}</p>
                 </div>
               </>
             )}
