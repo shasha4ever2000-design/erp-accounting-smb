@@ -3,6 +3,7 @@ import { Routes, Route } from 'react-router-dom'
 import { useStore } from './store'
 import { useAuth } from './auth'
 import { useT } from './i18n'
+import { requestPersistence } from './utils/durability'
 import { CalendarClock, X } from 'lucide-react'
 import Layout from './components/Layout'
 import Dashboard from './pages/Dashboard' // eager: default landing route
@@ -118,7 +119,20 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Ask the browser not to treat this origin as disposable.
+  //
+  // Without this the books sit in "best-effort" storage, which a browser is
+  // free to evict whenever the disk gets tight — no prompt, no warning, no way
+  // back. One call moves the origin to "persistent", where it will not be
+  // reclaimed. Browsers may refuse (Chrome weighs engagement signals, Firefox
+  // asks the user), so a refusal is reported in Settings rather than treated
+  // as a failure. Idempotent: an origin already granted never asks again.
+  useEffect(() => { requestPersistence() }, [])
+
   // Daily auto-snapshot: one browser-local restore point per day.
+  // Worth being precise about what this is for — it recovers a bad import or a
+  // mistaken bulk edit. It is written to the same IndexedDB as the ledger, so
+  // it is not a backup, and nothing in the app counts it as one.
   useEffect(() => {
     useStore.getState().runBackupScheduler()
     // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -2649,6 +2649,39 @@ const AR = {
   'weeks': 'أسبوع',
   'items': 'أصناف',
   'net': 'الصافي',
+
+  // ── Durability: will this business still have its books tomorrow? ──
+  // Deliberately blunt in both languages. The failure being described is
+  // silent and permanent, and a softened Arabic rendering would leave Arabic
+  // users worse informed than English ones about the same risk.
+  'Your books exist in only one place': 'دفاترك موجودة في مكان واحد فقط',
+  'Your books are backed up, but not as well as they could be': 'دفاترك منسوخة احتياطيًا، لكن ليس بأفضل صورة ممكنة',
+  'Your books are safe off this device': 'دفاترك محفوظة خارج هذا الجهاز',
+  'You have never downloaded a backup file. If this browser loses its data, the books are gone.': 'لم تقم بتنزيل أي نسخة احتياطية من قبل. إذا فقد هذا المتصفح بياناته، تضيع الدفاتر نهائيًا.',
+  'Your last backup file is over a month old.': 'آخر نسخة احتياطية نزّلتها مضى عليها أكثر من شهر.',
+  'Your last backup file is more than a week old.': 'آخر نسخة احتياطية نزّلتها مضى عليها أكثر من أسبوع.',
+  'Cloud sync is linked but has never completed a sync.': 'المزامنة السحابية مرتبطة لكنها لم تكتمل ولو مرة واحدة.',
+  'Cloud sync has not run for over a week.': 'لم تعمل المزامنة السحابية منذ أكثر من أسبوع.',
+  'This browser has not granted persistent storage, so it may delete the data to free space.': 'لم يمنح هذا المتصفح تخزينًا دائمًا، لذا قد يحذف البيانات لتحرير مساحة.',
+  'This browser does not support persistent storage.': 'هذا المتصفح لا يدعم التخزين الدائم.',
+  'Browser storage for this app is nearly full.': 'مساحة تخزين المتصفح لهذا التطبيق شارفت على الامتلاء.',
+  'Browser storage for this app is filling up.': 'مساحة تخزين المتصفح لهذا التطبيق تمتلئ تدريجيًا.',
+  'Automatic snapshots are stored in this same browser, so they are lost with everything else. They are not a backup.': 'اللقطات التلقائية محفوظة في نفس هذا المتصفح، لذا تُفقد مع كل شيء آخر. هي ليست نسخة احتياطية.',
+  '({n} days ago)': '(منذ {n} يومًا)',
+  'You downloaded a backup today.': 'قمت بتنزيل نسخة احتياطية اليوم.',
+  'Using {used} of {total} browser storage': 'مستخدَم {used} من أصل {total} من تخزين المتصفح',
+  'Snapshots undo a bad import or a mistaken edit. They are stored in this browser alongside your data, so they are not a backup — only a downloaded file is.': 'اللقطات تتراجع عن استيراد خاطئ أو تعديل بالخطأ. وهي محفوظة في هذا المتصفح بجوار بياناتك، لذا فهي ليست نسخة احتياطية — النسخة الاحتياطية هي الملف المنزَّل فقط.',
+
+  // ── Ledger tamper-evidence ──
+  'The ledger has not been altered since posting': 'لم يُعدَّل دفتر اليومية منذ الترحيل',
+  // Two neighbours on the same card that were never translated. Spotted while
+  // adding the check above — a half-Arabic list reads as a half-finished app.
+  'Opening Balance Equity has been cleared': 'تمت تسوية حساب أرصدة أول المدة',
+  'Capital accounts agree with the ledger': 'حسابات الشركاء مطابقة لدفتر الأستاذ',
+  "This backup's ledger does not match the seal it was exported with — it has been changed since it was created. Restore it anyway?": 'دفتر اليومية في هذه النسخة الاحتياطية لا يطابق الختم الذي صُدِّرت به — أي أنه تغيّر بعد إنشائها. هل تريد الاستعادة رغم ذلك؟',
+  'Ledger seal': 'ختم دفتر اليومية',
+  'Copy': 'نسخ',
+  'Keep this value somewhere outside this browser — an email to yourself, a note, a printed statement. Anyone can recompute it from your data later to prove the ledger has not changed since today.': 'احتفظ بهذه القيمة في مكان خارج هذا المتصفح — رسالة إلى نفسك، أو ملاحظة، أو كشف مطبوع. يمكن لأي شخص إعادة حسابها من بياناتك لاحقًا لإثبات أن دفتر اليومية لم يتغيّر منذ اليوم.',
 }
 
 export const useI18n = create(
