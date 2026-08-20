@@ -3,20 +3,33 @@ import { useStore } from '../store'
 import { useT } from '../i18n'
 import { Card, Btn } from './UI'
 import { runIntegrityCheck } from '../utils/integrityCheck'
-import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle, RefreshCw, Activity } from 'lucide-react'
+import { ShieldCheck, ShieldAlert, CheckCircle2, XCircle, RefreshCw, Activity, ClipboardCopy, Check } from 'lucide-react'
 
 export default function IntegrityCheckCard() {
   const t = useT()
   const [result, setResult] = useState(null)
   const [busy, setBusy] = useState(false)
+  const [anchor, setAnchor] = useState(null)
+  const [copied, setCopied] = useState(false)
 
   const run = () => {
     setBusy(true)
     // Defer a frame so the spinner paints before the (synchronous) sweep runs.
     setTimeout(() => {
-      try { setResult(runIntegrityCheck(useStore.getState())) }
-      finally { setBusy(false) }
+      try {
+        const s = useStore.getState()
+        setResult(runIntegrityCheck(s))
+        setAnchor(s.ledgerAnchor())
+      } finally { setBusy(false) }
     }, 30)
+  }
+
+  const copyAnchor = async () => {
+    try {
+      await navigator.clipboard.writeText(anchor.head)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch { /* a browser that refuses the clipboard still shows the value */ }
   }
 
   return (
@@ -80,6 +93,30 @@ export default function IntegrityCheckCard() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* The seal, offered for copying.
+          A hash chain that never leaves the machine only ever proves things to
+          itself. The moment this value is written down somewhere the user does
+          not control, the ledger up to today stops being rewritable — so the
+          card's job is to make taking it out of here trivial. */}
+      {anchor && anchor.count > 0 && (
+        <div className="mb-4 rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs font-semibold text-gray-600 dark:text-slate-300">{t('Ledger seal')}</span>
+            <button
+              onClick={copyAnchor}
+              className="flex items-center gap-1 text-xs font-medium text-brand-600 dark:text-brand-400 hover:underline"
+            >
+              {copied ? <Check size={12} /> : <ClipboardCopy size={12} />}
+              {copied ? t('Copied') : t('Copy')}
+            </button>
+          </div>
+          <p className="mt-1 font-mono text-[11px] break-all text-gray-500 dark:text-slate-400">{anchor.head}</p>
+          <p className="mt-1.5 text-xs text-gray-400 dark:text-slate-500">
+            {t('Keep this value somewhere outside this browser — an email to yourself, a note, a printed statement. Anyone can recompute it from your data later to prove the ledger has not changed since today.')}
+          </p>
         </div>
       )}
 

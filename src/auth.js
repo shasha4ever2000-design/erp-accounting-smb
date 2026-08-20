@@ -11,7 +11,12 @@ async function sha256Hex(str) {
   return toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str)))
 }
 
-const PBKDF2_ITERATIONS = 210000
+// OWASP's guidance for PBKDF2-HMAC-SHA256 moved from 210,000 to 600,000 as
+// commodity cracking hardware got faster. Every stored hash records the count
+// it was made with (`iter`), so raising this is safe: existing passwords still
+// verify at their own strength and are re-hashed at the new one on the next
+// successful sign-in, without asking anyone to change a password.
+const PBKDF2_ITERATIONS = 600000
 
 // Current scheme: PBKDF2-SHA256, matching the strength already used for
 // encrypted backups (see utils/backup.js).
@@ -107,8 +112,19 @@ export const useAuth = create(
         if (!u) return { error: 'No account found with this email.' }
 
         if (u.kdf === 'pbkdf2') {
-          const hash = await pbkdf2Hex(password, u.salt, u.iter || PBKDF2_ITERATIONS)
+          const iter = u.iter || PBKDF2_ITERATIONS
+          const hash = await pbkdf2Hex(password, u.salt, iter)
           if (!safeEqual(hash, u.hash)) return { error: 'Incorrect password.' }
+          // Strengthen an account hashed under an older, lower iteration count.
+          // The plaintext is in hand exactly once per sign-in, and this is that
+          // moment; doing it any other way would mean asking users to reset
+          // passwords that were never compromised.
+          if (iter < PBKDF2_ITERATIONS) {
+            const upgraded = await pbkdf2Hex(password, u.salt, PBKDF2_ITERATIONS)
+            set((s) => ({
+              users: s.users.map((x) => (x.id === u.id ? { ...x, hash: upgraded, iter: PBKDF2_ITERATIONS } : x)),
+            }))
+          }
         } else {
           // Legacy single-round SHA-256 account: verify against the old scheme,
           // then re-hash with PBKDF2 now that we have the plaintext in hand, so

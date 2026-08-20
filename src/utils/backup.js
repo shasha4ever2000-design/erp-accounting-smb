@@ -7,7 +7,10 @@
 // there is no recovery if it is lost, which is the point.
 
 const APP = 'erp-accounting-smb'
-const KDF_ITERATIONS = 210000
+// Current OWASP guidance for PBKDF2-HMAC-SHA256. Raising it does not strand
+// older files: every envelope records the count it was written with, and
+// decryptBackup derives at `envelope._iter` rather than at this constant.
+const KDF_ITERATIONS = 600000
 const subtle = () => {
   const c = globalThis.crypto
   if (!c || !c.subtle) throw new Error('Web Crypto is not available in this environment')

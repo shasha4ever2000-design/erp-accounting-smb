@@ -15,6 +15,7 @@ import CloudSyncCard from '../components/CloudSyncCard'
 import IntegrityCheckCard from '../components/IntegrityCheckCard'
 import CustomFieldsManager from '../components/CustomFieldsManager'
 import HrSettingsCard from '../components/HrSettingsCard'
+import DurabilityStatus from '../components/DurabilityStatus'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -31,7 +32,7 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, reopenSetup, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot } = useStore()
+  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, reopenSetup, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot, recordOffDeviceBackup, durabilityReport, checkBackupAnchor } = useStore()
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -115,6 +116,10 @@ export default function Settings() {
   const loadSnapshots = useCallback(async () => { setSnapshots(await listSnapshots()) }, [listSnapshots])
   useEffect(() => { if (snapshotsOpen) loadSnapshots() }, [snapshotsOpen, loadSnapshots])
 
+  const [durability, setDurability] = useState(null)
+  const loadDurability = useCallback(async () => { setDurability(await durabilityReport()) }, [durabilityReport])
+  useEffect(() => { loadDurability() }, [loadDurability])
+
   const handleExport = async () => {
     const data = exportData()
     setExportBusy(true)
@@ -135,11 +140,32 @@ export default function Settings() {
       a.click()
       URL.revokeObjectURL(url)
       setExportPass('')
+      // The moment a copy of the books actually leaves the device — and the
+      // only moment that counts. Snapshots run through exportData() too, so
+      // this is stamped here rather than inside it.
+      recordOffDeviceBackup(encryptExport && exportPass ? 'encrypted' : 'plain')
+      loadDurability()
     } catch (err) {
       alert(t('Export failed') + ': ' + err.message)
     } finally {
       setExportBusy(false)
     }
+  }
+
+  /**
+   * Check a backup against the anchor it was exported with, before restoring.
+   *
+   * A file whose ledger no longer matches its own anchor was changed after it
+   * was written. That is usually a truncated download or a well-meant edit in
+   * a text editor, occasionally something worse, and either way the user
+   * should get to decide rather than find out months later. Files older than
+   * the anchor carry none, and pass silently — an absent anchor is not
+   * evidence of anything.
+   */
+  const confirmAnchor = (data) => {
+    const res = checkBackupAnchor(data)
+    if (!res || res.ok) return true
+    return confirm(t("This backup's ledger does not match the seal it was exported with — it has been changed since it was created. Restore it anyway?"))
   }
 
   const handleImportFile = (e) => {
@@ -154,6 +180,7 @@ export default function Settings() {
           setImportPass('')
           setImportErr('')
         } else {
+          if (!confirmAnchor(parsed.data)) return
           if (!confirm(t('Restoring will REPLACE all current data with the backup. Continue?'))) return
           importData(parsed.data)
           // Saves are coalesced, so the restored books are still only in memory
@@ -176,6 +203,7 @@ export default function Settings() {
     setImportErr('')
     try {
       const data = await decryptBackup(importModal.envelope, importPass)
+      if (!confirmAnchor(data)) { setImportBusy(false); return }
       if (!confirm(t('Restoring will REPLACE all current data with the backup. Continue?'))) { setImportBusy(false); return }
       importData(data)
       await flushNow()   // see handleImportFile — reloading unflushed loses it
@@ -702,6 +730,8 @@ export default function Settings() {
             {t('Your data lives in this browser. Download a backup regularly so you never lose it — and restore it on any device or browser.')}
           </p>
 
+          <DurabilityStatus report={durability} />
+
           {/* Encrypt toggle */}
           <label className="flex items-center gap-2.5 mb-3 cursor-pointer select-none">
             <input type="checkbox" checked={encryptExport} onChange={(e) => setEncryptExport(e.target.checked)}
@@ -736,6 +766,9 @@ export default function Settings() {
                 <span className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t('Local Snapshots')}</span>
                 <span className="text-xs text-gray-400 dark:text-slate-500">({t('auto-saved daily, max 8')})</span>
               </div>
+              {/* Named for what it is. A snapshot undoes a mistake; it does not
+                  survive this browser, and letting anyone believe otherwise is
+                  the most expensive misunderstanding this page can cause. */}
               <div className="flex gap-2">
                 <Btn size="sm" variant="secondary" onClick={handleSnapshot} disabled={snapBusy}>
                   <RotateCcw size={13} /> {snapBusy ? t('Saving…') : t('Snapshot Now')}
@@ -745,6 +778,10 @@ export default function Settings() {
                 </Btn>
               </div>
             </div>
+
+            <p className="text-xs text-gray-400 dark:text-slate-500 -mt-1 mb-3">
+              {t('Snapshots undo a bad import or a mistaken edit. They are stored in this browser alongside your data, so they are not a backup — only a downloaded file is.')}
+            </p>
 
             {snapshotsOpen && (
               <div className="space-y-2">
