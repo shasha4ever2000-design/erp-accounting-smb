@@ -2,6 +2,7 @@ import { useMemo, useState, lazy, Suspense } from 'react'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import ScenarioPanel from '../components/ScenarioPanel'
 import { buildForecast, bySource, SOURCES, ALL_SOURCES, CERTAINTY } from '../utils/cashForecast'
 import { PageHeader, Card, Badge, Table, Tr, Td, EmptyState } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
@@ -50,11 +51,17 @@ export default function CashForecast() {
       .reduce((s, a) => s + natural(a), 0)
   }, [accounts, bankAccounts, getAllBalances])
 
-  const forecast = useMemo(() => buildForecast(
-    { invoices, purchases, cheques, recurringInvoices, recurringExpenses, leases, employees, scheduledTransfers, accounts, settings },
-    { from: today(), weeks, openingCash, include, collectOverdue },
-  ), [invoices, purchases, cheques, recurringInvoices, recurringExpenses, leases, employees,
-      scheduledTransfers, accounts, settings, weeks, openingCash, include, collectOverdue])
+  // Hoisted so the scenario panel runs against exactly the same inputs and
+  // options as the forecast it is a variation of.
+  const forecastData = useMemo(
+    () => ({ invoices, purchases, cheques, recurringInvoices, recurringExpenses, leases, employees, scheduledTransfers, accounts, settings }),
+    [invoices, purchases, cheques, recurringInvoices, recurringExpenses, leases, employees, scheduledTransfers, accounts, settings])
+  const forecastOpts = useMemo(
+    () => ({ from: today(), weeks, openingCash, include, collectOverdue }),
+    [weeks, openingCash, include, collectOverdue])
+
+  const forecast = useMemo(
+    () => buildForecast(forecastData, forecastOpts), [forecastData, forecastOpts])
 
   const contributions = useMemo(() => bySource(forecast), [forecast])
 
@@ -209,6 +216,9 @@ export default function CashForecast() {
               />
             </Suspense>
           </Card>
+
+          {/* ── What if? ── */}
+          <ScenarioPanel data={forecastData} opts={forecastOpts} base={forecast} sym={sym} />
 
           {/* ── What is being projected ── */}
           <Card className="p-4">

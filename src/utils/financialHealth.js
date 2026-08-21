@@ -17,6 +17,87 @@ const fmtX = (v) => (v == null ? '—' : `${v.toFixed(2)}×`)
 const fmtPct = (v) => (v == null ? '—' : `${(v * 100).toFixed(1)}%`)
 const fmtDays = (v) => (v == null ? '—' : `${Math.round(v)} ${v === 1 ? 'day' : 'days'}`)
 
+/**
+ * Gather the figures the ratios are built from, as at a date.
+ *
+ * Extracted from the Financial Health page so the trend view can compute the
+ * same ratios at earlier dates without a second implementation. That matters
+ * more than it looks: half of what follows is *classification* — which
+ * accounts count as inventory, as cash, as cost of sales — and a trend built
+ * on a slightly different notion of "cash" would draw a line that contradicts
+ * the number printed beside it.
+ *
+ * Balance-sheet figures are cumulative to `asOf`; P&L figures are the twelve
+ * months ending there, so last year's ratio is computed exactly as this
+ * year's was, on that year's own trailing window.
+ *
+ * `groupIdsWithRole` and `otherIncomeRole` are injected rather than imported
+ * to keep this module free of the account-tree dependency it otherwise has no
+ * use for.
+ */
+export function healthInputs({ accounts = [], accountGroups = [], getAllBalances }, asOf, groupIdsWithRole, otherIncomeRole) {
+  const at = asOf || new Date().toISOString().slice(0, 10)
+  const ttmStart = (() => {
+    const d = new Date(at)
+    d.setUTCFullYear(d.getUTCFullYear() - 1)
+    d.setUTCDate(d.getUTCDate() + 1)
+    return d.toISOString().slice(0, 10)
+  })()
+  const allBal = getAllBalances(undefined, at)   // cumulative → balance sheet
+  const ttmBal = getAllBalances(ttmStart, at)    // trailing 12 months → P&L
+
+  const acc = (id) => accounts.find((a) => a.id === id)
+  const nat = (a, bals) => {
+    const b = bals[a.id] || { dr: 0, cr: 0 }
+    return ['asset', 'expense'].includes(a.type) ? b.dr - b.cr : b.cr - b.dr
+  }
+  const sumType = (type, subtype, bals) => accounts
+    .filter((a) => a.type === type && (!subtype || a.subtype === subtype))
+    .reduce((s, a) => s + nat(a, bals), 0)
+
+  const invIds = new Set(['acc-inv', 'acc-rawmat', 'acc-wip', 'acc-fingoods'])
+  const isInventory = (a) => a.type === 'asset' && (invIds.has(a.id) || /inventory|raw material|finished goods|work.?in.?progress|stock/i.test(a.name || ''))
+  const isCash = (a) => a.type === 'asset' && a.subtype === 'current' && (['acc-cash', 'acc-bank1'].includes(a.id) || /cash|bank/i.test(a.name || ''))
+  const isCogs = (a) => a.type === 'expense' && (a.id === 'acc-cogs' || /cost of (goods|sales)|cogs/i.test(a.name || ''))
+
+  const totalAssets = sumType('asset', null, allBal)
+  const totalLiabilities = sumType('liability', null, allBal)
+
+  // Every ratio that divides by revenue means *trading* revenue: gross and net
+  // margin per riyal of sales, and DSO against the sales that create
+  // receivables. Other income — an FX movement, a gain on selling a van — is
+  // none of those, so it comes out, exactly as it does on the P&L. Net income
+  // still counts it, because it genuinely is part of the bottom line.
+  const otherIncomeGroups = groupIdsWithRole ? groupIdsWithRole(accountGroups, otherIncomeRole) : new Set()
+  const allRevenue = sumType('revenue', null, ttmBal)
+  const otherIncome = accounts
+    .filter((a) => a.type === 'revenue' && otherIncomeGroups.has(a.groupId))
+    .reduce((s, a) => s + nat(a, ttmBal), 0)
+  const revenue = allRevenue - otherIncome
+  const cogs = accounts.filter(isCogs).reduce((s, a) => s + nat(a, ttmBal), 0)
+  const expenses = sumType('expense', null, ttmBal)
+
+  return {
+    asOf: at,
+    ttmStart,
+    currentAssets: sumType('asset', 'current', allBal),
+    inventory: accounts.filter(isInventory).reduce((s, a) => s + nat(a, allBal), 0),
+    cash: accounts.filter(isCash).reduce((s, a) => s + nat(a, allBal), 0),
+    currentLiabilities: sumType('liability', 'current', allBal),
+    totalAssets,
+    totalLiabilities,
+    // The accounting identity, so this carries retained earnings and the
+    // current period's profit without either having to be posted.
+    equity: totalAssets - totalLiabilities,
+    revenue,
+    cogs,
+    grossProfit: revenue - cogs,
+    netIncome: allRevenue - expenses,
+    ar: acc('acc-ar') ? nat(acc('acc-ar'), allBal) : 0,
+    ap: acc('acc-ap') ? nat(acc('acc-ap'), allBal) : 0,
+  }
+}
+
 // m: { currentAssets, inventory, cash, currentLiabilities, totalAssets,
 //      totalLiabilities, equity, revenue, cogs, grossProfit, netIncome, ar, ap }
 export function computeFinancialHealth(m = {}) {

@@ -281,7 +281,15 @@ export function buildForecast(data = {}, opts = {}) {
   const openingCash = r2(opts.openingCash)
   const until = shiftDays(from, weekCount * 7 - 1)
 
-  const events = forecastEvents(data, { ...opts, from, until })
+  // `transformEvents` is the seam scenario planning hangs off: it rewrites the
+  // projected events — delaying collections, scaling revenue, adding a hire —
+  // and everything below aggregates them exactly as it aggregates the real
+  // ones. A scenario that reimplemented the weekly roll-up would sooner or
+  // later disagree with the forecast it claims to be a variation of.
+  const raw = forecastEvents(data, { ...opts, from, until })
+  const events = typeof opts.transformEvents === 'function'
+    ? opts.transformEvents(raw, { from, until })
+    : raw
   const overdueEvents = events.filter((e) => e.overdue)
   const futureEvents = events.filter((e) => !e.overdue)
 
