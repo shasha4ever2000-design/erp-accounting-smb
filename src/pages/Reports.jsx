@@ -16,16 +16,20 @@ import { format, startOfYear, endOfYear } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid } from 'recharts'
 import { narrate } from '../utils/jeNarration'
 import { marginByCustomer, marginByItem, marginSummary } from '../utils/margin'
+import { buildEquityStatement } from '../utils/equityStatement'
+import { BUCKETS as ECL_BUCKETS } from '../utils/ecl'
 
 const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)', group: 'Financial Statements' },
   { id: 'bs', label: 'Balance Sheet', group: 'Financial Statements' },
   { id: 'cf', label: 'Cash Flow Statement', group: 'Financial Statements' },
+  { id: 'soce', label: 'Statement of Changes in Equity', group: 'Financial Statements' },
   { id: 'vat', label: 'VAT Return (ZATCA)', group: 'Financial Statements' },
   { id: 'tb', label: 'Trial Balance', group: 'Ledgers' },
   { id: 'gl', label: 'General Ledger', group: 'Ledgers' },
   { id: 'ar', label: 'Accounts Receivable Aging', group: 'Ledgers' },
   { id: 'ap', label: 'Accounts Payable Aging', group: 'Ledgers' },
+  { id: 'ecl', label: 'Expected Credit Losses (IFRS 9)', group: 'Ledgers' },
   { id: 'sales-cust', label: 'Sales by Customer', group: 'Sales & Purchases' },
   { id: 'sales-item', label: 'Sales by Item', group: 'Sales & Purchases' },
   { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
@@ -39,7 +43,7 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings } = useStore()
+  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -1287,6 +1291,123 @@ export default function Reports() {
     </>
   )
 
+  // ── Statement of Changes in Equity ──
+  // Explains why equity moved, which a balance sheet cannot: it shows capital
+  // at two dates and leaves the reader to guess whether the difference was
+  // profit, an injection, or the owner taking money out.
+  const EquityStatementReport = () => {
+    const st = useMemo(() => buildEquityStatement(
+      { accounts, journalEntries, balancesFor: getAllBalances },
+      { start: startDate, end: endDate },
+    ), [accounts, journalEntries, getAllBalances, startDate, endDate])
+
+    const cols = useMemo(() => {
+      const seen = []
+      st.rows.forEach((r) => r.movements.forEach((m) => { if (!seen.includes(m.label)) seen.push(m.label) }))
+      return seen
+    }, [st])
+
+    const amountFor = (row, label) => {
+      const m = row.movements.find((x) => x.label === label)
+      return m ? fmtMoney(m.amount, sym) : '—'
+    }
+
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            {t('Statement of Changes in Equity')} · {fmtDate(startDate)} — {fmtDate(endDate)}
+          </p>
+        </div>
+        <Table headers={[t('Component'), { label: t('Opening'), right: true },
+          ...cols.map((c) => ({ label: t(c), right: true })), { label: t('Closing'), right: true }]}>
+          {st.rows.map((r) => (
+            <Tr key={r.id}>
+              <Td>
+                <span className="font-medium text-gray-800 dark:text-slate-100">{t(r.name)}</span>
+                <span className="text-xs text-gray-400 dark:text-slate-500 ms-2">{r.code}</span>
+              </Td>
+              <Td right className="tabular-nums">{fmtMoney(r.opening, sym)}</Td>
+              {cols.map((c) => <Td key={c} right className="tabular-nums">{amountFor(r, c)}</Td>)}
+              <Td right className="tabular-nums font-semibold">{fmtMoney(r.closing, sym)}</Td>
+            </Tr>
+          ))}
+          <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+            <Td>{t('Total equity')}</Td>
+            <Td right className="tabular-nums">{fmtMoney(st.totals.opening, sym)}</Td>
+            {cols.map((c) => (
+              <Td key={c} right className="tabular-nums">
+                {fmtMoney(st.rows.reduce((a, r) => a + (r.movements.find((m) => m.label === c)?.amount || 0), 0), sym)}
+              </Td>
+            ))}
+            <Td right className="tabular-nums">{fmtMoney(st.totals.closing, sym)}</Td>
+          </Tr>
+        </Table>
+        <div className={`px-6 py-3 text-xs ${st.reconciles
+          ? 'text-gray-400 dark:text-slate-500'
+          : 'text-danger-600 dark:text-danger-400 bg-danger-50/60 dark:bg-danger-500/[0.07]'}`}>
+          {st.reconciles
+            ? `${t('Agrees with equity on the balance sheet')}: ${fmtMoney(st.balanceSheetEquity, sym)}`
+            : `${t('Does not agree with the balance sheet — difference')}: ${fmtMoney(st.difference, sym)}`}
+        </div>
+      </Card>
+    )
+  }
+
+  // ── IFRS 9 expected credit losses ──
+  const EclReport = () => {
+    const a = useMemo(() => eclAssessment(endDate), [eclAssessment, endDate, journalEntries, invoices])
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">
+              {t('Expected Credit Losses (IFRS 9)')} · {t('as at')} {fmtDate(endDate)}
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-500 dark:text-slate-400">{t('Allowance required')}</p>
+            <p className="text-xl font-semibold tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(a.required, sym)}</p>
+          </div>
+        </div>
+
+        <Table headers={[t('Ageing bucket'), { label: t('Exposure'), right: true },
+          { label: t('Loss rate'), right: true }, { label: t('Expected loss'), right: true }]}>
+          {a.ecl.rows.map((r) => (
+            <Tr key={r.key}>
+              <Td className="text-gray-700 dark:text-slate-200">{t(r.label)}</Td>
+              <Td right className="tabular-nums">{fmtMoney(r.exposure, sym)}</Td>
+              <Td right className="tabular-nums text-gray-500 dark:text-slate-400">{r.rate}%</Td>
+              <Td right className="tabular-nums font-medium">{fmtMoney(r.loss, sym)}</Td>
+            </Tr>
+          ))}
+          <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+            <Td>{t('Total')}</Td>
+            <Td right className="tabular-nums">{fmtMoney(a.aged.grandTotal, sym)}</Td>
+            <Td right>—</Td>
+            <Td right className="tabular-nums">{fmtMoney(a.required, sym)}</Td>
+          </Tr>
+        </Table>
+
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex items-center justify-between gap-4 flex-wrap">
+          <div className="text-xs text-gray-500 dark:text-slate-400 space-y-0.5">
+            <p>{t('Already provided')}: <strong className="text-gray-800 dark:text-slate-100">{fmtMoney(a.existing, sym)}</strong></p>
+            <p>{t('Movement to post')}: <strong className={a.movement >= 0 ? 'text-danger-600 dark:text-danger-400' : 'text-success-700 dark:text-success-400'}>{fmtMoney(a.movement, sym)}</strong></p>
+            <p className="pt-1 max-w-lg">{t('Rates come from Settings and should reflect your own collection history, as IFRS 9 requires. Only the movement is posted, never the whole allowance.')}</p>
+          </div>
+          {a.movement !== 0 && (
+            <Btn onClick={() => {
+              try { postEclProvision({ asOf: endDate }) }
+              catch (e) { alert(t('Could not post the provision: ') + e.message) }
+            }}>{t('Post provision')}</Btn>
+          )}
+        </div>
+      </Card>
+    )
+  }
+
   const SalesByCustomerReport = () => (
     <AnalyticalReport title="Sales by Customer"
       headers={['Customer', 'Invoices', 'Subtotal', 'Tax', 'Total', 'Paid', 'Outstanding']}
@@ -1710,6 +1831,8 @@ export default function Reports() {
         {report === 'tb' && <TBReport />}
         {report === 'gl' && <GLReport />}
         {report === 'ar' && <ARReport />}
+        {report === 'ecl' && <EclReport />}
+        {report === 'soce' && <EquityStatementReport />}
         {report === 'ap' && <APReport />}
         {report === 'sales-cust' && <SalesByCustomerReport />}
         {report === 'sales-item' && <SalesByItemReport />}
