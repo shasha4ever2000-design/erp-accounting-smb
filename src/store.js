@@ -31,6 +31,7 @@ import {
   PREV_TAG_LENGTH, prevTag,
 } from './utils/ledgerChain'
 import { isPersisted, storageEstimate, assessDurability } from './utils/durability'
+import { buildNotes } from './utils/disclosures'
 import {
   // `movementLines` is already taken by capitalAccounts, and the collision is
   // silent — the wrong function is simply called, and it throws.
@@ -3997,6 +3998,37 @@ export const useStore = create(
           currentTax: Math.round((taxCharge - (closing.net - opening.net)) * 100) / 100,
           unrecognisedAssetMovement: Math.round((closing.unrecognisedAsset - opening.unrecognisedAsset) * 100) / 100,
         })
+      },
+
+      // ─── NOTES TO THE FINANCIAL STATEMENTS ─────────────────────────
+
+      /**
+       * Every disclosure note for a period.
+       *
+       * Four primary statements without notes are not a set of IFRS financial
+       * statements. See utils/disclosures.js — the rule every note obeys is
+       * that it has to tie back to the face of the statements, and the pack
+       * reports which notes do not rather than presenting a clean total.
+       */
+      disclosureNotes: (start, end) => {
+        const s = get()
+        const at = end || new Date().toISOString().slice(0, 10)
+        const from = start || `${at.slice(0, 4)}-01-01`
+
+        // The aged analysis is only meaningful once a loss allowance policy
+        // exists; without one the note shows the balance and says no more.
+        let ageing = null
+        try { if (s.settings?.ecl?.enabled) ageing = s.eclAssessment(at).aged } catch { /* not configured */ }
+
+        // Likewise the tax note: there is nothing to disclose about deferred
+        // tax in a business that has not recognised any.
+        let taxNote = null
+        if (s.settings?.deferredTax?.enabled && s.settings?.deferredTax?.ratePct) {
+          const schedule = s.deferredTaxAssessment(at)
+          taxNote = { schedule, reconciliation: s.taxRateReconciliation(from, at) }
+        }
+
+        return buildNotes(s, { start: from, end: at, getAllBalances: s.getAllBalances, ageing, taxNote })
       },
 
       // ─── LEASES ────────────────────────────────────────────────────

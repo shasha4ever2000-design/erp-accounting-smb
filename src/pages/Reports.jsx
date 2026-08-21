@@ -31,6 +31,7 @@ const REPORTS = [
   { id: 'ap', label: 'Accounts Payable Aging', group: 'Ledgers' },
   { id: 'ecl', label: 'Expected Credit Losses (IFRS 9)', group: 'Ledgers' },
   { id: 'deferred-tax', label: 'Deferred Tax (IAS 12)', group: 'Financial Statements' },
+  { id: 'notes', label: 'Notes to the Financial Statements', group: 'Financial Statements' },
   { id: 'sales-cust', label: 'Sales by Customer', group: 'Sales & Purchases' },
   { id: 'sales-item', label: 'Sales by Item', group: 'Sales & Purchases' },
   { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
@@ -44,7 +45,7 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision, deferredTaxAssessment, postDeferredTax, taxRateReconciliation } = useStore()
+  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision, deferredTaxAssessment, postDeferredTax, taxRateReconciliation, disclosureNotes } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -1544,6 +1545,200 @@ export default function Reports() {
     )
   }
 
+  const NotesReport = () => {
+    const pack = useMemo(() => disclosureNotes(startDate, endDate),
+      [disclosureNotes, startDate, endDate, journalEntries])
+
+    // A movement schedule, rendered the same way wherever it appears — the
+    // consistency is the point: a reader learns the shape once.
+    const Schedule = ({ title, s }) => (
+      <div className="mb-4">
+        <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-1">{t(title)}</p>
+        <Table headers={['', { label: t('Amount'), right: true }]}>
+          <Tr><Td className="text-gray-600 dark:text-slate-300">{t('At the start of the period')}</Td>
+            <Td right className="tabular-nums">{fmtMoney(s.opening, sym)}</Td></Tr>
+          {s.movements.map((m, i) => (
+            <Tr key={i}><Td className="text-gray-600 dark:text-slate-300 ps-6">{t(m.label)}</Td>
+              <Td right className="tabular-nums">{fmtMoney(m.amount, sym)}</Td></Tr>
+          ))}
+          <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+            <Td>{t('At the end of the period')}</Td>
+            <Td right className="tabular-nums">{fmtMoney(s.closing, sym)}</Td></Tr>
+          {/* Surfaced, not swallowed. A note that foots to nothing is worse
+              than no note, so a break is stated where the reader will see it. */}
+          {s.reconciles === false && (
+            <Tr><Td className="text-amber-700 dark:text-amber-400 text-xs" colSpan={2}>
+              {t('Does not agree with the ledger')}: {fmtMoney(s.difference, sym)}
+            </Td></Tr>
+          )}
+        </Table>
+      </div>
+    )
+
+    return (
+      <div className="space-y-4">
+        <Card className="p-6">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400">
+            {t('Notes to the Financial Statements')} · {fmtDate(startDate)} – {fmtDate(endDate)}
+          </p>
+          <div className={`mt-3 rounded-lg px-3 py-2 text-sm ${pack.reconciles
+            ? 'bg-success-50 dark:bg-success-500/10 text-success-700 dark:text-success-300'
+            : 'bg-amber-50 dark:bg-amber-900/25 text-amber-800 dark:text-amber-200'}`}>
+            {pack.reconciles
+              ? t('Every note agrees with the face of the financial statements.')
+              : `${t('These notes do not agree with the statements')}: ${pack.failing.join(', ')}`}
+          </div>
+        </Card>
+
+        {pack.notes.map((n, idx) => (
+          <Card key={n.id} className="p-6">
+            <div className="flex items-baseline justify-between gap-3 mb-3">
+              <h4 className="font-bold text-gray-800 dark:text-slate-100">{idx + 1}. {t(n.title)}</h4>
+              <span className="text-xs text-gray-400 dark:text-slate-500">{n.reference}</span>
+            </div>
+
+            {n.id === 'policies' && (
+              <div className="space-y-3">
+                {n.policies.map((p, i) => (
+                  <div key={i}>
+                    <p className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t(p.label)}</p>
+                    <p className="text-sm text-gray-500 dark:text-slate-400">{t(p.text)}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {n.id === 'ppe' && (<>
+              <Schedule title="Cost" s={n.cost} />
+              <Schedule title="Accumulated depreciation" s={n.depreciation} />
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-100">
+                {t('Carrying amount')}: <span className="tabular-nums">{fmtMoney(n.carrying, sym)}</span>
+                <span className="text-xs font-normal text-gray-400 dark:text-slate-500 ms-2">
+                  ({t('was')} {fmtMoney(n.carryingOpening, sym)})
+                </span>
+              </p>
+            </>)}
+
+            {n.id === 'leases' && (<>
+              <Schedule title="Right-of-use assets — cost" s={n.rightOfUse.cost} />
+              <Schedule title="Right-of-use assets — accumulated depreciation" s={n.rightOfUse.depreciation} />
+              <Schedule title="Lease liabilities" s={n.liability} />
+              <p className="text-sm font-semibold text-gray-800 dark:text-slate-100 mb-3">
+                {t('Carrying amount')}: <span className="tabular-nums">{fmtMoney(n.rightOfUse.carrying, sym)}</span>
+              </p>
+              <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-1">{t('When the lease payments fall due')}</p>
+              <Table headers={['', { label: t('Amount'), right: true }]}>
+                {n.maturity.buckets.map((b) => (
+                  <Tr key={b.key}><Td className="text-gray-600 dark:text-slate-300">{t(b.label)}</Td>
+                    <Td right className="tabular-nums">{fmtMoney(b.amount, sym)}</Td></Tr>
+                ))}
+                <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+                  <Td>{t('Total')}</Td><Td right className="tabular-nums">{fmtMoney(n.maturity.total, sym)}</Td></Tr>
+              </Table>
+              {/* Undiscounted on purpose, so it will not equal the liability.
+                  Saying so beats letting a reader assume an error. */}
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+                {t('These are undiscounted contractual payments, so they do not equal the lease liability above.')}
+              </p>
+            </>)}
+
+            {n.id === 'receivables' && (<>
+              <Table headers={['', { label: t('Amount'), right: true }]}>
+                <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Gross amount owed')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.gross, sym)}</Td></Tr>
+                <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Loss allowance')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(-n.allowance, sym)}</Td></Tr>
+                <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+                  <Td>{t('Carrying amount')}</Td><Td right className="tabular-nums">{fmtMoney(n.net, sym)}</Td></Tr>
+              </Table>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{t(n.note)}</p>
+            </>)}
+
+            {n.id === 'inventories' && (<>
+              <Table headers={['', { label: t('Amount'), right: true }]}>
+                <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Carrying amount')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.carrying, sym)}</Td></Tr>
+                <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Stock records')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.subledger, sym)}</Td></Tr>
+              </Table>
+              <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+                {t('Cost formula')}: {t(n.costFormula)}
+                {!n.reconciles && <span className="text-amber-700 dark:text-amber-400 ms-2">
+                  {t('Does not agree with the ledger')}: {fmtMoney(n.difference, sym)}</span>}
+              </p>
+            </>)}
+
+            {n.id === 'provisions' && (<>
+              <Schedule title="End-of-service benefits" s={n.eosb} />
+              <p className="text-xs text-gray-400 dark:text-slate-500">{t(n.note)}</p>
+            </>)}
+
+            {n.id === 'revenue' && (
+              <Table headers={[t('Category'), { label: t('Amount'), right: true }]}>
+                {n.rows.map((r) => (
+                  <Tr key={r.id}><Td className="text-gray-600 dark:text-slate-300">{r.label}</Td>
+                    <Td right className="tabular-nums">{fmtMoney(r.amount, sym)}</Td></Tr>
+                ))}
+                <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+                  <Td>{t('Total')}</Td><Td right className="tabular-nums">{fmtMoney(n.total, sym)}</Td></Tr>
+              </Table>
+            )}
+
+            {n.id === 'liquidity' && (<>
+              <Table headers={['', { label: t('Within one year'), right: true },
+                { label: t('One to five years'), right: true }, { label: t('After five years'), right: true }]}>
+                {n.rows.map((r, i) => (
+                  <Tr key={i}>
+                    <Td className="text-gray-600 dark:text-slate-300">
+                      {t(r.label)}
+                      {r.assumed && <span className="text-xs text-gray-400 dark:text-slate-500 ms-2">{t('repayment profile not held')}</span>}
+                    </Td>
+                    <Td right className="tabular-nums">{fmtMoney(r.y1, sym)}</Td>
+                    <Td right className="tabular-nums">{fmtMoney(r.y2to5, sym)}</Td>
+                    <Td right className="tabular-nums">{fmtMoney(r.over5, sym)}</Td>
+                  </Tr>
+                ))}
+                <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+                  <Td>{t('Total')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.totals.y1, sym)}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.totals.y2to5, sym)}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.totals.over5, sym)}</Td>
+                </Tr>
+              </Table>
+            </>)}
+
+            {n.id === 'tax' && (<>
+              <Table headers={['', { label: t('Amount'), right: true }]}>
+                <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Gross deferred tax liability')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.schedule.grossLiability, sym)}</Td></Tr>
+                <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Gross deferred tax asset')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.schedule.grossAsset, sym)}</Td></Tr>
+                {n.schedule.unrecognisedAsset > 0 && (
+                  <Tr><Td className="text-gray-600 dark:text-slate-300">{t('Deferred tax asset not recognised')}</Td>
+                    <Td right className="tabular-nums">{fmtMoney(n.schedule.unrecognisedAsset, sym)}</Td></Tr>
+                )}
+                <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+                  <Td>{n.schedule.net >= 0 ? t('Net deferred tax liability') : t('Net deferred tax asset')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(Math.abs(n.schedule.net), sym)}</Td></Tr>
+              </Table>
+              <p className="text-sm font-semibold text-gray-700 dark:text-slate-200 mt-4 mb-1">{t('Reconciliation of the tax charge')}</p>
+              <Table headers={[t('Explanation'), { label: t('Amount'), right: true }]}>
+                {n.reconciliation.lines.map((l, i) => (
+                  <Tr key={i}><Td className="text-gray-600 dark:text-slate-300">{t(l.label)}</Td>
+                    <Td right className="tabular-nums">{fmtMoney(l.amount, sym)}</Td></Tr>
+                ))}
+                <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+                  <Td>{t('Total tax charge')}</Td>
+                  <Td right className="tabular-nums">{fmtMoney(n.reconciliation.totalTax, sym)}</Td></Tr>
+              </Table>
+            </>)}
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
   const SalesByCustomerReport = () => (
     <AnalyticalReport title="Sales by Customer"
       headers={['Customer', 'Invoices', 'Subtotal', 'Tax', 'Total', 'Paid', 'Outstanding']}
@@ -1969,6 +2164,7 @@ export default function Reports() {
         {report === 'ar' && <ARReport />}
         {report === 'ecl' && <EclReport />}
         {report === 'deferred-tax' && <DeferredTaxReport />}
+        {report === 'notes' && <NotesReport />}
         {report === 'soce' && <EquityStatementReport />}
         {report === 'ap' && <APReport />}
         {report === 'sales-cust' && <SalesByCustomerReport />}
