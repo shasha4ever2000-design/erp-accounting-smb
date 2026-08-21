@@ -30,6 +30,7 @@ const REPORTS = [
   { id: 'ar', label: 'Accounts Receivable Aging', group: 'Ledgers' },
   { id: 'ap', label: 'Accounts Payable Aging', group: 'Ledgers' },
   { id: 'ecl', label: 'Expected Credit Losses (IFRS 9)', group: 'Ledgers' },
+  { id: 'deferred-tax', label: 'Deferred Tax (IAS 12)', group: 'Financial Statements' },
   { id: 'sales-cust', label: 'Sales by Customer', group: 'Sales & Purchases' },
   { id: 'sales-item', label: 'Sales by Item', group: 'Sales & Purchases' },
   { id: 'purch-supp', label: 'Purchases by Supplier', group: 'Sales & Purchases' },
@@ -43,7 +44,7 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision } = useStore()
+  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision, deferredTaxAssessment, postDeferredTax, taxRateReconciliation } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -1408,6 +1409,141 @@ export default function Reports() {
     )
   }
 
+  const DeferredTaxReport = () => {
+    const a = useMemo(() => deferredTaxAssessment(endDate),
+      [deferredTaxAssessment, endDate, journalEntries])
+    const etr = useMemo(() => taxRateReconciliation(startDate, endDate),
+      [taxRateReconciliation, startDate, endDate, journalEntries])
+    const cfg = settings.deferredTax || {}
+
+    // A temporary difference only carries deferred tax once there is a rate to
+    // apply to it, and the rate is a fact about the jurisdiction that this
+    // application cannot infer from the books.
+    if (!cfg.ratePct) {
+      return (
+        <Card className="p-6">
+          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{t('Deferred Tax (IAS 12)')}</h3>
+          <p className="text-sm text-gray-500 dark:text-slate-400 mt-2 max-w-xl">
+            {t('Set your tax rate and capital allowance rate in Settings first. Until then there is nothing to measure — a temporary difference only carries deferred tax once there is a rate to apply to it.')}
+          </p>
+        </Card>
+      )
+    }
+
+    return (
+      <Card>
+        <div className="p-6 border-b border-gray-100 dark:border-slate-700 flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
+            <p className="text-sm text-gray-500 dark:text-slate-400">
+              {t('Deferred Tax (IAS 12)')} · {t('as at')} {fmtDate(endDate)} · {cfg.ratePct}%
+            </p>
+          </div>
+          <div className="text-end">
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              {a.net >= 0 ? t('Net deferred tax liability') : t('Net deferred tax asset')}
+            </p>
+            <p className="text-xl font-semibold tabular-nums text-gray-900 dark:text-slate-100">
+              {fmtMoney(Math.abs(a.net), sym)}
+            </p>
+          </div>
+        </div>
+
+        <Table headers={[t('Temporary difference'), { label: t('Carrying amount'), right: true },
+          { label: t('Tax base'), right: true }, { label: t('Difference'), right: true },
+          { label: t('Deferred tax'), right: true }]}>
+          {a.rows.map((r, i) => (
+            <Tr key={`${r.source}-${i}`}>
+              <Td className="text-gray-700 dark:text-slate-200">
+                {t(r.label)}
+                {r.detail && <span className="text-xs text-gray-400 dark:text-slate-500 ms-2">{r.detail}</span>}
+              </Td>
+              <Td right className="tabular-nums">{fmtMoney(r.carrying, sym)}</Td>
+              <Td right className="tabular-nums">{fmtMoney(r.taxBase, sym)}</Td>
+              {/* Labelled, not merely signed. "Taxable" and "deductible" are
+                  the standard's own words and the only reliable way a reader
+                  tells an asset from a liability at a glance. */}
+              <Td right className="tabular-nums">
+                {fmtMoney(Math.abs(r.difference), sym)}
+                <span className="text-xs text-gray-400 dark:text-slate-500 ms-1">
+                  {r.type === 'taxable' ? t('taxable') : r.type === 'deductible' ? t('deductible') : ''}
+                </span>
+              </Td>
+              <Td right className={`tabular-nums font-medium ${r.deferredTax > 0 ? 'text-danger-600 dark:text-danger-400' : 'text-success-700 dark:text-success-400'}`}>
+                {fmtMoney(Math.abs(r.deferredTax), sym)}
+              </Td>
+            </Tr>
+          ))}
+          <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+            <Td>{t('Gross deferred tax liability')}</Td>
+            <Td right>—</Td><Td right>—</Td><Td right>—</Td>
+            <Td right className="tabular-nums">{fmtMoney(a.grossLiability, sym)}</Td>
+          </Tr>
+          <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+            <Td>{t('Gross deferred tax asset')}</Td>
+            <Td right>—</Td><Td right>—</Td><Td right>—</Td>
+            <Td right className="tabular-nums">{fmtMoney(a.grossAsset, sym)}</Td>
+          </Tr>
+        </Table>
+
+        <div className="px-6 py-4 border-t border-gray-100 dark:border-slate-700 flex items-start justify-between gap-4 flex-wrap">
+          <div className="text-xs text-gray-500 dark:text-slate-400 space-y-0.5 max-w-xl">
+            {a.unrecognisedAsset > 0 && (
+              <p className="text-amber-700 dark:text-amber-400">
+                {t('Deferred tax asset not recognised')}: <strong>{fmtMoney(a.unrecognisedAsset, sym)}</strong>
+                {' — '}{t('recognised only so far as future taxable profit is probable (IAS 12.24).')}
+              </p>
+            )}
+            <p>{t('On the balance sheet')}: {a.presented.liability > 0
+              ? `${t('liability')} ${fmtMoney(a.presented.liability, sym)}`
+              : a.presented.asset > 0 ? `${t('asset')} ${fmtMoney(a.presented.asset, sym)}` : fmtMoney(0, sym)}
+              {a.presented.offset ? ` · ${t('offset (IAS 12.74)')}` : ` · ${t('shown gross')}`}</p>
+            <p>{t('Already recognised')}: <strong className="text-gray-800 dark:text-slate-100">
+              {fmtMoney(a.existing.liability - a.existing.asset, sym)}</strong></p>
+            <p>{t('Movement to post')}: <strong className={a.charge >= 0 ? 'text-danger-600 dark:text-danger-400' : 'text-success-700 dark:text-success-400'}>
+              {fmtMoney(a.charge, sym)}</strong></p>
+            <p className="pt-1">{t('Only the movement is posted, never the whole position. Deferred tax is not discounted (IAS 12.53).')}</p>
+          </div>
+          {a.charge !== 0 && (
+            <Btn onClick={() => {
+              try { postDeferredTax({ asOf: endDate }) }
+              catch (e) { alert(t('Could not post deferred tax: ') + e.message) }
+            }}>{t('Post deferred tax')}</Btn>
+          )}
+        </div>
+
+        {/* IAS 12.81(c) — the disclosure an auditor turns to first, because it
+            is where anything unusual in the tax charge has to be explained
+            rather than buried inside a single line. */}
+        <div className="border-t border-gray-100 dark:border-slate-700">
+          <div className="px-6 pt-5 pb-2">
+            <h4 className="font-semibold text-gray-800 dark:text-slate-100">{t('Reconciliation of the tax charge')}</h4>
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              {t('Accounting profit')} {fmtMoney(etr.accountingProfit, sym)} · {t('effective rate')} {etr.effectiveRate}%
+            </p>
+          </div>
+          <Table headers={[t('Explanation'), { label: t('Amount'), right: true }]}>
+            {etr.lines.map((l, i) => (
+              <Tr key={i}>
+                <Td className="text-gray-700 dark:text-slate-200">{t(l.label)}</Td>
+                <Td right className="tabular-nums">{fmtMoney(l.amount, sym)}</Td>
+              </Tr>
+            ))}
+            <Tr className="font-bold bg-slate-50 dark:bg-surface-900/40">
+              <Td>{t('Total tax charge')}</Td>
+              <Td right className="tabular-nums">{fmtMoney(etr.totalTax, sym)}</Td>
+            </Tr>
+          </Table>
+          {!etr.reconciles && (
+            <p className="px-6 py-3 text-xs text-amber-700 dark:text-amber-400">
+              {t('Part of the charge could not be explained. It is shown as an unexplained difference rather than absorbed into another line — a reconciliation that always closes proves nothing.')}
+            </p>
+          )}
+        </div>
+      </Card>
+    )
+  }
+
   const SalesByCustomerReport = () => (
     <AnalyticalReport title="Sales by Customer"
       headers={['Customer', 'Invoices', 'Subtotal', 'Tax', 'Total', 'Paid', 'Outstanding']}
@@ -1832,6 +1968,7 @@ export default function Reports() {
         {report === 'gl' && <GLReport />}
         {report === 'ar' && <ARReport />}
         {report === 'ecl' && <EclReport />}
+        {report === 'deferred-tax' && <DeferredTaxReport />}
         {report === 'soce' && <EquityStatementReport />}
         {report === 'ap' && <APReport />}
         {report === 'sales-cust' && <SalesByCustomerReport />}
