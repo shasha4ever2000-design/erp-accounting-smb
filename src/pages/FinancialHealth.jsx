@@ -2,9 +2,10 @@ import { useMemo } from 'react'
 import { useStore } from '../store'
 import { useT } from '../i18n'
 import { fmtMoney } from '../utils/formatters'
-import { computeFinancialHealth, healthLabel } from '../utils/financialHealth'
+import { computeFinancialHealth, healthLabel, healthInputs } from '../utils/financialHealth'
 import { groupIdsWithRole, OTHER_INCOME } from '../utils/accountTree'
 import { PageHeader, Card } from '../components/UI'
+import RatioTrendsPanel from '../components/RatioTrendsPanel'
 import { Activity, Droplets, TrendingUp, Gauge, Scale } from 'lucide-react'
 
 const GROUP_ICON = { Liquidity: Droplets, Profitability: TrendingUp, Efficiency: Gauge, Leverage: Scale }
@@ -23,50 +24,11 @@ export default function FinancialHealth() {
   const sym = settings.company.currencySymbol
 
   const { result, asOf } = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    const ttmStart = (() => { const d = new Date(); d.setUTCFullYear(d.getUTCFullYear() - 1); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10) })()
-    const allBal = getAllBalances()                 // cumulative to date → balance sheet
-    const ttmBal = getAllBalances(ttmStart, today)  // trailing 12 months → P&L
-
-    const acc = (id) => accounts.find((a) => a.id === id)
-    const nat = (a, bals) => { const b = bals[a.id] || { dr: 0, cr: 0 }; return ['asset', 'expense'].includes(a.type) ? b.dr - b.cr : b.cr - b.dr }
-    const sumType = (type, subtype, bals) => accounts.filter((a) => a.type === type && (!subtype || a.subtype === subtype)).reduce((s, a) => s + nat(a, bals), 0)
-
-    const invIds = new Set(['acc-inv', 'acc-rawmat', 'acc-wip', 'acc-fingoods'])
-    const isInventory = (a) => a.type === 'asset' && (invIds.has(a.id) || /inventory|raw material|finished goods|work.?in.?progress|stock/i.test(a.name || ''))
-    const isCash = (a) => a.type === 'asset' && a.subtype === 'current' && (['acc-cash', 'acc-bank1'].includes(a.id) || /cash|bank/i.test(a.name || ''))
-    const isCogs = (a) => a.type === 'expense' && (a.id === 'acc-cogs' || /cost of (goods|sales)|cogs/i.test(a.name || ''))
-
-    const currentAssets = sumType('asset', 'current', allBal)
-    const inventory = accounts.filter(isInventory).reduce((s, a) => s + nat(a, allBal), 0)
-    const cash = accounts.filter(isCash).reduce((s, a) => s + nat(a, allBal), 0)
-    const currentLiabilities = sumType('liability', 'current', allBal)
-    const totalAssets = sumType('asset', null, allBal)
-    const totalLiabilities = sumType('liability', null, allBal)
-    const equity = totalAssets - totalLiabilities // accounting identity → includes retained earnings + current profit
-
-    // Every ratio here that divides by revenue means *trading* revenue: gross
-    // and net margin per riyal of sales, and DSO against the sales that create
-    // receivables. Other income — an FX movement, a gain on selling a van — is
-    // none of those, so it comes out, exactly as it does on the P&L. Net income
-    // still counts it, because it genuinely is part of the bottom line.
-    const otherIncomeGroups = groupIdsWithRole(accountGroups, OTHER_INCOME)
-    const allRevenue = sumType('revenue', null, ttmBal)
-    const otherIncome = accounts
-      .filter((a) => a.type === 'revenue' && otherIncomeGroups.has(a.groupId))
-      .reduce((s, a) => s + nat(a, ttmBal), 0)
-    const revenue = allRevenue - otherIncome
-    const cogs = accounts.filter(isCogs).reduce((s, a) => s + nat(a, ttmBal), 0)
-    const expenses = sumType('expense', null, ttmBal)
-    const netIncome = allRevenue - expenses
-    const grossProfit = revenue - cogs
-    const ar = acc('acc-ar') ? nat(acc('acc-ar'), allBal) : 0
-    const ap = acc('acc-ap') ? nat(acc('acc-ap'), allBal) : 0
-
-    return {
-      asOf: today,
-      result: computeFinancialHealth({ currentAssets, inventory, cash, currentLiabilities, totalAssets, totalLiabilities, equity, revenue, cogs, grossProfit, netIncome, ar, ap }),
-    }
+    // Assembly lives in the util so the trend view computes ratios from the
+    // same classification of cash, inventory and cost of sales. Two notions
+    // of "cash" would draw a line contradicting the number beside it.
+    const m = healthInputs({ accounts, accountGroups, getAllBalances }, undefined, groupIdsWithRole, OTHER_INCOME)
+    return { asOf: m.asOf, result: computeFinancialHealth(m) }
   }, [accounts, accountGroups, getAllBalances])
 
   const { groups, score, counts } = result
@@ -142,6 +104,9 @@ export default function FinancialHealth() {
           )
         })}
       </div>
+
+      {/* The snapshot above, given a direction. */}
+      <RatioTrendsPanel />
     </div>
   )
 }
