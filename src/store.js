@@ -31,6 +31,13 @@ import {
   PREV_TAG_LENGTH, prevTag,
 } from './utils/ledgerChain'
 import { isPersisted, storageEstimate, assessDurability } from './utils/durability'
+import { buildNotes } from './utils/disclosures'
+import {
+  // `movementLines` is already taken by capitalAccounts, and the collision is
+  // silent — the wrong function is simply called, and it throws.
+  buildDeferredTax, movementLines as deferredTaxLines, deferredCharge,
+  effectiveRateReconciliation, DECLINING_BALANCE,
+} from './utils/deferredTax'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
@@ -82,6 +89,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-depr',   code: '1610', name: 'Accumulated Depreciation',   type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
   { id: 'acc-roudepr',code: '1621', name: 'Accumulated Depreciation – Right-of-Use', type: 'asset', subtype: 'non_current', isSystem: false },
+  { id: 'acc-dta',    code: '1700', name: 'Deferred Tax Asset',         type: 'asset',     subtype: 'non_current', isSystem: false },
   { id: 'acc-ecl',    code: '1105', name: 'Allowance for Expected Credit Losses', type: 'asset', subtype: 'current', isSystem: false },
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
@@ -100,6 +108,9 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-creditcard',code:'2410', name: 'Credit Card',             type: 'liability', subtype: 'current',     isSystem: false },
   { id: 'acc-loan',   code: '2400', name: 'Bank Loan',                  type: 'liability', subtype: 'non_current', isSystem: false },
   { id: 'acc-leasepay',code:'2500', name: 'Lease Liability',            type: 'liability', subtype: 'non_current', isSystem: false },
+  // IAS 12 requires deferred tax to be classified as non-current whichever way
+  // the underlying difference reverses (IAS 12.70), so both sides sit here.
+  { id: 'acc-dtl',    code: '2600', name: 'Deferred Tax Liability',     type: 'liability', subtype: 'non_current', isSystem: false },
   // EQUITY
   { id: 'acc-capital', code: '3001', name: "Owner's Capital",           type: 'equity',    subtype: 'equity',      isSystem: false },
   { id: 'acc-retained',code: '3002', name: 'Retained Earnings',         type: 'equity',    subtype: 'equity',      isSystem: true  },
@@ -119,6 +130,7 @@ const DEFAULT_ACCOUNTS = [
   // EXPENSES
   { id: 'acc-cogs',   code: '5001', name: 'Cost of Goods Sold',         type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-baddebt',code: '5017', name: 'Expected Credit Losses',     type: 'expense',   subtype: 'expense',     isSystem: false },
+  { id: 'acc-taxexp', code: '5018', name: 'Income Tax Expense',         type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-salary', code: '5002', name: 'Salaries & Wages',           type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-rent',   code: '5003', name: 'Rent Expense',               type: 'expense',   subtype: 'expense',     isSystem: false },
   { id: 'acc-util',   code: '5004', name: 'Utilities',                  type: 'expense',   subtype: 'expense',     isSystem: false },
@@ -188,6 +200,21 @@ const DEFAULT_SETTINGS = {
   // file counts — the in-browser snapshots are stored in the same IndexedDB as
   // the ledger and die with it. See utils/durability.js.
   durability:    { lastExportAt: '', lastExportKind: '' },
+  // IAS 12 deferred tax. Off unless switched on: recognising deferred tax
+  // changes reported profit and the balance sheet, and which capital-allowance
+  // regime applies is a fact about the business's jurisdiction that this
+  // application cannot know and must not guess.
+  deferredTax:   {
+    enabled: false,
+    ratePct: 0,              // rate profits are taxed at
+    allowanceRatePct: 0,     // rate capital allowances are given at — a different thing
+    assetTaxMethod: DECLINING_BALANCE,
+    lossesCarriedForward: 0,
+    recognitionPct: 100,     // how much of the unsupported asset is probable
+    offset: true,            // IAS 12.74
+    manual: [],
+    lastAssessedAt: '',
+  },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
   lease:         { prefix: 'LEASE-', next: 1 },
@@ -3867,6 +3894,143 @@ export const useStore = create(
         return je
       },
 
+      // ─── IAS 12 — DEFERRED TAX ─────────────────────────────────────
+      // See utils/deferredTax.js for the sign convention, which is the part
+      // that decides whether any of this is right.
+
+      updateDeferredTaxSettings: (patch) =>
+        set((s) => ({ settings: { ...s.settings, deferredTax: { ...(s.settings.deferredTax || {}), ...patch } } })),
+
+      /**
+       * The temporary differences at a date and the deferred tax they carry.
+       *
+       * Carrying amounts are read from the ledger rather than rebuilt from the
+       * subledgers, because the ledger is what the financial statements report
+       * — deferred tax measured against anything else would be deferred tax on
+       * a balance sheet nobody is publishing.
+       */
+      deferredTaxAssessment: (asOf) => {
+        const s = get()
+        const at = asOf || new Date().toISOString().slice(0, 10)
+        const cfg = s.settings.deferredTax || {}
+        const balances = s.getAllBalances(undefined, at)
+        const byId = Object.fromEntries(s.accounts.map((a) => [a.id, a]))
+        // Debits less credits for assets and expenses, the other way round for
+        // everything else — so contra accounts come back negative, which is
+        // what ledgerDifferences expects.
+        const natural = (id) => {
+          const b = balances[id] || { dr: 0, cr: 0 }
+          const type = byId[id]?.type
+          const v = ['asset', 'expense'].includes(type) ? b.dr - b.cr : b.cr - b.dr
+          return Math.round(v * 100) / 100
+        }
+
+        const schedule = buildDeferredTax(
+          { fixedAssets: s.fixedAssets, natural },
+          {
+            ratePct: cfg.ratePct || 0,
+            allowanceRatePct: cfg.allowanceRatePct || 0,
+            assetTaxMethod: cfg.assetTaxMethod || DECLINING_BALANCE,
+            lossesCarriedForward: cfg.lossesCarriedForward || 0,
+            recognitionPct: cfg.recognitionPct == null ? 100 : cfg.recognitionPct,
+            offset: cfg.offset !== false,
+            manual: cfg.manual || [],
+            asOf: at,
+          },
+        )
+        const existing = { asset: Math.max(0, natural('acc-dta')), liability: Math.max(0, natural('acc-dtl')) }
+        return { ...schedule, existing, charge: deferredCharge(schedule, existing) }
+      },
+
+      /**
+       * Move deferred tax to the level the schedule requires.
+       *
+       * Posts the movement, never the balance — the same property the ECL
+       * provision needs and for the same reason: every entry balances either
+       * way, so a position that doubled at each assessment would not trip a
+       * single other check in the system.
+       */
+      postDeferredTax: (opts = {}) => {
+        const assessment = get().deferredTaxAssessment(opts.asOf)
+        const lines = deferredTaxLines(assessment, assessment.existing)
+        if (!lines.length) return null
+        const je = get().addJournalEntry({
+          date: assessment.asOf,
+          description: `Deferred tax at ${assessment.asOf}`,
+          reference: '', type: 'deferred_tax', lines,
+        })
+        set((st) => ({
+          settings: { ...st.settings, deferredTax: { ...(st.settings.deferredTax || {}), lastAssessedAt: assessment.asOf } },
+        }))
+        return je
+      },
+
+      /**
+       * Why the tax charge is not simply profit times the rate (IAS 12.81(c)).
+       *
+       * A required disclosure and the first thing an auditor turns to. Profit
+       * is taken before tax, so the tax accounts are excluded from it —
+       * including tax in the profit it is charged on would make the
+       * reconciliation circular.
+       */
+      taxRateReconciliation: (start, end) => {
+        const s = get()
+        const cfg = s.settings.deferredTax || {}
+        const balances = s.getAllBalances(start, end)
+        const TAX_ACCOUNTS = new Set(['acc-taxexp'])
+        let revenue = 0, expenses = 0, taxCharge = 0
+        s.accounts.forEach((a) => {
+          const b = balances[a.id] || { dr: 0, cr: 0 }
+          if (a.type === 'revenue') revenue += b.cr - b.dr
+          else if (a.type === 'expense') {
+            if (TAX_ACCOUNTS.has(a.id)) taxCharge += b.dr - b.cr
+            else expenses += b.dr - b.cr
+          }
+        })
+        const opening = get().deferredTaxAssessment(start)
+        const closing = get().deferredTaxAssessment(end)
+        return effectiveRateReconciliation({
+          accountingProfit: Math.round((revenue - expenses) * 100) / 100,
+          ratePct: cfg.ratePct || 0,
+          // Everything posted to tax expense in the period, split between the
+          // deferred movement and the rest, which is current tax by deduction.
+          deferredTax: Math.round((closing.net - opening.net) * 100) / 100,
+          currentTax: Math.round((taxCharge - (closing.net - opening.net)) * 100) / 100,
+          unrecognisedAssetMovement: Math.round((closing.unrecognisedAsset - opening.unrecognisedAsset) * 100) / 100,
+        })
+      },
+
+      // ─── NOTES TO THE FINANCIAL STATEMENTS ─────────────────────────
+
+      /**
+       * Every disclosure note for a period.
+       *
+       * Four primary statements without notes are not a set of IFRS financial
+       * statements. See utils/disclosures.js — the rule every note obeys is
+       * that it has to tie back to the face of the statements, and the pack
+       * reports which notes do not rather than presenting a clean total.
+       */
+      disclosureNotes: (start, end) => {
+        const s = get()
+        const at = end || new Date().toISOString().slice(0, 10)
+        const from = start || `${at.slice(0, 4)}-01-01`
+
+        // The aged analysis is only meaningful once a loss allowance policy
+        // exists; without one the note shows the balance and says no more.
+        let ageing = null
+        try { if (s.settings?.ecl?.enabled) ageing = s.eclAssessment(at).aged } catch { /* not configured */ }
+
+        // Likewise the tax note: there is nothing to disclose about deferred
+        // tax in a business that has not recognised any.
+        let taxNote = null
+        if (s.settings?.deferredTax?.enabled && s.settings?.deferredTax?.ratePct) {
+          const schedule = s.deferredTaxAssessment(at)
+          taxNote = { schedule, reconciliation: s.taxRateReconciliation(from, at) }
+        }
+
+        return buildNotes(s, { start: from, end: at, getAllBalances: s.getAllBalances, ageing, taxNote })
+      },
+
       // ─── LEASES ────────────────────────────────────────────────────
       leases: [],
 
@@ -4927,7 +5091,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 42, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 43, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         // The anchor travels with the file. This is what turns the hash chain
         // from a local self-check into something an outsider can rely on: a
@@ -5186,7 +5350,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 42,
+      version: 43,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5383,6 +5547,25 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 43) {
+          // IAS 12 deferred tax. Off unless switched on: recognising it
+          // changes reported profit and the balance sheet, and the
+          // capital-allowance regime is a fact about the business's
+          // jurisdiction that cannot be guessed from its books.
+          const add = (a) => {
+            if (Array.isArray(persisted.accounts) && !persisted.accounts.some((x) => x.id === a.id)) persisted.accounts.push(a)
+          }
+          add({ id: 'acc-dta', code: '1700', name: 'Deferred Tax Asset', type: 'asset', subtype: 'non_current', isSystem: false })
+          add({ id: 'acc-dtl', code: '2600', name: 'Deferred Tax Liability', type: 'liability', subtype: 'non_current', isSystem: false })
+          add({ id: 'acc-taxexp', code: '5018', name: 'Income Tax Expense', type: 'expense', subtype: 'expense', isSystem: false })
+          persisted.settings = {
+            ...persisted.settings,
+            deferredTax: persisted.settings?.deferredTax || {
+              enabled: false, ratePct: 0, allowanceRatePct: 0, assetTaxMethod: DECLINING_BALANCE,
+              lossesCarriedForward: 0, recognitionPct: 100, offset: true, manual: [], lastAssessedAt: '',
+            },
+          }
         }
         if (version < 42) {
           // Shrink the stored back-link. It was a full 64-character hash, which
