@@ -26,6 +26,11 @@ import {
   postingLines as countPostingLines, stockChanges as countStockChanges, summarise as summariseCount,
 } from './utils/stockCount'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
+import {
+  GENESIS, hashEntry, chainEntries, reseal, verifyChain, ledgerAnchor, matchesAnchor, shortHash,
+  PREV_TAG_LENGTH, prevTag,
+} from './utils/ledgerChain'
+import { isPersisted, storageEstimate, assessDurability } from './utils/durability'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
 import { buildOpeningEntry, validateOpening, OBE_ACCOUNT } from './utils/openingBalances'
 import { RECYCLABLE, isRecyclable, makeEntry, canRestore } from './utils/recycleBin'
@@ -179,6 +184,10 @@ const DEFAULT_SETTINGS = {
   // IFRS 9 requires an entity's own observed loss experience, so these
   // are a starting point to be replaced, not a recommendation.
   ecl:           { enabled: false, matrix: { ...DEFAULT_ECL_MATRIX }, lastAssessedAt: '' },
+  // When a copy of the books last left this device. Only a downloaded backup
+  // file counts — the in-browser snapshots are stored in the same IndexedDB as
+  // the ledger and die with it. See utils/durability.js.
+  durability:    { lastExportAt: '', lastExportKind: '' },
   fixedAsset:    { prefix: 'FA-',    next: 1 },
   stockAdj:      { prefix: 'ADJ-',   next: 1 },
   lease:         { prefix: 'LEASE-', next: 1 },
@@ -1221,12 +1230,22 @@ export const useStore = create(
         const { prefix, next } = s.settings.journal
         const number = nextNum(prefix, next)
         const newJE = { ...entry, id: uuid(), number, type: entry.type || 'manual', createdAt: new Date().toISOString() }
-        set((st) => ({
-          journalEntries: [...st.journalEntries, newJE],
-          settings: { ...st.settings, journal: { ...st.settings.journal, next: st.settings.journal.next + 1 } },
-        }))
+        // Seal the entry into the hash chain. Done inside the setter, reading
+        // the tail from the state being written to, so two postings in the same
+        // tick cannot both chain off the same predecessor. See utils/ledgerChain.js.
+        let sealed = newJE
+        set((st) => {
+          const prev = st.journalEntries[st.journalEntries.length - 1]?.hash || GENESIS
+          // The link is computed from the full predecessor hash; only the
+          // stored back-reference is a short tag. See PREV_TAG_LENGTH.
+          sealed = { ...newJE, prevHash: prevTag(prev), hash: hashEntry(newJE, prev) }
+          return {
+            journalEntries: [...st.journalEntries, sealed],
+            settings: { ...st.settings, journal: { ...st.settings.journal, next: st.settings.journal.next + 1 } },
+          }
+        })
         get().logActivity('Posted ' + String(newJE.type || 'entry').replace(/_/g, ' '), `${number} · ${entry.description || ''}`.trim())
-        return newJE
+        return sealed
       },
 
       /**
@@ -1255,6 +1274,7 @@ export const useStore = create(
 
       updateJournalEntry: (id, patch) => {
         const before = get().journalEntries.find((j) => j.id === id)
+        const beforeHash = before?.hash
         set((s) => {
           const lock = s.settings?.accounting?.lockDate
           const je = s.journalEntries.find((j) => j.id === id)
@@ -1274,20 +1294,81 @@ export const useStore = create(
             const cr = (merged.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
             if (Math.abs(dr - cr) > 0.05) throw new Error(`JE_UNBALANCED:${(dr - cr).toFixed(2)}`)
           }
-          return { journalEntries: s.journalEntries.map((j) => (j.id === id ? merged : j)) }
+          // Editing a manual entry is legal, so the chain is repaired — but only
+          // from this entry forward. Re-hashing the whole ledger would also
+          // silently repair any *earlier* tampering, destroying the evidence
+          // this chain exists to preserve. See utils/ledgerChain.js `reseal`.
+          const at = s.journalEntries.findIndex((j) => j.id === id)
+          const next = s.journalEntries.map((j) => (j.id === id ? merged : j))
+          return { journalEntries: at < 0 ? next : reseal(next, at) }
         })
-        if (before) get().logActivity('Edited journal entry', `${before.number} · ${patch?.description || before.description || ''}`.trim())
+        if (before) {
+          const after = get().journalEntries.find((j) => j.id === id)
+          // The old and new hashes go in the trail: an edit is allowed, but it
+          // must never be invisible, and these two values are what let anyone
+          // check later that the ledger they hold is the edited one.
+          get().logActivity(
+            'Edited journal entry',
+            `${before.number} · ${patch?.description || before.description || ''}`.trim(),
+            { entity: 'journal', entityId: id, entityRef: before.number || '',
+              changes: [{ field: 'ledgerHash', from: shortHash(beforeHash), to: shortHash(after?.hash) }] },
+          )
+        }
         return get().journalEntries.find((j) => j.id === id)
       },
 
-      deleteJournalEntry: (id) =>
+      deleteJournalEntry: (id) => {
+        const before = get().journalEntries.find((j) => j.id === id)
         set((s) => {
           const lock = s.settings?.accounting?.lockDate
           const je = s.journalEntries.find((j) => j.id === id)
           if (lock && je?.date && String(je.date) <= String(lock))
             throw new Error(`PERIOD_LOCKED:${lock}`)
-          return { journalEntries: s.journalEntries.filter((j) => j.id !== id) }
-        }),
+          // Removing an entry shifts every link after it, so the chain is
+          // resealed from the gap — again, forward only.
+          const at = s.journalEntries.findIndex((j) => j.id === id)
+          const next = s.journalEntries.filter((j) => j.id !== id)
+          return { journalEntries: at < 0 ? next : reseal(next, at) }
+        })
+        if (before) {
+          get().logActivity('Deleted journal entry', `${before.number || ''} · ${before.description || ''}`.trim(),
+            { entity: 'journal', entityId: id, entityRef: before.number || '', severity: 'high',
+              changes: [{ field: 'ledgerHash', from: shortHash(before.hash), to: '' }] })
+        }
+      },
+
+      // ─── LEDGER TAMPER-EVIDENCE ────────────────────────────────────
+      // See utils/ledgerChain.js for what the chain does and does not prove.
+
+      /** Recompute every link and report anything that does not match. */
+      verifyLedger: () => verifyChain(get().journalEntries),
+
+      /**
+       * The single value that fixes the ledger as it stands right now.
+       *
+       * Worth writing down somewhere outside this browser. Anyone can later
+       * recompute the chain from the data and compare — if the head still
+       * matches, nothing in those entries has been touched since.
+       */
+      ledgerAnchor: () => ledgerAnchor(get().journalEntries),
+
+      /**
+       * Seal entries that carry no hash yet.
+       *
+       * Needed for books restored from a backup taken before the chain
+       * existed. It is honest about what it achieves: sealing fixes the ledger
+       * from this moment on and says nothing whatsoever about what happened to
+       * it beforehand, so it is recorded in the trail as exactly that.
+       */
+      sealLedger: () => {
+        const before = verifyChain(get().journalEntries)
+        if (before.unsealed === 0) return { sealed: 0, alreadySealed: before.sealed }
+        set((s) => ({ journalEntries: chainEntries(s.journalEntries) }))
+        const after = ledgerAnchor(get().journalEntries)
+        get().logActivity('Sealed the ledger', `${before.unsealed} entries sealed · anchor ${shortHash(after.head)}`,
+          { entity: 'journal', severity: 'high' })
+        return { sealed: before.unsealed, anchor: after }
+      },
 
       // Throws PERIOD_LOCKED if deleting a document would remove any journal entry
       // dated in a closed period. Called by every document delete that cascades JEs.
@@ -4846,15 +4927,77 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 40, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 42, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
+        // The anchor travels with the file. This is what turns the hash chain
+        // from a local self-check into something an outsider can rely on: a
+        // backup emailed to an accountant carries a value that fixes the ledger
+        // as it stood, and neither party can quietly change it afterwards.
+        out._ledgerAnchor = ledgerAnchor(s.journalEntries, out._exportedAt)
         return out
       },
 
       importData: (data) => {
         if (!data || data._app !== 'erp-accounting-smb') throw new Error('Invalid backup file')
-        const { _app, _version, _exportedAt, ...slices } = data
+        // eslint-disable-next-line no-unused-vars
+        const { _app, _version, _exportedAt, _ledgerAnchor, ...slices } = data
         set((s) => ({ ...s, ...slices }))
+      },
+
+      /**
+       * Check a backup file's ledger against the anchor it was exported with.
+       *
+       * A file that has been edited between export and import — by accident or
+       * otherwise — no longer matches its own anchor, and this is the only
+       * place that would ever notice. Returns null for older backups that
+       * predate the anchor, because absence of an anchor is not evidence of
+       * anything.
+       */
+      checkBackupAnchor: (data) => {
+        const anchor = data?._ledgerAnchor
+        if (!anchor?.head) return null
+        return matchesAnchor(data.journalEntries || [], anchor)
+      },
+
+      // ─── DURABILITY ────────────────────────────────────────────────
+      // Whether this business would still have its books tomorrow. See
+      // utils/durability.js for why the local snapshots do not count.
+
+      /**
+       * Record that a backup file actually left the device.
+       *
+       * Called from the export handler rather than from `exportData`, because
+       * `exportData` is also what the in-browser snapshot is built from — and
+       * letting a snapshot reset this clock would be precisely the false
+       * reassurance this whole feature exists to remove.
+       */
+      recordOffDeviceBackup: (kind = 'plain') =>
+        set((s) => ({
+          settings: {
+            ...s.settings,
+            durability: { ...(s.settings.durability || {}), lastExportAt: new Date().toISOString(), lastExportKind: kind },
+          },
+        })),
+
+      /** Everything needed to tell the user how safe their books are. */
+      durabilityReport: async () => {
+        const s = get()
+        const [persisted, estimate] = await Promise.all([isPersisted(), storageEstimate()])
+        let cloudLinked = false
+        try {
+          const auth = useAuth.getState()
+          cloudLinked = !!auth.companies.find((c) => c.id === auth.currentCompanyId)?.cloudCompanyId
+        } catch { /* auth is not available in unit tests */ }
+        const assessment = assessDurability({
+          hasData: (s.journalEntries?.length || 0) > 0 || (s.invoices?.length || 0) > 0,
+          persisted,
+          persistSupported: typeof navigator !== 'undefined' && !!navigator.storage?.persist,
+          lastExportAt: s.settings?.durability?.lastExportAt || '',
+          cloudLinked,
+          lastSyncAt: s.lastSyncAt || '',
+          quotaRatio: estimate.ratio,
+        })
+        return { ...assessment, estimate }
       },
 
       resetAllData: () => {
@@ -5043,7 +5186,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 40,
+      version: 42,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5240,6 +5383,40 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 42) {
+          // Shrink the stored back-link. It was a full 64-character hash, which
+          // measured at +43% on the ledger; twelve characters serve its only
+          // purpose (telling a changed entry from a moved one) at +28%.
+          //
+          // Deliberately not a re-chain. Recomputing hashes here would repair
+          // any tampering that had already happened and erase the evidence —
+          // the same trap `reseal` avoids by only ever working forward. This
+          // rewrites one redundant field and never touches `hash`.
+          if (Array.isArray(persisted.journalEntries)) {
+            persisted.journalEntries = persisted.journalEntries.map((j) => (
+              typeof j?.prevHash === 'string' && j.prevHash.length > PREV_TAG_LENGTH
+                ? { ...j, prevHash: j.prevHash.slice(0, PREV_TAG_LENGTH) }
+                : j
+            ))
+          }
+        }
+        if (version < 41) {
+          // Seal the existing ledger into the hash chain, and start tracking
+          // whether a copy of the books exists anywhere off this device.
+          //
+          // Sealing here is honest about its limits: it fixes the ledger from
+          // the upgrade onward and proves nothing about the period before it.
+          // That is unavoidable — there is no earlier chain to check against —
+          // and it is still worth doing, because from this point every
+          // alteration that does not go through the app becomes visible.
+          if (Array.isArray(persisted.journalEntries)) {
+            persisted.journalEntries = chainEntries(persisted.journalEntries)
+          }
+          persisted.settings = {
+            ...persisted.settings,
+            durability: persisted.settings?.durability || { lastExportAt: '', lastExportKind: '' },
+          }
         }
         if (version < 40) {
           // IFRS 9 expected credit losses. Off unless switched on: recognising

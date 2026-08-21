@@ -1,4 +1,5 @@
 import { totalReceivable, totalPayable } from './partyBalance'
+import { verifyChain, shortHash } from './ledgerChain'
 // Data-integrity self-check: runs the same invariants the test suite asserts,
 // but against the user's live books, on demand. Pure over plain data so it is
 // unit-testable and can never mutate anything it inspects.
@@ -374,6 +375,37 @@ function checkPartySubledgers(journalEntries, invoices, creditNotes, purchases, 
 }
 
 /**
+ * The ledger has not been altered behind the app's back.
+ *
+ * Every other check on this list asks whether the books are *consistent*. This
+ * one asks something different and, for an auditor, more pointed: whether they
+ * are the same books that were posted. A change made through the app re-seals
+ * the chain and lands in the audit trail; a change made by editing storage
+ * directly does neither, and shows up here.
+ *
+ * Unsealed entries — restored from a backup older than this feature — are
+ * reported, not failed. They are not evidence of tampering, and treating them
+ * as such would make this check worthless the first time anyone restored an
+ * older file.
+ */
+function checkLedgerChain(journalEntries) {
+  const v = verifyChain(journalEntries)
+  const items = v.broken.map((b) => ({
+    ref: b.number || b.id,
+    date: b.date,
+    detail: b.kind === 'contents'
+      ? 'Contents changed after posting'
+      : 'Entry moved, or an entry near it was inserted or removed',
+  }))
+  let detail
+  if (items.length) detail = `${items.length} entr${items.length === 1 ? 'y does' : 'ies do'} not match the seal`
+  else if (v.count === 0) detail = 'No entries to check'
+  else if (v.unsealed) detail = `${v.sealed} sealed · ${v.unsealed} predate sealing (not an error)`
+  else detail = `${v.sealed} entries sealed · anchor ${shortHash(v.head)}`
+  return { id: 'ledger-chain', label: 'The ledger has not been altered since posting', ok: items.length === 0, detail, items }
+}
+
+/**
  * Run every check against a store snapshot.
  * @returns { ok, passed, failed, checks[], ranAt }
  */
@@ -393,6 +425,7 @@ export function runIntegrityCheck(state) {
     checkLockRespected(journalEntries, settings?.accounting?.lockDate),
     checkOpeningBalanceEquityCleared(journalEntries, settings),
     checkCapitalSubledgerAgrees(journalEntries, capitalAccounts),
+    checkLedgerChain(journalEntries),
   ]
   const failed = checks.filter((c) => !c.ok).length
   return { ok: failed === 0, passed: checks.length - failed, failed, checks, ranAt: new Date().toISOString() }
