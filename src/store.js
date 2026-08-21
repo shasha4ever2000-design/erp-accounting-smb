@@ -4031,6 +4031,49 @@ export const useStore = create(
         return buildNotes(s, { start: from, end: at, getAllBalances: s.getAllBalances, ageing, taxNote })
       },
 
+      // ─── AUDIT BINDER ──────────────────────────────────────────────
+
+      /**
+       * One package for whoever the books have to be handed to.
+       *
+       * Assembles what the business already has — the trial balance, the
+       * integrity checks, the disclosure notes, the audit trail — around the
+       * one thing that makes the rest checkable by an outsider: the ledger
+       * seal. See utils/auditBinder.js.
+       */
+      auditBinder: async (start, end, opts = {}) => {
+        const s = get()
+        const at = end || new Date().toISOString().slice(0, 10)
+        const from = start || `${at.slice(0, 4)}-01-01`
+
+        // Loaded on demand: the integrity sweep and the notes are both a
+        // meaningful amount of work, and producing a binder is a rare,
+        // deliberate act rather than something the app does on every boot.
+        const { runIntegrityCheck } = await import('./utils/integrityCheck')
+        const { buildBinder } = await import('./utils/auditBinder')
+
+        let preparedBy = opts.preparedBy || ''
+        if (!preparedBy) {
+          try {
+            const auth = useAuth.getState()
+            preparedBy = auth.users.find((u) => u.id === auth.currentUserId)?.name || ''
+          } catch { /* auth is not available in unit tests */ }
+        }
+
+        return buildBinder({
+          company: s.settings.company,
+          period: { start: from, end: at },
+          accounts: s.accounts,
+          balances: s.getAllBalances(undefined, at),
+          periodBalances: s.getAllBalances(from, at),
+          integrity: runIntegrityCheck(s),
+          notes: s.disclosureNotes(from, at),
+          ledger: { anchor: s.ledgerAnchor(), verify: s.verifyLedger() },
+          auditLog: s.auditLog || [],
+          preparedBy,
+        })
+      },
+
       // ─── LEASES ────────────────────────────────────────────────────
       leases: [],
 
