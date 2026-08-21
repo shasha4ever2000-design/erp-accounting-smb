@@ -17,6 +17,7 @@ import CustomFieldsManager from '../components/CustomFieldsManager'
 import HrSettingsCard from '../components/HrSettingsCard'
 import DurabilityStatus from '../components/DurabilityStatus'
 import DeferredTaxCard from '../components/DeferredTaxCard'
+import AuditBinderCard from '../components/AuditBinderCard'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -846,6 +847,8 @@ export default function Settings() {
         )}
 
         <IntegrityCheckCard />
+
+        <AuditBinderCard />
 
         <CloudSyncCard />
 
