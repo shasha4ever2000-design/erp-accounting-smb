@@ -4,11 +4,13 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Trash2, CreditCard, Home, XCircle } from 'lucide-react'
+import { Plus, Trash2, CreditCard, Home, XCircle, Landmark, ListOrdered, Info } from 'lucide-react'
+import { leaseSchedule, initialMeasurement, exemption, compareToStraightLine } from '../utils/ifrs16'
 
 export default function Leases() {
   const t = useT()
-  const { leases, bankAccounts, settings, addLease, recordLeasePayment, terminateLease, deleteLease } = useStore()
+  const { leases, bankAccounts, settings, addLease, recordLeasePayment, terminateLease, deleteLease,
+          recogniseLease, postLeasePeriod, leaseTerms } = useStore()
   const sym = settings.company.currencySymbol
 
   const bankOpts = bankAccounts.map((b) => ({ id: b.accountId, name: b.name }))
@@ -16,12 +18,18 @@ export default function Leases() {
   const [addModal,  setAddModal]  = useState(false)
   const [payModal,  setPayModal]  = useState(null)
   const [filter,    setFilter]    = useState('active')
+  const [capModal,  setCapModal]  = useState(null)   // lease being capitalised
+  const [schedFor,  setSchedFor]  = useState(null)   // lease whose schedule is open
 
   const emptyForm = () => ({
     name: '', landlord: '', leaseType: 'operating',
     startDate: today(), endDate: '', monthlyRent: '',
     bankAccountId: bankOpts[0]?.id || 'acc-bank1',
     expenseAccountId: 'acc-rent', notes: '',
+    // IFRS 16 measurement inputs. Optional — a lease saved without them keeps
+    // the straight-line rent treatment it would have had before.
+    termMonths: '', discountRate: '', paymentTiming: 'advance',
+    initialCosts: '', incentives: '', usefulLifeMonths: '',
   })
   const [form, setForm] = useState(emptyForm())
   const setField = (k, v) => setForm((f) => ({ ...f, [k]: v }))
@@ -107,7 +115,12 @@ export default function Leases() {
                 <Tr key={lease.id}>
                   <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{lease.number}</span></Td>
                   <Td>
-                    <p className="font-medium text-gray-800 dark:text-slate-100">{lease.name}</p>
+                    <p className="font-medium text-gray-800 dark:text-slate-100 flex items-center gap-1.5">
+                      {lease.name}
+                      {lease.treatment === 'ifrs16' && (
+                        <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">IFRS 16</Badge>
+                      )}
+                    </p>
                     {lease.notes && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[120px]">{lease.notes}</p>}
                   </Td>
                   <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.landlord || '—'}</Td>
@@ -121,7 +134,18 @@ export default function Leases() {
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="lease" entityId={lease.id} />
-                      {status === 'active' && (
+                      {status === 'active' && lease.treatment === 'ifrs16' && (
+                        <Btn size="sm" variant="secondary" onClick={() => setSchedFor(lease)}>
+                          <ListOrdered size={12} /> {t('Schedule')}
+                        </Btn>
+                      )}
+                      {status === 'active' && lease.treatment !== 'ifrs16' && Number(lease.termMonths) > 0 && (
+                        <Btn size="sm" variant="ghost" title={t('Capitalise under IFRS 16')}
+                          onClick={() => setCapModal(lease)}>
+                          <Landmark size={13} className="text-brand-500" />
+                        </Btn>
+                      )}
+                      {status === 'active' && lease.treatment !== 'ifrs16' && (
                         <>
                           <Btn size="sm" variant="secondary" onClick={() => openPay(lease)}>
                             <CreditCard size={12} /> Pay
@@ -165,12 +189,143 @@ export default function Leases() {
               {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </div>
+          {/* IFRS 16 measurement. Filling these in does not capitalise the
+              lease — it only makes the option available, because capitalising
+              changes the balance sheet and should be a deliberate act. */}
+          <div className="rounded-xl border border-gray-200 dark:border-surface-700 p-3 space-y-3">
+            <p className="text-xs font-semibold text-gray-600 dark:text-slate-300 flex items-center gap-1.5">
+              <Landmark size={13} /> {t('IFRS 16 measurement (optional)')}
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Input label={t('Lease term (months)')} type="number" min="0" step="1" value={form.termMonths}
+                onChange={(e) => setField('termMonths', e.target.value)} />
+              <Input label={t('Discount rate (% a year)')} type="number" min="0" step="0.01" value={form.discountRate}
+                onChange={(e) => setField('discountRate', e.target.value)} />
+              <Select label={t('Payment timing')} value={form.paymentTiming} onChange={(e) => setField('paymentTiming', e.target.value)}>
+                <option value="advance">{t('Start of period (in advance)')}</option>
+                <option value="arrears">{t('End of period (in arrears)')}</option>
+              </Select>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Input label={`${t('Initial direct costs')} (${sym})`} type="number" min="0" step="0.01" value={form.initialCosts}
+                onChange={(e) => setField('initialCosts', e.target.value)} />
+              <Input label={`${t('Lease incentives received')} (${sym})`} type="number" min="0" step="0.01" value={form.incentives}
+                onChange={(e) => setField('incentives', e.target.value)} />
+              <Input label={t('Useful life (months)')} type="number" min="0" step="1" value={form.usefulLifeMonths}
+                onChange={(e) => setField('usefulLifeMonths', e.target.value)} />
+            </div>
+            <p className="text-xs text-gray-400 dark:text-slate-500">
+              {t('Leave blank to keep this lease as a straight-line rent expense.')}
+            </p>
+          </div>
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Property address, lease reference, contact details..." />
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setAddModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleAdd}>{t('Save Lease')}</Btn>
           </div>
         </div>
+      </Modal>
+
+      {/* Capitalise under IFRS 16 — shows the measurement before committing,
+          because this permanently changes the shape of the balance sheet. */}
+      <Modal open={!!capModal} onClose={() => setCapModal(null)}
+        title={`${t('Capitalise under IFRS 16')} – ${capModal?.name || ''}`} width="max-w-lg">
+        {capModal && (() => {
+          const terms = leaseTerms(capModal)
+          const m = initialMeasurement(terms)
+          const cmp = compareToStraightLine(terms)
+          const ex = exemption(terms)
+          return (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-slate-50 dark:bg-surface-800 p-3">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('Right-of-use asset')}</p>
+                  <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(m.rouAsset, sym)}</p>
+                </div>
+                <div className="rounded-xl bg-slate-50 dark:bg-surface-800 p-3">
+                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('Lease liability')}</p>
+                  <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(m.liability, sym)}</p>
+                </div>
+              </div>
+
+              {ex.exempt && (
+                <div className="rounded-xl bg-warning-50 dark:bg-warning-500/10 p-3 text-xs text-warning-700 dark:text-warning-300 flex gap-2">
+                  <Info size={13} className="flex-shrink-0 mt-0.5" />
+                  <span>{t('This lease qualifies for the')} {ex.reason === 'short-term' ? t('short-term') : t('low-value')} {t('exemption, so you may keep it as a rent expense instead. Capitalising is still permitted.')}</span>
+                </div>
+              )}
+
+              <div className="rounded-xl border border-gray-200 dark:border-surface-700 p-3 text-sm space-y-1">
+                <p className="text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">{t('What changes')}</p>
+                <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{t('Year 1 expense under IFRS 16')}</span><span className="tabular-nums">{fmtMoney(cmp.firstYearIfrs16, sym)}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{t('Year 1 as straight-line rent')}</span><span className="tabular-nums">{fmtMoney(cmp.firstYearStraightLine, sym)}</span></div>
+                <div className="flex justify-between font-medium border-t border-gray-100 dark:border-surface-750 pt-1 mt-1">
+                  <span>{t('Total cost over the lease')}</span><span className="tabular-nums">{fmtMoney(cmp.ifrs16Total, sym)}</span>
+                </div>
+                <p className="text-xs text-gray-400 dark:text-slate-500 pt-1">
+                  {t('Total cost is unchanged — IFRS 16 moves expense earlier, it does not add any.')}
+                </p>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Btn variant="secondary" onClick={() => setCapModal(null)}>{t('Cancel')}</Btn>
+                <Btn onClick={() => {
+                  try {
+                    recogniseLease(capModal.id, { date: capModal.startDate })
+                    setCapModal(null)
+                  } catch (e) { alert(t('Could not capitalise this lease: ') + e.message) }
+                }}>{t('Capitalise')}</Btn>
+              </div>
+            </div>
+          )
+        })()}
+      </Modal>
+
+      {/* Amortisation schedule + period posting */}
+      <Modal open={!!schedFor} onClose={() => setSchedFor(null)}
+        title={`${t('Lease schedule')} – ${schedFor?.name || ''}`} width="max-w-3xl">
+        {schedFor && (() => {
+          const live = leases.find((l) => l.id === schedFor.id) || schedFor
+          const { rows } = leaseSchedule(leaseTerms(live))
+          const posted = new Set((live.postedPeriods || []).map((p) => p.period))
+          const nextUnposted = rows.find((r) => !posted.has(r.period))
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <p className="text-xs text-gray-500 dark:text-slate-400">
+                  {posted.size} {t('of')} {rows.length} {t('periods posted')}
+                </p>
+                {nextUnposted && (
+                  <Btn size="sm" onClick={() => {
+                    try { postLeasePeriod(live.id, nextUnposted.period) }
+                    catch (e) { alert(t('Could not post this period: ') + e.message) }
+                  }}>
+                    {t('Post period')} {nextUnposted.period}
+                  </Btn>
+                )}
+              </div>
+              <div className="max-h-[420px] overflow-y-auto">
+                <Table headers={[t('Period'), { label: t('Opening'), right: true }, { label: t('Payment'), right: true },
+                  { label: t('Interest'), right: true }, { label: t('Closing'), right: true },
+                  { label: t('Depreciation'), right: true }, t('Posted')]}>
+                  {rows.map((r) => (
+                    <Tr key={r.period} className={posted.has(r.period) ? 'opacity-60' : ''}>
+                      <Td>{r.period}</Td>
+                      <Td right className="tabular-nums">{fmtMoney(r.opening, sym)}</Td>
+                      <Td right className="tabular-nums">{fmtMoney(r.payment, sym)}</Td>
+                      <Td right className="tabular-nums">{fmtMoney(r.interest, sym)}</Td>
+                      <Td right className="tabular-nums">{fmtMoney(r.closing, sym)}</Td>
+                      <Td right className="tabular-nums">{fmtMoney(r.depreciation, sym)}</Td>
+                      <Td>{posted.has(r.period)
+                        ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('Posted')}</Badge>
+                        : <span className="text-gray-300 dark:text-slate-600">—</span>}</Td>
+                    </Tr>
+                  ))}
+                </Table>
+              </div>
+            </div>
+          )
+        })()}
       </Modal>
 
       {/* Pay Modal */}

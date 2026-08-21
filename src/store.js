@@ -48,6 +48,7 @@ import {
 } from './utils/customFields'
 import { DEFAULT_GROUPS, assignDefaultGroups, validateGroup, deleteGroupPlan, defaultGroupFor, OTHER_INCOME } from './utils/accountTree'
 import { advanceDate } from './utils/cashForecast'
+import { initialMeasurement, recognitionLines, periodLines } from './utils/ifrs16'
 import {
   CAPITAL_CONTROL, DEFAULT_SUBACCOUNTS, validateCapitalAccount,
   movementLines, allocateProfit, profitAllocationLines,
@@ -74,6 +75,7 @@ const DEFAULT_ACCOUNTS = [
   { id: 'acc-fixed',  code: '1600', name: 'Fixed Assets – Cost',        type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-depr',   code: '1610', name: 'Accumulated Depreciation',   type: 'asset',     subtype: 'non_current', isSystem: true  },
   { id: 'acc-rou',    code: '1620', name: 'Right-of-Use Assets',        type: 'asset',     subtype: 'non_current', isSystem: false },
+  { id: 'acc-roudepr',code: '1621', name: 'Accumulated Depreciation – Right-of-Use', type: 'asset', subtype: 'non_current', isSystem: false },
   // LIABILITIES – Current
   { id: 'acc-ap',     code: '2001', name: 'Accounts Payable',           type: 'liability', subtype: 'current',     isSystem: true, controlFor: 'suppliers'  },
   { id: 'acc-grni',   code: '2050', name: 'Goods Received Not Invoiced', type: 'liability', subtype: 'current',     isSystem: true  },
@@ -3753,9 +3755,107 @@ export const useStore = create(
         return newLease
       },
 
+      // ── IFRS 16 ──
+      // Capitalising a lease is opt-in per lease: it changes the shape of the
+      // balance sheet, so it happens when somebody asks for it rather than
+      // because a lease happens to look long enough to qualify.
+
+      /** The measurement inputs a lease carries, in the shape ifrs16.js wants. */
+      leaseTerms: (lease) => ({
+        payment: Number(lease?.monthlyRent) || 0,
+        termMonths: Number(lease?.termMonths) || 0,
+        annualRate: Number(lease?.discountRate) || 0,
+        timing: lease?.paymentTiming || 'advance',
+        initialCosts: Number(lease?.initialCosts) || 0,
+        prepaid: Number(lease?.prepaid) || 0,
+        incentives: Number(lease?.incentives) || 0,
+        usefulLifeMonths: Number(lease?.usefulLifeMonths) || 0,
+        purchaseOption: !!lease?.purchaseOption,
+        assetValue: Number(lease?.assetValue) || 0,
+      }),
+
+      /**
+       * Recognise a lease under IFRS 16 — right-of-use asset and lease
+       * liability at commencement.
+       *
+       * Refuses to run twice. A second recognition would double both the asset
+       * and the liability, and the books would still balance, so the error
+       * would sit there looking plausible for months.
+       */
+      recogniseLease: (leaseId, opts = {}) => {
+        const lease = get().leases.find((l) => l.id === leaseId)
+        if (!lease) throw new Error('LEASE_NOT_FOUND')
+        if (lease.treatment === 'ifrs16') throw new Error('LEASE_ALREADY_RECOGNISED')
+        const terms = get().leaseTerms(lease)
+        if (!terms.termMonths || terms.termMonths < 1) throw new Error('LEASE_TERM_REQUIRED')
+        if (!terms.payment) throw new Error('LEASE_PAYMENT_REQUIRED')
+
+        const lines = recognitionLines(terms, { bankAccountId: lease.bankAccountId || 'acc-bank1' })
+        if (!lines.length) throw new Error('LEASE_NOTHING_TO_RECOGNISE')
+        const measured = initialMeasurement(terms)
+
+        const je = get().addJournalEntry({
+          date: opts.date || lease.startDate || new Date().toISOString().slice(0, 10),
+          description: `Lease recognition – ${lease.name}`,
+          reference: lease.number, type: 'lease_recognition', lines,
+        })
+        set((st) => ({
+          leases: st.leases.map((l) => (l.id === leaseId ? {
+            ...l, treatment: 'ifrs16',
+            recognitionJournalEntryId: je.id,
+            initialLiability: measured.liability,
+            initialRouAsset: measured.rouAsset,
+            postedPeriods: [],
+            recognisedAt: new Date().toISOString(),
+          } : l)),
+        }))
+        return je
+      },
+
+      /**
+       * Post one period of a capitalised lease: interest accretion, the
+       * payment, and right-of-use depreciation.
+       *
+       * Posting a period twice is refused for the same reason as double
+       * recognition — the entry balances either way, so nothing would flag it.
+       */
+      postLeasePeriod: (leaseId, period, opts = {}) => {
+        const lease = get().leases.find((l) => l.id === leaseId)
+        if (!lease) throw new Error('LEASE_NOT_FOUND')
+        if (lease.treatment !== 'ifrs16') throw new Error('LEASE_NOT_RECOGNISED')
+        if ((lease.postedPeriods || []).some((p) => p.period === period)) throw new Error('LEASE_PERIOD_ALREADY_POSTED')
+
+        const built = periodLines(get().leaseTerms(lease), period, {
+          bankAccountId: opts.bankAccountId || lease.bankAccountId || 'acc-bank1',
+        })
+        if (!built) throw new Error('LEASE_PERIOD_OUT_OF_TERM')
+
+        const date = opts.date || new Date().toISOString().slice(0, 10)
+        const je = get().addJournalEntry({
+          date, description: `Lease period ${period} – ${lease.name}`,
+          reference: lease.number, type: 'lease_period', lines: built.lines,
+        })
+        set((st) => ({
+          leases: st.leases.map((l) => (l.id === leaseId ? {
+            ...l,
+            postedPeriods: [...(l.postedPeriods || []), {
+              period, date, journalEntryId: je.id,
+              interest: built.row.interest,
+              depreciation: built.row.depreciation,
+              payment: built.row.payment,
+            }],
+          } : l)),
+        }))
+        return je
+      },
+
       recordLeasePayment: (leaseId, payment) => {
         const lease = get().leases.find((l) => l.id === leaseId)
         if (!lease) return
+        // A capitalised lease posts through postLeasePeriod, which splits the
+        // payment between interest and principal. Booking it as rent as well
+        // would expense the same cash twice.
+        if (lease.treatment === 'ifrs16') throw new Error('LEASE_IS_CAPITALISED')
         const bankAccId = payment.bankAccountId || lease.bankAccountId || 'acc-bank1'
         const expAccId  = payment.expenseAccountId || lease.expenseAccountId || 'acc-rent'
         const je = get().addJournalEntry({
@@ -4700,7 +4800,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 38, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 39, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         return out
       },
@@ -4897,7 +4997,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 38,
+      version: 39,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5094,6 +5194,20 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 39) {
+          // IFRS 16 needs somewhere to accumulate right-of-use depreciation,
+          // kept apart from PPE so the balance sheet can disclose right-of-use
+          // assets separately as the standard requires.
+          if (Array.isArray(persisted.accounts) && !persisted.accounts.some((a) => a.id === 'acc-roudepr')) {
+            persisted.accounts.push({ id: 'acc-roudepr', code: '1621', name: 'Accumulated Depreciation – Right-of-Use', type: 'asset', subtype: 'non_current', isSystem: false })
+          }
+          // Existing leases keep the treatment they were posted under. Silently
+          // re-basing live books onto IFRS 16 would restate a balance sheet
+          // nobody asked to have restated — capitalising is opt-in per lease.
+          if (Array.isArray(persisted.leases)) {
+            persisted.leases = persisted.leases.map((l) => ({ ...l, treatment: l.treatment || 'expense' }))
+          }
         }
         if (version < 38) {
           // An existing company has been in use for a while — it does not need

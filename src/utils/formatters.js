@@ -4,10 +4,15 @@ import { useI18n, localizeDigits } from '../i18n'
 
 export function fmtMoney(amount, symbol = '$') {
   const n = Number(amount) || 0
+  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+  // Show a sign only when there is something to be negative about. A balance
+  // built from many postings lands a hair below zero in floating point — a
+  // lease liability settled over 36 monthly entries comes out at -1e-11 — and
+  // rendering that as "-$0.00" makes a correctly cleared account look wrong.
+  const negative = n < 0 && Math.abs(n) >= 0.005
   // Sign goes before the currency symbol (−$3,870.00, not $-3,870.00) — also
   // keeps the sign attached to the amount in RTL layouts.
-  const abs = Math.abs(n).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-  return localizeDigits(`${n < 0 ? '-' : ''}${symbol}${abs}`)
+  return localizeDigits(`${negative ? '-' : ''}${symbol}${abs}`)
 }
 
 export function fmtDate(dateStr) {
