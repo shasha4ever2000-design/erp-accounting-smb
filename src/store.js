@@ -1405,6 +1405,13 @@ export const useStore = create(
         const issue = explodeLines(invoice.items, get().inventoryItems) // itemId -> qty
         const cogsByAcc = {}, invByAcc = {}
         const costPatch = {}   // itemId -> { costLayers, costPrice } from the issue
+        // What each item actually cost on the day it was sold. Kept on the
+        // document because cost is a moving target: re-deriving it later from
+        // the item's current costPrice would re-price history every time a
+        // purchase lands, and margin reporting would quietly drift. The
+        // journal entry alone cannot answer it either — its lines are grouped
+        // by account, so two items sharing one COGS account are indivisible.
+        const cogsByItem = {}
         let cogs = 0
         const method = get().costingMethod()
         Object.entries(issue).forEach(([itemId, q]) => {
@@ -1418,6 +1425,7 @@ export const useStore = create(
           costPatch[itemId] = priced.patch
           const amt = priced.cost
           cogs += amt
+          cogsByItem[itemId] = Math.round(((cogsByItem[itemId] || 0) + amt) * 100) / 100
           const cAcc = it.cogsAccountId || 'acc-cogs'
           const iAcc = it.inventoryAccountId || 'acc-inv'
           cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
@@ -1440,6 +1448,7 @@ export const useStore = create(
           ...invoice, id: reissue?.id || uuid(), number, status: 'sent', amountPaid: 0, payments: [],
           exchangeRate: rate, baseTotal: arBase,
           journalEntryId: je.id, cogsJournalEntryId: cogsJeId,
+          cogsTotal: Math.round(cogs * 100) / 100, cogsByItem,
           createdAt: reissue?.createdAt || new Date().toISOString(),
           ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
@@ -2435,7 +2444,7 @@ export const useStore = create(
         const je = get().addJournalEntry({ date: rDate, description: `Sales Return ${number} – ${inv.customerName || ''}`, reference: number, type: 'credit_note', departmentId: inv.departmentId || null, lines })
 
         // Restock returned stock + reverse COGS at current average cost.
-        const cogsByAcc = {}, invByAcc = {}, restock = {}
+        const cogsByAcc = {}, invByAcc = {}, restock = {}, cogsByItem = {}
         let cogs = 0
         // A returned kit puts its components back, not the kit — the same
         // explosion the sale used, so what comes back matches what went out.
@@ -2448,6 +2457,7 @@ export const useStore = create(
           const amt = Math.round(qty * (it.costPrice || 0) * 100) / 100
           if (amt <= 0) return
           cogs += amt
+          cogsByItem[itemId] = Math.round(((cogsByItem[itemId] || 0) + amt) * 100) / 100
           const cAcc = it.cogsAccountId || 'acc-cogs', iAcc = it.inventoryAccountId || 'acc-inv'
           invByAcc[iAcc] = (invByAcc[iAcc] || 0) + amt
           cogsByAcc[cAcc] = (cogsByAcc[cAcc] || 0) + amt
@@ -2481,6 +2491,7 @@ export const useStore = create(
           customerId: inv.customerId, customerName: inv.customerName, date: rDate, reason: reason || '',
           currency: inv.currency, exchangeRate: rate, items, subtotal, taxAmount, total,
           status: 'issued', journalEntryId: je.id, cogsJournalEntryId: cogsJeId, createdAt: new Date().toISOString(),
+          cogsTotal: Math.round(cogs * 100) / 100, cogsByItem,
         }
         const newItems = (inv.items || []).map((l) => (applied[l.id] ? { ...l, returnedQty: (Number(l.returnedQty) || 0) + applied[l.id] } : l))
         set((st) => ({
