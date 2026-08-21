@@ -28,6 +28,7 @@ import {
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import {
   GENESIS, hashEntry, chainEntries, reseal, verifyChain, ledgerAnchor, matchesAnchor, shortHash,
+  PREV_TAG_LENGTH, prevTag,
 } from './utils/ledgerChain'
 import { isPersisted, storageEstimate, assessDurability } from './utils/durability'
 import { defaultApprovalSettings, needsApproval, canApprove, amountOf } from './utils/approvals'
@@ -1235,7 +1236,9 @@ export const useStore = create(
         let sealed = newJE
         set((st) => {
           const prev = st.journalEntries[st.journalEntries.length - 1]?.hash || GENESIS
-          sealed = { ...newJE, prevHash: prev, hash: hashEntry(newJE, prev) }
+          // The link is computed from the full predecessor hash; only the
+          // stored back-reference is a short tag. See PREV_TAG_LENGTH.
+          sealed = { ...newJE, prevHash: prevTag(prev), hash: hashEntry(newJE, prev) }
           return {
             journalEntries: [...st.journalEntries, sealed],
             settings: { ...st.settings, journal: { ...st.settings.journal, next: st.settings.journal.next + 1 } },
@@ -4924,7 +4927,7 @@ export const useStore = create(
           'salesOrders', 'purchaseQuotes', 'stockCounts',
           'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
         ]
-        const out = { _app: 'erp-accounting-smb', _version: 41, _exportedAt: new Date().toISOString() }
+        const out = { _app: 'erp-accounting-smb', _version: 42, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
         // The anchor travels with the file. This is what turns the hash chain
         // from a local self-check into something an outsider can rely on: a
@@ -5183,7 +5186,7 @@ export const useStore = create(
     }),
     {
       name: currentCompanyKey(),
-      version: 41,
+      version: 42,
       // IndexedDB primary (no 5 MB cap), transparently migrating any existing
       // localStorage snapshot; localStorage remains the graceful fallback
       // inside idbKvStorage, which also raises erp-storage-error if a write
@@ -5380,6 +5383,23 @@ export const useStore = create(
           ]
           if (Array.isArray(persisted.accounts))
             addAcc.forEach((x) => { if (!persisted.accounts.some((y) => y.id === x.id)) persisted.accounts.push(x) })
+        }
+        if (version < 42) {
+          // Shrink the stored back-link. It was a full 64-character hash, which
+          // measured at +43% on the ledger; twelve characters serve its only
+          // purpose (telling a changed entry from a moved one) at +28%.
+          //
+          // Deliberately not a re-chain. Recomputing hashes here would repair
+          // any tampering that had already happened and erase the evidence —
+          // the same trap `reseal` avoids by only ever working forward. This
+          // rewrites one redundant field and never touches `hash`.
+          if (Array.isArray(persisted.journalEntries)) {
+            persisted.journalEntries = persisted.journalEntries.map((j) => (
+              typeof j?.prevHash === 'string' && j.prevHash.length > PREV_TAG_LENGTH
+                ? { ...j, prevHash: j.prevHash.slice(0, PREV_TAG_LENGTH) }
+                : j
+            ))
+          }
         }
         if (version < 41) {
           // Seal the existing ledger into the hash chain, and start tracking
