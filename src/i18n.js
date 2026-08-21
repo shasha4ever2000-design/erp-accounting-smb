@@ -2681,6 +2681,9 @@ const AR = {
   "This backup's ledger does not match the seal it was exported with — it has been changed since it was created. Restore it anyway?": 'دفتر اليومية في هذه النسخة الاحتياطية لا يطابق الختم الذي صُدِّرت به — أي أنه تغيّر بعد إنشائها. هل تريد الاستعادة رغم ذلك؟',
   'Ledger seal': 'ختم دفتر اليومية',
   'Copy': 'نسخ',
+
+  // ── One writer per company ──
+  'These books are open in another tab or window. Only one can save changes, so work in that one — anything you enter here may be lost.': 'هذه الدفاتر مفتوحة في تبويب أو نافذة أخرى. تبويب واحد فقط يمكنه حفظ التغييرات، لذا اعمل هناك — فقد يضيع أي شيء تدخله هنا.',
   'Keep this value somewhere outside this browser — an email to yourself, a note, a printed statement. Anyone can recompute it from your data later to prove the ledger has not changed since today.': 'احتفظ بهذه القيمة في مكان خارج هذا المتصفح — رسالة إلى نفسك، أو ملاحظة، أو كشف مطبوع. يمكن لأي شخص إعادة حسابها من بياناتك لاحقًا لإثبات أن دفتر اليومية لم يتغيّر منذ اليوم.',
 }
 

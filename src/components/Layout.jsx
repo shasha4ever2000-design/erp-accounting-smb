@@ -4,6 +4,8 @@ import { useStore } from '../store'
 import { useAuth } from '../auth'
 import { useI18n, useT } from '../i18n'
 import { actionableFor } from '../utils/approvals'
+import { startTabGuard, shouldWarn, WARNING_TEXT } from '../utils/tabGuard'
+import { currentCompanyKey } from '../boot'
 import AIAssistant from './AIAssistant'
 import CommandPalette from './CommandPalette'
 import InstallButton from './InstallButton'
@@ -129,6 +131,21 @@ export default function Layout({ children }) {
     return () => window.removeEventListener('erp-storage-error', onErr)
   }, [])
 
+  // Two tabs on the same company overwrite each other's work without a word.
+  // This elects a single writer and tells the others they are not it. See
+  // utils/tabGuard.js — it cannot merge concurrent edits, only stop them
+  // happening in silence.
+  const [tabRole, setTabRole] = useState(null)
+  const [otherTab, setOtherTab] = useState(false)
+  useEffect(() => {
+    const guard = startTabGuard({
+      key: currentCompanyKey(),
+      onRole: setTabRole,
+      onPeer: () => setOtherTab(true),
+    })
+    return () => guard.stop()
+  }, [])
+
   const openPalette = () => {
     window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: true }))
   }
@@ -242,6 +259,19 @@ export default function Layout({ children }) {
           <div className="no-print bg-warning-50 dark:bg-warning-900/30 text-warning-800 dark:text-warning-200 border-b border-warning-200/70 dark:border-warning-800/50 text-sm px-4 py-2 flex items-center justify-between gap-3">
             <span>⚠️ Your browser storage is full — recent changes may not be saved. Open <strong>Settings → Backup</strong> to download your data, then free up space.</span>
             <button onClick={() => setStorageWarn(false)} className="font-bold px-2">✕</button>
+          </div>
+        )}
+
+        {/* Another tab has these books open.
+            Deliberately not dismissible: the risk does not go away when the
+            message is closed, and the whole failure this guards against is one
+            the user cannot otherwise see. It disappears when this tab becomes
+            the writer — which happens on its own as soon as the other one is
+            closed or backgrounded. */}
+        {shouldWarn({ role: tabRole, sawOtherTab: otherTab }) && (
+          <div className="no-print bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-b border-amber-200/70 dark:border-amber-800/50 text-sm px-4 py-2 flex items-center gap-2">
+            <AlertTriangle size={15} className="flex-shrink-0" />
+            <span>{t(WARNING_TEXT)}</span>
           </div>
         )}
 
