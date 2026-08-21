@@ -7,7 +7,7 @@
 // most — that an edit made *behind* the app's back does not.
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useStore } from '../src/store.js'
-import { verifyChain, hashEntry, GENESIS } from '../src/utils/ledgerChain.js'
+import { verifyChain, hashEntry, GENESIS, prevTag } from '../src/utils/ledgerChain.js'
 
 const g = () => useStore.getState()
 
@@ -37,9 +37,11 @@ describe('posting', () => {
     g().addJournalEntry(manual())
     g().addJournalEntry(manual({ description: 'Second' }))
     const jes = g().journalEntries
-    expect(jes[0].prevHash).toBe(GENESIS)
+    expect(jes[0].prevHash).toBe(prevTag(GENESIS))
     expect(jes[0].hash).toMatch(/^[0-9a-f]{64}$/)
-    expect(jes[1].prevHash).toBe(jes[0].hash)
+    // Stored as a short tag; the link itself is computed from the full hash.
+    expect(jes[1].prevHash).toBe(prevTag(jes[0].hash))
+    expect(jes[1].hash).toBe(hashEntry(jes[1], jes[0].hash))
     expect(g().verifyLedger().ok).toBe(true)
   })
 

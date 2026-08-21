@@ -9,7 +9,7 @@ import { describe, it, expect } from 'vitest'
 import { createHash } from 'node:crypto'
 import {
   sha256Hex, canonicalise, hashEntry, chainEntries, reseal, verifyChain,
-  ledgerAnchor, matchesAnchor, shortHash, GENESIS, CHAIN_VERSION,
+  ledgerAnchor, matchesAnchor, shortHash, GENESIS, CHAIN_VERSION, PREV_TAG_LENGTH, prevTag,
 } from '../src/utils/ledgerChain.js'
 
 const je = (n, over = {}) => ({
@@ -123,9 +123,19 @@ describe('what the hash covers', () => {
 
 describe('chaining', () => {
   it('links each entry to its predecessor', () => {
+    // The link is computed from the predecessor's full hash; what gets stored
+    // is a short tag of it, because journal entries are the bulk of the data
+    // and a second full hash per entry measured at +43% on disk.
     const chain = ledger(4)
-    expect(chain[0].prevHash).toBe(GENESIS)
-    for (let i = 1; i < chain.length; i++) expect(chain[i].prevHash).toBe(chain[i - 1].hash)
+    expect(chain[0].prevHash).toBe(prevTag(GENESIS))
+    for (let i = 1; i < chain.length; i++) expect(chain[i].prevHash).toBe(prevTag(chain[i - 1].hash))
+    expect(chain[1].hash).toBe(hashEntry(chain[1], chain[0].hash))
+  })
+
+  it('stores a back-reference far smaller than a full hash', () => {
+    const chain = ledger(2)
+    expect(chain[1].prevHash).toHaveLength(PREV_TAG_LENGTH)
+    expect(chain[1].hash).toHaveLength(64)
   })
 
   it('does not mutate the entries it was given', () => {
@@ -197,7 +207,9 @@ describe('catching tampering', () => {
   it('catches a hash edited to match altered contents but not its neighbours', () => {
     const chain = ledger(5)
     const altered = { ...chain[2], description: 'changed' }
-    chain[2] = { ...altered, hash: hashEntry(altered, chain[2].prevHash) }
+    // Recomputed against the true predecessor — the stored prevHash is only a
+    // short tag, so a forger has to go and get the real hash to do this at all.
+    chain[2] = { ...altered, hash: hashEntry(altered, chain[1].hash) }
     const v = verifyChain(chain)
     // The entry itself now self-verifies — the break surfaces at the next one,
     // whose recorded prevHash no longer matches. A chain is only as forgeable
