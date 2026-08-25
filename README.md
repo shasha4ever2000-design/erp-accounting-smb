@@ -60,6 +60,13 @@ All financial reports (P&L, Balance Sheet, Trial Balance) are derived from these
 All data is saved in your browser's `localStorage`. No account, no server, no internet required.  
 To back up your data: **Settings → Export** (coming soon) or use your browser's developer tools.
 
+## Development Agents
+
+68 specialist Claude Code subagents (frontend, backend, security, testing,
+design, product…) are vendored into `.claude/agents/`, so they load in any
+Claude Code session opened on this repo. See [docs/agency-agents.md](docs/agency-agents.md)
+for the roster and how to refresh it.
+
 ## License
 
 MIT
