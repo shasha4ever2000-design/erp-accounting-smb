@@ -66,6 +66,13 @@ export const useAuth = create(
       companies: [],
       currentCompanyId: null,
 
+      // Which customer or supplier in one company's books *is* another company
+      // in the group. This has to live here rather than in a company's own
+      // ledger: it is a statement about the group, both halves are needed at
+      // once to match a balance, and it must survive switching companies.
+      // { companyId, partyType, partyId, partyName, representsCompanyId }
+      groupMappings: [],
+
       currentUser: () => get().users.find((u) => u.id === get().currentUserId) || null,
       currentRole: () => get().users.find((u) => u.id === get().currentUserId)?.role || 'viewer',
       isManager: () => ['owner', 'admin'].includes(get().users.find((u) => u.id === get().currentUserId)?.role),
@@ -167,6 +174,23 @@ export const useAuth = create(
       unlinkCompanyCloud: (id) =>
         set((s) => ({ companies: s.companies.map((c) => (c.id === id ? { ...c, cloudCompanyId: undefined } : c)) })),
 
+      // Confirm that a party in one company's books is a sister company. Keyed
+      // on company + party, so re-confirming replaces rather than duplicates —
+      // a party counted twice would eliminate twice.
+      mapGroupParty: ({ companyId, partyType, partyId, partyName, representsCompanyId }) => {
+        if (!companyId || !partyId || !representsCompanyId) return
+        if (companyId === representsCompanyId) return   // a company is not its own counterparty
+        set((s) => ({
+          groupMappings: [
+            ...s.groupMappings.filter((m) => !(m.companyId === companyId && m.partyId === partyId)),
+            { companyId, partyType, partyId, partyName, representsCompanyId },
+          ],
+        }))
+      },
+
+      unmapGroupParty: (companyId, partyId) =>
+        set((s) => ({ groupMappings: s.groupMappings.filter((m) => !(m.companyId === companyId && m.partyId === partyId)) })),
+
       deleteCompany: (id) => {
         // purge the company's persisted data from both localStorage and IndexedDB
         try { localStorage.removeItem(`erp-co-${id}`) } catch { /* ignore */ }
@@ -174,15 +198,25 @@ export const useAuth = create(
         set((s) => ({
           companies: s.companies.filter((c) => c.id !== id),
           currentCompanyId: s.currentCompanyId === id ? null : s.currentCompanyId,
+          // Both directions: mappings held *by* the deleted company and
+          // mappings in other companies that point *at* it. Leaving the latter
+          // would keep eliminating against a company that no longer exists.
+          groupMappings: s.groupMappings.filter((m) => m.companyId !== id && m.representsCompanyId !== id),
         }))
       },
     }),
     {
       name: 'erp-auth',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
         if (version < 2 && persisted?.users) {
           persisted.users = persisted.users.map((u, i) => ({ ...u, role: u.role || (i === 0 ? 'owner' : 'viewer') }))
+        }
+        if (version < 3 && persisted) {
+          // Nothing to convert — existing groups simply have no mappings yet,
+          // and consolidation without mappings behaves exactly as it did
+          // before: a plain sum, now labelled as one.
+          persisted.groupMappings = persisted.groupMappings || []
         }
         return persisted
       },
