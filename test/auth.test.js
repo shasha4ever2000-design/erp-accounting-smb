@@ -103,3 +103,68 @@ describe('local auth password hashing', () => {
     expect(g().users).toHaveLength(1)
   })
 })
+
+describe('intercompany mapping', () => {
+  const resetGroup = () => useAuth.setState({
+    companies: [{ id: 'co-a', name: 'A' }, { id: 'co-b', name: 'B' }],
+    currentCompanyId: 'co-a',
+    groupMappings: [],
+  })
+  const map = (o) => g().mapGroupParty({ companyId: 'co-a', partyType: 'customer', partyId: 'cust-1', partyName: 'B Trading', representsCompanyId: 'co-b', ...o })
+
+  beforeEach(resetGroup)
+
+  it('records which party represents which company', () => {
+    map()
+    expect(g().groupMappings).toEqual([
+      { companyId: 'co-a', partyType: 'customer', partyId: 'cust-1', partyName: 'B Trading', representsCompanyId: 'co-b' },
+    ])
+  })
+
+  it('replaces rather than duplicates when the same party is confirmed twice', () => {
+    map()
+    map({ representsCompanyId: 'co-b', partyName: 'B Trading LLC' })
+    expect(g().groupMappings).toHaveLength(1)
+    expect(g().groupMappings[0].partyName).toBe('B Trading LLC')
+  })
+
+  it('refuses to map a company to itself', () => {
+    map({ representsCompanyId: 'co-a' })
+    expect(g().groupMappings).toHaveLength(0)
+  })
+
+  it('ignores an incomplete mapping instead of storing a half one', () => {
+    map({ partyId: null })
+    map({ representsCompanyId: null })
+    expect(g().groupMappings).toHaveLength(0)
+  })
+
+  it('keeps mappings for the same party id in different companies apart', () => {
+    map()
+    g().mapGroupParty({ companyId: 'co-b', partyType: 'supplier', partyId: 'cust-1', representsCompanyId: 'co-a' })
+    expect(g().groupMappings).toHaveLength(2)
+  })
+
+  it('removes one mapping without touching the others', () => {
+    map()
+    g().mapGroupParty({ companyId: 'co-b', partyType: 'supplier', partyId: 'supp-1', representsCompanyId: 'co-a' })
+    g().unmapGroupParty('co-a', 'cust-1')
+    expect(g().groupMappings).toHaveLength(1)
+    expect(g().groupMappings[0].companyId).toBe('co-b')
+  })
+
+  it('drops mappings pointing at a deleted company, not just its own', () => {
+    map()
+    g().mapGroupParty({ companyId: 'co-b', partyType: 'supplier', partyId: 'supp-1', representsCompanyId: 'co-a' })
+    g().deleteCompany('co-b')
+    // Both are gone: co-a's mapping pointed at the company that just went.
+    expect(g().groupMappings).toHaveLength(0)
+  })
+
+  it('leaves unrelated mappings alone when a third company is deleted', () => {
+    useAuth.setState({ companies: [...g().companies, { id: 'co-c', name: 'C' }] })
+    map()
+    g().deleteCompany('co-c')
+    expect(g().groupMappings).toHaveLength(1)
+  })
+})
