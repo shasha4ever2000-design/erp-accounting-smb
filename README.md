@@ -63,3 +63,9 @@ To back up your data: **Settings → Export** (coming soon) or use your browser'
 ## License
 
 MIT
+
+## Bonus: Red Horizon
+
+`game/index.html` is a standalone real-time-strategy game (a personal side project — it has
+nothing to do with the accounting app and shares none of its code). Open the file in a
+browser to play. See [game/README.md](game/README.md).
