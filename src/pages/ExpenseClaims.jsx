@@ -114,7 +114,7 @@ export default function ExpenseClaims() {
   return (
     <div>
       <PageHeader
-        title="Expense Claims"
+        title="Expense claims"
         subtitle="Employee expense reimbursements — submit, approve, and pay"
         action={<Btn onClick={openModal}><Plus size={15} /> {t('New Claim')}</Btn>}
       />

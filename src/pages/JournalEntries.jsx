@@ -151,7 +151,7 @@ export default function JournalEntries() {
   return (
     <div>
       <PageHeader
-        title="Journal Entries"
+        title="Journal entries"
         subtitle={`${journalEntries.length} ${t('entries')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('Manual Entry')}</Btn>}
       />

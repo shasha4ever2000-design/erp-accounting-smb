@@ -169,7 +169,7 @@ export default function ChartOfAccounts() {
   return (
     <div>
       <PageHeader
-        title="Chart of Accounts"
+        title="Chart of accounts"
         subtitle="Your accounting structure, grouped the way your statements read"
         action={
           <>

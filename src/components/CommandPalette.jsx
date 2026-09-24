@@ -7,54 +7,54 @@ import { useT } from '../i18n'
 
 const COMMANDS = [
   { label: 'Dashboard', path: '/', group: 'Go to' },
-  { label: 'Chart of Accounts', path: '/accounts', group: 'Go to' },
-  { label: 'Cash & Bank Accounts', path: '/bank-accounts', group: 'Go to' },
-  { label: 'Bank Transactions', path: '/banking', group: 'Go to' },
-  { label: 'Bank Reconciliation', path: '/reconciliation', group: 'Go to' },
-  { label: 'Journal Entries', path: '/journals', group: 'Go to' },
-  { label: 'Sales Pipeline (CRM)', path: '/pipeline', group: 'Go to' },
-  { label: 'Point of Sale (POS)', path: '/pos', group: 'Go to' },
+  { label: 'Chart of accounts', path: '/accounts', group: 'Go to' },
+  { label: 'Cash & bank accounts', path: '/bank-accounts', group: 'Go to' },
+  { label: 'Bank transactions', path: '/banking', group: 'Go to' },
+  { label: 'Bank reconciliation', path: '/reconciliation', group: 'Go to' },
+  { label: 'Journal entries', path: '/journals', group: 'Go to' },
+  { label: 'Sales pipeline (CRM)', path: '/pipeline', group: 'Go to' },
+  { label: 'Point of sale (POS)', path: '/pos', group: 'Go to' },
   { label: 'Customers', path: '/customers', group: 'Go to' },
   { label: 'Quotations', path: '/quotations', group: 'Go to' },
-  { label: 'Sales Invoices', path: '/invoices', group: 'Go to' },
-  { label: 'Recurring / Subscription Invoices', path: '/recurring-invoices', group: 'Go to' },
-  { label: 'Delivery Notes', path: '/delivery-notes', group: 'Go to' },
-  { label: 'Credit Notes', path: '/credit-notes', group: 'Go to' },
+  { label: 'Sales invoices', path: '/invoices', group: 'Go to' },
+  { label: 'Recurring / subscription invoices', path: '/recurring-invoices', group: 'Go to' },
+  { label: 'Delivery notes', path: '/delivery-notes', group: 'Go to' },
+  { label: 'Credit notes', path: '/credit-notes', group: 'Go to' },
   { label: 'Suppliers', path: '/suppliers', group: 'Go to' },
-  { label: 'Purchase Requisitions', path: '/requisitions', group: 'Go to' },
-  { label: 'Purchase Orders', path: '/purchase-orders', group: 'Go to' },
-  { label: 'Purchase Invoices', path: '/purchases', group: 'Go to' },
-  { label: 'Debit Notes', path: '/debit-notes', group: 'Go to' },
-  { label: 'Recurring Expenses', path: '/recurring-expenses', group: 'Go to' },
-  { label: 'Inventory Items', path: '/inventory', group: 'Go to' },
-  { label: 'Warehouses & Stock Transfers', path: '/warehouses', group: 'Go to' },
-  { label: 'Stock Adjustments', path: '/stock-adjustments', group: 'Go to' },
+  { label: 'Purchase requisitions', path: '/requisitions', group: 'Go to' },
+  { label: 'Purchase orders', path: '/purchase-orders', group: 'Go to' },
+  { label: 'Purchase invoices', path: '/purchases', group: 'Go to' },
+  { label: 'Debit notes', path: '/debit-notes', group: 'Go to' },
+  { label: 'Recurring expenses', path: '/recurring-expenses', group: 'Go to' },
+  { label: 'Inventory items', path: '/inventory', group: 'Go to' },
+  { label: 'Warehouses & stock transfers', path: '/warehouses', group: 'Go to' },
+  { label: 'Stock adjustments', path: '/stock-adjustments', group: 'Go to' },
   { label: 'Manufacturing', path: '/manufacturing', group: 'Go to' },
-  { label: 'Projects & Job Costing', path: '/projects', group: 'Go to' },
-  { label: 'Budgets vs Actuals', path: '/budgets', group: 'Go to' },
-  { label: 'Prepaid Expenses', path: '/prepaid-expenses', group: 'Go to' },
-  { label: 'Leases & Rent', path: '/leases', group: 'Go to' },
-  { label: 'Expense Claims', path: '/expense-claims', group: 'Go to' },
-  { label: 'Fixed Assets', path: '/fixed-assets', group: 'Go to' },
+  { label: 'Projects & job costing', path: '/projects', group: 'Go to' },
+  { label: 'Budgets vs actuals', path: '/budgets', group: 'Go to' },
+  { label: 'Prepaid expenses', path: '/prepaid-expenses', group: 'Go to' },
+  { label: 'Leases & rent', path: '/leases', group: 'Go to' },
+  { label: 'Expense claims', path: '/expense-claims', group: 'Go to' },
+  { label: 'Fixed assets', path: '/fixed-assets', group: 'Go to' },
   { label: 'Departments', path: '/departments', group: 'Go to' },
   { label: 'Employees', path: '/employees', group: 'Go to' },
   { label: 'Payroll', path: '/payroll', group: 'Go to' },
-  { label: 'Business Analytics', path: '/analytics', group: 'Go to' },
-  { label: 'Cash Forecast', path: '/cash-forecast', group: 'Go to' },
-  { label: 'Currencies & Exchange Rates', path: '/currencies', group: 'Go to' },
-  { label: 'Statements of Account', path: '/statements', group: 'Go to' },
-  { label: 'Year-End Close', path: '/year-end', group: 'Go to' },
-  { label: 'Audit Log', path: '/audit-log', group: 'Go to' },
-  { label: 'Team & Roles', path: '/team', group: 'Go to' },
+  { label: 'Business analytics', path: '/analytics', group: 'Go to' },
+  { label: 'Cash forecast', path: '/cash-forecast', group: 'Go to' },
+  { label: 'Currencies & exchange rates', path: '/currencies', group: 'Go to' },
+  { label: 'Statements of account', path: '/statements', group: 'Go to' },
+  { label: 'Year-end close', path: '/year-end', group: 'Go to' },
+  { label: 'Audit log', path: '/audit-log', group: 'Go to' },
+  { label: 'Team & roles', path: '/team', group: 'Go to' },
   { label: 'Reports', path: '/reports', group: 'Go to' },
-  { label: 'VAT Return (ZATCA)', path: '/reports', group: 'Go to' },
+  { label: 'VAT return (ZATCA)', path: '/reports', group: 'Go to' },
   { label: 'Settings', path: '/settings', group: 'Go to' },
   // Quick actions
-  { label: 'New Sales Invoice', path: '/invoices/new', group: 'Create' },
-  { label: 'New Quotation', path: '/quotations/new', group: 'Create' },
-  { label: 'New Purchase Order', path: '/purchase-orders/new', group: 'Create' },
-  { label: 'New Purchase Invoice', path: '/purchases/new', group: 'Create' },
-  { label: 'New Fixed Asset', path: '/fixed-assets/new', group: 'Create' },
+  { label: 'New sales invoice', path: '/invoices/new', group: 'Create' },
+  { label: 'New quotation', path: '/quotations/new', group: 'Create' },
+  { label: 'New purchase order', path: '/purchase-orders/new', group: 'Create' },
+  { label: 'New purchase invoice', path: '/purchases/new', group: 'Create' },
+  { label: 'New fixed asset', path: '/fixed-assets/new', group: 'Create' },
 ]
 
 export default function CommandPalette() {
@@ -91,11 +91,11 @@ export default function CommandPalette() {
   // The tax-return entry's wording follows the company's configured tax
   // system, same rule as the Reports page picker.
   const taxReportLabel = !settings.tax?.enabled ? null
-    : settings.tax?.system === 'sales_tax' ? 'Sales Tax Report'
-    : settings.tax?.country === 'SA' ? 'VAT Return (ZATCA)'
-    : 'VAT / GST Return'
+    : settings.tax?.system === 'sales_tax' ? 'Sales tax report'
+    : settings.tax?.country === 'SA' ? 'VAT return (ZATCA)'
+    : 'VAT / GST return'
   const COMMANDS_LIST = useMemo(
-    () => COMMANDS.filter((c) => c.label !== 'VAT Return (ZATCA)' || taxReportLabel).map((c) => (c.label === 'VAT Return (ZATCA)' ? { ...c, label: taxReportLabel } : c)),
+    () => COMMANDS.filter((c) => c.label !== 'VAT return (ZATCA)' || taxReportLabel).map((c) => (c.label === 'VAT return (ZATCA)' ? { ...c, label: taxReportLabel } : c)),
     [taxReportLabel]
   )
 

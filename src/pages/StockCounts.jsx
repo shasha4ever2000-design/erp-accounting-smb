@@ -130,7 +130,7 @@ export default function StockCounts() {
     return (
       <div>
         <PageHeader
-          title="Stock Counts"
+          title="Stock counts"
           subtitle="Make the books agree with the shelves"
           action={
             <>
@@ -227,7 +227,7 @@ export default function StockCounts() {
   return (
     <div>
       <PageHeader
-        title={`${t('Stock Count')} ${count.number}`}
+        title={`${t('Stock count')} ${count.number}`}
         subtitle={posted ? t('Posted — this is a record of what was found') : t('Scan or type each item you find')}
         action={
           <>

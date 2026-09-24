@@ -82,7 +82,7 @@ export default function QuotationForm() {
 
   return (
     <div>
-      <PageHeader title="New Quotation / Estimate" subtitle="Create a price quote for your customer" />
+      <PageHeader title="New quotation / estimate" subtitle="Create a price quote for your customer" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {/* Left: Form */}

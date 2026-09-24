@@ -59,7 +59,7 @@ export default function Invoices() {
   return (
     <div>
       <PageHeader
-        title={t('Sales Invoices')}
+        title={t('Sales invoices')}
         subtitle={`${invoices.length} ${t('invoices')} ${t('total')}`}
         action={
           <div className="flex items-center gap-2">

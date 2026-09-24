@@ -47,7 +47,7 @@ export default function RecycleBin() {
   return (
     <div>
       <PageHeader
-        title="Recycle Bin"
+        title="Recycle bin"
         subtitle="Records you deleted, kept so a mistake is not final"
         action={recycleBin.length > 0
           ? <Btn variant="secondary" onClick={handleEmpty}><Trash2 size={15} /> {t('Empty bin')}</Btn>

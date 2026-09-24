@@ -38,7 +38,7 @@ export default function PeriodClose() {
 
   return (
     <div>
-      <PageHeader title="Month-End Close" subtitle="Everything that should be done before a month's numbers are reported, checked from the books." />
+      <PageHeader title="Month-end close" subtitle="Everything that should be done before a month's numbers are reported, checked from the books." />
       <Card className="p-5 mb-5 flex flex-wrap items-end gap-4">
         <Input label="Month" type="month" value={month} onChange={(e) => e.target.value && setMonth(e.target.value)} />
         <p className="text-sm text-slate-600 dark:text-slate-300 pb-2">

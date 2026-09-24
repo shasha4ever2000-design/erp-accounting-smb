@@ -62,7 +62,7 @@ export default function YearEndClose() {
   return (
     <div>
       <PageHeader
-        title={t('Year-End Close')}
+        title={t('Year-end close')}
         subtitle={t('Review the year, lock the books, and roll profit into equity — no closing entries needed.')}
         action={
           <Select value={fyLabel} onChange={(e) => setFyLabel(e.target.value)} className="w-40">

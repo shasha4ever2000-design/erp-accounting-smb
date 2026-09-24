@@ -2046,7 +2046,7 @@ export default function Reports() {
 
   return (
     <div>
-      <PageHeader title="Financial Reports" subtitle="Powered by double-entry bookkeeping" />
+      <PageHeader title="Financial reports" subtitle="Powered by double-entry bookkeeping" />
 
       <Card className="p-5 mb-6">
         <div className="flex flex-wrap gap-4 items-end">

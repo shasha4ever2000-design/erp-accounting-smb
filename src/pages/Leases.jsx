@@ -80,7 +80,7 @@ export default function Leases() {
   return (
     <div>
       <PageHeader
-        title="Leases & Rent"
+        title="Leases & rent"
         subtitle="Track operating leases, office rent, and other recurring rental obligations"
         action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Lease')}</Btn>}
       />

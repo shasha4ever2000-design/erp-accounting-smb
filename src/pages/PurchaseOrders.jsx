@@ -56,7 +56,7 @@ export default function PurchaseOrders() {
   return (
     <div>
       <PageHeader
-        title="Purchase Orders"
+        title="Purchase orders"
         subtitle={`${purchaseOrders.length} ${t('total purchase orders')}`}
         action={<Btn onClick={() => navigate('/purchase-orders/new')}><Plus size={15} /> New PO</Btn>}
       />

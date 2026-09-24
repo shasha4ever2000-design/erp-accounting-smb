@@ -134,7 +134,7 @@ export default function Contracts() {
   return (
     <div>
       <PageHeader
-        title="Employment Contracts"
+        title="Employment contracts"
         subtitle={t('Salary structure, service, and end-of-service — one contract in force per person per day')}
         action={
           <>

@@ -99,7 +99,7 @@ export default function InventoryControl() {
 
   return (
     <div>
-      <PageHeader title={t('Inventory Control')} subtitle={t('Valuation, stock health, reorder planning and movement history')} />
+      <PageHeader title={t('Inventory control')} subtitle={t('Valuation, stock health, reorder planning and movement history')} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('Inventory Value')} value={fmtMoney(totalValue, sym)} color="blue" icon={<Wallet size={18} />} sub={`${inventoryItems.length} ${t('items')}`} />

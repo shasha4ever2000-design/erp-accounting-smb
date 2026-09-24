@@ -79,7 +79,7 @@ export default function PaymentReminders() {
 
   return (
     <div>
-      <PageHeader title="Payment Reminders" subtitle="Chase overdue customer invoices with a ready-to-send reminder" />
+      <PageHeader title="Payment reminders" subtitle="Chase overdue customer invoices with a ready-to-send reminder" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="bg-warning-50 dark:bg-warning-900/30 rounded-xl p-4">

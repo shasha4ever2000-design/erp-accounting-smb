@@ -75,7 +75,7 @@ export default function Revaluation() {
 
   return (
     <div>
-      <PageHeader title="FX Revaluation" subtitle="Restate foreign-currency balances to the closing rate and post the unrealized gain / loss" />
+      <PageHeader title="FX revaluation" subtitle="Restate foreign-currency balances to the closing rate and post the unrealized gain / loss" />
 
       <Card className="p-4 mb-6 flex flex-wrap items-end gap-4">
         <Input label={t('Revaluation date')} type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-44" />

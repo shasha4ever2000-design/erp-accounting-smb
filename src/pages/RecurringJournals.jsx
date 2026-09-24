@@ -66,7 +66,7 @@ export default function RecurringJournals() {
 
   return (
     <div>
-      <PageHeader title="Recurring Journals" subtitle="Templated journal entries that post automatically on a schedule"
+      <PageHeader title="Recurring journals" subtitle="Templated journal entries that post automatically on a schedule"
         action={
           <div className="flex gap-2">
             {dueCount > 0 && <Btn variant="secondary" onClick={postAllDue}><CalendarClock size={15} /> {t('Post all due')} ({dueCount})</Btn>}

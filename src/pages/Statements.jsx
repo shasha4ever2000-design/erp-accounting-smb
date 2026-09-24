@@ -80,7 +80,7 @@ export default function Statements() {
     <div>
       <div className="no-print">
         <PageHeader
-          title="Statements of Account"
+          title="Statements of account"
           subtitle="Printable customer & supplier account statements"
           action={entity && (
             <div className="flex flex-wrap items-center gap-2">

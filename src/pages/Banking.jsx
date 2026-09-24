@@ -72,7 +72,7 @@ export default function Banking() {
   return (
     <div>
       <PageHeader
-        title="Bank & Cash"
+        title="Bank & cash"
         subtitle="Direct bank transactions and balances"
         action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Transaction')}</Btn>}
       />

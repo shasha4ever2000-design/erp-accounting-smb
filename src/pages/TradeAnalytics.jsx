@@ -57,7 +57,7 @@ export default function TradeAnalytics() {
 
   return (
     <div>
-      <PageHeader title={t('Sales & Purchasing Analytics')} subtitle={t('Order-to-cash and procure-to-pay at a glance')} />
+      <PageHeader title={t('Sales & purchasing analytics')} subtitle={t('Order-to-cash and procure-to-pay at a glance')} />
 
       {/* Sales KPIs */}
       <h2 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-3">{t('Sales')}</h2>

@@ -83,7 +83,7 @@ export default function DataImport() {
   return (
     <div>
       <PageHeader
-        title="Import & Export"
+        title="Import & export"
         subtitle="Move customers, suppliers, accounts and items in and out as CSV"
         action={
           <>

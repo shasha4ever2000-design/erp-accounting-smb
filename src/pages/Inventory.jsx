@@ -113,7 +113,7 @@ export default function Inventory() {
   return (
     <div>
       <PageHeader
-        title={t('Inventory Items')}
+        title={t('Inventory items')}
         subtitle={`${inventoryItems.length} ${t('items')} • ${fmtMoney(totalValue, sym)} ${t('total value')}`}
         action={
           <div className="flex items-center gap-2">

@@ -60,7 +60,7 @@ export default function LandedCosts() {
 
   return (
     <div>
-      <PageHeader title={t('Landed Costs')} subtitle={t('Capitalise freight, duty and handling into inventory value')} />
+      <PageHeader title={t('Landed costs')} subtitle={t('Capitalise freight, duty and handling into inventory value')} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Entry */}

@@ -111,7 +111,7 @@ export default function PurchaseQuotes() {
   return (
     <div>
       <PageHeader
-        title="Purchase Quotes"
+        title="Purchase quotes"
         subtitle="What suppliers say they will charge, before anything is committed"
         action={
           <>

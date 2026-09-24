@@ -60,7 +60,7 @@ export default function SalesOrders() {
   return (
     <div>
       <PageHeader
-        title="Sales Orders"
+        title="Sales orders"
         subtitle="Confirmed orders that have not been delivered or billed yet"
       />
 

@@ -59,7 +59,7 @@ export default function Warehouses() {
   return (
     <div>
       <PageHeader
-        title="Warehouses & Stock Locations"
+        title="Warehouses & stock locations"
         subtitle={`${warehouses.length} ${t('locations')} · ${inventoryItems.length} ${t('items tracked')}`}
         action={
           <div className="flex gap-2">

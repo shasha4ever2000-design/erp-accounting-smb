@@ -66,7 +66,7 @@ export default function PrepaidExpenses() {
   return (
     <div>
       <PageHeader
-        title="Prepaid Expenses"
+        title="Prepaid expenses"
         subtitle="Track insurance, rent, subscriptions and other prepaid costs"
         action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Prepaid')}</Btn>}
       />

@@ -153,7 +153,7 @@ export default function CapitalAccounts() {
   return (
     <div>
       <PageHeader
-        title="Capital Accounts"
+        title="Capital accounts"
         subtitle="What each owner has put in, taken out, and earned"
         action={
           capitalAccounts.length > 0 ? (

@@ -112,7 +112,7 @@ export default function DeliveryNotes() {
   return (
     <div>
       <PageHeader
-        title="Delivery Notes"
+        title="Delivery notes"
         subtitle="Bilingual delivery / dispatch notes (سند تسليم)"
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Delivery Note')}</Btn>}
       />

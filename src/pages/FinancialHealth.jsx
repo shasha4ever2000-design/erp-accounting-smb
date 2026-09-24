@@ -76,7 +76,7 @@ export default function FinancialHealth() {
 
   return (
     <div>
-      <PageHeader title={t('Financial Health')} subtitle={t('Key ratios that turn your ledger into a check-up — trailing 12 months for P&L, current balances for the balance sheet')} />
+      <PageHeader title={t('Financial health')} subtitle={t('Key ratios that turn your ledger into a check-up — trailing 12 months for P&L, current balances for the balance sheet')} />
 
       {/* Overall score */}
       <Card className="p-6 mb-6">

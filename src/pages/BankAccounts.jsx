@@ -69,7 +69,7 @@ export default function BankAccounts() {
   return (
     <div>
       <PageHeader
-        title="Cash & Cash Equivalents"
+        title="Cash & cash equivalents"
         subtitle={`${t('Total balance:')} ${fmtMoney(totalCash, sym)} · ${bankAccounts.length} ${t('accounts')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Account')}</Btn>}
       />

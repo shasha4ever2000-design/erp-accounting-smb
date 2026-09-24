@@ -111,8 +111,8 @@ export default function Consolidation() {
 
   return (
     <div>
-      <PageHeader title="Group Consolidation" subtitle="Combined performance and position across all your companies"
-        action={<ExportMenu filename="consolidation" title={t('Group Consolidation')} rows={exportRows} columns={exportCols} />} />
+      <PageHeader title="Group consolidation" subtitle="Combined performance and position across all your companies"
+        action={<ExportMenu filename="consolidation" title={t('Group consolidation')} rows={exportRows} columns={exportCols} />} />
 
       {data.mixedCurrency && (
         <div className="flex items-start gap-2 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 px-4 py-2.5 mb-5 text-sm text-warning-700 dark:text-warning-300">

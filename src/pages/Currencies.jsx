@@ -58,7 +58,7 @@ export default function Currencies() {
   return (
     <div>
       <PageHeader
-        title="Currencies & Exchange Rates"
+        title="Currencies & exchange rates"
         subtitle={`${t('Base currency:')} ${base} · ${t('maintain rates for foreign-currency reporting')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('Add Currency')}</Btn>}
       />

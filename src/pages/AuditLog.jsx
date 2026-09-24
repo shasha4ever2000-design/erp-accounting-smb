@@ -51,7 +51,7 @@ export default function AuditLog() {
   return (
     <div>
       <PageHeader
-        title="Audit Log"
+        title="Audit log"
         subtitle={`${(auditLog || []).length} ${t('recorded activities · who did what, and when')}`}
         action={(auditLog || []).length > 0 && (
           <span className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-1.5">

@@ -48,7 +48,7 @@ export default function Quotations() {
   return (
     <div>
       <PageHeader
-        title="Quotations / Estimates"
+        title="Quotations / estimates"
         subtitle={`${quotations.length} ${t('total quotations')}`}
         action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> {t('New Quotation')}</Btn>}
       />

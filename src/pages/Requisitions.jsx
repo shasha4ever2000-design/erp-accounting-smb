@@ -56,7 +56,7 @@ export default function Requisitions() {
   return (
     <div>
       <PageHeader
-        title="Purchase Requisitions"
+        title="Purchase requisitions"
         subtitle={`${pendingCount} ${t('awaiting approval')}${manager ? '' : ' · ' + t('approvals need an Admin/Owner')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Requisition')}</Btn>}
       />

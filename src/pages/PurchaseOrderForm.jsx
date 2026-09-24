@@ -80,7 +80,7 @@ export default function PurchaseOrderForm() {
 
   return (
     <div>
-      <PageHeader title="New Purchase Order" subtitle="Create a purchase order for your supplier" />
+      <PageHeader title="New purchase order" subtitle="Create a purchase order for your supplier" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">

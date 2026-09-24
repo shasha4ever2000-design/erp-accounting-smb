@@ -102,7 +102,7 @@ export default function Cheques() {
   return (
     <div>
       <PageHeader
-        title={t('Cheque Register')}
+        title={t('Cheque register')}
         subtitle={t('Post-dated cheques stay out of your bank balance until they actually clear')}
         action={<Btn onClick={openNew}><Plus size={15} /> {inLabel ? t('Record cheque received') : t('Record cheque issued')}</Btn>}
       />

@@ -135,7 +135,7 @@ export default function OpeningBalances() {
   return (
     <div>
       <PageHeader
-        title="Opening Balances"
+        title="Opening balances"
         subtitle="What your business was carrying on the day it moved onto this system"
         action={posted
           ? <Btn variant="secondary" onClick={handleReverse}><RotateCcw size={15} /> {t('Undo')}</Btn>

@@ -86,7 +86,7 @@ export default function FixedAssets() {
   return (
     <div>
       <PageHeader
-        title="Fixed Assets"
+        title="Fixed assets"
         subtitle="Asset register — properties, equipment, vehicles, and more"
         action={
           <div className="flex gap-2">

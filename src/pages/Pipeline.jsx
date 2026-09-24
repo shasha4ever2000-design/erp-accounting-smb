@@ -57,7 +57,7 @@ export default function Pipeline() {
   return (
     <div>
       <PageHeader
-        title="Sales Pipeline · CRM"
+        title="Sales pipeline · CRM"
         subtitle={`${leads.filter((l) => !['won','lost'].includes(l.stage)).length} ${t('open')} · ${fmtMoney(openValue, sym)} ${t('weighted')} · ${fmtMoney(wonValue, sym)} ${t('won')}`}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Lead')}</Btn>}
       />

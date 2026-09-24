@@ -105,7 +105,7 @@ export default function Purchases() {
   return (
     <div>
       <PageHeader
-        title={t('Purchase Invoices')}
+        title={t('Purchase invoices')}
         subtitle={`${purchases.length} ${t('purchase invoices')}`}
         action={
           <div className="flex items-center gap-2">

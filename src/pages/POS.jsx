@@ -70,7 +70,7 @@ export default function POS() {
 
   return (
     <div>
-      <PageHeader title="Point of Sale" subtitle="Fast retail checkout — creates a paid invoice, posts COGS and reduces stock" />
+      <PageHeader title="Point of sale" subtitle="Fast retail checkout — creates a paid invoice, posts COGS and reduces stock" />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Products */}

@@ -99,7 +99,7 @@ export default function CashForecast() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title={t('Cash Forecast')}
+        title={t('Cash forecast')}
         subtitle={`${t('Projected cash position for the next')} ${weeks} ${t('weeks, from what is already in the books')}`}
         action={<ExportMenu rows={exportRows()} filename="cash-forecast" title={t('Cash Forecast')} />}
       />
