@@ -19,18 +19,19 @@ import {
   Plus, Pencil, Trash2, FileSignature, AlertTriangle, Clock,
   TrendingUp, Wallet, LogOut, Info,
 } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const STATUS_CLR = {
   active:     'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
   probation:  'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
   expiring:   'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-  expired:    'bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300',
+  expired:    'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
   terminated: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
   draft:      'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
 }
 const FINDING_CLR = {
-  error:   'text-red-600 dark:text-red-400',
-  warning: 'text-amber-600 dark:text-amber-400',
+  error:   'text-danger-600 dark:text-danger-400',
+  warning: 'text-warning-700 dark:text-warning-400',
   info:    'text-slate-500 dark:text-slate-400',
 }
 
@@ -90,8 +91,8 @@ export default function Contracts() {
     }
   }
 
-  const remove = (c) => {
-    if (confirm(t('Delete this contract for {n}? Their pay history loses this period.').replace('{n}', nameOf(c.employeeId))))
+  const remove = async (c) => {
+    if (await ask(t('Delete this contract for {n}? Their pay history loses this period.').replace('{n}', nameOf(c.employeeId))))
       deleteContract(c.id)
   }
 
@@ -159,9 +160,9 @@ export default function Contracts() {
       </div>
 
       {attention.length > 0 && (
-        <Card className="p-4 mb-6 border-l-4 border-l-amber-400">
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-100 mb-2 flex items-center gap-2">
-            <Clock size={15} className="text-amber-500" /> {t('Coming up')}
+        <Card className="p-4 mb-6 border-l-4 border-l-warning-400">
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-2 flex items-center gap-2">
+            <Clock size={15} className="text-warning-700 dark:text-warning-400" /> {t('Coming up')}
           </h2>
           <ul className="space-y-1.5">
             {attention.map((a, i) => (
@@ -169,7 +170,7 @@ export default function Contracts() {
                 <span className="text-slate-700 dark:text-slate-200">
                   <span className="font-medium">{a.employeeName}</span> — {t(a.text)}
                 </span>
-                <span className={a.kind === 'expired' ? 'text-red-600 dark:text-red-400 text-xs' : 'text-slate-500 dark:text-slate-400 text-xs'}>
+                <span className={a.kind === 'expired' ? 'text-danger-600 dark:text-danger-400 text-xs' : 'text-slate-500 dark:text-slate-400 text-xs'}>
                   {a.kind === 'expired'
                     ? t('{d} days ago').replace('{d}', a.days)
                     : t('in {d} days').replace('{d}', a.days)}
@@ -184,11 +185,11 @@ export default function Contracts() {
         <Card className="p-4 mb-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-100 mb-1">{t('End-of-service provision')}</h2>
+              <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-1">{t('End-of-service provision')}</h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
                 {t('Owed if everyone left today')}: <span className="font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(schedule.closing, sym)}</span>
                 {' · '}
-                {t('not yet provided')}: <span className={schedule.total > 0.005 ? 'font-semibold text-amber-600 dark:text-amber-400' : 'font-semibold text-emerald-600 dark:text-emerald-400'}>{fmtMoney(schedule.total, sym)}</span>
+                {t('not yet provided')}: <span className={schedule.total > 0.005 ? 'font-semibold text-warning-700 dark:text-warning-400' : 'font-semibold text-success-700 dark:text-success-400'}>{fmtMoney(schedule.total, sym)}</span>
               </p>
             </div>
             <Btn size="sm" variant="secondary" onClick={() => setAccrueModal(true)} disabled={Math.abs(schedule.total) < 0.005}>
@@ -219,24 +220,24 @@ export default function Contracts() {
               return (
                 <Tr key={c.id}>
                   <Td>
-                    <p className="font-medium text-gray-800 dark:text-slate-100">{nameOf(c.employeeId)}</p>
-                    <p className="text-xs text-gray-400 dark:text-slate-500">{emp?.position || ''}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-100">{nameOf(c.employeeId)}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{emp?.position || ''}</p>
                   </Td>
-                  <Td className="text-sm text-gray-600 dark:text-slate-300">{t(CONTRACT_TYPES.find((x) => x.id === c.type)?.label || '—')}</Td>
-                  <Td className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(c.startDate)}</Td>
-                  <Td className="text-sm text-gray-500 dark:text-slate-400">{c.endDate ? fmtDate(c.endDate) : <span className="text-gray-300 dark:text-slate-600">{t('open')}</span>}</Td>
-                  <Td className="text-sm text-gray-600 dark:text-slate-300">{describeService(serviceStart(c.employeeId, employmentContracts), at)}</Td>
+                  <Td className="text-sm text-slate-600 dark:text-slate-300">{t(CONTRACT_TYPES.find((x) => x.id === c.type)?.label || '—')}</Td>
+                  <Td className="text-sm text-slate-500 dark:text-slate-400">{fmtDate(c.startDate)}</Td>
+                  <Td className="text-sm text-slate-500 dark:text-slate-400">{c.endDate ? fmtDate(c.endDate) : <span className="text-slate-500 dark:text-slate-400">{t('open')}</span>}</Td>
+                  <Td className="text-sm text-slate-600 dark:text-slate-300">{describeService(serviceStart(c.employeeId, employmentContracts), at)}</Td>
                   <Td right className="font-medium">{fmtMoney(grossOf(c), sym)}</Td>
-                  <Td right className="text-gray-600 dark:text-slate-300">{fmtMoney(employerCost(c).total, sym)}</Td>
-                  <Td right className="text-gray-600 dark:text-slate-300">{award && award.gross > 0 ? fmtMoney(award.gross, sym) : <span className="text-gray-300 dark:text-slate-600">—</span>}</Td>
+                  <Td right className="text-slate-600 dark:text-slate-300">{fmtMoney(employerCost(c).total, sym)}</Td>
+                  <Td right className="text-slate-600 dark:text-slate-300">{award && award.gross > 0 ? fmtMoney(award.gross, sym) : <span className="text-slate-500 dark:text-slate-400">—</span>}</Td>
                   <Td><Badge className={STATUS_CLR[status]}>{t(CONTRACT_STATUS[status] || status)}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end items-center gap-1">
                       {status !== 'terminated' && (
-                        <button onClick={() => { setLeaver(emp); setLeaveReason('termination'); setLeaveDate(at) }} title={t('End employment')} className="text-slate-400 hover:text-amber-600 p-1"><LogOut size={14} /></button>
+                        <button onClick={() => { setLeaver(emp); setLeaveReason('termination'); setLeaveDate(at) }} title={t('End employment')} className="text-slate-500 dark:text-slate-400 hover:text-warning-600 p-1"><LogOut size={14} /></button>
                       )}
-                      <button onClick={() => openEdit(c)} title={t('Edit')} className="text-slate-400 hover:text-blue-600 p-1"><Pencil size={14} /></button>
-                      <button onClick={() => remove(c)} title={t('Delete')} className="text-slate-400 hover:text-red-600 p-1"><Trash2 size={14} /></button>
+                      <button onClick={() => openEdit(c)} title={t('Edit')} className="text-slate-500 dark:text-slate-400 hover:text-brand-600 p-1"><Pencil size={14} /></button>
+                      <button onClick={() => remove(c)} title={t('Delete')} className="text-slate-500 dark:text-slate-400 hover:text-danger-600 p-1"><Trash2 size={14} /></button>
                     </div>
                   </Td>
                 </Tr>
@@ -265,7 +266,7 @@ export default function Contracts() {
             </div>
 
             <div>
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-2">{t('Salary breakdown')}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('Salary breakdown')}</p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {PAY_COMPONENTS.map((c) => (
                   <Input key={c.id} label={`${t(c.label)} (${sym})`} type="number" min="0" step="0.01"
@@ -285,7 +286,7 @@ export default function Contracts() {
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input type="checkbox" checked={!!form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)}
-                    className="rounded border-slate-300 dark:border-surface-700 text-blue-600 focus:ring-blue-500" />
+                    className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" />
                   {t('Social insurance (GOSI) applies')}
                 </label>
                 {form.gosiApplicable && (
@@ -298,7 +299,7 @@ export default function Contracts() {
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                   <input type="checkbox" checked={!!form.taxApplicable} onChange={(e) => setField('taxApplicable', e.target.checked)}
-                    className="rounded border-slate-300 dark:border-surface-700 text-blue-600 focus:ring-blue-500" />
+                    className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" />
                   {t('Income tax applies')}
                 </label>
                 {form.taxApplicable && (
@@ -314,7 +315,7 @@ export default function Contracts() {
           {/* Analysis — live, so the structure can be fixed before it is signed */}
           <div className="lg:col-span-2 space-y-3">
             <Card className="p-4">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-2">{t('What this contract means')}</p>
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('What this contract means')}</p>
               <dl className="text-sm space-y-1.5">
                 <Row label={t('Gross monthly')} value={fmtMoney(analysis.gross, sym)} strong />
                 <Row label={t('Basic + housing')} value={`${fmtMoney(analysis.contributory, sym)} (${analysis.contributoryPct}%)`} />
@@ -330,7 +331,7 @@ export default function Contracts() {
                       <span>{t(c.label)}</span><span>{c.pct}%</span>
                     </div>
                     <div className="h-1.5 rounded-full bg-slate-100 dark:bg-surface-750 overflow-hidden">
-                      <div className="h-full bg-blue-500 dark:bg-blue-400" style={{ width: `${Math.min(100, c.pct)}%` }} />
+                      <div className="h-full bg-brand-500 dark:bg-brand-400" style={{ width: `${Math.min(100, c.pct)}%` }} />
                     </div>
                   </div>
                 ))}
@@ -339,7 +340,7 @@ export default function Contracts() {
 
             {analysis.findings.length > 0 && (
               <Card className="p-4">
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-2 flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2 flex items-center gap-1.5">
                   <Info size={12} /> {t('Worth knowing')}
                 </p>
                 <ul className="space-y-2">
@@ -352,7 +353,7 @@ export default function Contracts() {
           </div>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-gray-100 dark:border-slate-700">
+        <div className="flex justify-end gap-2 pt-4 mt-4 border-t border-slate-100 dark:border-slate-700">
           <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
           <Btn onClick={save}>{editing ? t('Save changes') : t('Create contract')}</Btn>
         </div>
@@ -364,9 +365,9 @@ export default function Contracts() {
           <p className="text-sm text-slate-600 dark:text-slate-300">
             {t('This tops the provision up to what would be owed if everyone left today. It posts one entry: debit End-of-Service Benefit, credit End-of-Service Provision.')}
           </p>
-          <div className="overflow-x-auto border border-gray-100 dark:border-slate-700 rounded-lg">
+          <div className="overflow-x-auto border border-slate-100 dark:border-slate-700 rounded-lg">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-slate-800/60 text-xs uppercase text-gray-500 dark:text-slate-400">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 text-xs uppercase text-slate-500 dark:text-slate-400">
                 <tr>
                   <th className="text-start px-3 py-2">{t('Employee')}</th>
                   <th className="text-end px-3 py-2">{t('Already provided')}</th>
@@ -376,7 +377,7 @@ export default function Contracts() {
               </thead>
               <tbody>
                 {schedule.lines.map((l) => (
-                  <tr key={l.employeeId} className="border-t border-gray-50 dark:border-slate-700/50">
+                  <tr key={l.employeeId} className="border-t border-slate-50 dark:border-slate-700/50">
                     <td className="px-3 py-1.5 text-slate-800 dark:text-slate-100">{l.employeeName}</td>
                     <td className="px-3 py-1.5 text-end text-slate-500 dark:text-slate-400">{fmtMoney(l.closing - l.movement, sym)}</td>
                     <td className="px-3 py-1.5 text-end text-slate-600 dark:text-slate-300">{fmtMoney(l.closing, sym)}</td>
@@ -385,7 +386,7 @@ export default function Contracts() {
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-200 dark:border-slate-600 font-bold bg-gray-50 dark:bg-slate-800/60">
+                <tr className="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-800/60">
                   <td className="px-3 py-2" colSpan={3}>{t('Total to post')}</td>
                   <td className="px-3 py-2 text-end">{fmtMoney(schedule.total, sym)}</td>
                 </tr>
@@ -425,10 +426,10 @@ export default function Contracts() {
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 leading-relaxed">{t(explainAward(leaverAward))}</p>
             </Card>
           ) : (
-            <p className="text-sm text-amber-600 dark:text-amber-400">{t('No contract covers this date, so there is nothing to settle.')}</p>
+            <p className="text-sm text-warning-700 dark:text-warning-400">{t('No contract covers this date, so there is nothing to settle.')}</p>
           )}
 
-          <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+          <p className="text-xs text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 rounded p-2">
             {t('Posts: release the provision, charge or credit the difference, and put what is payable into Salaries Payable. The contract is ended and the employee set inactive.')}
           </p>
 

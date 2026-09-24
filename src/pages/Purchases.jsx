@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
-import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
+import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td, Money } from '../components/UI'
 import { useT } from '../i18n'
 import { alertIfLocked } from '../utils/periodLock'
 import ExportMenu from '../components/ExportMenu'
@@ -12,11 +12,14 @@ import { lineRemaining } from '../utils/fulfillment'
 import { Plus, Search, DollarSign, Ban, Pencil, RotateCcw } from 'lucide-react'
 import { today } from '../utils/formatters'
 import { todayISO } from '../utils/localDate'
+import { shortcutHint } from '../components/Shortcuts'
+import { documentDue } from '../utils/partyBalance'
 
 export default function Purchases() {
-  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings } = useStore()
+  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings, debitNotes, cashAccountOptions } = useStore()
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
+  const docSym = (d) => (d.currency && d.currency !== settings.company.currency ? `${d.currency} ` : sym)
   const whtCfg = settings.wht || { enabled: false, rate: 5, name: 'Withholding Tax' }
   const t = useT()
 
@@ -33,7 +36,7 @@ export default function Purchases() {
     setReturnDoc(null)
   }
 
-  const bankAccounts = accounts.filter((a) => ['acc-cash', 'acc-bank1'].includes(a.id))
+  const bankAccounts = cashAccountOptions()
 
   const todayStr = todayISO()
   const enriched = purchases.map((p) => ({
@@ -54,14 +57,14 @@ export default function Purchases() {
 
   const openPay = (p) => {
     setPayModal(p)
-    const amt = p.total - p.amountPaid
+    const amt = documentDue(p, debitNotes, 'purchaseId')
     setPayForm({ date: today(), amount: String(amt), bankAccountId: 'acc-cash', notes: '', wht: whtCfg.enabled ? (amt * whtCfg.rate / 100).toFixed(2) : '', exchangeRate: Number(p.exchangeRate) || 1 })
   }
 
   const handleRecord = () => {
     const amount = parseFloat(payForm.amount)
     if (!amount || amount <= 0) return
-    const due = payModal.total - payModal.amountPaid
+    const due = documentDue(payModal, debitNotes, 'purchaseId')
     if (amount > due) return alert(`Exceeds balance due (${fmtMoney(due, paySym)})`)
     const wht = parseFloat(payForm.wht) || 0
     if (wht > amount) return alert('Withholding tax cannot exceed the payment amount.')
@@ -106,7 +109,7 @@ export default function Purchases() {
         action={
           <div className="flex items-center gap-2">
             {purchases.length > 0 && <ExportMenu filename="purchase-invoices" title={t('Purchase Invoices')} rows={sorted} columns={exportCols} />}
-            <Btn onClick={() => navigate('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>
+            <Btn onClick={() => navigate('/purchases/new')} title={t('New Purchase') + shortcutHint('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>
           </div>
         }
       />
@@ -122,21 +125,21 @@ export default function Purchases() {
           <button key={s.key} onClick={() => setStatusFilter(s.key)}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${
               statusFilter === s.key
-                ? s.red ? 'bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-sm' : 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary'
-                : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'
+                ? s.red ? 'bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-sm' : 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary'
+                : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {t(s.label)}
             {totals[s.key] > 0 && (
-              <span className={`text-xs tabular-nums font-semibold px-1.5 py-px rounded-full ${statusFilter === s.key ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>{totals[s.key]}</span>
+              <span className={`text-xs tabular-nums font-semibold px-1.5 py-px rounded-full ${statusFilter === s.key ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{totals[s.key]}</span>
             )}
           </button>
         ))}
       </div>
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
+        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder={t('Search purchases...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -145,21 +148,21 @@ export default function Purchases() {
           <EmptyState icon="🛒" title={t('No purchase invoices yet')} desc={t('Record your first purchase to track payables.')}
             action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> {t('New Purchase')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No purchases match your filter')}</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No purchases match your filter')}</div>
         ) : (
           <Table headers={[t('Invoice #'), t('Supplier'), t('Ref'), t('Date'), t('Due'), { label: t('Total'), right: true }, { label: t('Balance'), right: true }, t('Status'), { label: t('Actions'), right: true }]}>
             {sorted.map((p) => {
               const status = p.isOverdue && p.status !== 'paid' ? 'overdue' : p.status
-              const balance = p.total - p.amountPaid
+              const balance = documentDue(p, debitNotes, 'purchaseId')
               return (
                 <Tr key={p.id} onClick={() => navigate(`/purchases/${p.id}`)}>
-                  <Td className="font-mono font-semibold text-orange-600 dark:text-orange-400">{p.number}</Td>
-                  <Td className="font-medium text-gray-900 dark:text-slate-100">{p.supplierName}</Td>
-                  <Td className="text-gray-400 dark:text-slate-500 text-xs">{p.supplierRef || '—'}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(p.date)}</Td>
-                  <Td className={`whitespace-nowrap ${p.isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}`}>{fmtDate(p.dueDate)}</Td>
-                  <Td right className="font-semibold text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(p.total, sym)}</Td>
-                  <Td right className={`tabular-nums ${balance > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-400 dark:text-slate-500'}`}>{fmtMoney(balance, sym)}</Td>
+                  <Td className="font-mono font-semibold text-warning-700 dark:text-warning-400">{p.number}</Td>
+                  <Td className="font-medium text-slate-900 dark:text-slate-100">{p.supplierName}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-xs">{p.supplierRef || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(p.date)}</Td>
+                  <Td className={`whitespace-nowrap ${p.isOverdue ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>{fmtDate(p.dueDate)}</Td>
+                  <Td right className="font-semibold text-slate-900 dark:text-slate-100"><Money amount={p.total} symbol={docSym(p)} /></Td>
+                  <Td right className={`tabular-nums ${balance > 0 ? 'text-danger-600 dark:text-danger-400 font-semibold' : 'text-slate-500 dark:text-slate-400'}`}><Money amount={balance} symbol={docSym(p)} /></Td>
                   <Td><Badge className={statusColor(status)}>{status}</Badge></Td>
                   <Td right>
                     {/* The row opens the bill; the buttons in it do their own
@@ -168,17 +171,17 @@ export default function Purchases() {
                       <AttachmentButton entityType="purchase" entityId={p.id} />
                       {!purchaseEditBlock(p.id) && (
                         <Btn size="sm" variant="ghost" onClick={() => navigate(`/purchases/${p.id}/edit`)} title={t('Edit')}>
-                          <Pencil size={13} className="text-brand-500" />
+                          <Pencil size={13} className="text-brand-600 dark:text-brand-400" />
                         </Btn>
                       )}
                       {p.status !== 'paid' && p.status !== 'void' && (
                         <Btn size="sm" variant="ghost" onClick={() => openPay(p)} title="Record Payment">
-                          <DollarSign size={13} className="text-green-600 dark:text-green-400" />
+                          <DollarSign size={13} className="text-success-700 dark:text-success-400" />
                         </Btn>
                       )}
                       {canReturn(p) && (
                         <Btn size="sm" variant="ghost" onClick={() => setReturnDoc(p)} title={t('Return to supplier')}>
-                          <RotateCcw size={13} className="text-amber-500" />
+                          <RotateCcw size={13} className="text-warning-700 dark:text-warning-400" />
                         </Btn>
                       )}
                       {p.status !== 'void' && (
@@ -198,8 +201,8 @@ export default function Purchases() {
       <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Record Payment to Supplier">
         {payModal && (
           <div className="space-y-4">
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800/50 rounded-lg p-3 text-sm text-orange-700 dark:text-orange-300">
-              Balance Due: <strong className="tabular-nums">{fmtMoney(payModal.total - payModal.amountPaid, paySym)}</strong>
+            <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-100 dark:border-warning-800/50 rounded-lg p-3 text-sm text-warning-700 dark:text-warning-300">
+              {t('Balance Due')}: <strong className="tabular-nums">{fmtMoney(documentDue(payModal, debitNotes, 'purchaseId'), paySym)}</strong>
             </div>
             <Input label="Payment Date" type="date" value={payForm.date} onChange={(e) => setPayForm((f) => ({ ...f, date: e.target.value }))} />
             <Input label={`Amount (${paySym.trim()})`} type="number" min="0.01" step="0.01" value={payForm.amount} onChange={(e) => setPayForm((f) => ({ ...f, amount: e.target.value }))} />
@@ -207,7 +210,7 @@ export default function Purchases() {
               <div className="space-y-1">
                 <Input label={t('Exchange rate at payment (1 {c} = ? {b})').replace('{c}', payModal.currency).replace('{b}', baseCurrency)}
                   type="number" min="0" step="0.000001" value={payForm.exchangeRate} onChange={(e) => setPayForm((f) => ({ ...f, exchangeRate: e.target.value }))} />
-                <p className="text-xs text-gray-400 dark:text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   ≈ {fmtMoney(((parseFloat(payForm.amount) || 0) - (parseFloat(payForm.wht) || 0)) * (Number(payForm.exchangeRate) || 1), sym)} {t('from bank')} · {t('bill booked at')} {Number(payModal.exchangeRate) || 1} → {t('difference is realized FX')}
                 </p>
               </div>
@@ -215,7 +218,7 @@ export default function Purchases() {
             {whtCfg.enabled && (
               <>
                 <Input label={`${whtCfg.name} withheld (${sym})`} type="number" min="0" step="0.01" value={payForm.wht} onChange={(e) => setPayForm((f) => ({ ...f, wht: e.target.value }))} />
-                <div className="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-2.5 text-sm text-gray-600 dark:text-slate-300 flex justify-between">
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-2.5 text-sm text-slate-600 dark:text-slate-300 flex justify-between">
                   <span>{t('Net cash to supplier')}</span>
                   <strong className="tabular-nums">{fmtMoney((parseFloat(payForm.amount) || 0) - (parseFloat(payForm.wht) || 0), sym)}</strong>
                 </div>
@@ -225,7 +228,7 @@ export default function Purchases() {
               {bankAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
             </Select>
             <Input label="Reference / Notes" value={payForm.notes} onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Cheque #, transfer ref..." />
-            <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+            <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
               <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
               <Btn onClick={handleRecord}>{t('Record Payment')}</Btn>
             </div>

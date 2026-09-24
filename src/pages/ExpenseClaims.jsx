@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyStat
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle, ScanLine, Loader2 } from 'lucide-react'
 import { scanReceipt, applyToForm, currencyWarning, downscaleImage, fileToDataUrl } from '../utils/receiptOcr'
+import { ask } from '../components/Dialogs'
 
 const EXPENSE_CATEGORIES = [
   'Travel & Transport', 'Meals & Entertainment', 'Office Supplies',
@@ -125,9 +126,9 @@ export default function ExpenseClaims() {
       <div className="flex gap-2 mb-4 flex-wrap">
         {[['pending','Pending'],['approved','Approved'],['paid','Paid'],['all','All']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
             {label}
-            <span className={`text-xs tabular-nums font-semibold px-1.5 py-px rounded-full ${filter === val ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>{val === 'all' ? expenseClaims.length : expenseClaims.filter(c => c.status === val).length}</span>
+            <span className={`text-xs tabular-nums font-semibold px-1.5 py-px rounded-full ${filter === val ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{val === 'all' ? expenseClaims.length : expenseClaims.filter(c => c.status === val).length}</span>
           </button>
         ))}
       </div>
@@ -137,20 +138,20 @@ export default function ExpenseClaims() {
           <EmptyState icon="🧾" title="No expense claims" desc="Employees can submit travel, meals, office supplies and other business expense claims for reimbursement."
             action={<Btn onClick={openModal}><Plus size={14} /> {t('New Claim')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} claims</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">No {filter} claims</div>
         ) : (
           <Table headers={['Number', 'Employee', 'Date', 'Category', 'Description', { label: 'Amount', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((claim) => (
               <Tr key={claim.id}>
-                <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{claim.number}</span></Td>
-                <Td className="font-medium text-gray-900 dark:text-slate-100">{claim.employeeName}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">{fmtDate(claim.date)}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{claim.category}</Td>
+                <Td><span className="font-mono text-xs text-slate-500 dark:text-slate-400">{claim.number}</span></Td>
+                <Td className="font-medium text-slate-900 dark:text-slate-100">{claim.employeeName}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">{fmtDate(claim.date)}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{claim.category}</Td>
                 <Td>
-                  <p className="text-gray-700 dark:text-slate-300 text-sm truncate max-w-[160px]">{claim.description}</p>
-                  {claim.receiptRef && <p className="text-xs text-gray-400 dark:text-slate-500">Ref: {claim.receiptRef}</p>}
+                  <p className="text-slate-700 dark:text-slate-300 text-sm truncate max-w-[160px]">{claim.description}</p>
+                  {claim.receiptRef && <p className="text-xs text-slate-500 dark:text-slate-400">Ref: {claim.receiptRef}</p>}
                 </Td>
-                <Td right className="font-semibold text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(claim.amount, sym)}</Td>
+                <Td right className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{fmtMoney(claim.amount, sym)}</Td>
                 <Td>
                   <Badge className={`${STATUS_CLR[claim.status]} inline-flex items-center gap-1`}>
                     {STATUS_ICONS[claim.status]} {claim.status}
@@ -161,7 +162,7 @@ export default function ExpenseClaims() {
                       <AttachmentButton entityType="expenseclaim" entityId={claim.id} />
                     {claim.status === 'pending' && (
                       <Btn size="sm" variant="secondary"
-                        onClick={() => { if (confirm(`Approve claim ${claim.number} for ${claim.employeeName}?`)) approveExpenseClaim(claim.id) }}>
+                        onClick={async () => { if (await ask(`Approve claim ${claim.number} for ${claim.employeeName}?`)) approveExpenseClaim(claim.id) }}>
                         <CheckCircle size={12} /> {t('Approve')}
                       </Btn>
                     )}
@@ -172,8 +173,8 @@ export default function ExpenseClaims() {
                       </Btn>
                     )}
                     {claim.status === 'pending' && (
-                      <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete claim ${claim.number}?`)) deleteExpenseClaim(claim.id) }}>
-                        <Trash2 size={13} className="text-red-400" />
+                      <Btn size="sm" variant="ghost" onClick={async () => { if (await ask(`Delete claim ${claim.number}?`)) deleteExpenseClaim(claim.id) }}>
+                        <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                       </Btn>
                     )}
                   </div>
@@ -213,7 +214,7 @@ export default function ExpenseClaims() {
               </p>
             )}
             {!settings.ai?.apiKey && (
-              <p className="text-xs mt-2 text-gray-500 dark:text-slate-400">
+              <p className="text-xs mt-2 text-slate-500 dark:text-slate-400">
                 {t('Needs a Claude API key — add one in Settings → AI Assistant.')}
               </p>
             )}
@@ -246,10 +247,10 @@ export default function ExpenseClaims() {
             </Select>
           </div>
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Additional details..." />
-          <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800/50 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-300">
+          <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-100 dark:border-warning-800/50 rounded-lg p-3 text-xs text-warning-700 dark:text-warning-300">
             On approval: Dr {expAccounts.find(a => a.id === form.expenseAccountId)?.name || 'Expense'} → Cr Employee Expense Claims
           </div>
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleAdd}>{t('Submit Claim')}</Btn>
           </div>
@@ -259,10 +260,10 @@ export default function ExpenseClaims() {
       {/* Pay Modal */}
       <Modal open={!!payModal} onClose={() => setPayModal(null)} title={`Pay Claim – ${payModal?.number}`}>
         <div className="space-y-4">
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-100 dark:border-blue-800/50 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
+          <div className="bg-brand-50 dark:bg-brand-900/20 border border-brand-100 dark:border-brand-800/50 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
             <p>Employee: <strong>{payModal?.employeeName}</strong></p>
             <p>Amount: <strong className="tabular-nums">{fmtMoney(payModal?.amount || 0, sym)}</strong></p>
-            <p className="text-xs mt-0.5 text-blue-500 dark:text-blue-400">Posts: Dr Employee Expense Claims → Cr Bank</p>
+            <p className="text-xs mt-0.5 text-brand-600 dark:text-brand-400">Posts: Dr Employee Expense Claims → Cr Bank</p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Payment Date" type="date" value={payDate} onChange={(e) => setPayDate(e.target.value)} />
@@ -270,7 +271,7 @@ export default function ExpenseClaims() {
               {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
             </Select>
           </div>
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={() => { payExpenseClaim(payModal.id, payBankAccId, payDate); setPayModal(null) }}>{t('Confirm Payment')}</Btn>
           </div>

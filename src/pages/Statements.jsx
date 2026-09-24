@@ -114,11 +114,11 @@ export default function Statements() {
         <div className="flex gap-2 mb-4 flex-wrap">
           {[['activity', 'Activity (balance forward)'], ['open', 'Open items only']].map(([v, lbl]) => (
             <button key={v} onClick={() => setMode(v)}
-              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${mode === v ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700'}`}>
+              className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all ${mode === v ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
               {t(lbl)}
             </button>
           ))}
-          <span className="text-xs text-gray-400 dark:text-slate-500 self-center ms-1">
+          <span className="text-xs text-slate-500 dark:text-slate-400 self-center ms-1">
             {mode === 'open'
               ? t('Only what is still unpaid, with its age — the view for chasing money.')
               : t('Opening balance, every movement, closing balance — the view that reconciles.')}
@@ -139,7 +139,7 @@ export default function Statements() {
       </Card>
 
       {!entity ? (
-        <Card className="p-12 text-center text-gray-400 dark:text-slate-500">
+        <Card className="p-12 text-center text-slate-500 dark:text-slate-400">
           <FileText size={32} className="mx-auto mb-3 opacity-40" />
           Select a {type} to generate a statement of account.
         </Card>
@@ -150,24 +150,24 @@ export default function Statements() {
             title="STATEMENT"
             right={
               <div className="text-end">
-                <p className="text-sm text-gray-500 dark:text-slate-400">{fmtDate(startDate)} → {fmtDate(endDate)}</p>
-                <p className="text-2xl font-bold text-gray-800 dark:text-slate-100 mt-1">{fmtMoney(Math.abs(closing), sym)}</p>
-                <p className="text-xs text-gray-400 dark:text-slate-500">{closing >= 0 ? t(label) : t('in credit')}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{fmtDate(startDate)} → {fmtDate(endDate)}</p>
+                <p className="text-2xl font-bold text-slate-800 dark:text-slate-100 mt-1">{fmtMoney(Math.abs(closing), sym)}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{closing >= 0 ? t(label) : t('in credit')}</p>
               </div>
             }
           />
 
           <div className="mb-6">
-            <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{type === 'customer' ? 'Customer' : 'Supplier'}</p>
-            <p className="font-semibold text-gray-800 dark:text-slate-100">{entity.name}</p>
-            {entity.email && <p className="text-sm text-gray-500 dark:text-slate-400">{entity.email}</p>}
-            {entity.taxId && <p className="text-sm text-gray-500 dark:text-slate-400">VAT/Tax: {entity.taxId}</p>}
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{type === 'customer' ? 'Customer' : 'Supplier'}</p>
+            <p className="font-semibold text-slate-800 dark:text-slate-100">{entity.name}</p>
+            {entity.email && <p className="text-sm text-slate-500 dark:text-slate-400">{entity.email}</p>}
+            {entity.taxId && <p className="text-sm text-slate-500 dark:text-slate-400">VAT/Tax: {entity.taxId}</p>}
           </div>
 
           {mode === 'open' ? (
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
+                <tr className="border-b-2 border-slate-200 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400 uppercase">
                   <th className="text-start py-2">{t('Date')}</th>
                   <th className="text-start py-2">{t('Reference')}</th>
                   <th className="text-start py-2">{t('Due')}</th>
@@ -179,27 +179,27 @@ export default function Statements() {
               </thead>
               <tbody>
                 {items.map((r) => (
-                  <tr key={r.docId} className="border-b border-gray-100 dark:border-slate-700/50">
-                    <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(r.date)}</td>
-                    <td className="py-2 font-mono text-xs text-gray-700 dark:text-slate-200">{r.ref}</td>
-                    <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(r.dueDate)}</td>
-                    <td className="py-2 text-end tabular-nums text-gray-600 dark:text-slate-300">{fmtMoney(r.total, sym)}</td>
-                    <td className="py-2 text-end tabular-nums text-gray-500 dark:text-slate-400">{r.paid ? fmtMoney(r.paid, sym) : '—'}</td>
-                    <td className="py-2 text-end tabular-nums font-semibold text-gray-900 dark:text-slate-100">{fmtMoney(r.outstanding, sym)}</td>
-                    <td className={`py-2 text-end tabular-nums ${r.daysOverdue > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-gray-400 dark:text-slate-500'}`}>
+                  <tr key={r.docId} className="border-b border-slate-100 dark:border-slate-700/50">
+                    <td className="py-2 text-slate-500 dark:text-slate-400">{fmtDate(r.date)}</td>
+                    <td className="py-2 font-mono text-xs text-slate-700 dark:text-slate-200">{r.ref}</td>
+                    <td className="py-2 text-slate-500 dark:text-slate-400">{fmtDate(r.dueDate)}</td>
+                    <td className="py-2 text-end tabular-nums text-slate-600 dark:text-slate-300">{fmtMoney(r.total, sym)}</td>
+                    <td className="py-2 text-end tabular-nums text-slate-500 dark:text-slate-400">{r.paid ? fmtMoney(r.paid, sym) : '—'}</td>
+                    <td className="py-2 text-end tabular-nums font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(r.outstanding, sym)}</td>
+                    <td className={`py-2 text-end tabular-nums ${r.daysOverdue > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
                       {r.daysOverdue > 0 ? t('{n} days').replace('{n}', r.daysOverdue) : t('not due')}
                     </td>
                   </tr>
                 ))}
                 {items.length === 0 && (
-                  <tr><td colSpan={7} className="py-6 text-center text-gray-400 dark:text-slate-500">{t('Nothing outstanding — the account is clear.')}</td></tr>
+                  <tr><td colSpan={7} className="py-6 text-center text-slate-500 dark:text-slate-400">{t('Nothing outstanding — the account is clear.')}</td></tr>
                 )}
               </tbody>
             </table>
           ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
+              <tr className="border-b-2 border-slate-200 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400 uppercase">
                 <th className="text-left py-2">Date</th>
                 <th className="text-left py-2">Transaction</th>
                 <th className="text-left py-2">Ref</th>
@@ -209,59 +209,59 @@ export default function Statements() {
               </tr>
             </thead>
             <tbody>
-              <tr className="border-b border-gray-100 dark:border-slate-700/50 bg-gray-50 dark:bg-slate-800/60">
-                <td className="py-2 text-gray-500 dark:text-slate-400" colSpan={5}>{t('Opening Balance')}</td>
-                <td className="py-2 text-right font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(opening, sym)}</td>
+              <tr className="border-b border-slate-100 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/60">
+                <td className="py-2 text-slate-500 dark:text-slate-400" colSpan={5}>{t('Opening Balance')}</td>
+                <td className="py-2 text-right font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(opening, sym)}</td>
               </tr>
               {rows.map((r, i) => (
-                <tr key={i} className="border-b border-gray-100 dark:border-slate-700/50">
-                  <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(r.date)}</td>
-                  <td className="py-2 text-gray-700 dark:text-slate-200">{r.type}</td>
-                  <td className="py-2 text-gray-400 dark:text-slate-500 font-mono text-xs">{r.ref}</td>
-                  <td className="py-2 text-right text-gray-700 dark:text-slate-200">{r.debit ? fmtMoney(r.debit, sym) : ''}</td>
-                  <td className="py-2 text-right text-gray-700 dark:text-slate-200">{r.credit ? fmtMoney(r.credit, sym) : ''}</td>
-                  <td className="py-2 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.balance, sym)}</td>
+                <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50">
+                  <td className="py-2 text-slate-500 dark:text-slate-400">{fmtDate(r.date)}</td>
+                  <td className="py-2 text-slate-700 dark:text-slate-200">{r.type}</td>
+                  <td className="py-2 text-slate-500 dark:text-slate-400 font-mono text-xs">{r.ref}</td>
+                  <td className="py-2 text-right text-slate-700 dark:text-slate-200">{r.debit ? fmtMoney(r.debit, sym) : ''}</td>
+                  <td className="py-2 text-right text-slate-700 dark:text-slate-200">{r.credit ? fmtMoney(r.credit, sym) : ''}</td>
+                  <td className="py-2 text-right font-medium text-slate-800 dark:text-slate-100">{fmtMoney(r.balance, sym)}</td>
                 </tr>
               ))}
               {rows.length === 0 && (
-                <tr><td colSpan={6} className="py-6 text-center text-gray-400 dark:text-slate-500">{t('No transactions in this period')}</td></tr>
+                <tr><td colSpan={6} className="py-6 text-center text-slate-500 dark:text-slate-400">{t('No transactions in this period')}</td></tr>
               )}
             </tbody>
           </table>
           )}
 
           <div className="flex justify-end mt-6">
-            <div className="w-64 bg-gray-50 dark:bg-slate-800/60 rounded-lg p-4">
+            <div className="w-64 bg-slate-50 dark:bg-slate-800/60 rounded-lg p-4">
               <div className="flex justify-between font-bold text-base">
-                <span className="text-gray-800 dark:text-slate-100">{t('Closing Balance')}</span>
-                <span className={closing >= 0 ? 'text-gray-900 dark:text-slate-100' : 'text-green-600'}>{fmtMoney(Math.abs(closing), sym)}</span>
+                <span className="text-slate-800 dark:text-slate-100">{t('Closing Balance')}</span>
+                <span className={closing >= 0 ? 'text-slate-900 dark:text-slate-100' : 'text-success-700 dark:text-success-400'}>{fmtMoney(Math.abs(closing), sym)}</span>
               </div>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-1 text-right">{closing >= 0 ? t(label) : t('in credit')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 text-right">{closing >= 0 ? t(label) : t('in credit')}</p>
             </div>
           </div>
 
           {/* Aged summary — the part of a statement people actually read. */}
           {aged.total > 0 && (
-            <div className="mt-8 pt-5 border-t border-gray-200 dark:border-surface-700">
-              <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide mb-2">
+            <div className="mt-8 pt-5 border-t border-slate-200 dark:border-surface-700">
+              <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
                 {t('Aged summary')}
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm min-w-[420px]">
                   <thead>
-                    <tr className="text-xs text-gray-500 dark:text-slate-400 uppercase">
+                    <tr className="text-xs text-slate-500 dark:text-slate-400 uppercase">
                       {aged.labels.map((l) => <th key={l} className="text-end py-1.5 font-medium">{t(l)}</th>)}
                       <th className="text-end py-1.5 font-medium">{t('Total')}</th>
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-t border-gray-100 dark:border-surface-750">
+                    <tr className="border-t border-slate-100 dark:border-surface-750">
                       {aged.cells.map((v, i) => (
-                        <td key={i} className={`text-end py-2 tabular-nums ${i > 1 && v > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-gray-700 dark:text-slate-200'}`}>
+                        <td key={i} className={`text-end py-2 tabular-nums ${i > 1 && v > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-slate-700 dark:text-slate-200'}`}>
                           {v ? fmtMoney(v, sym) : '—'}
                         </td>
                       ))}
-                      <td className="text-end py-2 tabular-nums font-bold text-gray-900 dark:text-slate-100">{fmtMoney(aged.total, sym)}</td>
+                      <td className="text-end py-2 tabular-nums font-bold text-slate-900 dark:text-slate-100">{fmtMoney(aged.total, sym)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -274,7 +274,7 @@ export default function Statements() {
               being chased is wrong. */}
           {stmt.reconciliation && !stmt.reconciliation.ok && (
             <div className="mt-6 p-3.5 rounded-lg bg-warning-50/70 dark:bg-warning-500/[0.08] ring-1 ring-inset ring-warning-500/25 flex items-start gap-3 no-print">
-              <AlertTriangle size={16} className="text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />
+              <AlertTriangle size={16} className="text-warning-700 dark:text-warning-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-warning-800 dark:text-warning-200">
                 {t('The running balance ({a}) does not match the unpaid documents ({b}). A credit or payment is recorded against nothing — check before sending this.')
                   .replace('{a}', fmtMoney(stmt.reconciliation.closing, sym))

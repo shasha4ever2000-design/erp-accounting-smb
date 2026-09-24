@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useStore } from './store'
+import { useShortcuts, ShortcutsHelp } from './components/Shortcuts'
 import { useAuth } from './auth'
 import { useT } from './i18n'
 import { requestPersistence } from './utils/durability'
@@ -86,8 +87,8 @@ const YearEndClose = lazy(() => import('./pages/YearEndClose'))
 
 function PageLoader() {
   return (
-    <div className="flex items-center justify-center py-24 text-gray-400 dark:text-slate-500">
-      <div className="h-8 w-8 rounded-full border-2 border-gray-200 dark:border-slate-600 border-t-blue-500 animate-spin" />
+    <div className="flex items-center justify-center py-24 text-slate-500 dark:text-slate-400">
+      <div className="h-8 w-8 rounded-full border-2 border-slate-200 dark:border-slate-600 border-t-brand-500 animate-spin" />
     </div>
   )
 }
@@ -105,6 +106,13 @@ export default function App() {
     if (theme === 'dark') root.classList.add('dark')
     else root.classList.remove('dark')
   }, [theme])
+
+  const density = useStore((s) => s.settings.density || 'comfortable')
+  useEffect(() => {
+    document.documentElement.classList.toggle('density-compact', density === 'compact')
+  }, [density])
+
+  useShortcuts()
 
   // Boot-time scheduler: catch up any due recurring invoices/journals once the
   // company's data has hydrated (App only mounts post-hydration). Runs at most
@@ -180,6 +188,7 @@ export default function App() {
 
   return (
     <Layout>
+      <ShortcutsHelp />
       {/* Asked once per company, before anything else is on screen — the
           answers decide currency, tax and e-invoicing, and getting them wrong
           is only discovered when a return is due. */}

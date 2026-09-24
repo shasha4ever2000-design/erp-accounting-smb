@@ -10,6 +10,7 @@ import {
   Users, Plus, Pencil, Trash2, ArrowDownLeft, ArrowUpRight, PieChart, AlertTriangle, Wallet,
 } from 'lucide-react'
 import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
 const today = () => todayISO()
 const emptyPartner = { name: '', code: '', share: '', notes: '', active: true }
@@ -55,7 +56,7 @@ export default function CapitalAccounts() {
   const check = useMemo(() => reconcile(summary, controlBalance), [summary, controlBalance])
 
   const shares = shareTotal(capitalAccounts)
-  const cashAccounts = accounts.filter((a) => a.type === 'asset' && a.subtype === 'current')
+  const cashAccounts = store.cashAccountOptions()
 
   // ─── Partner CRUD ────────────────────────────────────────────────
   const openNew = () => { setEditing(null); setForm(emptyPartner); setError(''); setModal(true) }
@@ -74,9 +75,9 @@ export default function CapitalAccounts() {
       setError(String(e.message || e).replace('CAPITAL_INVALID:', '').trim())
     }
   }
-  const removePartner = (a) => {
+  const removePartner = async (a) => {
     try {
-      if (!confirm(t('Delete the capital account "{n}"?').replace('{n}', a.name))) return
+      if (!await ask(t('Delete the capital account "{n}"?').replace('{n}', a.name))) return
       deleteCapitalAccount(a.id)
     } catch (e) {
       if (String(e.message).includes('HAS_ACTIVITY')) {
@@ -169,7 +170,7 @@ export default function CapitalAccounts() {
       {capitalAccounts.length === 0 ? (
         <Card>
           <EmptyState
-            icon={<Users size={28} className="text-slate-400 dark:text-slate-500" />}
+            icon={<Users size={28} className="text-slate-500 dark:text-slate-400" />}
             title="No capital accounts yet"
             desc="A sole trader does not need these — Owner's Capital and Owner's Drawings are enough. Add one per person once the business has partners, members or shareholders, and every contribution, drawing and share of profit becomes attributable by name."
             action={<Btn onClick={openNew}><Plus size={14} /> {t('New capital account')}</Btn>}
@@ -203,7 +204,7 @@ export default function CapitalAccounts() {
 
           {shares > 0 && shares !== 100 && (
             <Card className="p-3.5 mb-6 bg-warning-50/60 dark:bg-warning-500/[0.07] ring-1 ring-inset ring-warning-500/20 flex items-start gap-3">
-              <AlertTriangle size={16} className="text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />
+              <AlertTriangle size={16} className="text-warning-700 dark:text-warning-400 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-warning-800 dark:text-warning-200">
                 {t('Profit shares add up to {n}%, not 100%. That is allowed — profit is split by ratio — but it is usually a typo.').replace('{n}', shares)}
               </p>
@@ -212,13 +213,13 @@ export default function CapitalAccounts() {
 
           {/* Summary matrix: a row per owner, a column per movement type */}
           <Card className="overflow-hidden mb-6">
-            <div className="p-4 border-b border-gray-100 dark:border-surface-750">
-              <h3 className="font-semibold text-gray-800 dark:text-slate-100">{t('Summary')}</h3>
+            <div className="p-4 border-b border-slate-100 dark:border-surface-750">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t('Summary')}</h3>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[640px]">
                 <thead>
-                  <tr className="text-[11px] uppercase tracking-wider text-gray-400 dark:text-slate-500 border-b border-gray-100 dark:border-surface-750">
+                  <tr className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-surface-750">
                     <th className="text-start font-medium px-4 py-2.5">{t('Owner')}</th>
                     {summary.subaccounts.map((s) => (
                       <th key={s.id} className="text-end font-medium px-4 py-2.5">{t(s.name)}</th>
@@ -232,37 +233,37 @@ export default function CapitalAccounts() {
                   {summary.rows.map((r) => {
                     const acc = capitalAccounts.find((a) => a.id === r.id)
                     return (
-                      <tr key={r.id} className="border-b border-gray-50 dark:border-surface-800 hover:bg-gray-50/70 dark:hover:bg-surface-800/50">
+                      <tr key={r.id} className="border-b border-slate-50 dark:border-surface-800 hover:bg-slate-50/70 dark:hover:bg-surface-800/50">
                         <td className="px-4 py-2.5">
-                          <button onClick={() => setDetail(acc)} className="font-medium text-gray-800 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400">
+                          <button onClick={() => setDetail(acc)} className="font-medium text-slate-800 dark:text-slate-100 hover:text-brand-600 dark:hover:text-brand-400">
                             {r.name}
                           </button>
                           {acc?.active === false && <Badge className="ms-2 bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{t('inactive')}</Badge>}
-                          {r.share > 0 && <span className="ms-2 text-xs text-gray-400 dark:text-slate-500">{r.share}%</span>}
+                          {r.share > 0 && <span className="ms-2 text-xs text-slate-500 dark:text-slate-400">{r.share}%</span>}
                         </td>
                         {summary.subaccounts.map((s) => (
-                          <td key={s.id} className="px-4 py-2.5 text-end tabular-nums text-gray-600 dark:text-slate-300">
+                          <td key={s.id} className="px-4 py-2.5 text-end tabular-nums text-slate-600 dark:text-slate-300">
                             {r.cells[s.id] ? fmtMoney(r.cells[s.id], sym) : '—'}
                           </td>
                         ))}
                         {summary.uncategorisedTotal !== 0 && (
-                          <td className="px-4 py-2.5 text-end tabular-nums text-gray-600 dark:text-slate-300">
+                          <td className="px-4 py-2.5 text-end tabular-nums text-slate-600 dark:text-slate-300">
                             {r.uncategorised ? fmtMoney(r.uncategorised, sym) : '—'}
                           </td>
                         )}
-                        <td className="px-4 py-2.5 text-end tabular-nums font-semibold text-gray-800 dark:text-slate-100">
+                        <td className="px-4 py-2.5 text-end tabular-nums font-semibold text-slate-800 dark:text-slate-100">
                           {fmtMoney(r.total, sym)}
                         </td>
                         <td className="px-4 py-2.5">
                           <div className="flex items-center gap-1 justify-end">
                             <button onClick={() => openMove('contribution', r.id)} title={t('Funds in')}
-                              className="p-1 rounded text-gray-400 hover:text-success-600 hover:bg-success-50 dark:hover:bg-success-500/10"><ArrowDownLeft size={14} /></button>
+                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-success-600 hover:bg-success-50 dark:hover:bg-success-500/10"><ArrowDownLeft size={14} /></button>
                             <button onClick={() => openMove('drawing', r.id)} title={t('Drawings')}
-                              className="p-1 rounded text-gray-400 hover:text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-500/10"><ArrowUpRight size={14} /></button>
+                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-warning-600 hover:bg-warning-50 dark:hover:bg-warning-500/10"><ArrowUpRight size={14} /></button>
                             <button onClick={() => openEdit(acc)} title={t('Edit')}
-                              className="p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10"><Pencil size={14} /></button>
+                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10"><Pencil size={14} /></button>
                             <button onClick={() => removePartner(acc)} title={t('Delete')}
-                              className="p-1 rounded text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 size={14} /></button>
+                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -270,7 +271,7 @@ export default function CapitalAccounts() {
                   })}
 
                   {summary.unallocated && (
-                    <tr className="border-b border-gray-50 dark:border-surface-800 bg-warning-50/50 dark:bg-warning-500/[0.06]">
+                    <tr className="border-b border-slate-50 dark:border-surface-800 bg-warning-50/50 dark:bg-warning-500/[0.06]">
                       <td className="px-4 py-2.5 font-medium text-warning-800 dark:text-warning-300">
                         <AlertTriangle size={13} className="inline me-1.5 -mt-0.5" />{t('Unallocated')}
                       </td>
@@ -292,7 +293,7 @@ export default function CapitalAccounts() {
                   )}
                 </tbody>
                 <tfoot>
-                  <tr className="bg-gray-50/80 dark:bg-surface-800/60 font-semibold text-gray-800 dark:text-slate-100">
+                  <tr className="bg-slate-50/80 dark:bg-surface-800/60 font-semibold text-slate-800 dark:text-slate-100">
                     <td className="px-4 py-3">{t('Total')}</td>
                     {summary.subaccounts.map((s) => (
                       <td key={s.id} className="px-4 py-3 text-end tabular-nums">{fmtMoney(summary.columnTotals[s.id], sym)}</td>
@@ -318,14 +319,14 @@ export default function CapitalAccounts() {
             <Input label="Reference (optional)" value={form.code} onChange={(e) => setForm((f) => ({ ...f, code: e.target.value }))} placeholder="e.g. P-01" />
             <Input label="Profit share %" type="number" value={form.share} onChange={(e) => setForm((f) => ({ ...f, share: e.target.value }))} placeholder="e.g. 60" />
           </div>
-          <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
             {t('Leave the share blank to split profit equally between everyone.')}
           </p>
           <Input label="Notes (optional)" value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
           <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input type="checkbox" className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-600"
               checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
-            <span className="text-gray-700 dark:text-slate-200">{t('Active — include in new entries and profit splits')}</span>
+            <span className="text-slate-700 dark:text-slate-200">{t('Active — include in new entries and profit splits')}</span>
           </label>
           {error && <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}</p>}
           <div className="flex justify-end gap-2 pt-2">
@@ -339,7 +340,7 @@ export default function CapitalAccounts() {
       <Modal open={moveModal} onClose={() => setMoveModal(false)}
         title={move.kind === 'contribution' ? 'Record Funds Contributed' : 'Record Drawings'}>
         <div className="space-y-4">
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {move.kind === 'contribution'
               ? t('Money an owner has put into the business.')
               : t('Money an owner has taken out of the business.')}
@@ -369,7 +370,7 @@ export default function CapitalAccounts() {
       {/* Profit allocation modal */}
       <Modal open={allocModal} onClose={() => setAllocModal(false)} title="Allocate Profit to Owners">
         <div className="space-y-4">
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('This moves profit out of retained earnings and into each owner\'s account. Total equity does not change — the profit simply stops being "kept in the business" and becomes "owed to a named owner".')}
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -378,9 +379,9 @@ export default function CapitalAccounts() {
           </div>
           <Input label="Description (optional)" value={alloc.description} onChange={(e) => setAlloc((a) => ({ ...a, description: e.target.value }))} placeholder={t('e.g. Allocation of 2026 profit')} />
 
-          <div className="flex items-center justify-between text-sm rounded-lg bg-gray-50 dark:bg-surface-800 px-3 py-2">
-            <span className="text-gray-500 dark:text-slate-400">{t('Undistributed profit to date')}</span>
-            <span className={`tabular-nums font-semibold ${availableProfit < 0 ? 'text-warning-700 dark:text-warning-400' : 'text-gray-800 dark:text-slate-100'}`}>
+          <div className="flex items-center justify-between text-sm rounded-lg bg-slate-50 dark:bg-surface-800 px-3 py-2">
+            <span className="text-slate-500 dark:text-slate-400">{t('Undistributed profit to date')}</span>
+            <span className={`tabular-nums font-semibold ${availableProfit < 0 ? 'text-warning-700 dark:text-warning-400' : 'text-slate-800 dark:text-slate-100'}`}>
               {fmtMoney(availableProfit, sym)}
             </span>
           </div>
@@ -392,12 +393,12 @@ export default function CapitalAccounts() {
           )}
 
           {preview.length > 0 && (
-            <div className="rounded-lg border border-gray-100 dark:border-surface-750 overflow-hidden">
-              <div className="px-3 py-2 bg-gray-50 dark:bg-surface-800 text-[11px] uppercase tracking-wider text-gray-400 dark:text-slate-500">{t('Each owner receives')}</div>
+            <div className="rounded-lg border border-slate-100 dark:border-surface-750 overflow-hidden">
+              <div className="px-3 py-2 bg-slate-50 dark:bg-surface-800 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('Each owner receives')}</div>
               {preview.map((p) => (
-                <div key={p.capitalAccountId} className="flex justify-between px-3 py-1.5 text-sm border-t border-gray-50 dark:border-surface-800">
-                  <span className="text-gray-700 dark:text-slate-200">{p.name}</span>
-                  <span className="tabular-nums font-medium text-gray-800 dark:text-slate-100">{fmtMoney(p.amount, sym)}</span>
+                <div key={p.capitalAccountId} className="flex justify-between px-3 py-1.5 text-sm border-t border-slate-50 dark:border-surface-800">
+                  <span className="text-slate-700 dark:text-slate-200">{p.name}</span>
+                  <span className="tabular-nums font-medium text-slate-800 dark:text-slate-100">{fmtMoney(p.amount, sym)}</span>
                 </div>
               ))}
             </div>
@@ -414,23 +415,23 @@ export default function CapitalAccounts() {
       <Modal open={!!detail} onClose={() => setDetail(null)} title={detail ? `${detail.name} — ${t('Statement')}` : ''} width="max-w-3xl">
         {detail && (
           <div>
-            <div className="flex items-baseline justify-between mb-4 pb-3 border-b border-gray-100 dark:border-surface-750">
-              <span className="text-sm text-gray-500 dark:text-slate-400">{t('Balance')}</span>
-              <span className="text-2xl font-bold tabular-nums text-gray-800 dark:text-slate-100">
+            <div className="flex items-baseline justify-between mb-4 pb-3 border-b border-slate-100 dark:border-surface-750">
+              <span className="text-sm text-slate-500 dark:text-slate-400">{t('Balance')}</span>
+              <span className="text-2xl font-bold tabular-nums text-slate-800 dark:text-slate-100">
                 {fmtMoney(summary.rows.find((r) => r.id === detail.id)?.total || 0, sym)}
               </span>
             </div>
             {detailLines.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-slate-500 py-6 text-center">{t('No movements yet.')}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">{t('No movements yet.')}</p>
             ) : (
               <Table headers={['Date', 'Reference', 'Type', 'Description', 'Amount']}>
                 {detailLines.map((l) => (
                   <Tr key={l.key}>
                     <Td className="whitespace-nowrap">{fmtDate(l.date)}</Td>
-                    <Td className="text-gray-500 dark:text-slate-400">{l.number}</Td>
+                    <Td className="text-slate-500 dark:text-slate-400">{l.number}</Td>
                     <Td><Badge className="bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">{t(subName(l.subaccountId))}</Badge></Td>
-                    <Td className="text-gray-600 dark:text-slate-300">{l.description}</Td>
-                    <Td className={`text-end tabular-nums font-medium ${l.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-gray-800 dark:text-slate-100'}`}>
+                    <Td className="text-slate-600 dark:text-slate-300">{l.description}</Td>
+                    <Td className={`text-end tabular-nums font-medium ${l.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-100'}`}>
                       {fmtMoney(l.amount, sym)}
                     </Td>
                   </Tr>

@@ -2,6 +2,7 @@ import { useAuth } from '../auth'
 import { useT } from '../i18n'
 import { PageHeader, Card, Select, Badge } from '../components/UI'
 import { Users, ShieldAlert, Trash2, Crown } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const ROLES = [
   { id: 'owner', label: 'Owner', desc: 'Full control, incl. companies & team' },
@@ -26,9 +27,9 @@ export default function Team() {
       <div>
         <PageHeader title="Team & Roles" />
         <Card className="p-10 text-center">
-          <ShieldAlert size={32} className="mx-auto mb-3 text-amber-500" />
-          <p className="text-gray-600 dark:text-slate-300 font-medium">{t('Only Owners and Admins can manage the team.')}</p>
-          <p className="text-sm text-gray-400 dark:text-slate-500 mt-1">{t('Ask an administrator if you need different access.')}</p>
+          <ShieldAlert size={32} className="mx-auto mb-3 text-warning-700 dark:text-warning-400" />
+          <p className="text-slate-600 dark:text-slate-300 font-medium">{t('Only Owners and Admins can manage the team.')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">{t('Ask an administrator if you need different access.')}</p>
         </Card>
       </div>
     )
@@ -40,8 +41,8 @@ export default function Team() {
 
       <Card className="overflow-hidden mb-5">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-slate-800/60">
-            <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+          <thead className="bg-slate-50 dark:bg-slate-800/60">
+            <tr className="text-xs text-slate-500 dark:text-slate-400 uppercase">
               <th className="text-left px-5 py-2.5">User</th>
               <th className="text-left px-4 py-2.5">Email</th>
               <th className="text-left px-4 py-2.5 w-44">Role</th>
@@ -50,21 +51,21 @@ export default function Team() {
           </thead>
           <tbody>
             {users.map((u) => (
-              <tr key={u.id} className="border-b border-gray-50 dark:border-slate-700/50">
+              <tr key={u.id} className="border-b border-slate-50 dark:border-slate-700/50">
                 <td className="px-5 py-3">
                   <div className="flex items-center gap-2.5">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-br from-brand-500 to-accent-600 text-white text-xs font-bold flex items-center justify-center">
                       {(u.name || '?').split(' ').map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
                     <div>
-                      <p className="font-medium text-gray-800 dark:text-slate-100 flex items-center gap-1.5">
+                      <p className="font-medium text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                         {u.name}{u.role === 'owner' && <Crown size={12} className="text-violet-500" />}
-                        {u.id === currentUserId && <span className="text-xs text-gray-400 dark:text-slate-500">(you)</span>}
+                        {u.id === currentUserId && <span className="text-xs text-slate-500 dark:text-slate-400">(you)</span>}
                       </p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{u.email}</td>
+                <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{u.email}</td>
                 <td className="px-4 py-3">
                   <Select value={u.role || 'viewer'} onChange={(e) => setUserRole(u.id, e.target.value)}>
                     {ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
@@ -72,7 +73,7 @@ export default function Team() {
                 </td>
                 <td className="px-5 py-3 text-right">
                   {u.id !== currentUserId && (
-                    <button onClick={() => { if (confirm(`Remove ${u.name}'s account from this device?`)) removeUser(u.id) }} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
+                    <button onClick={async () => { if (await ask(`Remove ${u.name}'s account from this device?`)) removeUser(u.id) }} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
                   )}
                 </td>
               </tr>
@@ -82,16 +83,16 @@ export default function Team() {
       </Card>
 
       <Card className="p-5">
-        <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">{t('Role permissions')}</h3>
+        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">{t('Role permissions')}</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {ROLES.map((r) => (
-            <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-slate-800/50">
+            <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
               <Badge className={ROLE_CLR[r.id]}>{r.label}</Badge>
-              <span className="text-sm text-gray-600 dark:text-slate-300">{t(r.desc)}</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">{t(r.desc)}</span>
             </div>
           ))}
         </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mt-4 flex items-start gap-2">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 flex items-start gap-2">
           <ShieldAlert size={14} className="mt-0.5 flex-shrink-0" />
           Roles organise access on this device. Server-enforced, tamper-proof permissions arrive with cloud sync.
         </p>

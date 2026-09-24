@@ -85,7 +85,7 @@ export default function PurchaseOrderForm() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Supplier')}</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Supplier')}</h3>
             <Select label="Select Supplier" value={form.supplierId} onChange={(e) => handleSupplier(e.target.value)}>
               <option value="">— Enter manually below —</option>
               {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -99,7 +99,7 @@ export default function PurchaseOrderForm() {
 
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
+              <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
               <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add Line')}</Btn>
             </div>
             {lines.map((line) => (
@@ -113,7 +113,7 @@ export default function PurchaseOrderForm() {
                   </div>
                   <div className="col-span-2">
                     {line.itemId
-                      ? <p className="text-[11px] text-blue-600 dark:text-blue-400 px-1 pt-6">{t('Received into stock (perpetual, weighted-average)')}</p>
+                      ? <p className="text-[11px] text-brand-600 dark:text-brand-400 px-1 pt-6">{t('Received into stock (perpetual, weighted-average)')}</p>
                       : <Select label={t('Expense / Asset Account')} value={line.accountId} onChange={(e) => setLine(line.id, 'accountId', e.target.value)}>
                           {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
                         </Select>}
@@ -127,10 +127,10 @@ export default function PurchaseOrderForm() {
                   {taxEnabled && <Input label="Tax %" type="number" min="0" max="100" value={line.taxRate ?? taxRate} onChange={(e) => setLine(line.id, 'taxRate', e.target.value)} />}
                   <div className={`flex items-end gap-2 ${taxEnabled ? '' : 'col-span-2'}`}>
                     <div className="flex-1">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Subtotal</label>
+                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Subtotal</label>
                       <p className="py-2 px-3 text-sm font-medium">{sym}{(parseFloat(line.subtotal)||0).toFixed(2)}</p>
                     </div>
-                    <Btn size="sm" variant="ghost" onClick={() => removeLine(line.id)} className="mb-0.5"><Trash2 size={13} className="text-red-400" /></Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => removeLine(line.id)} className="mb-0.5"><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                   </div>
                 </div>
               </div>
@@ -144,16 +144,16 @@ export default function PurchaseOrderForm() {
 
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Order Details')}</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Order Details')}</h3>
             <Input label="Order Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
             <Input label="Expected Delivery" type="date" value={form.deliveryDate} onChange={(e) => setField('deliveryDate', e.target.value)} />
           </Card>
 
           <Card className="p-5 space-y-2">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide mb-3">Summary</h3>
-            <div className="flex justify-between text-sm text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
-            {taxEnabled && <div className="flex justify-between text-sm text-gray-600 dark:text-slate-300"><span>Tax</span><span>{sym}{taxAmount.toFixed(2)}</span></div>}
-            <div className="border-t border-slate-200 dark:border-surface-700 pt-2 flex justify-between font-bold text-gray-900 dark:text-slate-100"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide mb-3">Summary</h3>
+            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span></div>
+            {taxEnabled && <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300"><span>Tax</span><span>{sym}{taxAmount.toFixed(2)}</span></div>}
+            <div className="border-t border-slate-200 dark:border-surface-700 pt-2 flex justify-between font-bold text-slate-900 dark:text-slate-100"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
           </Card>
 
           <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Order')}</Btn>

@@ -8,6 +8,7 @@ import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
 import { Plus, Trash2, FileQuestion, ArrowRight, Scale, AlertTriangle } from 'lucide-react'
 import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
 const STATUS_COLORS = {
   open:    'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
@@ -108,8 +109,8 @@ export default function PurchaseQuotes() {
     if (po) navigate('/purchase-orders')
   }
 
-  const handleDelete = (q) => {
-    if (confirm(t('Delete purchase quote {n}?').replace('{n}', q.number))) deletePurchaseQuote(q.id)
+  const handleDelete = async (q) => {
+    if (await ask(t('Delete purchase quote {n}?').replace('{n}', q.number))) deletePurchaseQuote(q.id)
   }
 
   return (
@@ -131,15 +132,15 @@ export default function PurchaseQuotes() {
         }
       />
 
-      <Card className="p-4 mb-6 text-sm text-gray-600 dark:text-slate-300">
+      <Card className="p-4 mb-6 text-sm text-slate-600 dark:text-slate-300">
         {t('Asking three suppliers for a price creates no liability, so a quote posts nothing. Only the one you turn into a purchase order commits you — and even that is a commitment, not a liability, until the bill arrives.')}
       </Card>
 
       {compare && comparison.length > 0 && (
         <Card className="overflow-hidden mb-6">
-          <div className="p-4 border-b border-gray-100 dark:border-surface-750">
-            <h3 className="font-semibold text-gray-800 dark:text-slate-100">{t('Same item, different suppliers')}</h3>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">
+          <div className="p-4 border-b border-slate-100 dark:border-surface-750">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">{t('Same item, different suppliers')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {t('Matched on the line description, cheapest first.')}
             </p>
           </div>
@@ -147,7 +148,7 @@ export default function PurchaseQuotes() {
             {comparison.flatMap((row) =>
               row.offers.map((o, i) => (
                 <Tr key={`${row.description}:${o.quoteId}`}>
-                  <Td className="text-gray-700 dark:text-slate-200">{i === 0 ? row.description : ''}</Td>
+                  <Td className="text-slate-700 dark:text-slate-200">{i === 0 ? row.description : ''}</Td>
                   <Td>
                     {o.supplier}
                     {i === 0 && (
@@ -157,7 +158,7 @@ export default function PurchaseQuotes() {
                     )}
                   </Td>
                   <Td className="text-end tabular-nums">{fmtMoney(o.unitPrice, sym)}</Td>
-                  <Td className="text-end tabular-nums text-gray-500 dark:text-slate-400">
+                  <Td className="text-end tabular-nums text-slate-500 dark:text-slate-400">
                     {i === 0 ? '—' : `+${fmtMoney(o.unitPrice - row.best.unitPrice, sym)}`}
                   </Td>
                 </Tr>
@@ -170,7 +171,7 @@ export default function PurchaseQuotes() {
       <Card className="overflow-hidden">
         {sorted.length === 0 ? (
           <EmptyState
-            icon={<FileQuestion size={28} className="text-slate-400 dark:text-slate-500" />}
+            icon={<FileQuestion size={28} className="text-slate-500 dark:text-slate-400" />}
             title="No purchase quotes"
             desc="Record what each supplier offered, compare them side by side, then turn the one you want into a purchase order."
             action={<Btn onClick={() => { setForm(emptyForm()); setModal(true) }}><Plus size={14} /> {t('New Quote')}</Btn>}
@@ -179,12 +180,12 @@ export default function PurchaseQuotes() {
           <Table headers={['Number', 'Supplier', 'Date', 'Valid until', 'Status', 'Total', '']}>
             {sorted.map((q) => (
               <Tr key={q.id}>
-                <Td className="font-mono font-semibold text-gray-800 dark:text-slate-100">{q.number}</Td>
-                <Td className="text-gray-700 dark:text-slate-200">{q.supplierName}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(q.date)}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{q.validUntil ? fmtDate(q.validUntil) : '—'}</Td>
+                <Td className="font-mono font-semibold text-slate-800 dark:text-slate-100">{q.number}</Td>
+                <Td className="text-slate-700 dark:text-slate-200">{q.supplierName}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(q.date)}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{q.validUntil ? fmtDate(q.validUntil) : '—'}</Td>
                 <Td><Badge className={STATUS_COLORS[q.status] || STATUS_COLORS.open}>{t(q.status)}</Badge></Td>
-                <Td className="text-end tabular-nums font-medium text-gray-800 dark:text-slate-100">{fmtMoney(q.total, sym)}</Td>
+                <Td className="text-end tabular-nums font-medium text-slate-800 dark:text-slate-100">{fmtMoney(q.total, sym)}</Td>
                 <Td>
                   <div className="flex items-center justify-end gap-1">
                     <AttachmentButton entityType="purchaseQuote" entityId={q.id} />
@@ -194,7 +195,7 @@ export default function PurchaseQuotes() {
                       </Btn>
                     )}
                     <Btn size="sm" variant="ghost" onClick={() => handleDelete(q)}>
-                      <Trash2 size={13} className="text-red-400" />
+                      <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                     </Btn>
                   </div>
                 </Td>
@@ -238,7 +239,7 @@ export default function PurchaseQuotes() {
                   )}
                   <button type="button" title={t('Remove')}
                     onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}
-                    className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
+                    className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
                 </div>
               ))}
             </div>
@@ -248,10 +249,10 @@ export default function PurchaseQuotes() {
             </Btn>
           </div>
 
-          <div className="flex justify-end gap-6 text-sm border-t border-gray-100 dark:border-surface-750 pt-3">
-            <span className="text-gray-500 dark:text-slate-400">{t('Subtotal')} <span className="font-medium text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(totals.subtotal, sym)}</span></span>
-            {taxEnabled && <span className="text-gray-500 dark:text-slate-400">{t('Tax')} <span className="font-medium text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(totals.taxAmount, sym)}</span></span>}
-            <span className="font-semibold text-gray-800 dark:text-slate-100">{t('Total')} <span className="tabular-nums">{fmtMoney(totals.total, sym)}</span></span>
+          <div className="flex justify-end gap-6 text-sm border-t border-slate-100 dark:border-surface-750 pt-3">
+            <span className="text-slate-500 dark:text-slate-400">{t('Subtotal')} <span className="font-medium text-slate-800 dark:text-slate-100 tabular-nums">{fmtMoney(totals.subtotal, sym)}</span></span>
+            {taxEnabled && <span className="text-slate-500 dark:text-slate-400">{t('Tax')} <span className="font-medium text-slate-800 dark:text-slate-100 tabular-nums">{fmtMoney(totals.taxAmount, sym)}</span></span>}
+            <span className="font-semibold text-slate-800 dark:text-slate-100">{t('Total')} <span className="tabular-nums">{fmtMoney(totals.total, sym)}</span></span>
           </div>
 
           {error && (

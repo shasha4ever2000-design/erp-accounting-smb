@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState } from '
 import { buildTree, flattenGroups, groupUsage, TYPE_ORDER, COST_OF_SALES } from '../utils/accountTree'
 import { CONTROL_KINDS } from '../utils/controlAccounts'
 import { Plus, Pencil, Trash2, FolderTree, ChevronRight, ChevronDown, AlertTriangle, RotateCcw } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const TYPES = TYPE_ORDER
 const SUBTYPES = {
@@ -64,9 +65,9 @@ export default function ChartOfAccounts() {
     close()
   }
 
-  const handleDelete = (a) => {
+  const handleDelete = async (a) => {
     if (a.isSystem) return alert(t('System accounts cannot be deleted.'))
-    if (!confirm(t('Delete "{n}"?').replace('{n}', a.name))) return
+    if (!await ask(t('Delete "{n}"?').replace('{n}', a.name))) return
     // The store enforces this too — see ACCOUNT_IS_SYSTEM in deleteAccount —
     // so this catch is a backstop for the check above, not the only guard.
     try { deleteAccount(a.id) } catch (err) {
@@ -105,19 +106,19 @@ export default function ChartOfAccounts() {
     }
   }
 
-  const deleteGroup = (g) => {
+  const deleteGroup = async (g) => {
     const use = groupUsage(accountGroups, accounts, g.id)
     const where = g.parentId ? t('moved up one level') : t('left ungrouped')
     const detail = use.total || use.subgroups
       ? t('{a} account(s) and {g} subgroup(s) will be {w}. Nothing is deleted.')
           .replace('{a}', use.total).replace('{g}', use.subgroups).replace('{w}', where)
       : t('It is empty.')
-    if (!confirm(`${t('Delete the group "{n}"?').replace('{n}', g.name)}\n\n${detail}`)) return
+    if (!await ask(`${t('Delete the group "{n}"?').replace('{n}', g.name)}\n\n${detail}`)) return
     deleteAccountGroup(g.id)
   }
 
-  const handleRestore = () => {
-    if (!confirm(t('Put every account back into its default group? Groups you added are kept.'))) return
+  const handleRestore = async () => {
+    if (!await ask(t('Put every account back into its default group? Groups you added are kept.'))) return
     restoreDefaultGroups()
   }
 
@@ -190,7 +191,7 @@ export default function ChartOfAccounts() {
             key={k}
             onClick={() => setFilter(k)}
             className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${
-              filter === k ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'
+              filter === k ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
             {k === 'all' ? t('All Accounts') : accountTypeLabel(k)}
@@ -205,9 +206,9 @@ export default function ChartOfAccounts() {
       <div className="space-y-4">
         {sections.map(({ type, rows, total }) => (
           <Card key={type}>
-            <div className="px-5 py-3 border-b border-gray-100 dark:border-surface-750 flex items-center gap-2">
+            <div className="px-5 py-3 border-b border-slate-100 dark:border-surface-750 flex items-center gap-2">
               <Badge className={accountTypeColor(type)}>{accountTypeLabel(type)}</Badge>
-              <span className="text-xs text-gray-400 dark:text-slate-500">
+              <span className="text-xs text-slate-500 dark:text-slate-400">
                 {t('{n} accounts').replace('{n}', total)}
               </span>
               <button onClick={() => openNewGroup(type)}
@@ -216,39 +217,39 @@ export default function ChartOfAccounts() {
               </button>
             </div>
 
-            <div className="divide-y divide-gray-50 dark:divide-surface-800">
+            <div className="divide-y divide-slate-50 dark:divide-surface-800">
               {rows.map((row, i) => {
                 if (row.kind === 'group') {
                   const g = row.group
                   const isOpen = !collapsed[g.id]
                   return (
-                    <div key={g.id} className={`flex items-center gap-2 px-5 py-2 bg-gray-50/60 dark:bg-surface-800/40 ${pad(row.depth)}`}>
-                      <button onClick={() => toggle(g.id)} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">
+                    <div key={g.id} className={`flex items-center gap-2 px-5 py-2 bg-slate-50/60 dark:bg-surface-800/40 ${pad(row.depth)}`}>
+                      <button onClick={() => toggle(g.id)} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                         {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                       </button>
-                      {g.code && <span className="font-mono text-[11px] text-gray-400 dark:text-slate-500">{g.code}</span>}
-                      <span className={`font-semibold ${row.depth === 0 ? 'text-gray-800 dark:text-slate-100 text-sm' : 'text-gray-600 dark:text-slate-300 text-[13px]'}`}>
+                      {g.code && <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">{g.code}</span>}
+                      <span className={`font-semibold ${row.depth === 0 ? 'text-slate-800 dark:text-slate-100 text-sm' : 'text-slate-600 dark:text-slate-300 text-[13px]'}`}>
                         {t(g.name)}
                       </span>
                       {g.role === COST_OF_SALES && (
-                        <span className="text-[10px] uppercase tracking-wider bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300 px-1.5 py-0.5 rounded">
+                        <span className="text-[10px] uppercase tracking-wider bg-warning-100 text-warning-700 dark:bg-warning-500/15 dark:text-warning-300 px-1.5 py-0.5 rounded">
                           {t('gross profit')}
                         </span>
                       )}
-                      <span className="text-[11px] text-gray-400 dark:text-slate-500">
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400">
                         {row.count > 0 ? row.count : ''}
                       </span>
                       <div className="ms-auto flex items-center gap-1">
                         <button onClick={() => openNewGroup(type, g.id)} title={t('Add a subgroup')}
-                          className="p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
+                          className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
                           <Plus size={13} />
                         </button>
                         <button onClick={() => openEditGroup(g)} title={t('Edit group')}
-                          className="p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
+                          className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
                           <Pencil size={13} />
                         </button>
                         <button onClick={() => deleteGroup(g)} title={t('Delete group')}
-                          className="p-1 rounded text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                          className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -259,7 +260,7 @@ export default function ChartOfAccounts() {
                 if (row.kind === 'ungrouped') {
                   return (
                     <div key="__ungrouped" className="flex items-center gap-2 px-5 py-2 bg-warning-50/60 dark:bg-warning-500/[0.07]">
-                      <AlertTriangle size={13} className="text-warning-600 dark:text-warning-400" />
+                      <AlertTriangle size={13} className="text-warning-700 dark:text-warning-400" />
                       <span className="font-semibold text-[13px] text-warning-800 dark:text-warning-300">{t('Ungrouped')}</span>
                       <span className="text-[11px] text-warning-700/70 dark:text-warning-400/70">
                         {t('{n} account(s) — still counted in every total').replace('{n}', row.count)}
@@ -270,22 +271,22 @@ export default function ChartOfAccounts() {
 
                 const a = row.account
                 return (
-                  <div key={a.id} className={`flex items-center gap-3 px-5 py-2 hover:bg-gray-50/70 dark:hover:bg-surface-800/50 transition-colors ${pad(row.depth)}`}>
-                    <span className="font-mono font-semibold text-gray-700 dark:text-slate-200 text-[13px] w-16 flex-shrink-0">{a.code}</span>
+                  <div key={a.id} className={`flex items-center gap-3 px-5 py-2 hover:bg-slate-50/70 dark:hover:bg-surface-800/50 transition-colors ${pad(row.depth)}`}>
+                    <span className="font-mono font-semibold text-slate-700 dark:text-slate-200 text-[13px] w-16 flex-shrink-0">{a.code}</span>
                     <div className="min-w-0 flex-1">
-                      <span className="font-medium text-gray-800 dark:text-slate-100 text-sm">{a.name}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100 text-sm">{a.name}</span>
                       {a.currency && a.currency !== base && <span className="ms-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold">{a.currency}</span>}
                       {a.isSystem && <span className="ms-2 text-[10px] bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400 px-1.5 py-0.5 rounded">{t('system')}</span>}
                       {a.controlFor && <span className="ms-2 text-[10px] bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 px-1.5 py-0.5 rounded font-medium">{t(CONTROL_KINDS[a.controlFor]?.label || 'control')}</span>}
-                      {a.description && <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5 truncate">{a.description}</p>}
+                      {a.description && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">{a.description}</p>}
                     </div>
-                    <span className="text-gray-400 dark:text-slate-500 capitalize text-xs hidden sm:inline">{a.subtype?.replace('_', ' ')}</span>
+                    <span className="text-slate-500 dark:text-slate-400 capitalize text-xs hidden sm:inline">{a.subtype?.replace('_', ' ')}</span>
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      <button onClick={() => openEdit(a)} className="p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
+                      <button onClick={() => openEdit(a)} className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
                         <Pencil size={13} />
                       </button>
                       {!a.isSystem && (
-                        <button onClick={() => handleDelete(a)} className="p-1 rounded text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                        <button onClick={() => handleDelete(a)} className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
                           <Trash2 size={13} />
                         </button>
                       )}
@@ -332,7 +333,7 @@ export default function ChartOfAccounts() {
                 {form.type === 'asset' && <option value="inventoryItems">{t('Inventory')}</option>}
                 {form.type === 'liability' && <option value="suppliers">{t('Payables')}</option>}
               </Select>
-              <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
                 {t('A control account holds balances for a group of customers, suppliers or items — so you can show, say, local and export receivables as separate lines on the balance sheet.')}
               </p>
             </>
@@ -342,7 +343,7 @@ export default function ChartOfAccounts() {
             <option value="">{t('Base currency')} ({base})</option>
             {currencies.map((c) => <option key={c.id} value={c.code}>{c.code} — {c.name}</option>)}
           </Select>
-          <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">{t('Set a foreign currency to include this account in FX revaluation.')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">{t('Set a foreign currency to include this account in FX revaluation.')}</p>
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Create Account'}</Btn>
@@ -362,7 +363,7 @@ export default function ChartOfAccounts() {
             </Select>
           </div>
           {editingGroup && (
-            <p className="text-xs text-gray-400 dark:text-slate-500 -mt-2">
+            <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">
               {t('A group\'s type cannot change — the accounts inside it would end up on the wrong statement.')}
             </p>
           )}
@@ -374,12 +375,12 @@ export default function ChartOfAccounts() {
           </Select>
           {gForm.type === 'expense' && (
             <label className="flex items-start gap-2.5 text-sm cursor-pointer">
-              <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-gray-300 dark:border-slate-600"
+              <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-slate-300 dark:border-slate-600"
                 checked={gForm.role === COST_OF_SALES}
                 onChange={(e) => setGField('role', e.target.checked ? COST_OF_SALES : '')} />
-              <span className="text-gray-700 dark:text-slate-200">
+              <span className="text-slate-700 dark:text-slate-200">
                 {t('This is cost of sales')}
-                <span className="block text-xs text-gray-400 dark:text-slate-500">
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
                   {t('Subtracted from revenue to show gross profit on the income statement.')}
                 </span>
               </span>

@@ -207,7 +207,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
                 )}
                 <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white rounded-ee-sm'
+                    ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white rounded-ee-sm'
                     : 'bg-white dark:bg-surface-800 text-slate-800 dark:text-slate-100 shadow-xs dark:shadow-none border border-slate-200/70 dark:border-surface-700 rounded-es-sm'
                 }`}>
                   {renderText(msg.content)}

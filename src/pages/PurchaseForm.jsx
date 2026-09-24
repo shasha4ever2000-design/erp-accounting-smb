@@ -141,18 +141,18 @@ export default function PurchaseForm() {
 
   if (editId && editBlocked) return (
     <div className="max-w-lg mx-auto text-center py-20 space-y-4">
-      <p className="text-gray-700 dark:text-slate-200 font-medium">{t('This bill cannot be edited')}</p>
-      <p className="text-sm text-gray-500 dark:text-slate-400">{t(EDIT_BLOCK_MESSAGE[editBlocked])}</p>
+      <p className="text-slate-700 dark:text-slate-200 font-medium">{t('This bill cannot be edited')}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{t(EDIT_BLOCK_MESSAGE[editBlocked])}</p>
       <Btn variant="secondary" onClick={() => navigate(editing ? `/purchases/${editId}` : '/purchases')}>{t('Back')}</Btn>
     </div>
   )
 
   return (
     <div>
-      <button onClick={() => navigate(editId ? `/purchases/${editId}` : '/purchases')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
+      <button onClick={() => navigate(editId ? `/purchases/${editId}` : '/purchases')} className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 mb-4">
         <ArrowLeft size={15} /> {editId ? t('Back to Bill') : t('Back to Purchases')}
       </button>
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 mb-2">
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
         {editId ? `${t('Edit Purchase Invoice')} ${editing?.number || ''}` : t('New Purchase Invoice')}
       </h1>
       {editId && (
@@ -165,7 +165,7 @@ export default function PurchaseForm() {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 space-y-5">
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Purchase Details')}</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Purchase Details')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select label="Supplier *" value={form.supplierId} onChange={(e) => setSupplier(e.target.value)}>
                 <option value="">Select supplier…</option>
@@ -202,11 +202,11 @@ export default function PurchaseForm() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
               {/* Column headers belong to the desktop grid; on a phone each field
                   carries its own label instead. */}
-              <div className={`hidden lg:grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
+              <div className={`hidden lg:grid gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Cost')}</span>
@@ -226,7 +226,7 @@ export default function PurchaseForm() {
                       </Select>
                     )}
                     {line.itemId
-                      ? <p className="text-[11px] text-blue-600 dark:text-blue-400 px-1">{t('Received into stock (perpetual, weighted-average)')}</p>
+                      ? <p className="text-[11px] text-brand-600 dark:text-brand-400 px-1">{t('Received into stock (perpetual, weighted-average)')}</p>
                       : <Select value={line.accountId} onChange={(e) => updateLine(line.id, 'accountId', e.target.value)}>
                           {expenseAccounts.map((a) => <option key={a.id} value={a.id}>{a.code} – {a.name}</option>)}
                         </Select>}
@@ -241,36 +241,36 @@ export default function PurchaseForm() {
                       ))}
                     </Select>
                   )}
-                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100 text-right pt-2 self-center lg:self-start">
-                    <span className="lg:hidden text-xs font-normal text-gray-400 dark:text-slate-500 me-2">{t('Amount')}</span>
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100 text-right pt-2 self-center lg:self-start">
+                    <span className="lg:hidden text-xs font-normal text-slate-500 dark:text-slate-400 me-2">{t('Amount')}</span>
                     {fmtMoney(line.subtotal, sym)}
                   </div>
-                  <button onClick={() => removeLine(line.id)} aria-label={t('Remove line')} className="mt-2 justify-self-end self-center lg:self-start text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
+                  <button onClick={() => removeLine(line.id)} aria-label={t('Remove line')} className="mt-2 justify-self-end self-center lg:self-start text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
                 </div>
               ))}
               <Btn variant="ghost" onClick={addLine} size="sm"><Plus size={14} /> {t('Add Line')}</Btn>
             </div>
 
-            <div className="border-t border-gray-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
-              {discountTotal > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{fmtMoney(grossSubtotal, sym)}</span></div>}
-              {discountTotal > 0 && <div className="flex justify-between text-success-600 dark:text-success-400"><span>{t('Discount')}</span><span>− {fmtMoney(discountTotal, sym)}</span></div>}
-              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{discountTotal > 0 ? t('Net Subtotal') : 'Subtotal'}</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
-              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-slate-300">
+            <div className="border-t border-slate-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
+              {discountTotal > 0 && <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>{fmtMoney(grossSubtotal, sym)}</span></div>}
+              {discountTotal > 0 && <div className="flex justify-between text-success-700 dark:text-success-400"><span>{t('Discount')}</span><span>− {fmtMoney(discountTotal, sym)}</span></div>}
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{discountTotal > 0 ? t('Net Subtotal') : 'Subtotal'}</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
+              <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5">{t('Bill discount')}
-                  <input type="number" min="0" max="100" step="0.1" value={form.docDiscount} onChange={(e) => setField('docDiscount', e.target.value)} className="w-16 text-end border border-gray-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" /> %
+                  <input type="number" min="0" max="100" step="0.1" value={form.docDiscount} onChange={(e) => setField('docDiscount', e.target.value)} className="w-16 text-end border border-slate-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" /> %
                 </span>
-                <span className="text-success-600 dark:text-success-400">{totals.docDiscountAmount > 0 ? `− ${fmtMoney(totals.docDiscountAmount, sym)}` : '—'}</span>
+                <span className="text-success-700 dark:text-success-400">{totals.docDiscountAmount > 0 ? `− ${fmtMoney(totals.docDiscountAmount, sym)}` : '—'}</span>
               </div>
-              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-slate-300">
+              <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5">{t('Freight')}
-                  <input type="number" min="0" step="0.01" value={form.shipping} onChange={(e) => setField('shipping', e.target.value)} className="w-20 text-end border border-gray-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" />
-                  {taxEnabled && <label className="inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500"><input type="checkbox" checked={form.shippingTaxable} onChange={(e) => setField('shippingTaxable', e.target.checked)} /> {t('taxable')}</label>}
+                  <input type="number" min="0" step="0.01" value={form.shipping} onChange={(e) => setField('shipping', e.target.value)} className="w-20 text-end border border-slate-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" />
+                  {taxEnabled && <label className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400"><input type="checkbox" checked={form.shippingTaxable} onChange={(e) => setField('shippingTaxable', e.target.checked)} /> {t('taxable')}</label>}
                 </span>
                 <span>{totals.shipping > 0 ? fmtMoney(totals.shipping, sym) : '—'}</span>
               </div>
-              {taxEnabled && taxTotal > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t border-slate-200 dark:border-surface-700 pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
-              {isFC && <div className="flex justify-between text-xs text-gray-400 dark:text-slate-500"><span>≈ {t('in')} {baseCurrency}</span><span>{fmtMoney(total * (Number(form.exchangeRate) || 1), settings.company.currencySymbol)}</span></div>}
+              {taxEnabled && taxTotal > 0 && <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
+              <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100 text-base border-t border-slate-200 dark:border-surface-700 pt-2"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
+              {isFC && <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400"><span>≈ {t('in')} {baseCurrency}</span><span>{fmtMoney(total * (Number(form.exchangeRate) || 1), settings.company.currencySymbol)}</span></div>}
             </div>
           </Card>
 
@@ -287,11 +287,11 @@ export default function PurchaseForm() {
 
         <div className="space-y-4">
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Summary</h2>
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Summary</h2>
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
-              {taxEnabled && <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2"><span>Total</span><span className="text-orange-600 dark:text-orange-400">{fmtMoney(total, sym)}</span></div>
+              <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">Subtotal</span><span className="font-medium">{fmtMoney(subtotal, sym)}</span></div>
+              {taxEnabled && <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">{settings.tax.name}</span><span>{fmtMoney(taxTotal, sym)}</span></div>}
+              <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2"><span>Total</span><span className="text-warning-700 dark:text-warning-400">{fmtMoney(total, sym)}</span></div>
             </div>
             <div className="mt-5 space-y-2">
               <Btn className="w-full justify-center" onClick={handleSave}>{editId ? t('Save Changes') : t('Save Purchase Invoice')}</Btn>

@@ -6,6 +6,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Check, X, Trash2, ShoppingCart, ClipboardList } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1, estPrice: '' })
 const emptyForm = { requestedBy: '', department: '', supplierName: '', date: today(), neededBy: '', notes: '', lines: [blankLine()] }
@@ -62,7 +63,7 @@ export default function Requisitions() {
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {TABS.map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-lg text-sm capitalize ${tab === t ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-gray-100 dark:bg-slate-800 text-gray-600 dark:text-slate-300'}`}>
+          <button key={t} onClick={() => setTab(t)} className={`px-3 py-1.5 rounded-lg text-sm capitalize ${tab === t ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>
             {t}{t === 'pending' && pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         ))}
@@ -77,9 +78,9 @@ export default function Requisitions() {
             {filtered.map((r) => (
               <Tr key={r.id}>
                 <Td className="font-mono text-xs">{r.number}</Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{r.requestedBy || '—'}</Td>
-                <Td className="text-gray-500 dark:text-slate-400">{r.department || '—'}</Td>
-                <Td className="text-gray-500 dark:text-slate-400">{r.neededBy ? fmtDate(r.neededBy) : '—'}</Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{r.requestedBy || '—'}</Td>
+                <Td className="text-slate-500 dark:text-slate-400">{r.department || '—'}</Td>
+                <Td className="text-slate-500 dark:text-slate-400">{r.neededBy ? fmtDate(r.neededBy) : '—'}</Td>
                 <Td right className="font-medium">{fmtMoney(r.total || 0, sym)}</Td>
                 <Td><Badge className={STATUS[r.status]}>{r.status}</Badge></Td>
                 <Td right>
@@ -88,11 +89,11 @@ export default function Requisitions() {
                     {r.status === 'pending' && manager && (
                       <>
                         <Btn size="sm" variant="success" onClick={() => approveRequisition(r.id, me?.name)}><Check size={13} /></Btn>
-                        <Btn size="sm" variant="ghost" onClick={() => rejectRequisition(r.id, me?.name, '')}><X size={13} className="text-red-400" /></Btn>
+                        <Btn size="sm" variant="ghost" onClick={() => rejectRequisition(r.id, me?.name, '')}><X size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                       </>
                     )}
                     {r.status === 'approved' && <Btn size="sm" onClick={() => convert(r)}><ShoppingCart size={13} /> To PO</Btn>}
-                    <Btn size="sm" variant="ghost" onClick={() => { if (confirm('Delete this requisition?')) deleteRequisition(r.id) }}><Trash2 size={13} className="text-red-400" /></Btn>
+                    <Btn size="sm" variant="ghost" onClick={async () => { if (await ask('Delete this requisition?')) deleteRequisition(r.id) }}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                   </div>
                 </Td>
               </Tr>
@@ -113,18 +114,18 @@ export default function Requisitions() {
             <Input label="Needed By" type="date" value={form.neededBy} onChange={(e) => setF('neededBy', e.target.value)} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Items</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Items</label>
             <div className="space-y-2">
               {form.lines.map((l) => (
                 <div key={l.id} className="flex gap-2">
-                  <input className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" placeholder="What's needed" value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
-                  <input className="w-16 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty" value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
-                  <input className="w-24 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" step="0.01" placeholder="Est. price" value={l.estPrice} onChange={(e) => setLine(l.id, 'estPrice', e.target.value)} />
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <input className="flex-1 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" placeholder="What's needed" value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
+                  <input className="w-16 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty" value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
+                  <input className="w-24 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" step="0.01" placeholder="Est. price" value={l.estPrice} onChange={(e) => setLine(l.id, 'estPrice', e.target.value)} />
+                  <button onClick={() => removeLine(l.id)} className="text-slate-500 dark:text-slate-400 hover:text-danger-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>
-            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add item')}</button>
+            <button onClick={addLine} className="mt-2 text-sm text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add item')}</button>
           </div>
           <Textarea label="Justification / Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">

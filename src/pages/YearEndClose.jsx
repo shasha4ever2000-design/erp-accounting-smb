@@ -7,6 +7,7 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { fiscalYearBounds, listFiscalYears, preCloseChecks, yearSummary } from '../utils/yearClose'
 import { CalendarCheck, CheckCircle2, AlertTriangle, Lock, Unlock, ArrowRight, Sparkles } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { ask } from '../components/Dialogs'
 
 export default function YearEndClose() {
   const { settings, journalEntries, accounts, stockAdjustments, expenseClaims, payrollRuns, workOrders, closeFiscalYear, reopenFiscalYear } = useStore()
@@ -37,24 +38,24 @@ export default function YearEndClose() {
     workorders: '/manufacturing', vat: '/reports', balanced: '/journals',
   }
 
-  const doClose = () => {
+  const doClose = async () => {
     const msg = warnings > 0
       ? t('There are {n} open review items. Close {y} anyway? The books will be locked through {d}.')
           .replace('{n}', warnings).replace('{y}', fy.label).replace('{d}', fy.end)
       : t('Close {y}? The books will be locked through {d}.').replace('{y}', fy.label).replace('{d}', fy.end)
-    if (!confirm(msg)) return
+    if (!await ask(msg)) return
     closeFiscalYear({ ...fy, netIncome: summary.netIncome, by: useAuth.getState().currentUser()?.name || '' })
   }
 
-  const doReopen = () => {
-    if (!confirm(t('Reopen {y}? Entries in this year become editable again.').replace('{y}', fy.label))) return
+  const doReopen = async () => {
+    if (!await ask(t('Reopen {y}? Entries in this year become editable again.').replace('{y}', fy.label))) return
     reopenFiscalYear(fy.label)
   }
 
   const StatRow = ({ label, value, strong, positive }) => (
-    <div className={`flex items-center justify-between py-2.5 ${strong ? 'border-t-2 border-gray-300 dark:border-slate-600 mt-1 pt-3' : 'border-b border-gray-100 dark:border-slate-700/60'}`}>
-      <span className={strong ? 'font-bold text-gray-900 dark:text-slate-100' : 'text-gray-600 dark:text-slate-300'}>{label}</span>
-      <span className={`font-mono tabular-nums ${strong ? 'font-bold text-lg' : 'font-medium'} ${positive === undefined ? 'text-gray-800 dark:text-slate-100' : positive ? 'text-success-600 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{value}</span>
+    <div className={`flex items-center justify-between py-2.5 ${strong ? 'border-t-2 border-slate-300 dark:border-slate-600 mt-1 pt-3' : 'border-b border-slate-100 dark:border-slate-700/60'}`}>
+      <span className={strong ? 'font-bold text-slate-900 dark:text-slate-100' : 'text-slate-600 dark:text-slate-300'}>{label}</span>
+      <span className={`font-mono tabular-nums ${strong ? 'font-bold text-lg' : 'font-medium'} ${positive === undefined ? 'text-slate-800 dark:text-slate-100' : positive ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{value}</span>
     </div>
   )
 
@@ -73,7 +74,7 @@ export default function YearEndClose() {
 
       {/* Status banner */}
       {closed ? (
-        <div className="mb-6 rounded-2xl bg-gradient-to-r from-success-500 to-emerald-600 text-white p-5 flex flex-wrap items-center justify-between gap-3 shadow-card">
+        <div className="mb-6 rounded-2xl bg-gradient-to-r from-success-500 to-success-600 text-white p-5 flex flex-wrap items-center justify-between gap-3 shadow-card">
           <div className="flex items-center gap-3">
             <CheckCircle2 size={22} />
             <div>
@@ -103,21 +104,21 @@ export default function YearEndClose() {
         {/* Step 1 — pre-close checks */}
         <Card className="p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">
-              <span className="text-gray-400 dark:text-slate-500 me-2">1.</span>{t('Pre-close review')}
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+              <span className="text-slate-500 dark:text-slate-400 me-2">1.</span>{t('Pre-close review')}
             </h2>
-            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${warnings === 0 ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300'}`}>
+            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${warnings === 0 ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' : 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300'}`}>
               {warnings === 0 ? t('All clear') : `${warnings} ${t('to review')}`}
             </span>
           </div>
           <div className="space-y-1">
             {checks.map((c) => (
-              <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-gray-50/70 dark:bg-slate-800/50">
+              <div key={c.id} className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-slate-50/70 dark:bg-slate-800/50">
                 <div className="flex items-center gap-2.5 text-sm">
                   {c.ok
-                    ? <CheckCircle2 size={16} className="text-success-500 flex-shrink-0" />
-                    : <AlertTriangle size={16} className="text-amber-500 flex-shrink-0" />}
-                  <span className={c.ok ? 'text-gray-600 dark:text-slate-300' : 'text-gray-800 dark:text-slate-100 font-medium'}>{t(c.label)}</span>
+                    ? <CheckCircle2 size={16} className="text-success-700 dark:text-success-400 flex-shrink-0" />
+                    : <AlertTriangle size={16} className="text-warning-700 dark:text-warning-400 flex-shrink-0" />}
+                  <span className={c.ok ? 'text-slate-600 dark:text-slate-300' : 'text-slate-800 dark:text-slate-100 font-medium'}>{t(c.label)}</span>
                 </div>
                 {!c.ok && (
                   <Link to={checkFix[c.id] || '/reports'} className="flex items-center gap-1 text-xs font-semibold text-brand-600 dark:text-brand-400 hover:underline">
@@ -127,13 +128,13 @@ export default function YearEndClose() {
               </div>
             ))}
           </div>
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-4">{t('These are review prompts, not blockers — you decide when the year is ready.')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-4">{t('These are review prompts, not blockers — you decide when the year is ready.')}</p>
         </Card>
 
         {/* Step 2 — year summary + roll-forward */}
         <Card className="p-6">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">
-            <span className="text-gray-400 dark:text-slate-500 me-2">2.</span>{t('Result & retained earnings')}
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">
+            <span className="text-slate-500 dark:text-slate-400 me-2">2.</span>{t('Result & retained earnings')}
           </h2>
           <StatRow label={t('Total Revenue')} value={fmtMoney(summary.revenue, sym)} />
           <StatRow label={t('Total Expenses')} value={fmtMoney(summary.expenses, sym)} />
@@ -141,9 +142,9 @@ export default function YearEndClose() {
           <div className="mt-5 rounded-xl bg-violet-50/70 dark:bg-violet-500/[0.08] p-4">
             <p className="text-xs font-bold uppercase tracking-wide text-violet-600 dark:text-violet-300 mb-2">{t('Retained earnings roll-forward')}</p>
             <div className="text-sm space-y-1.5">
-              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{t('Opening retained earnings')}</span><span className="font-mono tabular-nums">{fmtMoney(summary.openingRE, sym)}</span></div>
-              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>+ {t('Net income for the year')}</span><span className="font-mono tabular-nums">{fmtMoney(summary.netIncome, sym)}</span></div>
-              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 border-t border-violet-200 dark:border-violet-500/30 pt-1.5"><span>{t('Closing retained earnings')}</span><span className="font-mono tabular-nums">{fmtMoney(summary.closingRE, sym)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('Opening retained earnings')}</span><span className="font-mono tabular-nums">{fmtMoney(summary.openingRE, sym)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>+ {t('Net income for the year')}</span><span className="font-mono tabular-nums">{fmtMoney(summary.netIncome, sym)}</span></div>
+              <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100 border-t border-violet-200 dark:border-violet-500/30 pt-1.5"><span>{t('Closing retained earnings')}</span><span className="font-mono tabular-nums">{fmtMoney(summary.closingRE, sym)}</span></div>
             </div>
             <p className="flex items-start gap-1.5 text-xs text-violet-500 dark:text-violet-400 mt-3">
               <Sparkles size={12} className="mt-0.5 flex-shrink-0" />
@@ -158,16 +159,16 @@ export default function YearEndClose() {
         <Card className="p-6 mt-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">
-                <span className="text-gray-400 dark:text-slate-500 me-2">3.</span>{t('Close the year')}
+              <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">
+                <span className="text-slate-500 dark:text-slate-400 me-2">3.</span>{t('Close the year')}
               </h2>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-1">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                 {t('Locks all entries through')} <strong>{fmtDate(fy.end)}</strong> {t('— nothing can be posted, edited or deleted in the closed year.')}
               </p>
             </div>
             {isManager
               ? <Btn onClick={doClose}><Lock size={15} /> {t('Close')} {fy.label}</Btn>
-              : <span className="text-xs text-gray-400 dark:text-slate-500">{t('Owners / Admins only')}</span>}
+              : <span className="text-xs text-slate-500 dark:text-slate-400">{t('Owners / Admins only')}</span>}
           </div>
         </Card>
       )}

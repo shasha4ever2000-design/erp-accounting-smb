@@ -87,7 +87,7 @@ export default function Scanner({ onScan, autoFocus = true, placeholder }) {
     <div>
       <div className="flex items-center gap-2 flex-wrap">
         <div className="relative flex-1 min-w-[220px]">
-          <Keyboard size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <Keyboard size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
           <input
             ref={inputRef}
             autoFocus={autoFocus}
@@ -111,7 +111,7 @@ export default function Scanner({ onScan, autoFocus = true, placeholder }) {
             <Btn variant="secondary" onClick={startCamera}><Camera size={15} /> {t('Use camera')}</Btn>
           )
         ) : (
-          <span className="text-xs text-gray-400 dark:text-slate-500 max-w-[260px]">
+          <span className="text-xs text-slate-500 dark:text-slate-400 max-w-[260px]">
             {scannerMessage(support.reason)}
           </span>
         )}

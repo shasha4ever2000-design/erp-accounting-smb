@@ -112,7 +112,7 @@ export default function InventoryControl() {
       <div className="flex gap-2 mb-5 flex-wrap">
         {TABS.map((tb) => (
           <button key={tb.id} onClick={() => setTab(tb.id)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${tab === tb.id ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all inline-flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${tab === tb.id ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
             <tb.icon size={14} /> {t(tb.label)}
           </button>
         ))}
@@ -121,26 +121,26 @@ export default function InventoryControl() {
       {/* ─── Stock Status ─── */}
       {tab === 'status' && (
         <Card>
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
+          <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
             <div className="relative max-w-xs flex-1">
-              <input className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150"
+              <input className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150"
                 placeholder={t('Search items...')} value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <ExportMenu size="sm" filename="stock-status" title={t('Stock Status')} rows={filtered} columns={statusExportCols} />
           </div>
           {filtered.length === 0 ? (
-            <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No items match your search')}</div>
+            <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No items match your search')}</div>
           ) : (
             <Table headers={[t('Code'), t('Item Name'), t('Category'), { label: t('On Hand'), right: true }, { label: t('Reorder'), right: true }, { label: t('Max'), right: true }, { label: t('Stock Value'), right: true }, t('Status')]}>
               {filtered.map((i) => (
                 <Tr key={i.id}>
-                  <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
-                  <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{i.category || '—'}</Td>
+                  <Td className="font-mono text-xs text-slate-500 dark:text-slate-400">{i.code || '—'}</Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-100">{i.name}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{i.category || '—'}</Td>
                   <Td right className="font-medium">{i.quantity || 0} {i.unit}</Td>
-                  <Td right className="text-gray-500 dark:text-slate-400">{i.reorderLevel || '—'}</Td>
-                  <Td right className="text-gray-500 dark:text-slate-400">{i.maxLevel || '—'}</Td>
-                  <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(value(i), sym)}</Td>
+                  <Td right className="text-slate-500 dark:text-slate-400">{i.reorderLevel || '—'}</Td>
+                  <Td right className="text-slate-500 dark:text-slate-400">{i.maxLevel || '—'}</Td>
+                  <Td right className="text-slate-700 dark:text-slate-200">{fmtMoney(value(i), sym)}</Td>
                   <Td>{statusBadge(statusOf(i))}</Td>
                 </Tr>
               ))}
@@ -152,8 +152,8 @@ export default function InventoryControl() {
       {/* ─── Reorder Suggestions ─── */}
       {tab === 'reorder' && (
         <Card>
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-            <p className="text-sm text-gray-500 dark:text-slate-400">{suggestions.length} {t('items need reordering')} · <span className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(reorderTotal, sym)}</span> {t('est. cost')}</p>
+          <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <p className="text-sm text-slate-500 dark:text-slate-400">{suggestions.length} {t('items need reordering')} · <span className="font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(reorderTotal, sym)}</span> {t('est. cost')}</p>
             {suggestions.length > 0 && <ExportMenu size="sm" filename="reorder-suggestions" title={t('Reorder Suggestions')} rows={suggestions} columns={[
               { key: 'code', label: t('Code') }, { key: 'name', label: t('Item Name') },
               { key: 'quantity', label: t('On Hand'), right: true, map: (v) => v || 0 },
@@ -163,18 +163,18 @@ export default function InventoryControl() {
             ]} />}
           </div>
           {suggestions.length === 0 ? (
-            <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">✅ {t('All items are above their reorder level.')}</div>
+            <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">✅ {t('All items are above their reorder level.')}</div>
           ) : (
             <Table headers={[t('Code'), t('Item Name'), { label: t('On Hand'), right: true }, { label: t('Reorder'), right: true }, { label: t('Max'), right: true }, { label: t('Suggested Order'), right: true }, { label: t('Est. Cost'), right: true }]}>
               {suggestions.map((i) => (
                 <Tr key={i.id}>
-                  <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
-                  <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
-                  <Td right className={`font-medium ${(i.quantity || 0) <= 0 ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>{i.quantity || 0} {i.unit}</Td>
-                  <Td right className="text-gray-500 dark:text-slate-400">{i.reorderLevel}</Td>
-                  <Td right className="text-gray-500 dark:text-slate-400">{i.maxLevel || '—'}</Td>
-                  <Td right className="font-bold text-blue-600 dark:text-blue-400">{i.orderQty} {i.unit}</Td>
-                  <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(i.orderCost, sym)}</Td>
+                  <Td className="font-mono text-xs text-slate-500 dark:text-slate-400">{i.code || '—'}</Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-100">{i.name}</Td>
+                  <Td right className={`font-medium ${(i.quantity || 0) <= 0 ? 'text-danger-600 dark:text-danger-400' : 'text-warning-700 dark:text-warning-400'}`}>{i.quantity || 0} {i.unit}</Td>
+                  <Td right className="text-slate-500 dark:text-slate-400">{i.reorderLevel}</Td>
+                  <Td right className="text-slate-500 dark:text-slate-400">{i.maxLevel || '—'}</Td>
+                  <Td right className="font-bold text-brand-600 dark:text-brand-400">{i.orderQty} {i.unit}</Td>
+                  <Td right className="text-slate-700 dark:text-slate-200">{fmtMoney(i.orderCost, sym)}</Td>
                 </Tr>
               ))}
             </Table>
@@ -186,12 +186,12 @@ export default function InventoryControl() {
       {tab === 'abc' && (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-            <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4"><p className="text-xs font-semibold text-green-700 dark:text-green-300">{t('Class A')} · {t('top ~80% of value')}</p><p className="text-2xl font-bold text-green-700 dark:text-green-300">{abcCounts.A}</p></div>
-            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-xl p-4"><p className="text-xs font-semibold text-amber-700 dark:text-amber-300">{t('Class B')} · {t('next ~15%')}</p><p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{abcCounts.B}</p></div>
-            <div className="bg-gray-50 dark:bg-slate-800 rounded-xl p-4"><p className="text-xs font-semibold text-gray-600 dark:text-slate-300">{t('Class C')} · {t('remaining ~5%')}</p><p className="text-2xl font-bold text-gray-600 dark:text-slate-300">{abcCounts.C}</p></div>
+            <div className="bg-success-50 dark:bg-success-900/20 rounded-xl p-4"><p className="text-xs font-semibold text-success-700 dark:text-success-300">{t('Class A')} · {t('top ~80% of value')}</p><p className="text-2xl font-bold text-success-700 dark:text-success-300">{abcCounts.A}</p></div>
+            <div className="bg-warning-50 dark:bg-warning-900/20 rounded-xl p-4"><p className="text-xs font-semibold text-warning-700 dark:text-warning-300">{t('Class B')} · {t('next ~15%')}</p><p className="text-2xl font-bold text-warning-700 dark:text-warning-300">{abcCounts.B}</p></div>
+            <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4"><p className="text-xs font-semibold text-slate-600 dark:text-slate-300">{t('Class C')} · {t('remaining ~5%')}</p><p className="text-2xl font-bold text-slate-600 dark:text-slate-300">{abcCounts.C}</p></div>
           </div>
           <Card>
-            <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-end">
+            <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-end">
               <ExportMenu size="sm" filename="abc-analysis" title={t('ABC Analysis')} rows={abc} columns={[
                 { key: 'cls', label: t('Class') }, { key: 'code', label: t('Code') }, { key: 'name', label: t('Item Name') },
                 { key: 'val', label: t('Stock Value'), right: true, map: (v) => v.toFixed(2) },
@@ -199,16 +199,16 @@ export default function InventoryControl() {
               ]} />
             </div>
             {abc.length === 0 ? (
-              <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No valued inventory yet.')}</div>
+              <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No valued inventory yet.')}</div>
             ) : (
               <Table headers={[t('Class'), t('Code'), t('Item Name'), { label: t('Stock Value'), right: true }, { label: t('Cumulative %'), right: true }]}>
                 {abc.map((i) => (
                   <Tr key={i.id}>
                     <Td><Badge className={i.cls === 'A' ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' : i.cls === 'B' ? 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' : 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{i.cls}</Badge></Td>
-                    <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{i.code || '—'}</Td>
-                    <Td className="font-medium text-gray-800 dark:text-slate-100">{i.name}</Td>
-                    <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(i.val, sym)}</Td>
-                    <Td right className="text-gray-500 dark:text-slate-400">{i.cumPct.toFixed(1)}%</Td>
+                    <Td className="font-mono text-xs text-slate-500 dark:text-slate-400">{i.code || '—'}</Td>
+                    <Td className="font-medium text-slate-800 dark:text-slate-100">{i.name}</Td>
+                    <Td right className="text-slate-700 dark:text-slate-200">{fmtMoney(i.val, sym)}</Td>
+                    <Td right className="text-slate-500 dark:text-slate-400">{i.cumPct.toFixed(1)}%</Td>
                   </Tr>
                 ))}
               </Table>
@@ -220,12 +220,12 @@ export default function InventoryControl() {
       {/* ─── Item Stock Card ─── */}
       {tab === 'card' && (
         <Card>
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
+          <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap">
             <Select value={cardItemId} onChange={(e) => setCardItemId(e.target.value)} className="w-72">
               <option value="">— {t('Select item')} —</option>
               {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}
             </Select>
-            {cardItem && <div className="text-sm text-gray-500 dark:text-slate-400">{t('On hand')}: <span className="font-bold text-gray-800 dark:text-slate-100">{cardItem.quantity || 0} {cardItem.unit}</span></div>}
+            {cardItem && <div className="text-sm text-slate-500 dark:text-slate-400">{t('On hand')}: <span className="font-bold text-slate-800 dark:text-slate-100">{cardItem.quantity || 0} {cardItem.unit}</span></div>}
             {cardItem && cardRows.length > 0 && <ExportMenu size="sm" filename={`stock-card-${cardItem.code || cardItem.name}`} title={`${t('Stock Card')} · ${cardItem.name}`} rows={cardRows} columns={[
               { key: 'date', label: t('Date') }, { key: 'type', label: t('Type'), map: (v) => t(MOVE_LABELS[v] || v) },
               { key: 'ref', label: t('Ref') }, { key: 'qtyChange', label: t('Change'), right: true },
@@ -233,26 +233,26 @@ export default function InventoryControl() {
             ]} />}
           </div>
           {!cardItem ? (
-            <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('Select an item to view its movement history.')}</div>
+            <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('Select an item to view its movement history.')}</div>
           ) : (
             <Table headers={[t('Date'), t('Type'), t('Reference'), t('Note'), { label: t('Change'), right: true }, { label: t('Balance'), right: true }]}>
               <Tr>
-                <Td className="text-gray-400 dark:text-slate-500 text-sm" colSpan={4}>{t('Opening balance')}</Td>
-                <Td right className="text-gray-400 dark:text-slate-500">—</Td>
-                <Td right className="font-semibold text-gray-500 dark:text-slate-400">{cardOpening}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm" colSpan={4}>{t('Opening balance')}</Td>
+                <Td right className="text-slate-500 dark:text-slate-400">—</Td>
+                <Td right className="font-semibold text-slate-500 dark:text-slate-400">{cardOpening}</Td>
               </Tr>
               {cardRows.map((m) => (
                 <Tr key={m.id}>
-                  <Td className="text-gray-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
-                  <Td><Badge className="bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-300">{t(MOVE_LABELS[m.type] || m.type)}</Badge></Td>
-                  <Td className="font-mono text-xs text-gray-400 dark:text-slate-500">{m.ref || '—'}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm max-w-[160px] truncate">{m.note || '—'}</Td>
-                  <Td right className={`font-medium ${m.qtyChange >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{m.qtyChange >= 0 ? '+' : ''}{m.qtyChange}</Td>
-                  <Td right className="font-semibold text-gray-800 dark:text-slate-100">{m.balance}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
+                  <Td><Badge className="bg-brand-50 text-brand-600 dark:bg-brand-900/30 dark:text-brand-300">{t(MOVE_LABELS[m.type] || m.type)}</Badge></Td>
+                  <Td className="font-mono text-xs text-slate-500 dark:text-slate-400">{m.ref || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm max-w-[160px] truncate">{m.note || '—'}</Td>
+                  <Td right className={`font-medium ${m.qtyChange >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{m.qtyChange >= 0 ? '+' : ''}{m.qtyChange}</Td>
+                  <Td right className="font-semibold text-slate-800 dark:text-slate-100">{m.balance}</Td>
                 </Tr>
               ))}
               {cardRows.length === 0 && (
-                <Tr><Td colSpan={6} className="py-8 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No recorded movements yet for this item.')}</Td></Tr>
+                <Tr><Td colSpan={6} className="py-8 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No recorded movements yet for this item.')}</Td></Tr>
               )}
             </Table>
           )}

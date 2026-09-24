@@ -23,18 +23,18 @@ const TONE = {
     iconClass: 'text-rose-500',
   },
   [FRAGILE]: {
-    box: 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-900',
-    title: 'text-amber-800 dark:text-amber-200',
-    body: 'text-amber-700/90 dark:text-amber-300/90',
+    box: 'bg-warning-50 dark:bg-warning-950/30 border-warning-200 dark:border-warning-900',
+    title: 'text-warning-800 dark:text-warning-200',
+    body: 'text-warning-700/90 dark:text-warning-300/90',
     Icon: ShieldQuestion,
-    iconClass: 'text-amber-500',
+    iconClass: 'text-warning-700 dark:text-warning-400',
   },
   default: {
-    box: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-900',
-    title: 'text-emerald-800 dark:text-emerald-200',
-    body: 'text-emerald-700/90 dark:text-emerald-300/90',
+    box: 'bg-success-50 dark:bg-success-950/30 border-success-200 dark:border-success-900',
+    title: 'text-success-800 dark:text-success-200',
+    body: 'text-success-700/90 dark:text-success-300/90',
     Icon: ShieldCheck,
-    iconClass: 'text-emerald-500',
+    iconClass: 'text-success-700 dark:text-success-400',
   },
 }
 
@@ -75,7 +75,7 @@ export default function DurabilityStatus({ report }) {
           )}
 
           {estimate?.supported && estimate.quota > 0 && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-gray-500 dark:text-slate-400">
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
               <HardDrive size={12} />
               {/* One key rather than four fragments: Arabic puts these in a
                   different order, and a sentence assembled from pieces cannot

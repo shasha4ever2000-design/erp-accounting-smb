@@ -9,16 +9,17 @@ import {
 } from '../utils/cheques'
 import { Landmark, Plus, Trash2, AlertTriangle, CalendarClock, Banknote, Undo2 } from 'lucide-react'
 import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
 const today = () => todayISO()
 
 // Badge takes classes, not a tone name (see components/UI.jsx).
 const STATUS_CLASS = {
-  pending:   'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-300',
+  pending:   'bg-slate-100 text-slate-700 dark:bg-slate-700 dark:text-slate-300',
   deposited: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
   cleared:   'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
   bounced:   'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
-  cancelled: 'bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400',
+  cancelled: 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400',
 }
 
 const emptyForm = (direction) => ({
@@ -84,8 +85,8 @@ export default function Cheques() {
     }
   }
 
-  const remove = (cheque) => {
-    if (!confirm(t('Delete cheque {n}? Its journal entry is reversed into the recycle bin.').replace('{n}', cheque.number))) return
+  const remove = async (cheque) => {
+    if (!await ask(t('Delete cheque {n}? Its journal entry is reversed into the recycle bin.').replace('{n}', cheque.number))) return
     try { deleteCheque(cheque.id) } catch (e) {
       if (String(e.message).startsWith('CHEQUE_SETTLED'))
         return alert(t('This cheque has already cleared, bounced or been cancelled. Settled cheques stay on the record.'))
@@ -113,7 +114,7 @@ export default function Cheques() {
             key={d}
             onClick={() => { setDirection(d); setForm(emptyForm(d)) }}
             className={`px-3.5 py-2 rounded-lg text-sm font-semibold transition-colors ${
-              direction === d ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}
+              direction === d ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}
           >
             {d === CHEQUE_IN ? t('Received') : t('Issued')}
           </button>
@@ -129,7 +130,7 @@ export default function Cheques() {
       <Card>
         {mine.length === 0 ? (
           <EmptyState
-            icon={<Landmark size={28} className="text-slate-400 dark:text-slate-500" />}
+            icon={<Landmark size={28} className="text-slate-500 dark:text-slate-400" />}
             title={inLabel ? t('No cheques received yet') : t('No cheques issued yet')}
             desc={t('A cheque recorded here is held out of your bank balance until it clears, so a drawer of post-dated cheques never overstates your cash.')}
           />
@@ -141,7 +142,7 @@ export default function Cheques() {
                 <Tr key={c.id}>
                   <Td className="font-mono text-xs">{c.number}</Td>
                   <Td>{c.partyName || '—'}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400">{c.bankName || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400">{c.bankName || '—'}</Td>
                   <Td className={overdue ? 'text-danger-600 dark:text-danger-400 font-semibold' : ''}>
                     {c.dueDate ? fmtDate(c.dueDate) : '—'}
                   </Td>
@@ -149,7 +150,7 @@ export default function Cheques() {
                   <Td>
                     <Badge className={STATUS_CLASS[c.status] || ''}>{t(STATUS_LABEL[c.status] || c.status)}</Badge>
                     {c.status === 'bounced' && c.bounceReason && (
-                      <span className="block text-[11px] text-gray-400 dark:text-slate-500 mt-0.5">{c.bounceReason}</span>
+                      <span className="block text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">{c.bounceReason}</span>
                     )}
                   </Td>
                   <Td className="text-end whitespace-nowrap">
@@ -163,7 +164,7 @@ export default function Cheques() {
                       </button>
                     ))}
                     {!isTerminal(c.status) && (
-                      <button onClick={() => remove(c)} title={t('Delete')} className="text-gray-300 hover:text-red-500 ms-3 align-middle">
+                      <button onClick={() => remove(c)} title={t('Delete')} className="text-slate-500 dark:text-slate-400 hover:text-danger-500 ms-3 align-middle">
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -197,8 +198,8 @@ export default function Cheques() {
               {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
             </Select>
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <p className="text-xs text-gray-400 dark:text-slate-500">
+          {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {inLabel
               ? t('This posts to Cheques Under Collection, not your bank — the balance moves only when the cheque clears.')
               : t('This posts to Cheques Payable, not your bank — the balance moves only when the cheque is presented.')}
@@ -214,7 +215,7 @@ export default function Cheques() {
       <Modal open={!!statusModal} onClose={() => setStatusModal(null)} title={statusModal ? t(STATUS_LABEL[statusModal.to]) : ''}>
         {statusModal && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('Cheque {n} · {amt}').replace('{n}', statusModal.cheque.number).replace('{amt}', fmtMoney(statusModal.cheque.amount, sym))}
             </p>
             <Input label={t('Date')} type="date" value={statusForm.date} onChange={(e) => setStatusForm((f) => ({ ...f, date: e.target.value }))} />
@@ -227,7 +228,7 @@ export default function Cheques() {
             {(statusModal.to === 'bounced' || statusModal.to === 'cancelled') && (
               <>
                 <Input label={t('Reason')} value={statusForm.reason} onChange={(e) => setStatusForm((f) => ({ ...f, reason: e.target.value }))} placeholder={t('Insufficient funds')} />
-                <p className="text-xs text-gray-400 dark:text-slate-500 inline-flex items-start gap-1.5">
+                <p className="text-xs text-slate-500 dark:text-slate-400 inline-flex items-start gap-1.5">
                   <Undo2 size={13} className="mt-0.5 flex-shrink-0" />
                   {statusModal.cheque.direction === CHEQUE_IN
                     ? t('The amount goes back onto the customer’s account, and the cheque stays on record.')
@@ -236,11 +237,11 @@ export default function Cheques() {
               </>
             )}
             {statusModal.to === 'deposited' && (
-              <p className="text-xs text-gray-400 dark:text-slate-500">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('Nothing is posted — the cheque has left your drawer but has not cleared.')}
               </p>
             )}
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <Btn variant="secondary" onClick={() => setStatusModal(null)}>{t('Cancel')}</Btn>
               <Btn onClick={applyStatus}>{t('Confirm')}</Btn>

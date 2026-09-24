@@ -10,3 +10,7 @@ Thumbs.db
 
 # Generated user-guide build artifacts (see tools/guide/README.md)
 .guide-build/
+
+# Playwright output
+test-results/
+playwright-report/

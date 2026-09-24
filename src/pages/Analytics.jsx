@@ -70,13 +70,13 @@ export default function Analytics() {
       </div>
 
       {!hasData ? (
-        <Card className="p-12 text-center text-gray-400 dark:text-slate-500">
+        <Card className="p-12 text-center text-slate-500 dark:text-slate-400">
           {t('Add some invoices and purchases to see charts and insights here.')}
         </Card>
       ) : (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <Card className="xl:col-span-2 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">Revenue vs Expenses — Last 12 Months</h2>
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">Revenue vs Expenses — Last 12 Months</h2>
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={trend} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                 <defs>
@@ -94,8 +94,8 @@ export default function Analytics() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Expense Breakdown')}</h2>
-            {expenseBreakdown.length === 0 ? <p className="text-sm text-gray-400 dark:text-slate-500 py-12 text-center">{t('No expenses yet')}</p> : (
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">{t('Expense Breakdown')}</h2>
+            {expenseBreakdown.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400 py-12 text-center">{t('No expenses yet')}</p> : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
                   <Pie data={expenseBreakdown} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={90} innerRadius={45}>
@@ -109,8 +109,8 @@ export default function Analytics() {
           </Card>
 
           <Card className="xl:col-span-3 p-6">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Top Customers by Revenue')}</h2>
-            {topCustomers.length === 0 ? <p className="text-sm text-gray-400 dark:text-slate-500 py-8 text-center">{t('No customer invoices yet')}</p> : (
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">{t('Top Customers by Revenue')}</h2>
+            {topCustomers.length === 0 ? <p className="text-sm text-slate-500 dark:text-slate-400 py-8 text-center">{t('No customer invoices yet')}</p> : (
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={topCustomers} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" strokeOpacity={0.4} vertical={false} />

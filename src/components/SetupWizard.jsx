@@ -79,7 +79,7 @@ export default function SetupWizard({ onClose }) {
             </div>
           )}
           {!chosen && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-warning-700 dark:text-warning-400">
               {t('Without this, tax stays switched off and your invoices will carry none — which is easy to miss until a return is due.')}
             </p>
           )}
@@ -108,9 +108,9 @@ export default function SetupWizard({ onClose }) {
         <div className="space-y-3 text-sm">
           {/* The trap that catches everybody: stock typed onto an item is not
               an accounting entry, and the balance sheet will not show it. */}
-          <div className="rounded-xl border border-amber-200 dark:border-amber-500/25 bg-amber-50 dark:bg-amber-500/10 p-4">
-            <p className="font-semibold text-amber-800 dark:text-amber-200 mb-1">{t('Starting with stock or unpaid invoices?')}</p>
-            <p className="text-amber-700 dark:text-amber-300 leading-relaxed">
+          <div className="rounded-xl border border-warning-200 dark:border-warning-500/25 bg-warning-50 dark:bg-warning-500/10 p-4">
+            <p className="font-semibold text-warning-800 dark:text-warning-200 mb-1">{t('Starting with stock or unpaid invoices?')}</p>
+            <p className="text-warning-700 dark:text-warning-300 leading-relaxed">
               {t('Enter them through Opening Balances, not by typing a quantity onto an item. A quantity typed on an item puts goods on the shelf without putting their value on your balance sheet, and the two then disagree.')}
             </p>
           </div>
@@ -139,7 +139,7 @@ export default function SetupWizard({ onClose }) {
             ))}
           </div>
           <button onClick={() => finish(true)} aria-label={t('Skip setup')}
-            className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
+            className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -154,7 +154,7 @@ export default function SetupWizard({ onClose }) {
         <div className="flex items-center justify-between gap-3 px-6 py-4 border-t border-slate-100 dark:border-surface-750">
           {step > 0
             ? <Btn variant="ghost" onClick={() => setStep((s) => s - 1)}><ArrowLeft size={15} /> {t('Back')}</Btn>
-            : <button onClick={() => finish(true)} className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">{t("I'll set this up later")}</button>}
+            : <button onClick={() => finish(true)} className="text-sm text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">{t("I'll set this up later")}</button>}
           {isLast
             ? <Btn onClick={() => finish(false)}><CheckCircle2 size={15} /> {t('Start using it')}</Btn>
             : <Btn disabled={!cur.canNext} onClick={() => setStep((s) => s + 1)}>{t('Continue')} <ArrowRight size={15} /></Btn>}

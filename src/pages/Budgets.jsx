@@ -57,12 +57,12 @@ export default function Budgets() {
 
   const Section = ({ title, data, color }) => (
     <Card className="overflow-hidden">
-      <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
+      <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
         <h3 className={`font-semibold text-sm uppercase tracking-wide ${color}`}>{title}</h3>
       </div>
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 dark:bg-slate-800/60">
-          <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+        <thead className="bg-slate-50 dark:bg-slate-800/60">
+          <tr className="text-xs text-slate-500 dark:text-slate-400 uppercase">
             <th className="text-left px-5 py-2 font-medium">Account</th>
             <th className="text-right px-3 py-2 font-medium w-36">{t('Annual Budget')}</th>
             <th className="text-right px-3 py-2 font-medium">Actual</th>
@@ -72,30 +72,30 @@ export default function Budgets() {
         </thead>
         <tbody>
           {data.map((r) => (
-            <tr key={r.id} className="border-b border-gray-50 dark:border-slate-700/50">
-              <td className="px-5 py-2 text-gray-700 dark:text-slate-200"><span className="font-mono text-xs text-gray-400 dark:text-slate-500 mr-2">{r.code}</span>{r.name}</td>
+            <tr key={r.id} className="border-b border-slate-50 dark:border-slate-700/50">
+              <td className="px-5 py-2 text-slate-700 dark:text-slate-200"><span className="font-mono text-xs text-slate-500 dark:text-slate-400 mr-2">{r.code}</span>{r.name}</td>
               <td className="px-3 py-1.5 text-right">
                 <input type="number" min="0" step="0.01"
                   value={budgetFor(r.id)}
                   onChange={(e) => setDrafts((d) => ({ ...d, [r.id]: e.target.value }))}
                   placeholder="0"
-                  className="w-28 text-right border border-gray-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
+                  className="w-28 text-right border border-slate-200 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
               </td>
-              <td className="px-3 py-2 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(r.actual, sym)}</td>
-              <td className={`px-3 py-2 text-right font-medium ${r.variance >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{fmtMoney(r.variance, sym)}</td>
+              <td className="px-3 py-2 text-right font-medium text-slate-800 dark:text-slate-100">{fmtMoney(r.actual, sym)}</td>
+              <td className={`px-3 py-2 text-right font-medium ${r.variance >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(r.variance, sym)}</td>
               <td className="px-5 py-2">
                 {r.budget > 0 ? (
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-1.5 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
-                      <div className={`h-full ${r.pct > 100 ? 'bg-red-500' : r.pct > 85 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${Math.min(100, r.pct)}%` }} />
+                    <div className="flex-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                      <div className={`h-full ${r.pct > 100 ? 'bg-danger-500' : r.pct > 85 ? 'bg-warning-500' : 'bg-success-500'}`} style={{ width: `${Math.min(100, r.pct)}%` }} />
                     </div>
-                    <span className="text-xs text-gray-400 dark:text-slate-500 w-9 text-right">{r.pct.toFixed(0)}%</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 w-9 text-right">{r.pct.toFixed(0)}%</span>
                   </div>
-                ) : <span className="text-xs text-gray-300 dark:text-slate-600">—</span>}
+                ) : <span className="text-xs text-slate-500 dark:text-slate-400">—</span>}
               </td>
             </tr>
           ))}
-          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No accounts')}</td></tr>}
+          {data.length === 0 && <tr><td colSpan={5} className="px-5 py-4 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No accounts')}</td></tr>}
         </tbody>
       </table>
     </Card>
@@ -129,8 +129,8 @@ export default function Budgets() {
       </div>
 
       <div className="space-y-6">
-        <Section title="Revenue" data={rows.revenue} color="text-green-700 dark:text-green-400" />
-        <Section title="Expenses" data={rows.expense} color="text-red-700 dark:text-red-400" />
+        <Section title="Revenue" data={rows.revenue} color="text-success-700 dark:text-success-400" />
+        <Section title="Expenses" data={rows.expense} color="text-danger-700 dark:text-danger-400" />
       </div>
     </div>
   )
@@ -138,9 +138,9 @@ export default function Budgets() {
 
 function SummaryCard({ label, value, icon, tone }) {
   const tones = {
-    indigo: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
-    green:  'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300',
-    red:    'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+    indigo: 'bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-300',
+    green:  'bg-success-50 dark:bg-success-900/30 text-success-700 dark:text-success-300',
+    red:    'bg-danger-50 dark:bg-danger-900/30 text-danger-700 dark:text-danger-300',
   }
   return (
     <div className={`rounded-xl p-4 ${tones[tone]}`}>

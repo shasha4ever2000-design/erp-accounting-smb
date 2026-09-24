@@ -82,13 +82,13 @@ export default function PaymentReminders() {
       <PageHeader title="Payment Reminders" subtitle="Chase overdue customer invoices with a ready-to-send reminder" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-        <div className="bg-amber-50 dark:bg-amber-900/30 rounded-xl p-4">
-          <p className="text-xs text-amber-600 dark:text-amber-300">{t('Customers with overdue')}</p>
-          <p className="text-2xl font-bold text-amber-700 dark:text-amber-200">{groups.length}</p>
+        <div className="bg-warning-50 dark:bg-warning-900/30 rounded-xl p-4">
+          <p className="text-xs text-warning-700 dark:text-warning-300">{t('Customers with overdue')}</p>
+          <p className="text-2xl font-bold text-warning-700 dark:text-warning-200">{groups.length}</p>
         </div>
-        <div className="bg-red-50 dark:bg-red-900/30 rounded-xl p-4">
-          <p className="text-xs text-red-600 dark:text-red-300">{t('Total overdue')}</p>
-          <p className="text-2xl font-bold text-red-700 dark:text-red-200">{fmtMoney(grandTotal, sym)}</p>
+        <div className="bg-danger-50 dark:bg-danger-900/30 rounded-xl p-4">
+          <p className="text-xs text-danger-600 dark:text-danger-300">{t('Total overdue')}</p>
+          <p className="text-2xl font-bold text-danger-700 dark:text-danger-200">{fmtMoney(grandTotal, sym)}</p>
         </div>
         <Card className="p-4 flex items-end">
           <Select label={t('Minimum days overdue')} value={minDays} onChange={(e) => setMinDays(e.target.value)} className="w-full">
@@ -106,28 +106,28 @@ export default function PaymentReminders() {
         <div className="space-y-4">
           {groups.map((g) => (
             <Card key={g.customerId || g.name} className="overflow-hidden">
-              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-gray-100 dark:border-slate-700">
+              <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3 border-b border-slate-100 dark:border-slate-700">
                 <div>
-                  <h3 className="font-semibold text-gray-800 dark:text-slate-100">{g.name}</h3>
-                  <p className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1"><Clock size={11} /> {t('up to')} {g.maxDays} {t('days overdue')}</p>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-100">{g.name}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><Clock size={11} /> {t('up to')} {g.maxDays} {t('days overdue')}</p>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="text-lg font-bold text-red-600 dark:text-red-400">{fmtMoney(g.total, sym)}</span>
+                  <span className="text-lg font-bold text-danger-600 dark:text-danger-400">{fmtMoney(g.total, sym)}</span>
                   <Btn size="sm" variant="secondary" onClick={() => copyMsg(g)}><Copy size={13} /> {copied === (g.customerId || g.name) ? t('Copied!') : t('Copy reminder')}</Btn>
                   <Btn size="sm" variant="secondary" onClick={() => printMsg(g)}><Printer size={13} /> {t('Print')}</Btn>
                 </div>
               </div>
               <table className="w-full text-sm">
-                <thead className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+                <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase">
                   <tr><th className="text-start px-5 py-2 font-medium">{t('Invoice #')}</th><th className="text-start px-3 py-2 font-medium">{t('Due')}</th><th className="text-end px-3 py-2 font-medium">{t('Days Overdue')}</th><th className="text-end px-5 py-2 font-medium">{t('Balance')}</th></tr>
                 </thead>
                 <tbody>
                   {g.invoices.slice().sort((a, b) => b.daysOverdue - a.daysOverdue).map((i) => (
-                    <tr key={i.id} className="border-t border-gray-50 dark:border-slate-700/50">
-                      <td className="px-5 py-2 text-gray-700 dark:text-slate-200">{i.number}</td>
-                      <td className="px-3 py-2 text-gray-500 dark:text-slate-400">{fmtDate(i.due)}</td>
-                      <td className={`px-3 py-2 text-end font-medium ${i.daysOverdue > 60 ? 'text-red-600' : i.daysOverdue > 30 ? 'text-amber-600' : 'text-gray-600 dark:text-slate-300'}`}>{i.daysOverdue}</td>
-                      <td className="px-5 py-2 text-end font-medium text-gray-800 dark:text-slate-100">{fmtMoney(i.balance, sym)}</td>
+                    <tr key={i.id} className="border-t border-slate-50 dark:border-slate-700/50">
+                      <td className="px-5 py-2 text-slate-700 dark:text-slate-200">{i.number}</td>
+                      <td className="px-3 py-2 text-slate-500 dark:text-slate-400">{fmtDate(i.due)}</td>
+                      <td className={`px-3 py-2 text-end font-medium ${i.daysOverdue > 60 ? 'text-danger-600' : i.daysOverdue > 30 ? 'text-warning-700' : 'text-slate-600 dark:text-slate-300'}`}>{i.daysOverdue}</td>
+                      <td className="px-5 py-2 text-end font-medium text-slate-800 dark:text-slate-100">{fmtMoney(i.balance, sym)}</td>
                     </tr>
                   ))}
                 </tbody>

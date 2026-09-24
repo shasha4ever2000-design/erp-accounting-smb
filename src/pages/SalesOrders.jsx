@@ -8,6 +8,7 @@ import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
 import { docFulfillment } from '../utils/fulfillment'
 import { Trash2, ClipboardList, ArrowRight, Truck, FileText } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const STATUS_COLORS = {
   open:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
@@ -53,8 +54,8 @@ export default function SalesOrders() {
     navigate('/delivery-notes')
   }
 
-  const handleDelete = (o) => {
-    if (confirm(t('Delete sales order {n}?').replace('{n}', o.number))) deleteSalesOrder(o.id)
+  const handleDelete = async (o) => {
+    if (await ask(t('Delete sales order {n}?').replace('{n}', o.number))) deleteSalesOrder(o.id)
   }
 
   const counts = { all: salesOrders.length }
@@ -75,14 +76,14 @@ export default function SalesOrders() {
         <StatCard label="Total orders" value={String(salesOrders.length)} icon={<ArrowRight size={18} />} color="purple" />
       </div>
 
-      <Card className="p-4 mb-6 text-sm text-gray-600 dark:text-slate-300">
+      <Card className="p-4 mb-6 text-sm text-slate-600 dark:text-slate-300">
         {t('A sales order records what a customer has committed to buy. It posts nothing to the ledger — revenue is earned when the goods go out or the invoice is raised, not when the order is taken. Create one from an accepted quotation.')}
       </Card>
 
       <div className="flex gap-2 mb-4 flex-wrap">
         {[['all', 'All'], ['open', 'Open'], ['partial', 'Partly billed'], ['invoiced', 'Billed']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 ${filter === val ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 ${filter === val ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500'}`}>
             {t(label)} <span className="opacity-70 text-xs">{counts[val] ?? 0}</span>
           </button>
         ))}
@@ -91,7 +92,7 @@ export default function SalesOrders() {
       <Card className="overflow-hidden">
         {sorted.length === 0 ? (
           <EmptyState
-            icon={<ClipboardList size={28} className="text-slate-400 dark:text-slate-500" />}
+            icon={<ClipboardList size={28} className="text-slate-500 dark:text-slate-400" />}
             title="No sales orders"
             desc="Accept a quotation and turn it into an order — the order then keeps track of what is still to ship and what is left to bill."
             action={<Btn onClick={() => navigate('/quotations')}>{t('Go to quotations')}</Btn>}
@@ -104,16 +105,16 @@ export default function SalesOrders() {
               const done = billed.status === 'complete'
               return (
                 <Tr key={o.id}>
-                  <Td className="font-mono font-semibold text-gray-800 dark:text-slate-100">{o.number}</Td>
-                  <Td className="text-gray-700 dark:text-slate-200">{o.customerName}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(o.date)}</Td>
-                  <Td className="text-xs text-gray-500 dark:text-slate-400">{Math.round(shipped.pct || 0)}%</Td>
+                  <Td className="font-mono font-semibold text-slate-800 dark:text-slate-100">{o.number}</Td>
+                  <Td className="text-slate-700 dark:text-slate-200">{o.customerName}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(o.date)}</Td>
+                  <Td className="text-xs text-slate-500 dark:text-slate-400">{Math.round(shipped.pct || 0)}%</Td>
                   <Td>
                     <Badge className={STATUS_COLORS[o.status] || STATUS_COLORS.open}>
                       {Math.round(billed.pct || 0)}% · {t(o.status)}
                     </Badge>
                   </Td>
-                  <Td className="text-end tabular-nums font-medium text-gray-800 dark:text-slate-100">{fmtMoney(o.total, sym)}</Td>
+                  <Td className="text-end tabular-nums font-medium text-slate-800 dark:text-slate-100">{fmtMoney(o.total, sym)}</Td>
                   <Td>
                     <div className="flex items-center justify-end gap-1">
                       <AttachmentButton entityType="salesOrder" entityId={o.id} />
@@ -128,7 +129,7 @@ export default function SalesOrders() {
                         </Btn>
                       )}
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(o)}>
-                        <Trash2 size={13} className="text-red-400" />
+                        <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                       </Btn>
                     </div>
                   </Td>

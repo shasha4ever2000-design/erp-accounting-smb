@@ -43,8 +43,8 @@ function HydratedApp() {
 
   if (!hydrated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
-        <div className="h-9 w-9 rounded-full border-2 border-gray-200 dark:border-slate-700 border-t-blue-500 animate-spin" />
+      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-900">
+        <div className="h-9 w-9 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-brand-500 animate-spin" />
       </div>
     )
   }

@@ -12,6 +12,7 @@ import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
 import { ETA_RECEIVER_TYPES } from '../utils/etaEinvoice'
 import { customerBalance } from '../utils/partyBalance'
+import { ask } from '../components/Dialogs'
 
 // etaReceiverType decides what Egyptian e-invoicing asks of this customer: a
 // business needs a tax registration number, an individual a national ID, a
@@ -62,8 +63,8 @@ export default function Customers() {
     close()
   }
 
-  const handleDelete = (c) => {
-    if (confirm(`Delete customer "${c.name}"?`)) deleteCustomer(c.id)
+  const handleDelete = async (c) => {
+    if (await ask(`Delete customer "${c.name}"?`)) deleteCustomer(c.id)
   }
 
   // Net of credit notes — see utils/partyBalance for why that has to be shared.
@@ -98,9 +99,9 @@ export default function Customers() {
 
       {/* Search */}
       <div className="relative mb-5 max-w-sm">
-        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
         <input
-          className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+          className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder={t('Search customers...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -116,7 +117,7 @@ export default function Customers() {
             action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Customer')}</Btn>}
           />
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No customers match your search')}</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No customers match your search')}</div>
         ) : (
           <Table headers={[t('Customer'), t('Contact'), t('Tax ID'), { label: t('Balance Due'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((c) => {
@@ -125,22 +126,22 @@ export default function Customers() {
                 <Tr key={c.id}>
                   <Td>
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 rounded-full flex items-center justify-center text-blue-600 dark:text-blue-300 font-semibold text-sm ring-1 ring-blue-200/60 dark:ring-blue-800/60">
+                      <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-brand-100 to-accent-100 dark:from-brand-900/50 dark:to-accent-900/50 rounded-full flex items-center justify-center text-brand-600 dark:text-brand-300 font-semibold text-sm ring-1 ring-brand-200/60 dark:ring-brand-800/60">
                         {c.name[0]?.toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-slate-100 truncate">{c.name}</p>
-                        <p className="text-xs text-gray-400 dark:text-slate-500">Since {fmtDate(c.createdAt)}</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{c.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Since {fmtDate(c.createdAt)}</p>
                       </div>
                     </div>
                   </Td>
                   <Td>
-                    {c.email && <p className="text-sm text-gray-600 dark:text-slate-300">{c.email}</p>}
-                    {c.phone && <p className="text-xs text-gray-400 dark:text-slate-500">{c.phone}</p>}
+                    {c.email && <p className="text-sm text-slate-600 dark:text-slate-300">{c.email}</p>}
+                    {c.phone && <p className="text-xs text-slate-500 dark:text-slate-400">{c.phone}</p>}
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm tabular-nums">{c.taxId || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm tabular-nums">{c.taxId || '—'}</Td>
                   <Td right>
-                    <span className={`font-semibold tabular-nums ${balance > 0 ? 'text-orange-600 dark:text-orange-400' : 'text-gray-700 dark:text-slate-300'}`}>
+                    <span className={`font-semibold tabular-nums ${balance > 0 ? 'text-warning-700 dark:text-warning-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       {fmtMoney(balance, sym)}
                     </span>
                   </Td>
@@ -148,7 +149,7 @@ export default function Customers() {
                     <div className="flex items-center justify-end gap-1">
                       <AttachmentButton entityType="customer" entityId={c.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(c)}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(c)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -193,9 +194,9 @@ export default function Customers() {
             entityId="customer"
             values={form.customFields}
             onChange={setCustom}
-            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+            className="pt-3 border-t border-slate-100 dark:border-slate-700"
           />
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Customer'}</Btn>
           </div>

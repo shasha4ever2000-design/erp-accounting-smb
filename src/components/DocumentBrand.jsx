@@ -69,14 +69,14 @@ export function DocumentHeader({ docType, title, right = null }) {
 
   const Details = ({ align = 'start' }) => (
     <div className={align === 'center' ? 'text-center' : ''}>
-      <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100 tracking-tight">{company.name}</h1>
-      {company.arabicName && <p className="text-lg font-bold text-gray-800 dark:text-slate-100" dir="rtl">{company.arabicName}</p>}
-      {company.address && <p className="text-gray-500 dark:text-slate-400 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
-      {company.phone && <p className="text-gray-400 dark:text-slate-500 text-sm">{company.phone}</p>}
-      {company.email && <p className="text-gray-400 dark:text-slate-500 text-sm">{company.email}</p>}
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 tracking-tight">{company.name}</h1>
+      {company.arabicName && <p className="text-lg font-bold text-slate-800 dark:text-slate-100" dir="rtl">{company.arabicName}</p>}
+      {company.address && <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 whitespace-pre-line">{company.address}</p>}
+      {company.phone && <p className="text-slate-500 dark:text-slate-400 text-sm">{company.phone}</p>}
+      {company.email && <p className="text-slate-500 dark:text-slate-400 text-sm">{company.email}</p>}
       {zatca?.enabled && zatca.vatNumber
-        ? <p className="text-gray-400 dark:text-slate-500 text-sm">{t('VAT No.')} {zatca.vatNumber}</p>
-        : company.taxId && <p className="text-gray-400 dark:text-slate-500 text-sm">{t('Tax ID')}: {company.taxId}</p>}
+        ? <p className="text-slate-500 dark:text-slate-400 text-sm">{t('VAT No.')} {zatca.vatNumber}</p>
+        : company.taxId && <p className="text-slate-500 dark:text-slate-400 text-sm">{t('Tax ID')}: {company.taxId}</p>}
     </div>
   )
 
@@ -103,14 +103,14 @@ export function DocumentHeader({ docType, title, right = null }) {
           <p className="text-2xl font-black tracking-tight flex-shrink-0">{t(title)}</p>
         </div>
         <div className="flex justify-between gap-6 mt-4 flex-wrap">
-          <div className="text-sm text-gray-500 dark:text-slate-400">
+          <div className="text-sm text-slate-500 dark:text-slate-400">
             {company.address && <p className="whitespace-pre-line">{company.address}</p>}
             {company.phone && <p>{company.phone}</p>}
             {company.email && <p>{company.email}</p>}
           </div>
           {right}
         </div>
-        {brand.header && <p className="text-sm text-gray-600 dark:text-slate-300 mt-3">{brand.header}</p>}
+        {brand.header && <p className="text-sm text-slate-600 dark:text-slate-300 mt-3">{brand.header}</p>}
       </div>
     )
   }
@@ -127,7 +127,7 @@ export function DocumentHeader({ docType, title, right = null }) {
           <Title />
           {right}
         </div>
-        {brand.header && <p className="text-sm text-gray-600 dark:text-slate-300 mt-3 text-start">{brand.header}</p>}
+        {brand.header && <p className="text-sm text-slate-600 dark:text-slate-300 mt-3 text-start">{brand.header}</p>}
       </div>
     )
   }
@@ -146,7 +146,7 @@ export function DocumentHeader({ docType, title, right = null }) {
         </div>
       </div>
       <div className="h-0.5 rounded-full mt-4" style={{ background: brand.accentColor }} />
-      {brand.header && <p className="text-sm text-gray-600 dark:text-slate-300 mt-3">{brand.header}</p>}
+      {brand.header && <p className="text-sm text-slate-600 dark:text-slate-300 mt-3">{brand.header}</p>}
     </div>
   )
 }
@@ -167,13 +167,13 @@ export function DocumentFooter({ docType, bankDetails = '' }) {
   return (
     <div className="mt-8 doc-brand-footer">
       {(showBank || brand.terms) && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-5 border-t border-gray-200 dark:border-surface-700">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-5 border-t border-slate-200 dark:border-surface-700">
           {showBank && (
             <div>
               <p className="text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: brand.accentColor }}>
                 {t('Payment details')}
               </p>
-              <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-line">{bankDetails}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{bankDetails}</p>
             </div>
           )}
           {brand.terms && (
@@ -181,7 +181,7 @@ export function DocumentFooter({ docType, bankDetails = '' }) {
               <p className="text-[11px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: brand.accentColor }}>
                 {t('Terms')}
               </p>
-              <p className="text-sm text-gray-600 dark:text-slate-300 whitespace-pre-line">{brand.terms}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{brand.terms}</p>
             </div>
           )}
         </div>
@@ -193,15 +193,15 @@ export function DocumentFooter({ docType, bankDetails = '' }) {
             {signature?.dataUrl
               ? <img src={signature.dataUrl} alt="" className="h-16 w-auto mx-auto object-contain" />
               : <div className="h-16" />}
-            <div className="border-t border-gray-400 dark:border-slate-500 pt-1.5">
-              <p className="text-xs text-gray-500 dark:text-slate-400">{brand.signatureLabel}</p>
+            <div className="border-t border-slate-400 dark:border-slate-500 pt-1.5">
+              <p className="text-xs text-slate-500 dark:text-slate-400">{brand.signatureLabel}</p>
             </div>
           </div>
         </div>
       )}
 
       {brand.footer && (
-        <p className="mt-6 pt-4 border-t border-gray-100 dark:border-surface-750 text-xs text-gray-400 dark:text-slate-500 text-center whitespace-pre-line">
+        <p className="mt-6 pt-4 border-t border-slate-100 dark:border-surface-750 text-xs text-slate-500 dark:text-slate-400 text-center whitespace-pre-line">
           {brand.footer}
         </p>
       )}

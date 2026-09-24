@@ -6,6 +6,7 @@ import ExportMenu from '../components/ExportMenu'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { ArrowLeftRight, ArrowRight, Trash2, Landmark, Download, TrendingUp, TrendingDown, Wallet, CalendarClock, Play, Pause, CreditCard } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const FREQ_LABELS = { weekly: 'Weekly', biweekly: 'Every 2 weeks', monthly: 'Monthly', quarterly: 'Quarterly', yearly: 'Yearly' }
 
@@ -75,7 +76,7 @@ export default function CashFlow() {
     setForm(emptyTf())
   }
 
-  const handleDelete = (tf) => { if (confirm('Delete this transfer?')) deleteBankTransfer(tf.id) }
+  const handleDelete = async (tf) => { if (await ask('Delete this transfer?')) deleteBankTransfer(tf.id) }
 
   const sortedTransfers = [...bankTransfers].sort((a, b) => (b.date || '').localeCompare(a.date || '') || (b.createdAt || '').localeCompare(a.createdAt || ''))
 
@@ -107,7 +108,7 @@ export default function CashFlow() {
     setSchedModal(false)
     setSchedForm(emptySched())
   }
-  const handleDeleteSchedule = (sc) => { if (confirm('Delete this scheduled transfer?')) deleteScheduledTransfer(sc.id) }
+  const handleDeleteSchedule = async (sc) => { if (await ask('Delete this scheduled transfer?')) deleteScheduledTransfer(sc.id) }
   const sortedSchedules = [...scheduledTransfers].sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || ''))
 
   const movementCols = [
@@ -144,16 +145,16 @@ export default function CashFlow() {
           <Input label={t('To')} type="date" value={to} onChange={(e) => setTo(e.target.value)} className="w-40" />
           <div className="ml-auto grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div className="text-right">
-              <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{t('Cash In')}</p>
-              <p className="text-lg font-bold text-green-600 dark:text-green-400 flex items-center gap-1 justify-end"><TrendingUp size={15} /> {fmtMoney(cashIn, sym)}</p>
+              <p className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{t('Cash In')}</p>
+              <p className="text-lg font-bold text-success-700 dark:text-success-400 flex items-center gap-1 justify-end"><TrendingUp size={15} /> {fmtMoney(cashIn, sym)}</p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{t('Cash Out')}</p>
-              <p className="text-lg font-bold text-red-500 dark:text-red-400 flex items-center gap-1 justify-end"><TrendingDown size={15} /> {fmtMoney(cashOut, sym)}</p>
+              <p className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{t('Cash Out')}</p>
+              <p className="text-lg font-bold text-danger-600 dark:text-danger-400 flex items-center gap-1 justify-end"><TrendingDown size={15} /> {fmtMoney(cashOut, sym)}</p>
             </div>
             <div className="text-right">
-              <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{t('Net Movement')}</p>
-              <p className={`text-lg font-bold ${cashIn - cashOut >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600'}`}>{fmtMoney(cashIn - cashOut, sym)}</p>
+              <p className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{t('Net Movement')}</p>
+              <p className={`text-lg font-bold ${cashIn - cashOut >= 0 ? 'text-slate-800 dark:text-slate-100' : 'text-danger-600'}`}>{fmtMoney(cashIn - cashOut, sym)}</p>
             </div>
           </div>
         </div>
@@ -161,8 +162,8 @@ export default function CashFlow() {
 
       {/* Internal transfers */}
       <Card className="mb-6">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2"><ArrowLeftRight size={15} className="text-gray-400" /> {t('Internal Transfers')}</h3>
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2"><ArrowLeftRight size={15} className="text-slate-500 dark:text-slate-400" /> {t('Internal Transfers')}</h3>
           <Btn size="sm" variant="secondary" onClick={openTransfer}><ArrowLeftRight size={13} /> {t('New Transfer')}</Btn>
         </div>
         {sortedTransfers.length === 0 ? (
@@ -171,14 +172,14 @@ export default function CashFlow() {
           <Table headers={[t('Date'), t('From'), '', t('To'), { label: t('Amount'), right: true }, { label: t('Fee'), right: true }, t('Ref'), { label: '', right: true }]}>
             {sortedTransfers.map((tf) => (
               <Tr key={tf.id}>
-                <Td className="text-gray-500 dark:text-slate-400">{fmtDate(tf.date)}</Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(tf.fromAccountId)}</Td>
-                <Td className="text-gray-300 dark:text-slate-600"><ArrowRight size={14} /></Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(tf.toAccountId)}</Td>
-                <Td right className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(tf.amount, sym)}</Td>
-                <Td right className="text-gray-400 dark:text-slate-500">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
-                <Td className="text-gray-400 dark:text-slate-500 text-xs font-mono">{tf.reference || '—'}</Td>
-                <Td right><div className="flex items-center justify-end gap-1"><AttachmentButton entityType="transfer" entityId={tf.id} /><Btn size="sm" variant="ghost" onClick={() => handleDelete(tf)}><Trash2 size={13} className="text-red-400" /></Btn></div></Td>
+                <Td className="text-slate-500 dark:text-slate-400">{fmtDate(tf.date)}</Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{accName(tf.fromAccountId)}</Td>
+                <Td className="text-slate-500 dark:text-slate-400"><ArrowRight size={14} /></Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{accName(tf.toAccountId)}</Td>
+                <Td right className="font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(tf.amount, sym)}</Td>
+                <Td right className="text-slate-500 dark:text-slate-400">{tf.fee > 0 ? fmtMoney(tf.fee, sym) : '—'}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-xs font-mono">{tf.reference || '—'}</Td>
+                <Td right><div className="flex items-center justify-end gap-1"><AttachmentButton entityType="transfer" entityId={tf.id} /><Btn size="sm" variant="ghost" onClick={() => handleDelete(tf)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn></div></Td>
               </Tr>
             ))}
           </Table>
@@ -187,8 +188,8 @@ export default function CashFlow() {
 
       {/* Scheduled transfers */}
       <Card className="mb-6">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2"><CalendarClock size={15} className="text-gray-400" /> {t('Scheduled Transfers')}</h3>
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2"><CalendarClock size={15} className="text-slate-500 dark:text-slate-400" /> {t('Scheduled Transfers')}</h3>
           <Btn size="sm" variant="secondary" onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={13} /> {t('New Scheduled Transfer')}</Btn>
         </div>
         {sortedSchedules.length === 0 ? (
@@ -199,14 +200,14 @@ export default function CashFlow() {
               const due = sc.active && sc.nextDate <= todayStr
               return (
                 <Tr key={sc.id} className={!sc.active ? 'opacity-50' : ''}>
-                  <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(sc.fromAccountId)}</Td>
-                  <Td className="text-gray-300 dark:text-slate-600"><ArrowRight size={14} /></Td>
-                  <Td className="font-medium text-gray-800 dark:text-slate-100">{accName(sc.toAccountId)}</Td>
-                  <Td right className="font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(sc.amount, sym)}{sc.fee > 0 ? <span className="text-xs text-gray-400"> +{fmtMoney(sc.fee, sym)}</span> : null}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{t(FREQ_LABELS[sc.frequency] || sc.frequency)}</Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-100">{accName(sc.fromAccountId)}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400"><ArrowRight size={14} /></Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-100">{accName(sc.toAccountId)}</Td>
+                  <Td right className="font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(sc.amount, sym)}{sc.fee > 0 ? <span className="text-xs text-slate-500 dark:text-slate-400"> +{fmtMoney(sc.fee, sym)}</span> : null}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{t(FREQ_LABELS[sc.frequency] || sc.frequency)}</Td>
                   <Td>
                     <span className="flex items-center gap-2">
-                      <span className={due ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}>{fmtDate(sc.nextDate)}</span>
+                      <span className={due ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-slate-500 dark:text-slate-400'}>{fmtDate(sc.nextDate)}</span>
                       {due && <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Due')}</Badge>}
                       {!sc.active && <Badge className="bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400">{t('Paused')}</Badge>}
                     </span>
@@ -219,9 +220,9 @@ export default function CashFlow() {
                         </Btn>
                       )}
                       <Btn size="sm" variant="ghost" onClick={() => updateScheduledTransfer(sc.id, { active: !sc.active })} title={sc.active ? t('Pause') : t('Resume')}>
-                        {sc.active ? <Pause size={13} className="text-amber-500" /> : <Play size={13} className="text-green-600 dark:text-green-400" />}
+                        {sc.active ? <Pause size={13} className="text-warning-700 dark:text-warning-400" /> : <Play size={13} className="text-success-700 dark:text-success-400" />}
                       </Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDeleteSchedule(sc)}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => handleDeleteSchedule(sc)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -233,22 +234,22 @@ export default function CashFlow() {
 
       {/* Cash movements ledger */}
       <Card>
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200 flex items-center gap-2"><Landmark size={15} className="text-gray-400" /> {t('Cash Movements')}</h3>
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2"><Landmark size={15} className="text-slate-500 dark:text-slate-400" /> {t('Cash Movements')}</h3>
           {movements.length > 0 && <ExportMenu size="sm" filename={`cash-movements-${from}_${to}`} title={t('Cash Movements')} subtitle={`${fmtDate(from)} — ${fmtDate(to)}`} rows={movements} columns={movementCols} />}
         </div>
         {movements.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No cash movements in this period')}</div>
+          <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No cash movements in this period')}</div>
         ) : (
           <Table headers={[t('Date'), t('Description'), t('Account'), t('Ref'), { label: t('Money In'), right: true }, { label: t('Money Out'), right: true }]}>
             {movements.map((m) => (
               <Tr key={m.key}>
-                <Td className="text-gray-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
-                <Td className="text-gray-800 dark:text-slate-200">{m.desc}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{m.account}</Td>
-                <Td className="text-gray-400 dark:text-slate-500 text-xs font-mono">{m.ref || '—'}</Td>
-                <Td right className="font-medium text-green-600 dark:text-green-400">{m.amount > 0 ? fmtMoney(m.amount, sym) : ''}</Td>
-                <Td right className="font-medium text-red-500 dark:text-red-400">{m.amount < 0 ? fmtMoney(Math.abs(m.amount), sym) : ''}</Td>
+                <Td className="text-slate-500 dark:text-slate-400">{fmtDate(m.date)}</Td>
+                <Td className="text-slate-800 dark:text-slate-200">{m.desc}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{m.account}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-xs font-mono">{m.ref || '—'}</Td>
+                <Td right className="font-medium text-success-700 dark:text-success-400">{m.amount > 0 ? fmtMoney(m.amount, sym) : ''}</Td>
+                <Td right className="font-medium text-danger-600 dark:text-danger-400">{m.amount < 0 ? fmtMoney(Math.abs(m.amount), sym) : ''}</Td>
               </Tr>
             ))}
           </Table>
@@ -266,9 +267,9 @@ export default function CashFlow() {
               {accountOptions}
             </Select>
           </div>
-          <div className="bg-gray-50 dark:bg-slate-700/40 rounded-lg p-2.5 text-sm text-gray-600 dark:text-slate-300 flex justify-between">
+          <div className="bg-slate-50 dark:bg-slate-700/40 rounded-lg p-2.5 text-sm text-slate-600 dark:text-slate-300 flex justify-between">
             <span>{t('Available in source')}</span>
-            <strong className={fromBal >= 0 ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(fromBal, sym)}</strong>
+            <strong className={fromBal >= 0 ? '' : 'text-danger-600 dark:text-danger-400'}>{fmtMoney(fromBal, sym)}</strong>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={`${t('Amount')} (${sym})`} type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setField('amount', e.target.value)} />
@@ -285,7 +286,7 @@ export default function CashFlow() {
           <Input label={t('Reference')} value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder={t('Transfer ref, cheque #...')} />
           <Textarea label={t('Notes')} value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder={t('Optional note for this transfer')} />
           {form.amount && parseFloat(form.amount) > 0 && (
-            <div className="bg-blue-50 dark:bg-blue-900/30 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300">
+            <div className="bg-brand-50 dark:bg-brand-900/30 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
               {accName(form.fromAccountId)} <ArrowRight size={13} className="inline" /> {accName(form.toAccountId)} :
               <strong className="ml-1">{fmtMoney(parseFloat(form.amount) || 0, sym)}</strong>
               {parseFloat(form.fee) > 0 && <span className="text-xs"> (+ {fmtMoney(parseFloat(form.fee), sym)} {t('fee')})</span>}
@@ -321,7 +322,7 @@ export default function CashFlow() {
           </div>
           <Input label={t('Reference')} value={schedForm.reference} onChange={(e) => setSched('reference', e.target.value)} placeholder={t('Transfer ref, cheque #...')} />
           <Textarea label={t('Notes')} value={schedForm.notes} onChange={(e) => setSched('notes', e.target.value)} rows={2} placeholder={t('Optional note for this transfer')} />
-          <p className="text-xs text-gray-400 dark:text-slate-500">{t('Nothing posts automatically — due transfers appear here with a “Post now” button.')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('Nothing posts automatically — due transfers appear here with a “Post now” button.')}</p>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setSchedModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={handleSaveSchedule}><CalendarClock size={15} /> {t('Save Schedule')}</Btn>

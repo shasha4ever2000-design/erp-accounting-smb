@@ -3097,6 +3097,22 @@ const AR = {
   'Gain or loss will be calculated automatically based on disposal proceeds.': 'يُحتسب الربح أو الخسارة تلقائيًا بناءً على متحصلات الاستبعاد.',
   'Gain on disposal': 'ربح الاستبعاد',
   'Loss on disposal': 'خسارة الاستبعاد',
+  'Trial balance is balanced': 'ميزان المراجعة متوازن',
+  'Out of balance by': 'غير متوازن بفارق',
+  'Comfortable rows': 'صفوف مريحة',
+  'Compact rows': 'صفوف مضغوطة',
+  'Keyboard shortcuts': 'اختصارات لوحة المفاتيح',
+  'New invoice': 'فاتورة جديدة',
+  'New purchase bill': 'فاتورة شراء جديدة',
+  'New quotation': 'عرض سعر جديد',
+  'Journal entries': 'قيود اليومية',
+  'Search and go anywhere': 'ابحث وانتقل إلى أي مكان',
+  'Show keyboard shortcuts': 'عرض اختصارات لوحة المفاتيح',
+  'Post': 'ترحيل',
+  'Reopen': 'إعادة فتح',
+  'Lock': 'قفل',
+  'Convert': 'تحويل',
+  'Abandon': 'تجاهل',
 }
 
 export const useI18n = create(

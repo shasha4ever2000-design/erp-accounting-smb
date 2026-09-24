@@ -5,6 +5,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, Ban } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyForm = () => ({
   supplierId: '', supplierName: '', date: today(),
@@ -58,26 +59,26 @@ export default function DebitNotes() {
           <Table headers={['Number', 'Supplier', 'Date', 'Purchase Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((dn) => (
               <Tr key={dn.id}>
-                <Td><span className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">{dn.number}</span>{dn.status === 'void' && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 line-through">Void</Badge>}</Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{dn.supplierName}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(dn.date)}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{dn.purchaseRef || dn.purchaseNumber || '—'}</Td>
-                <Td className="text-gray-600 dark:text-slate-300 text-sm max-w-[200px] truncate">{dn.reason || '—'}</Td>
+                <Td><span className="font-mono text-sm font-medium text-warning-700 dark:text-warning-400">{dn.number}</span>{dn.status === 'void' && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 line-through">Void</Badge>}</Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{dn.supplierName}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{fmtDate(dn.date)}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm font-mono">{dn.purchaseRef || dn.purchaseNumber || '—'}</Td>
+                <Td className="text-slate-600 dark:text-slate-300 text-sm max-w-[200px] truncate">{dn.reason || '—'}</Td>
                 <Td right>
-                  <span className="font-semibold text-green-600 dark:text-green-400">{fmtMoney(dn.total, sym)}</span>
+                  <span className="font-semibold text-success-700 dark:text-success-400">{fmtMoney(dn.total, sym)}</span>
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="debitnote" entityId={dn.id} />
                   {dn.status !== 'void' && (
-                    <Btn size="sm" variant="ghost" title="Void debit note" onClick={() => {
-                      if (!confirm(`${t('Void debit note')} ${dn.number}?`)) return
+                    <Btn size="sm" variant="ghost" title="Void debit note" onClick={async () => {
+                      if (!await ask(`${t('Void debit note')} ${dn.number}?`)) return
                       try { voidDebitNote(dn.id, { date: today() }) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
                     }}>
                       <Ban size={13} className="text-slate-500" />
                     </Btn>
                   )}
-                  <Btn size="sm" variant="ghost" onClick={() => { if (!confirm(`Delete ${dn.number}?`)) return; try { deleteDebitNote(dn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
-                    <Trash2 size={13} className="text-red-400" />
+                  <Btn size="sm" variant="ghost" onClick={async () => { if (!await ask(`Delete ${dn.number}?`)) return; try { deleteDebitNote(dn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
+                    <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                   </Btn>
                 </Td>
               </Tr>
@@ -107,9 +108,9 @@ export default function DebitNotes() {
             )}
           </div>
           <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-sm">
-            <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal:</span><span>{fmtMoney(subtotal, sym)}</span></div>
-            {taxEnabled && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Tax ({taxRate}%):</span><span>{fmtMoney(taxAmt, sym)}</span></div>}
-            <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 border-t border-gray-200 dark:border-surface-700 mt-1 pt-1"><span>Total Debit:</span><span>{fmtMoney(total, sym)}</span></div>
+            <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Subtotal:</span><span>{fmtMoney(subtotal, sym)}</span></div>
+            {taxEnabled && <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Tax ({taxRate}%):</span><span>{fmtMoney(taxAmt, sym)}</span></div>}
+            <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100 border-t border-slate-200 dark:border-surface-700 mt-1 pt-1"><span>Total Debit:</span><span>{fmtMoney(total, sym)}</span></div>
           </div>
           <p className="text-xs bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300 rounded p-2">
             Journal Entry: Dr Accounts Payable ({fmtMoney(total, sym)}) → Cr Purchase Returns ({fmtMoney(subtotal, sym)}){taxEnabled ? ` + Cr Input Tax (${fmtMoney(taxAmt, sym)})` : ''}

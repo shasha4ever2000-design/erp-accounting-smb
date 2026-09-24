@@ -6,6 +6,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, TrendingUp, TrendingDown, Check, X, ShieldCheck, Clock } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyForm = () => ({
   date: today(), type: 'increase', itemId: '', itemName: '', quantity: '', unitCost: '', reason: '', inventoryAccountId: 'acc-inv',
@@ -50,9 +51,9 @@ export default function StockAdjustments() {
   // Can the current user approve this pending adjustment? (Segregation of duties)
   const canApprove = (adj) => isManager && (adj.createdBy !== me?.id || !otherManagerExists)
 
-  const handleApprove = (adj) => {
+  const handleApprove = async (adj) => {
     if (!canApprove(adj)) return alert('Segregation of duties: a different manager must approve this adjustment.')
-    if (confirm(`Approve adjustment ${adj.number}? This posts the journal entry and updates stock.`)) approveStockAdjustment(adj.id, me)
+    if (await ask(`Approve adjustment ${adj.number}? This posts the journal entry and updates stock.`)) approveStockAdjustment(adj.id, me)
   }
   const handleReject = (adj) => {
     const reason = prompt('Reason for rejection (optional):') ?? ''
@@ -89,19 +90,19 @@ export default function StockAdjustments() {
               const st = stat(adj)
               return (
               <Tr key={adj.id}>
-                <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{adj.number}</span></Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(adj.date)}</Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{adj.itemName || '—'}
-                  {adj.createdByName && <span className="block text-[11px] text-gray-400 dark:text-slate-500">{t('by')} {adj.createdByName}</span>}
+                <Td><span className="font-mono text-xs text-slate-500 dark:text-slate-400">{adj.number}</span></Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{fmtDate(adj.date)}</Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{adj.itemName || '—'}
+                  {adj.createdByName && <span className="block text-[11px] text-slate-500 dark:text-slate-400">{t('by')} {adj.createdByName}</span>}
                 </Td>
                 <Td>
                   {adj.type === 'increase'
                     ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 inline-flex items-center gap-1"><TrendingUp size={10} /> Increase</Badge>
                     : <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 inline-flex items-center gap-1"><TrendingDown size={10} /> Decrease</Badge>}
                 </Td>
-                <Td right className="text-gray-700 dark:text-slate-200">{adj.quantity}</Td>
+                <Td right className="text-slate-700 dark:text-slate-200">{adj.quantity}</Td>
                 <Td right>
-                  <span className={`font-semibold ${adj.type === 'increase' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <span className={`font-semibold ${adj.type === 'increase' ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                     {adj.type === 'increase' ? '+' : '-'}{fmtMoney(adj.totalAmount, sym)}
                   </span>
                 </Td>
@@ -119,11 +120,11 @@ export default function StockAdjustments() {
                           title={canApprove(adj) ? t('Approve') : t('A different manager must approve (segregation of duties)')} disabled={!canApprove(adj)}>
                           <Check size={13} />
                         </Btn>
-                        {isManager && <Btn size="sm" variant="ghost" onClick={() => handleReject(adj)} title={t('Reject')}><X size={13} className="text-amber-500" /></Btn>}
+                        {isManager && <Btn size="sm" variant="ghost" onClick={() => handleReject(adj)} title={t('Reject')}><X size={13} className="text-warning-700 dark:text-warning-400" /></Btn>}
                       </>
                     )}
-                    <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete adjustment ${adj.number}?${st === 'approved' ? ' This will reverse the quantity change.' : ''}`)) deleteStockAdjustment(adj.id) }}>
-                      <Trash2 size={13} className="text-red-400" />
+                    <Btn size="sm" variant="ghost" onClick={async () => { if (await ask(`Delete adjustment ${adj.number}?${st === 'approved' ? ' This will reverse the quantity change.' : ''}`)) deleteStockAdjustment(adj.id) }}>
+                      <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                     </Btn>
                   </div>
                 </Td>
@@ -157,14 +158,14 @@ export default function StockAdjustments() {
             <Input label="Quantity *" type="number" min="0" step="any" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label={`Unit Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.unitCost} onChange={(e) => setField('unitCost', e.target.value)} />
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Total Amount')}</label>
-              <p className="py-2 px-3 text-sm font-semibold text-gray-800 dark:text-slate-100 border border-gray-200 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700/40">{sym}{totalAmount.toFixed(2)}</p>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Total Amount')}</label>
+              <p className="py-2 px-3 text-sm font-semibold text-slate-800 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-lg bg-slate-50 dark:bg-slate-700/40">{sym}{totalAmount.toFixed(2)}</p>
             </div>
           </div>
 
           <Textarea label="Reason / Notes" value={form.reason} onChange={(e) => setField('reason', e.target.value)} rows={2} placeholder="e.g. Stock count discrepancy, damaged goods, found items" />
 
-          <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 text-xs text-amber-700 dark:text-amber-300 flex items-start gap-2">
+          <div className="bg-warning-50 dark:bg-warning-900/20 rounded-lg p-3 text-xs text-warning-700 dark:text-warning-300 flex items-start gap-2">
             <ShieldCheck size={14} className="flex-shrink-0 mt-0.5" />
             <span>{t('Saved as Pending. Stock and the ledger only change once a different manager approves it.')}</span>
           </div>

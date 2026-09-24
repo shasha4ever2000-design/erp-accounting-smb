@@ -947,6 +947,19 @@ export const useStore = create(
         }
       },
 
+      /**
+       * The accounts money can actually be paid into or out of: cash on hand
+       * and every bank account set up under Cash & Bank. Payment dialogs used
+       * to build this list themselves — one offered only the two default
+       * accounts, another every current asset, down to Accounts Receivable
+       * and Inventory.
+       */
+      cashAccountOptions: () => {
+        const s = get()
+        const ids = new Set(['acc-cash', ...(s.bankAccounts || []).map((b) => b.accountId).filter(Boolean)])
+        return s.accounts.filter((a) => ids.has(a.id))
+      },
+
       deleteBankAccount: (id) =>
         set((s) => ({ bankAccounts: s.bankAccounts.filter((b) => b.id !== id) })),
 
@@ -5425,6 +5438,11 @@ export const useStore = create(
       // ─── THEME ─────────────────────────────────────────────────────
       setTheme: (theme) =>
         set((s) => ({ settings: { ...s.settings, theme } })),
+
+      // 'comfortable' (default) or 'compact' — tighter tables for people who
+      // live in long lists. Applied as a class on <html> by App.
+      setDensity: (density) =>
+        set((s) => ({ settings: { ...s.settings, density: density === 'compact' ? 'compact' : 'comfortable' } })),
 
       // ─── BACKUP / RESTORE ──────────────────────────────────────────
       exportData: () => {

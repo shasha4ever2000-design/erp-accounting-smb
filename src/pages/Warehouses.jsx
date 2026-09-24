@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState } from '../components/UI'
 import { Plus, Pencil, Trash2, Warehouse, ArrowLeftRight, MapPin } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyWh = { name: '', location: '' }
 const emptyTransfer = { itemId: '', fromWarehouseId: '', toWarehouseId: '', quantity: '', date: today(), notes: '' }
@@ -82,20 +83,20 @@ export default function Warehouses() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="font-semibold text-gray-800 dark:text-slate-100">{w.name}</p>
+                      <p className="font-semibold text-slate-800 dark:text-slate-100">{w.name}</p>
                       {w.isDefault && <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">default</Badge>}
                     </div>
-                    {w.location && <p className="text-xs text-gray-400 dark:text-slate-500 flex items-center gap-1"><MapPin size={11} /> {w.location}</p>}
+                    {w.location && <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1"><MapPin size={11} /> {w.location}</p>}
                   </div>
                 </div>
                 <div className="flex gap-1">
                   <Btn size="sm" variant="ghost" onClick={() => openEditWh(w)}><Pencil size={13} /></Btn>
-                  {!w.isDefault && <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete warehouse "${w.name}"?`)) deleteWarehouse(w.id) }}><Trash2 size={13} className="text-red-400" /></Btn>}
+                  {!w.isDefault && <Btn size="sm" variant="ghost" onClick={async () => { if (await ask(`Delete warehouse "${w.name}"?`)) deleteWarehouse(w.id) }}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>}
                 </div>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-gray-50 dark:border-slate-700">
-                <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">Items</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{itemsHere}</p></div>
-                <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase">{t('Stock Value')}</p><p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value.toLocaleString()}</p></div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-50 dark:border-slate-700">
+                <div><p className="text-[11px] text-slate-500 dark:text-slate-400 uppercase">Items</p><p className="text-lg font-bold text-slate-800 dark:text-slate-100">{itemsHere}</p></div>
+                <div><p className="text-[11px] text-slate-500 dark:text-slate-400 uppercase">{t('Stock Value')}</p><p className="text-lg font-bold text-slate-800 dark:text-slate-100">{value.toLocaleString()}</p></div>
               </div>
             </Card>
           )
@@ -104,16 +105,16 @@ export default function Warehouses() {
 
       {/* Stock matrix */}
       <Card className="overflow-hidden mb-6">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700">
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Stock by Location')}</h3>
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700">
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200">{t('Stock by Location')}</h3>
         </div>
         {inventoryItems.length === 0 ? (
           <EmptyState icon="📦" title="No inventory items" desc="Add items in the Inventory module to track them across warehouses." />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-slate-800/60">
-                <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+              <thead className="bg-slate-50 dark:bg-slate-800/60">
+                <tr className="text-xs text-slate-500 dark:text-slate-400 uppercase">
                   <th className="text-left px-5 py-2 font-medium">Item</th>
                   {warehouses.map((w) => <th key={w.id} className="text-right px-4 py-2 font-medium">{w.name}</th>)}
                   <th className="text-right px-5 py-2 font-medium">Total</th>
@@ -123,13 +124,13 @@ export default function Warehouses() {
                 {inventoryItems.map((it) => {
                   const total = warehouses.reduce((s, w) => s + getItemStock(it, w.id), 0)
                   return (
-                    <tr key={it.id} className="border-b border-gray-50 dark:border-slate-700/50">
-                      <td className="px-5 py-2 text-gray-700 dark:text-slate-200">{it.name}<span className="text-gray-400 dark:text-slate-500 text-xs ml-2">{it.unit}</span></td>
+                    <tr key={it.id} className="border-b border-slate-50 dark:border-slate-700/50">
+                      <td className="px-5 py-2 text-slate-700 dark:text-slate-200">{it.name}<span className="text-slate-500 dark:text-slate-400 text-xs ml-2">{it.unit}</span></td>
                       {warehouses.map((w) => {
                         const q = getItemStock(it, w.id)
-                        return <td key={w.id} className={`px-4 py-2 text-right ${q > 0 ? 'text-gray-800 dark:text-slate-100 font-medium' : 'text-gray-300 dark:text-slate-600'}`}>{q}</td>
+                        return <td key={w.id} className={`px-4 py-2 text-right ${q > 0 ? 'text-slate-800 dark:text-slate-100 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>{q}</td>
                       })}
-                      <td className="px-5 py-2 text-right font-bold text-gray-900 dark:text-slate-100">{total}</td>
+                      <td className="px-5 py-2 text-right font-bold text-slate-900 dark:text-slate-100">{total}</td>
                     </tr>
                   )
                 })}
@@ -142,18 +143,18 @@ export default function Warehouses() {
       {/* Recent transfers */}
       {stockTransfers.length > 0 && (
         <Card className="overflow-hidden">
-          <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700">
-            <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Recent Transfers')}</h3>
+          <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700">
+            <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200">{t('Recent Transfers')}</h3>
           </div>
-          <div className="divide-y divide-gray-50 dark:divide-slate-700/50">
+          <div className="divide-y divide-slate-50 dark:divide-slate-700/50">
             {stockTransfers.slice().reverse().slice(0, 15).map((tr) => (
               <div key={tr.id} className="flex items-center justify-between px-5 py-2.5 text-sm">
                 <div className="flex items-center gap-3">
-                  <span className="text-gray-400 dark:text-slate-500 text-xs w-20">{fmtDate(tr.date)}</span>
-                  <span className="text-gray-700 dark:text-slate-200 font-medium">{tr.quantity} × {itemName(tr.itemId)}</span>
-                  <span className="text-gray-400 dark:text-slate-500 flex items-center gap-1.5 text-xs">{whName(tr.fromWarehouseId)} <ArrowLeftRight size={11} /> {whName(tr.toWarehouseId)}</span>
+                  <span className="text-slate-500 dark:text-slate-400 text-xs w-20">{fmtDate(tr.date)}</span>
+                  <span className="text-slate-700 dark:text-slate-200 font-medium">{tr.quantity} × {itemName(tr.itemId)}</span>
+                  <span className="text-slate-500 dark:text-slate-400 flex items-center gap-1.5 text-xs">{whName(tr.fromWarehouseId)} <ArrowLeftRight size={11} /> {whName(tr.toWarehouseId)}</span>
                 </div>
-                <button onClick={() => deleteStockTransfer(tr.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
+                <button onClick={() => deleteStockTransfer(tr.id)} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
               </div>
             ))}
           </div>
@@ -187,7 +188,7 @@ export default function Warehouses() {
             </Select>
           </div>
           {trForm.itemId && trForm.fromWarehouseId && (
-            <p className="text-xs text-gray-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Available in source: {getItemStock(inventoryItems.find((i) => i.id === trForm.itemId), trForm.fromWarehouseId)}
             </p>
           )}

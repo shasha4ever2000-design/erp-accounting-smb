@@ -13,6 +13,7 @@ import {
   ClipboardCheck, Play, Check, Trash2, AlertTriangle, ScanLine, Undo2, PackageSearch, Repeat,
 } from 'lucide-react'
 import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
 const today = () => todayISO()
 
@@ -102,7 +103,7 @@ export default function StockCounts() {
     say('good', `${hit.record.name} — ${t('now')} ${(Number(line.counted) || 0) + 1}`)
   }
 
-  const doPost = () => {
+  const doPost = async () => {
     const check = validateCount(count, { lockDate: settings?.accounting?.lockDate })
     if (!check.ok) return setPostError(check.errors.join(' '))
     const lines = [
@@ -112,7 +113,7 @@ export default function StockCounts() {
       summary.uncounted > 0 ? t('Uncounted lines are left exactly as they are — they are not set to zero.') : '',
       t('Net value change: {v}').replace('{v}', fmtMoney(summary.netValue, sym)),
     ].filter(Boolean).join('\n')
-    if (!confirm(lines)) return
+    if (!await ask(lines)) return
     try {
       const res = postStockCount(count.id)
       setPostError('')
@@ -141,12 +142,12 @@ export default function StockCounts() {
           }
         />
 
-        <Card className="p-4 mb-6 text-sm text-gray-600 dark:text-slate-300 flex items-start gap-3">
+        <Card className="p-4 mb-6 text-sm text-slate-600 dark:text-slate-300 flex items-start gap-3">
           <ScanLine size={18} className="text-brand-600 dark:text-brand-400 flex-shrink-0 mt-0.5" />
           <p>
             {t('Starting a count freezes what the books say, so stock that legitimately moves while you are counting does not show up as a shortage. Scan or type each item, then post once — anything you never counted is left exactly as it is.')}
             {cycleDue.dueCount > 0 && (
-              <span className="block mt-2 text-gray-500 dark:text-slate-400">
+              <span className="block mt-2 text-slate-500 dark:text-slate-400">
                 {t('{n} item(s) worth {v} are due a cycle count — the valuable stock comes round monthly, the long tail once a year.')
                   .replace('{n}', cycleDue.dueCount).replace('{v}', fmtMoney(cycleDue.value, sym))}
               </span>
@@ -157,7 +158,7 @@ export default function StockCounts() {
         <Card className="overflow-hidden">
           {sorted.length === 0 ? (
             <EmptyState
-              icon={<ClipboardCheck size={28} className="text-slate-400 dark:text-slate-500" />}
+              icon={<ClipboardCheck size={28} className="text-slate-500 dark:text-slate-400" />}
               title="No stock counts yet"
               desc="Start one, walk the shelves with a phone or a barcode gun, and post the difference in a single entry."
               action={<Btn onClick={() => setNewModal(true)}><Play size={14} /> {t('Start a count')}</Btn>}
@@ -169,9 +170,9 @@ export default function StockCounts() {
                 const wh = warehouses.find((w) => w.id === c.warehouseId)
                 return (
                   <Tr key={c.id}>
-                    <Td className="font-mono font-semibold text-gray-800 dark:text-slate-100">{c.number}</Td>
-                    <Td className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(c.date)}</Td>
-                    <Td className="text-gray-500 dark:text-slate-400">{wh?.name || t('All warehouses')}</Td>
+                    <Td className="font-mono font-semibold text-slate-800 dark:text-slate-100">{c.number}</Td>
+                    <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(c.date)}</Td>
+                    <Td className="text-slate-500 dark:text-slate-400">{wh?.name || t('All warehouses')}</Td>
                     <Td>
                       <Badge className={c.status === 'posted'
                         ? 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'
@@ -179,7 +180,7 @@ export default function StockCounts() {
                         {c.status === 'posted' ? t('posted') : `${s.counted}/${s.total}`}
                       </Badge>
                     </Td>
-                    <Td className={`text-end tabular-nums ${s.netValue < 0 ? 'text-rose-600 dark:text-rose-400' : s.netValue > 0 ? 'text-success-600 dark:text-success-400' : 'text-gray-400'}`}>
+                    <Td className={`text-end tabular-nums ${s.netValue < 0 ? 'text-rose-600 dark:text-rose-400' : s.netValue > 0 ? 'text-success-700 dark:text-success-400' : 'text-slate-500'}`}>
                       {s.netValue ? fmtMoney(s.netValue, sym) : '—'}
                     </Td>
                     <Td>
@@ -188,10 +189,10 @@ export default function StockCounts() {
                           {c.status === 'posted' ? t('View') : t('Continue')}
                         </Btn>
                         {c.status !== 'posted' && (
-                          <Btn size="sm" variant="ghost" onClick={() => {
-                            if (confirm(t('Abandon count {n}? Nothing will be adjusted.').replace('{n}', c.number))) deleteStockCount(c.id)
+                          <Btn size="sm" variant="ghost" onClick={async () => {
+                            if (await ask(t('Abandon count {n}? Nothing will be adjusted.').replace('{n}', c.number))) deleteStockCount(c.id)
                           }}>
-                            <Trash2 size={13} className="text-red-400" />
+                            <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                           </Btn>
                         )}
                       </div>
@@ -211,7 +212,7 @@ export default function StockCounts() {
               {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
             </Select>
             <Input label={t('Notes (optional)')} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
-            <p className="text-xs text-gray-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('The books are frozen at this moment. Kits are left out — they hold no stock of their own.')}
             </p>
             <div className="flex justify-end gap-2 pt-2">
@@ -256,7 +257,7 @@ export default function StockCounts() {
               {feedback.text}
             </p>
           )}
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">
             {t('Each scan adds one. Type a total in the row instead if you counted a whole shelf at once.')}
           </p>
         </Card>
@@ -264,7 +265,7 @@ export default function StockCounts() {
 
       {summary.uncounted > 0 && !posted && (
         <Card className="p-3.5 mb-6 bg-warning-50/60 dark:bg-warning-500/[0.07] ring-1 ring-inset ring-warning-500/20 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-warning-600 dark:text-warning-400 flex-shrink-0 mt-0.5" />
+          <AlertTriangle size={16} className="text-warning-700 dark:text-warning-400 flex-shrink-0 mt-0.5" />
           <p className="text-sm text-warning-800 dark:text-warning-200">
             {t('{n} line(s) have not been counted. Posting will leave them exactly as they are — it will not set them to zero.').replace('{n}', summary.uncounted)}
           </p>
@@ -279,7 +280,7 @@ export default function StockCounts() {
       )}
 
       <Card className="overflow-hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-surface-750">
+        <div className="p-4 border-b border-slate-100 dark:border-surface-750">
           <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t('Filter by code or name…')}
             className="w-full sm:w-72 border rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
         </div>
@@ -289,12 +290,12 @@ export default function StockCounts() {
             const done = isCounted(l)
             return (
               <Tr key={l.itemId} className={done && v !== 0 ? 'bg-warning-50/40 dark:bg-warning-500/[0.05]' : ''}>
-                <Td className="font-mono text-xs text-gray-500 dark:text-slate-400">{l.code}</Td>
-                <Td className="text-gray-800 dark:text-slate-100">
+                <Td className="font-mono text-xs text-slate-500 dark:text-slate-400">{l.code}</Td>
+                <Td className="text-slate-800 dark:text-slate-100">
                   {l.name}
                   {l.scanned && <Badge className="ms-2 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">{t('scanned')}</Badge>}
                 </Td>
-                <Td className="text-end tabular-nums text-gray-500 dark:text-slate-400">{l.expected}</Td>
+                <Td className="text-end tabular-nums text-slate-500 dark:text-slate-400">{l.expected}</Td>
                 <Td className="text-end">
                   {posted ? (
                     <span className="tabular-nums">{done ? l.counted : '—'}</span>
@@ -306,16 +307,16 @@ export default function StockCounts() {
                       className="w-24 border rounded px-2 py-1 text-sm text-end tabular-nums bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
                   )}
                 </Td>
-                <Td className={`text-end tabular-nums font-medium ${v == null ? 'text-gray-300 dark:text-slate-600' : v === 0 ? 'text-gray-400' : v > 0 ? 'text-success-600 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                <Td className={`text-end tabular-nums font-medium ${v == null ? 'text-slate-500 dark:text-slate-400' : v === 0 ? 'text-slate-500' : v > 0 ? 'text-success-700 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>
                   {v == null ? '—' : v > 0 ? `+${v}` : v}
                 </Td>
-                <Td className="text-end tabular-nums text-gray-500 dark:text-slate-400">
+                <Td className="text-end tabular-nums text-slate-500 dark:text-slate-400">
                   {v == null || v === 0 ? '—' : fmtMoney(varianceValue(l), sym)}
                 </Td>
                 <Td>
                   {!posted && done && (
                     <button onClick={() => setLines(clearCount(count.lines, l.itemId))} title={t('Clear this count')}
-                      className="p-1 rounded text-gray-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
+                      className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10">
                       <Undo2 size={13} />
                     </button>
                   )}

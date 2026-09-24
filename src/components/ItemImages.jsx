@@ -6,6 +6,7 @@ import {
   formatBytes, MAX_EDGE,
 } from '../utils/itemImages'
 import { ImagePlus, Star, Trash2, AlertTriangle, Loader2 } from 'lucide-react'
+import { ask } from './Dialogs'
 
 /**
  * Photographs for one inventory item.
@@ -49,7 +50,7 @@ export default function ItemImages({ itemId }) {
   }
 
   const remove = async (img) => {
-    if (!confirm(t('Remove this picture?'))) return
+    if (!await ask(t('Remove this picture?'))) return
     await deleteItemImage(img.id)
     await refresh()
   }
@@ -61,7 +62,7 @@ export default function ItemImages({ itemId }) {
 
   if (!itemId) {
     return (
-      <p className="text-xs text-gray-400 dark:text-slate-500">
+      <p className="text-xs text-slate-500 dark:text-slate-400">
         {t('Save the item first, then you can add pictures to it.')}
       </p>
     )
@@ -75,7 +76,7 @@ export default function ItemImages({ itemId }) {
           {busy ? t('Adding…') : t('Add pictures')}
         </Btn>
         <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={onFiles} />
-        <span className="text-xs text-gray-400 dark:text-slate-500">
+        <span className="text-xs text-slate-500 dark:text-slate-400">
           {t('Resized to {n}px and compressed, so a phone photo costs kilobytes rather than megabytes.').replace('{n}', MAX_EDGE)}
         </span>
       </div>
@@ -89,7 +90,7 @@ export default function ItemImages({ itemId }) {
       {images.length > 0 && (
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 mt-3">
           {images.map((img) => (
-            <div key={img.id} className="group relative rounded-lg overflow-hidden ring-1 ring-gray-200 dark:ring-surface-700 bg-gray-50 dark:bg-surface-800">
+            <div key={img.id} className="group relative rounded-lg overflow-hidden ring-1 ring-slate-200 dark:ring-surface-700 bg-slate-50 dark:bg-surface-800">
               <button type="button" onClick={() => setPreview(img)} className="block w-full aspect-square">
                 <img src={img.thumbUrl} alt={img.name} className="w-full h-full object-cover" />
               </button>
@@ -103,7 +104,7 @@ export default function ItemImages({ itemId }) {
                 <span className="flex items-center gap-1">
                   {!img.primary && (
                     <button type="button" onClick={() => makePrimary(img)} title={t('Use as the main picture')}
-                      className="p-0.5 text-white/80 hover:text-amber-300"><Star size={13} /></button>
+                      className="p-0.5 text-white/80 hover:text-warning-300"><Star size={13} /></button>
                   )}
                   <button type="button" onClick={() => remove(img)} title={t('Remove')}
                     className="p-0.5 text-white/80 hover:text-rose-300"><Trash2 size={13} /></button>

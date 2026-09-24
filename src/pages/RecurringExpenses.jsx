@@ -5,6 +5,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Table, Tr, Td, Badge, EmptyState, StatCard } from '../components/UI'
 import { alertIfLocked } from '../utils/periodLock'
 import { Plus, Trash2, Repeat, Play, CalendarClock, Pencil, Pause, Receipt } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const FREQ = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 const emptyForm = () => ({
@@ -66,8 +67,8 @@ export default function RecurringExpenses() {
     setModal(false)
   }
 
-  const postNow = (r) => {
-    if (!confirm(t('Post "{name}" now as a supplier bill?').replace('{name}', r.name))) return
+  const postNow = async (r) => {
+    if (!await ask(t('Post "{name}" now as a supplier bill?').replace('{name}', r.name))) return
     try { postRecurringExpense(r.id) }
     catch (e) { if (alertIfLocked(e, t)) return; alert(t('Could not post this expense') + ': ' + e.message) }
   }
@@ -81,7 +82,7 @@ export default function RecurringExpenses() {
 
   const toggle = (r) => updateRecurringExpense(r.id, { status: r.status === 'active' ? 'paused' : 'active' })
 
-  const remove = (r) => { if (confirm(t('Delete the "{name}" schedule? Bills already posted are kept.').replace('{name}', r.name))) deleteRecurringExpense(r.id) }
+  const remove = async (r) => { if (await ask(t('Delete the "{name}" schedule? Bills already posted are kept.').replace('{name}', r.name))) deleteRecurringExpense(r.id) }
 
   const active = recurringExpenses.filter((r) => r.status === 'active')
   const dueNow = active.filter((r) => r.nextDate <= todayStr)
@@ -127,13 +128,13 @@ export default function RecurringExpenses() {
               const overdue = r.status === 'active' && r.nextDate <= todayStr
               return (
                 <Tr key={r.id}>
-                  <Td className="font-medium text-gray-900 dark:text-slate-100">
+                  <Td className="font-medium text-slate-900 dark:text-slate-100">
                     {r.name}
-                    {r.generatedCount > 0 && <span className="block text-xs text-gray-400 dark:text-slate-500">{t('{n} posted').replace('{n}', r.generatedCount)}</span>}
+                    {r.generatedCount > 0 && <span className="block text-xs text-slate-500 dark:text-slate-400">{t('{n} posted').replace('{n}', r.generatedCount)}</span>}
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400">{r.supplierName || '—'}</Td>
-                  <Td className="capitalize text-gray-500 dark:text-slate-400">{t(r.frequency)}</Td>
-                  <Td className={overdue ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-gray-500 dark:text-slate-400'}>
+                  <Td className="text-slate-500 dark:text-slate-400">{r.supplierName || '—'}</Td>
+                  <Td className="capitalize text-slate-500 dark:text-slate-400">{t(r.frequency)}</Td>
+                  <Td className={overdue ? 'text-warning-700 dark:text-warning-400 font-medium' : 'text-slate-500 dark:text-slate-400'}>
                     {fmtDate(r.nextDate)}{overdue && <span className="block text-xs">{t('due')}</span>}
                   </Td>
                   <Td right className="tabular-nums">{fmtMoney(r.amount, sym)}</Td>
@@ -144,12 +145,12 @@ export default function RecurringExpenses() {
                         <button onClick={() => postNow(r)} title={t('Post now')} className="p-1.5 rounded-lg text-brand-600 hover:bg-brand-50 dark:text-brand-400 dark:hover:bg-brand-500/15 transition-colors"><Play size={14} /></button>
                       )}
                       {r.status !== 'ended' && (
-                        <button onClick={() => toggle(r)} title={r.status === 'active' ? t('Pause') : t('Resume')} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors">
+                        <button onClick={() => toggle(r)} title={r.status === 'active' ? t('Pause') : t('Resume')} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors">
                           {r.status === 'active' ? <Pause size={14} /> : <Play size={14} />}
                         </button>
                       )}
-                      <button onClick={() => openEdit(r)} title={t('Edit')} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"><Pencil size={14} /></button>
-                      <button onClick={() => remove(r)} title={t('Delete')} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Trash2 size={14} /></button>
+                      <button onClick={() => openEdit(r)} title={t('Edit')} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><Pencil size={14} /></button>
+                      <button onClick={() => remove(r)} title={t('Delete')} className="p-1.5 rounded-lg text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"><Trash2 size={14} /></button>
                     </div>
                   </Td>
                 </Tr>
@@ -187,13 +188,13 @@ export default function RecurringExpenses() {
 
           {amountNum > 0 && (
             <div className="rounded-lg bg-brand-50/70 dark:bg-brand-500/[0.08] px-4 py-3 text-sm">
-              <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{t('Subtotal')}</span><span className="tabular-nums">{fmtMoney(amountNum, sym)}</span></div>
-              {taxNum > 0 && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax?.name || t('Tax')} {taxNum}%</span><span className="tabular-nums">{fmtMoney(previewTax, sym)}</span></div>}
-              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 border-t border-brand-200/60 dark:border-brand-500/20 mt-1.5 pt-1.5"><span>{t('Each bill')}</span><span className="tabular-nums">{fmtMoney(previewTotal, sym)}</span></div>
+              <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{t('Subtotal')}</span><span className="tabular-nums">{fmtMoney(amountNum, sym)}</span></div>
+              {taxNum > 0 && <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{settings.tax?.name || t('Tax')} {taxNum}%</span><span className="tabular-nums">{fmtMoney(previewTax, sym)}</span></div>}
+              <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100 border-t border-brand-200/60 dark:border-brand-500/20 mt-1.5 pt-1.5"><span>{t('Each bill')}</span><span className="tabular-nums">{fmtMoney(previewTotal, sym)}</span></div>
             </div>
           )}
 
-          <p className="text-xs text-gray-400 dark:text-slate-500">
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('Each posting creates a real supplier bill in Purchases, so it appears in Accounts Payable and can be paid normally.')}
           </p>
 

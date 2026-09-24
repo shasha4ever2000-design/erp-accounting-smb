@@ -7,6 +7,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Calculator, Trash2, TrendingDown, Package } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', disposed: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400' }
 
@@ -79,8 +80,8 @@ export default function FixedAssets() {
     setDispModal(null)
   }
 
-  const handleDelete = (asset) => {
-    if (confirm(`Delete asset "${asset.name}"? This also removes its journal entry.`)) deleteFixedAsset(asset.id)
+  const handleDelete = async (asset) => {
+    if (await ask(`Delete asset "${asset.name}"? This also removes its journal entry.`)) deleteFixedAsset(asset.id)
   }
 
   return (
@@ -105,7 +106,7 @@ export default function FixedAssets() {
       <div className="flex gap-2 mb-4">
         {[['active','Active'],['disposed','Disposed'],['all','All']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
             {label} ({val==='all' ? fixedAssets.length : fixedAssets.filter(a=>a.status===val).length})
           </button>
         ))}
@@ -116,22 +117,22 @@ export default function FixedAssets() {
           <EmptyState icon="🏗️" title="No fixed assets" desc="Add equipment, vehicles, buildings, and other long-term assets. Depreciation is tracked automatically."
             action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={14} /> {t('Add Asset')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} assets</div>
+          <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No {filter} assets</div>
         ) : (
           <Table headers={['Number', 'Asset Name', 'Category', 'Purchase Date', { label: 'Cost', right: true }, { label: 'Acc. Dep.', right: true }, { label: 'Book Value', right: true }, 'Method', 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((asset) => (
               <Tr key={asset.id}>
-                <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{asset.number}</span></Td>
+                <Td><span className="font-mono text-xs text-slate-500 dark:text-slate-400">{asset.number}</span></Td>
                 <Td>
-                  <p className="font-medium text-gray-800 dark:text-slate-100">{asset.name}</p>
-                  {asset.description && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[150px]">{asset.description}</p>}
+                  <p className="font-medium text-slate-800 dark:text-slate-100">{asset.name}</p>
+                  {asset.description && <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[150px]">{asset.description}</p>}
                 </Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{asset.category || '—'}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(asset.purchaseDate)}</Td>
-                <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(asset.purchaseCost, sym)}</Td>
-                <Td right className="text-orange-600 dark:text-orange-400">{fmtMoney(asset.accumulatedDepreciation, sym)}</Td>
-                <Td right className="font-semibold text-gray-900 dark:text-slate-100">{fmtMoney(asset.currentBookValue, sym)}</Td>
-                <Td className="text-xs text-gray-500 dark:text-slate-400">{asset.depreciationMethod === 'straight_line' ? 'SL' : asset.depreciationMethod || 'SL'}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{asset.category || '—'}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{fmtDate(asset.purchaseDate)}</Td>
+                <Td right className="text-slate-700 dark:text-slate-200">{fmtMoney(asset.purchaseCost, sym)}</Td>
+                <Td right className="text-warning-700 dark:text-warning-400">{fmtMoney(asset.accumulatedDepreciation, sym)}</Td>
+                <Td right className="font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(asset.currentBookValue, sym)}</Td>
+                <Td className="text-xs text-slate-500 dark:text-slate-400">{asset.depreciationMethod === 'straight_line' ? 'SL' : asset.depreciationMethod || 'SL'}</Td>
                 <Td><Badge className={STATUS_CLR[asset.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{asset.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
@@ -147,10 +148,10 @@ export default function FixedAssets() {
                       </>
                     )}
                     {asset.status === 'disposed' && (
-                      <span className="text-xs text-gray-400 dark:text-slate-500 px-2">Disposed {asset.disposalDate ? fmtDate(asset.disposalDate) : ''}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 px-2">Disposed {asset.disposalDate ? fmtDate(asset.disposalDate) : ''}</span>
                     )}
                     <Btn size="sm" variant="ghost" onClick={() => handleDelete(asset)}>
-                      <Trash2 size={13} className="text-red-400" />
+                      <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                     </Btn>
                   </div>
                 </Td>
@@ -163,12 +164,12 @@ export default function FixedAssets() {
       {/* Batch Depreciation Scheduler */}
       <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('Run Monthly Depreciation')}>
         <div className="space-y-4">
-          <p className="text-sm text-gray-500 dark:text-slate-400">{t('Posts one month of straight-line depreciation for every active asset that has not been depreciated for this period.')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('Posts one month of straight-line depreciation for every active asset that has not been depreciated for this period.')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label={t('Period label')} value={schedForm.period} onChange={(e) => setSchedForm((f) => ({ ...f, period: e.target.value }))} placeholder="Jul 2026" />
             <Input label={t('Posting date')} type="date" value={schedForm.date} onChange={(e) => setSchedForm((f) => ({ ...f, date: e.target.value }))} />
           </div>
-          <div className={`rounded-lg p-3 text-sm ${schedPreview.count > 0 ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' : 'bg-gray-50 dark:bg-slate-800 text-gray-500 dark:text-slate-400'}`}>
+          <div className={`rounded-lg p-3 text-sm ${schedPreview.count > 0 ? 'bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300' : 'bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
             {schedPreview.count > 0
               ? <span>{t('Will post')} <strong>{schedPreview.count}</strong> {t('entries totalling')} <strong>{fmtMoney(schedPreview.total, sym)}</strong>.</span>
               : <span>{t('No assets are due for this period (already posted or fully depreciated).')}</span>}

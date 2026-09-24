@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { Modal, Btn } from './UI'
 import { addAttachment, listAttachments, countAttachments, deleteAttachment, downloadAttachment, formatBytes } from '../utils/attachments'
 import { Paperclip, Upload, Trash2, Download, FileText, Loader2 } from 'lucide-react'
+import { ask } from './Dialogs'
 
 const MAX_BYTES = 10 * 1024 * 1024 // 10 MB per file
 
@@ -45,7 +46,7 @@ export default function AttachmentButton({ entityType, entityId, size = 'sm', la
   }
 
   const remove = async (att) => {
-    if (!confirm(t('Remove this attachment?'))) return
+    if (!await ask(t('Remove this attachment?'))) return
     await deleteAttachment(att.id)
     load(); refreshCount()
   }
@@ -58,12 +59,12 @@ export default function AttachmentButton({ entityType, entityId, size = 'sm', la
         type="button"
         onClick={openModal}
         title={t('Supporting documents')}
-        className={`relative inline-flex items-center gap-1.5 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 ${pad}`}
+        className={`relative inline-flex items-center gap-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 ${pad}`}
       >
         <Paperclip size={15} />
         {label && <span className="text-sm">{t(label)}</span>}
         {count > 0 && (
-          <span className="min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-blue-600 text-white text-[10px] font-bold">{count}</span>
+          <span className="min-w-[16px] h-4 px-1 inline-flex items-center justify-center rounded-full bg-brand-600 text-white text-[10px] font-bold">{count}</span>
         )}
       </button>
 
@@ -72,31 +73,31 @@ export default function AttachmentButton({ entityType, entityId, size = 'sm', la
           <input ref={fileRef} type="file" multiple className="hidden" onChange={onFiles} />
           <button
             onClick={() => fileRef.current?.click()}
-            className="w-full border-2 border-dashed border-gray-200 dark:border-slate-600 rounded-xl py-6 flex flex-col items-center justify-center text-gray-400 dark:text-slate-500 hover:border-blue-300 hover:text-blue-500 transition-colors"
+            className="w-full border-2 border-dashed border-slate-200 dark:border-slate-600 rounded-xl py-6 flex flex-col items-center justify-center text-slate-500 dark:text-slate-400 hover:border-brand-300 hover:text-brand-500 transition-colors"
           >
             <Upload size={22} className="mb-1.5" />
             <span className="text-sm font-medium">{t('Click to upload files')}</span>
             <span className="text-xs">{t('Receipts, contracts, scans — up to 10 MB each')}</span>
           </button>
 
-          {busy && <div className="flex items-center justify-center py-3 text-gray-400 dark:text-slate-500"><Loader2 size={18} className="animate-spin" /></div>}
+          {busy && <div className="flex items-center justify-center py-3 text-slate-500 dark:text-slate-400"><Loader2 size={18} className="animate-spin" /></div>}
 
           {!busy && items.length === 0 && (
-            <p className="text-center text-sm text-gray-400 dark:text-slate-500 py-2">{t('No documents attached yet.')}</p>
+            <p className="text-center text-sm text-slate-500 dark:text-slate-400 py-2">{t('No documents attached yet.')}</p>
           )}
 
           <div className="space-y-2 max-h-72 overflow-y-auto">
             {items.map((att) => (
-              <div key={att.id} className="flex items-center gap-3 border border-gray-100 dark:border-slate-700 rounded-lg p-2">
+              <div key={att.id} className="flex items-center gap-3 border border-slate-100 dark:border-slate-700 rounded-lg p-2">
                 {att.mime?.startsWith('image/')
                   ? <img src={att.dataUrl} alt={att.name} className="w-10 h-10 rounded object-cover flex-shrink-0" />
-                  : <div className="w-10 h-10 rounded bg-gray-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0"><FileText size={18} className="text-gray-400" /></div>}
+                  : <div className="w-10 h-10 rounded bg-slate-100 dark:bg-slate-700 flex items-center justify-center flex-shrink-0"><FileText size={18} className="text-slate-500 dark:text-slate-400" /></div>}
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">{att.name}</p>
-                  <p className="text-xs text-gray-400 dark:text-slate-500">{formatBytes(att.size)}</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{att.name}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{formatBytes(att.size)}</p>
                 </div>
-                <button onClick={() => downloadAttachment(att)} title={t('Download')} className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-700"><Download size={15} /></button>
-                <button onClick={() => remove(att)} title={t('Remove')} className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30"><Trash2 size={15} /></button>
+                <button onClick={() => downloadAttachment(att)} title={t('Download')} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700"><Download size={15} /></button>
+                <button onClick={() => remove(att)} title={t('Remove')} className="p-1.5 rounded-lg text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/30"><Trash2 size={15} /></button>
               </div>
             ))}
           </div>

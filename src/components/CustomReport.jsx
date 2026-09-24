@@ -208,8 +208,8 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
       {/* Builder controls */}
       <Card className="p-5">
         <div className="flex items-center gap-2 mb-4">
-          <Sliders size={17} className="text-blue-500" />
-          <h3 className="font-bold text-gray-800 dark:text-slate-100">{t('Custom Report Builder')}</h3>
+          <Sliders size={17} className="text-brand-600 dark:text-brand-400" />
+          <h3 className="font-bold text-slate-800 dark:text-slate-100">{t('Custom Report Builder')}</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
@@ -217,9 +217,9 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
             {Object.entries(SOURCES).map(([id, s]) => <option key={id} value={id}>{t(s.label)}</option>)}
           </Select>
           <div>
-            <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-1">{t('Search')}</label>
+            <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-1">{t('Search')}</label>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('Filter rows…')}
-              className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
+              className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 transition-all duration-150" />
           </div>
           <Select label={t('Group By')} value={groupBy} onChange={(e) => setGroupBy(e.target.value)}>
             <option value="">{t('— None —')}</option>
@@ -234,14 +234,14 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
 
         {/* Column picker */}
         <div>
-          <label className="block text-xs font-medium text-gray-500 dark:text-slate-400 mb-2">{t('Columns')}</label>
+          <label className="block text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{t('Columns')}</label>
           <div className="flex flex-wrap gap-2">
             {src.fields.map((f) => {
               const on = selected.includes(f.key)
               return (
                 <button key={f.key} type="button" onClick={() => toggleField(f.key)}
                   className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-medium border transition-colors ${
-                    on ? 'bg-blue-600 text-white border-blue-600' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border-gray-300 dark:border-slate-600 hover:border-blue-400'}`}>
+                    on ? 'bg-brand-600 text-white border-brand-600' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-300 dark:border-slate-600 hover:border-brand-400'}`}>
                   <GripVertical size={11} className={on ? 'opacity-80' : 'opacity-30'} />{t(f.label)}
                 </button>
               )
@@ -252,27 +252,27 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
 
       {/* Result table */}
       <Card className="overflow-x-auto">
-        <div className="p-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-          <p className="text-sm text-gray-500 dark:text-slate-400">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             {working.length} {t('rows')}{groupBy ? ` · ${grouped?.length || 0} ${t('groups')}` : ''}
           </p>
         </div>
         {chosen.length === 0 ? (
-          <p className="p-8 text-center text-gray-400 dark:text-slate-500">{t('Select at least one column.')}</p>
+          <p className="p-8 text-center text-slate-500 dark:text-slate-400">{t('Select at least one column.')}</p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b-2 border-gray-200 dark:border-slate-600 text-gray-500 dark:text-slate-400">
+              <tr className="border-b-2 border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400">
                 {chosen.map((f) => <Th key={f.key} f={f} />)}
               </tr>
             </thead>
             <tbody>
-              {working.length === 0 && <tr><td colSpan={chosen.length} className="py-8 text-center text-gray-400 dark:text-slate-500">{t('No data for this period')}</td></tr>}
+              {working.length === 0 && <tr><td colSpan={chosen.length} className="py-8 text-center text-slate-500 dark:text-slate-400">{t('No data for this period')}</td></tr>}
 
               {!groupBy && working.map((r, ri) => (
-                <tr key={ri} className="border-b border-gray-50 dark:border-slate-700/50">
+                <tr key={ri} className="border-b border-slate-50 dark:border-slate-700/50">
                   {chosen.map((f) => (
-                    <td key={f.key} className={`py-1.5 px-2 whitespace-nowrap ${(f.type === 'money' || f.type === 'number') ? 'text-end font-medium text-gray-800 dark:text-slate-100' : 'text-start text-gray-700 dark:text-slate-200'}`}>
+                    <td key={f.key} className={`py-1.5 px-2 whitespace-nowrap ${(f.type === 'money' || f.type === 'number') ? 'text-end font-medium text-slate-800 dark:text-slate-100' : 'text-start text-slate-700 dark:text-slate-200'}`}>
                       {fmtCell(r, f)}
                     </td>
                   ))}
@@ -281,22 +281,22 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
 
               {groupBy && grouped && grouped.map((g) => (
                 <Fragment key={g.key}>
-                  <tr className="bg-gray-50 dark:bg-slate-700/40">
-                    <td colSpan={chosen.length} className="py-2 px-2 font-bold text-gray-700 dark:text-slate-200">
-                      {g.key} <span className="text-xs font-normal text-gray-400 dark:text-slate-500">({g.rows.length})</span>
+                  <tr className="bg-slate-50 dark:bg-slate-700/40">
+                    <td colSpan={chosen.length} className="py-2 px-2 font-bold text-slate-700 dark:text-slate-200">
+                      {g.key} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">({g.rows.length})</span>
                     </td>
                   </tr>
                   {g.rows.map((r, ri) => (
-                    <tr key={ri} className="border-b border-gray-50 dark:border-slate-700/50">
+                    <tr key={ri} className="border-b border-slate-50 dark:border-slate-700/50">
                       {chosen.map((f) => (
-                        <td key={f.key} className={`py-1.5 px-2 whitespace-nowrap ${(f.type === 'money' || f.type === 'number') ? 'text-end font-medium text-gray-800 dark:text-slate-100' : 'text-start text-gray-700 dark:text-slate-200'}`}>
+                        <td key={f.key} className={`py-1.5 px-2 whitespace-nowrap ${(f.type === 'money' || f.type === 'number') ? 'text-end font-medium text-slate-800 dark:text-slate-100' : 'text-start text-slate-700 dark:text-slate-200'}`}>
                           {fmtCell(r, f)}
                         </td>
                       ))}
                     </tr>
                   ))}
                   {numericFields.length > 0 && (
-                    <tr className="border-b border-gray-100 dark:border-slate-700 text-gray-600 dark:text-slate-300">
+                    <tr className="border-b border-slate-100 dark:border-slate-700 text-slate-600 dark:text-slate-300">
                       {chosen.map((f, i) => (
                         <td key={f.key} className={`py-1 px-2 text-xs ${(f.type === 'money' || f.type === 'number') ? 'text-end font-semibold' : 'text-start italic'}`}>
                           {i === 0 ? t('Subtotal') : (f.type === 'money' || f.type === 'number') ? fmtCell({ [f.key]: g.rows.reduce((s, r) => s + (Number(valueOf(r, f)) || 0), 0) }, { ...f, get: null }) : ''}
@@ -308,9 +308,9 @@ export default function CustomReport({ data, startDate, endDate, sym }) {
               ))}
 
               {numericFields.length > 0 && working.length > 0 && (
-                <tr className="border-t-2 border-gray-300 dark:border-slate-500 bg-gray-50/60 dark:bg-slate-700/40 font-bold">
+                <tr className="border-t-2 border-slate-300 dark:border-slate-500 bg-slate-50/60 dark:bg-slate-700/40 font-bold">
                   {chosen.map((f, i) => (
-                    <td key={f.key} className={`py-2 px-2 ${(f.type === 'money' || f.type === 'number') ? 'text-end text-gray-900 dark:text-slate-100' : 'text-start'}`}>
+                    <td key={f.key} className={`py-2 px-2 ${(f.type === 'money' || f.type === 'number') ? 'text-end text-slate-900 dark:text-slate-100' : 'text-start'}`}>
                       {i === 0 ? t('Grand Total') : (f.type === 'money' ? fmtMoney(columnTotal(f), sym) : f.type === 'number' ? columnTotal(f) : '')}
                     </td>
                   ))}
