@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate } from '../utils/formatters'
+import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
@@ -17,14 +17,6 @@ const MATCH_BADGE = {
   in_progress: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
 }
 
-const STATUS_COLORS = {
-  sent:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
-  received: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
-  partial:  'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-  invoiced: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
-  draft:    'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-  cancelled:'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
-}
 
 export default function PurchaseOrders() {
   const t = useT()
@@ -64,7 +56,7 @@ export default function PurchaseOrders() {
   return (
     <div>
       <PageHeader
-        title="Purchase Orders"
+        title="Purchase orders"
         subtitle={`${purchaseOrders.length} ${t('total purchase orders')}`}
         action={<Btn onClick={() => navigate('/purchase-orders/new')}><Plus size={15} /> New PO</Btn>}
       />
@@ -97,7 +89,7 @@ export default function PurchaseOrders() {
                 <Td className="text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">{fmtDate(po.date)}</Td>
                 <Td className="text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">{po.deliveryDate ? fmtDate(po.deliveryDate) : '—'}</Td>
                 <Td>
-                  <Badge className={STATUS_COLORS[po.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>
+                  <Badge className={statusColor(po.status)}>
                     {po.status.charAt(0).toUpperCase() + po.status.slice(1)}
                   </Badge>
                   {po.status === 'partial' && (() => { const f = docFulfillment(po.items || [], 'receivedQty'); return <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{f.done} / {f.ordered} {t('received')}</p> })()}

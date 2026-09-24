@@ -47,7 +47,7 @@ export default function RecycleBin() {
   return (
     <div>
       <PageHeader
-        title="Recycle Bin"
+        title="Recycle bin"
         subtitle="Records you deleted, kept so a mistake is not final"
         action={recycleBin.length > 0
           ? <Btn variant="secondary" onClick={handleEmpty}><Trash2 size={15} /> {t('Empty bin')}</Btn>
@@ -120,7 +120,7 @@ export default function RecycleBin() {
                         </span>
                       )}
                       <button onClick={() => handlePurge(e)} title={t('Delete for good')}
-                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                        className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10 transition-colors">
                         <Trash2 size={14} />
                       </button>
                     </div>

@@ -67,7 +67,7 @@ function AssetSlot({ kind, label, hint, height = 'h-20' }) {
             </p>
           )}
           {error && (
-            <p className="text-xs text-rose-600 dark:text-rose-400 flex items-start gap-1.5 max-w-xs">
+            <p className="text-xs text-danger-600 dark:text-danger-400 flex items-start gap-1.5 max-w-xs">
               <AlertTriangle size={13} className="flex-shrink-0 mt-0.5" /> {error}
             </p>
           )}
@@ -127,7 +127,7 @@ export default function BrandingPanel() {
       </div>
 
       {error && (
-        <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2">
+        <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2">
           <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}
         </p>
       )}

@@ -1,12 +1,13 @@
 import { useState, useRef } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle, ScanLine, Loader2 } from 'lucide-react'
 import { scanReceipt, applyToForm, currencyWarning, downscaleImage, fileToDataUrl } from '../utils/receiptOcr'
 import { ask } from '../components/Dialogs'
+import { aiServerInvoker } from '../utils/aiServer'
 
 const EXPENSE_CATEGORIES = [
   'Travel & Transport', 'Meals & Entertainment', 'Office Supplies',
@@ -49,6 +50,8 @@ export default function ExpenseClaims() {
       const small = await downscaleImage(await fileToDataUrl(file))
       const res = await scanReceipt(small, {
         apiKey: settings.ai?.apiKey || '',
+        // Through the company's server when that is switched on — no key here.
+        serverInvoke: aiServerInvoker(settings),
         model: settings.ai?.model || 'claude-haiku-4-5',
         todayISO: today(),
         currency: settings.company.currency,
@@ -106,13 +109,12 @@ export default function ExpenseClaims() {
     setForm(emptyForm())
   }
 
-  const STATUS_CLR   = { pending: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300', approved: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300', paid: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' }
   const STATUS_ICONS = { pending: <Clock size={10} />, approved: <AlertCircle size={10} />, paid: <CheckCircle size={10} /> }
 
   return (
     <div>
       <PageHeader
-        title="Expense Claims"
+        title="Expense claims"
         subtitle="Employee expense reimbursements — submit, approve, and pay"
         action={<Btn onClick={openModal}><Plus size={15} /> {t('New Claim')}</Btn>}
       />
@@ -153,7 +155,7 @@ export default function ExpenseClaims() {
                 </Td>
                 <Td right className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{fmtMoney(claim.amount, sym)}</Td>
                 <Td>
-                  <Badge className={`${STATUS_CLR[claim.status]} inline-flex items-center gap-1`}>
+                  <Badge className={`${statusColor(claim.status)} inline-flex items-center gap-1`}>
                     {STATUS_ICONS[claim.status]} {claim.status}
                   </Badge>
                 </Td>
@@ -207,13 +209,13 @@ export default function ExpenseClaims() {
             </div>
             {scanNote && (
               <p className={`text-xs mt-2 ${
-                scanNote.tone === 'bad' ? 'text-rose-600 dark:text-rose-400'
+                scanNote.tone === 'bad' ? 'text-danger-600 dark:text-danger-400'
                 : scanNote.tone === 'warn' ? 'text-warning-700 dark:text-warning-300'
                 : 'text-success-700 dark:text-success-400'}`}>
                 {scanNote.text}
               </p>
             )}
-            {!settings.ai?.apiKey && (
+            {!settings.ai?.apiKey && !aiServerInvoker(settings) && (
               <p className="text-xs mt-2 text-slate-500 dark:text-slate-400">
                 {t('Needs a Claude API key — add one in Settings → AI Assistant.')}
               </p>

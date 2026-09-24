@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CreditCard, Home, XCircle, Landmark, ListOrdered, Info } from 'lucide-react'
@@ -70,7 +70,6 @@ export default function Leases() {
     setPayModal(null)
   }
 
-  const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', terminated: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400', expired: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300' }
 
   const leaseStatus = (lease) => {
     if (lease.status === 'terminated') return 'terminated'
@@ -81,7 +80,7 @@ export default function Leases() {
   return (
     <div>
       <PageHeader
-        title="Leases & Rent"
+        title="Leases & rent"
         subtitle="Track operating leases, office rent, and other recurring rental obligations"
         action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Lease')}</Btn>}
       />
@@ -131,7 +130,7 @@ export default function Leases() {
                   <Td right className="font-medium text-slate-700 dark:text-slate-200">{fmtMoney(lease.monthlyRent, sym)}</Td>
                   <Td right className="text-slate-700 dark:text-slate-200">{fmtMoney(totalPaid, sym)}</Td>
                   <Td className="text-slate-500 dark:text-slate-400 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
-                  <Td><Badge className={STATUS_CLR[status] || 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{status}</Badge></Td>
+                  <Td><Badge className={statusColor(status)}>{t(status)}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="lease" entityId={lease.id} />

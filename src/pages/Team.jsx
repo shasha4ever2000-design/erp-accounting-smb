@@ -25,7 +25,7 @@ export default function Team() {
   if (!manager) {
     return (
       <div>
-        <PageHeader title="Team & Roles" />
+        <PageHeader title="Team & roles" />
         <Card className="p-10 text-center">
           <ShieldAlert size={32} className="mx-auto mb-3 text-warning-700 dark:text-warning-400" />
           <p className="text-slate-600 dark:text-slate-300 font-medium">{t('Only Owners and Admins can manage the team.')}</p>
@@ -37,7 +37,7 @@ export default function Team() {
 
   return (
     <div>
-      <PageHeader title="Team & Roles" subtitle={`${users.length} ${t('users on this device')}`} />
+      <PageHeader title="Team & roles" subtitle={`${users.length} ${t('users on this device')}`} />
 
       <Card className="overflow-hidden mb-5">
         <table className="w-full text-sm">

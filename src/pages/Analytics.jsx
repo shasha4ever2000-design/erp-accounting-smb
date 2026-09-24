@@ -58,7 +58,7 @@ export default function Analytics() {
 
   return (
     <div>
-      <PageHeader title="Business Analytics" subtitle="Live insights across your company's finances" />
+      <PageHeader title="Business analytics" subtitle="Live insights across your company's finances" />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
         <StatCard label="Revenue" value={fmtMoney(totalRevenue, sym)} color="green" icon={<TrendingUp size={18} />} />

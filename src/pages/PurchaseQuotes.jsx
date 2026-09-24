@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate } from '../utils/formatters'
+import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, Modal, Input, Select } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
@@ -10,11 +10,6 @@ import { Plus, Trash2, FileQuestion, ArrowRight, Scale, AlertTriangle } from 'lu
 import { todayISO } from '../utils/localDate'
 import { ask } from '../components/Dialogs'
 
-const STATUS_COLORS = {
-  open:    'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
-  partial: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-  ordered: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
-}
 
 const today = () => todayISO()
 const emptyLine = () => ({ id: `l${Math.random().toString(16).slice(2)}`, description: '', quantity: 1, unitPrice: 0, taxRate: 0 })
@@ -116,7 +111,7 @@ export default function PurchaseQuotes() {
   return (
     <div>
       <PageHeader
-        title="Purchase Quotes"
+        title="Purchase quotes"
         subtitle="What suppliers say they will charge, before anything is committed"
         action={
           <>
@@ -184,7 +179,7 @@ export default function PurchaseQuotes() {
                 <Td className="text-slate-700 dark:text-slate-200">{q.supplierName}</Td>
                 <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(q.date)}</Td>
                 <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{q.validUntil ? fmtDate(q.validUntil) : '—'}</Td>
-                <Td><Badge className={STATUS_COLORS[q.status] || STATUS_COLORS.open}>{t(q.status)}</Badge></Td>
+                <Td><Badge className={statusColor(q.status || 'open')}>{t(q.status)}</Badge></Td>
                 <Td className="text-end tabular-nums font-medium text-slate-800 dark:text-slate-100">{fmtMoney(q.total, sym)}</Td>
                 <Td>
                   <div className="flex items-center justify-end gap-1">
@@ -239,7 +234,7 @@ export default function PurchaseQuotes() {
                   )}
                   <button type="button" title={t('Remove')}
                     onClick={() => setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}
-                    className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
+                    className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10">×</button>
                 </div>
               ))}
             </div>
@@ -256,7 +251,7 @@ export default function PurchaseQuotes() {
           </div>
 
           {error && (
-            <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2">
+            <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2">
               <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}
             </p>
           )}

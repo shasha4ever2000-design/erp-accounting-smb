@@ -104,7 +104,7 @@ export default function EmployeeAdvances() {
   return (
     <div>
       <PageHeader
-        title={t('Employee Advances')}
+        title={t('Employee advances')}
         subtitle={t('Salary advances and staff loans — recovered automatically from payroll')}
         action={<Btn onClick={() => { setForm(emptyForm()); setError(''); setModal(true) }}><Plus size={15} /> {t('Issue advance')}</Btn>}
       />

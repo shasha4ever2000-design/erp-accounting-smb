@@ -168,7 +168,7 @@ export default function Reconciliation() {
 
   return (
     <div>
-      <PageHeader title="Bank Reconciliation" subtitle="Match your ledger to the bank statement and clear transactions" />
+      <PageHeader title="Bank reconciliation" subtitle="Match your ledger to the bank statement and clear transactions" />
 
       <Card className="p-5 mb-6">
         <div className="flex flex-wrap gap-4 items-end">

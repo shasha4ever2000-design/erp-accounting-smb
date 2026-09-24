@@ -105,7 +105,7 @@ export default function Purchases() {
   return (
     <div>
       <PageHeader
-        title={t('Purchase Invoices')}
+        title={t('Purchase invoices')}
         subtitle={`${purchases.length} ${t('purchase invoices')}`}
         action={
           <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function Purchases() {
                       )}
                       {p.status !== 'void' && (
                         <Btn size="sm" variant="ghost" onClick={() => handleVoid(p)} title={t('Void')}>
-                          <Ban size={13} className="text-rose-400" />
+                          <Ban size={13} className="text-danger-400" />
                         </Btn>
                       )}
                     </div>

@@ -16,11 +16,11 @@ import { AT_RISK, FRAGILE, LEVEL_TEXT, REASON_TEXT, fmtBytes } from '../utils/du
 
 const TONE = {
   [AT_RISK]: {
-    box: 'bg-rose-50 dark:bg-rose-950/30 border-rose-200 dark:border-rose-900',
-    title: 'text-rose-800 dark:text-rose-200',
-    body: 'text-rose-700/90 dark:text-rose-300/90',
+    box: 'bg-danger-50 dark:bg-danger-950/30 border-danger-200 dark:border-danger-900',
+    title: 'text-danger-800 dark:text-danger-200',
+    body: 'text-danger-700/90 dark:text-danger-300/90',
     Icon: ShieldAlert,
-    iconClass: 'text-rose-500',
+    iconClass: 'text-danger-500',
   },
   [FRAGILE]: {
     box: 'bg-warning-50 dark:bg-warning-950/30 border-warning-200 dark:border-warning-900',

@@ -71,7 +71,7 @@ export default function Labels() {
   return (
     <div>
       <PageHeader
-        title="Asset & Item Labels"
+        title="Asset & item labels"
         subtitle="Printable tags with a scannable code, so a stock count or asset check is a walk with a phone"
         action={
           <Btn onClick={() => window.print()} disabled={sheet.total === 0}>

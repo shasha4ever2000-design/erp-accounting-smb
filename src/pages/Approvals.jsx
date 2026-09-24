@@ -132,7 +132,7 @@ export default function Approvals() {
                         )}
                         {isMine && (
                           <button onClick={async () => { if (await ask(t('Withdraw this request?'))) withdrawRequest(r.id) }}
-                            title={t('Withdraw')} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 transition-colors">
+                            title={t('Withdraw')} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10 transition-colors">
                             <Undo2 size={14} />
                           </button>
                         )}

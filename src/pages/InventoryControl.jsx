@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate } from '../utils/formatters'
+import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, StatCard, Badge, Select, Input, Table, Tr, Td } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
 import { Boxes, AlertTriangle, PackageX, Layers, ShoppingCart, BarChart3, ScrollText, Wallet } from 'lucide-react'
@@ -80,10 +80,10 @@ export default function InventoryControl() {
   const cardOpening = cardItem ? (cardItem.quantity || 0) - stockMovements.filter((m) => m.itemId === cardItemId).reduce((s, m) => s + (m.qtyChange || 0), 0) : 0
 
   const statusBadge = (st) => ({
-    out:  <Badge className="bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Out of stock')}</Badge>,
-    low:  <Badge className="bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{t('Low')}</Badge>,
-    over: <Badge className="bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300">{t('Overstock')}</Badge>,
-    ok:   <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('OK')}</Badge>,
+    out:  <Badge className={statusColor('out_of_stock')}>{t('Out of stock')}</Badge>,
+    low:  <Badge className={statusColor('low_stock')}>{t('Low')}</Badge>,
+    over: <Badge className={statusColor('overstock')}>{t('Overstock')}</Badge>,
+    ok:   <Badge className={statusColor('in_stock')}>{t('OK')}</Badge>,
   })[st]
 
   const statusExportCols = [
@@ -99,7 +99,7 @@ export default function InventoryControl() {
 
   return (
     <div>
-      <PageHeader title={t('Inventory Control')} subtitle={t('Valuation, stock health, reorder planning and movement history')} />
+      <PageHeader title={t('Inventory control')} subtitle={t('Valuation, stock health, reorder planning and movement history')} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
         <StatCard label={t('Inventory Value')} value={fmtMoney(totalValue, sym)} color="blue" icon={<Wallet size={18} />} sub={`${inventoryItems.length} ${t('items')}`} />

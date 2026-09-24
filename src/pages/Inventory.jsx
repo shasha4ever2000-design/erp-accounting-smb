@@ -113,7 +113,7 @@ export default function Inventory() {
   return (
     <div>
       <PageHeader
-        title={t('Inventory Items')}
+        title={t('Inventory items')}
         subtitle={`${inventoryItems.length} ${t('items')} • ${fmtMoney(totalValue, sym)} ${t('total value')}`}
         action={
           <div className="flex items-center gap-2">
@@ -293,7 +293,7 @@ export default function Inventory() {
                       onChange={(e) => setField('components', form.components.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))} />
                     <button type="button" title={t('Remove')}
                       onClick={() => setField('components', form.components.filter((_, i) => i !== idx))}
-                      className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
+                      className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10">×</button>
                   </div>
                 ))}
                 <Btn size="sm" variant="secondary" onClick={() => setField('components', [...(form.components || []), { itemId: '', quantity: 1 }])}>

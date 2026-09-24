@@ -46,7 +46,7 @@ export default function DebitNotes() {
   return (
     <div>
       <PageHeader
-        title="Debit Notes"
+        title="Debit notes"
         subtitle="Purchase returns and debit adjustments to suppliers"
         action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Debit Note')}</Btn>}
       />

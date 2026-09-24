@@ -125,7 +125,7 @@ export default function CashFlow() {
   return (
     <div>
       <PageHeader
-        title={t('Cash Flow')}
+        title={t('Cash flow')}
         subtitle={t('Cash position, internal transfers and money movements')}
         action={<Btn onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer Funds')}</Btn>}
       />

@@ -69,7 +69,7 @@ export default function StockAdjustments() {
   return (
     <div>
       <PageHeader
-        title="Stock Adjustments"
+        title="Stock adjustments"
         subtitle="Record inventory increases, decreases, and write-offs — approved by a second manager"
         action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Adjustment')}</Btn>}
       />

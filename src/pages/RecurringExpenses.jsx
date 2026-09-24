@@ -101,7 +101,7 @@ export default function RecurringExpenses() {
   return (
     <div>
       <PageHeader
-        title="Recurring Expenses"
+        title="Recurring expenses"
         subtitle="Rent, utilities and subscriptions — posted automatically as supplier bills"
         action={
           <div className="flex gap-2">

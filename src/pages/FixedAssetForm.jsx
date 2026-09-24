@@ -49,7 +49,7 @@ export default function FixedAssetForm() {
 
   return (
     <div>
-      <PageHeader title="Add Fixed Asset" subtitle="Record a new long-term asset in the asset register" />
+      <PageHeader title="Add fixed asset" subtitle="Record a new long-term asset in the asset register" />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">

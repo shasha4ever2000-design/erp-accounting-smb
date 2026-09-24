@@ -107,7 +107,7 @@ export default function Budgets() {
   return (
     <div>
       <PageHeader
-        title="Budgets vs Actuals"
+        title="Budgets vs actuals"
         subtitle="Plan revenue & expenses, then track performance against the live ledger"
         action={
           <div className="flex gap-2 items-center">

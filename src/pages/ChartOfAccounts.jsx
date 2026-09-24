@@ -169,7 +169,7 @@ export default function ChartOfAccounts() {
   return (
     <div>
       <PageHeader
-        title="Chart of Accounts"
+        title="Chart of accounts"
         subtitle="Your accounting structure, grouped the way your statements read"
         action={
           <>
@@ -249,7 +249,7 @@ export default function ChartOfAccounts() {
                           <Pencil size={13} />
                         </button>
                         <button onClick={() => deleteGroup(g)} title={t('Delete group')}
-                          className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                          className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10">
                           <Trash2 size={13} />
                         </button>
                       </div>
@@ -286,7 +286,7 @@ export default function ChartOfAccounts() {
                         <Pencil size={13} />
                       </button>
                       {!a.isSystem && (
-                        <button onClick={() => handleDelete(a)} className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                        <button onClick={() => handleDelete(a)} className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10">
                           <Trash2 size={13} />
                         </button>
                       )}
@@ -387,7 +387,7 @@ export default function ChartOfAccounts() {
             </label>
           )}
           {gError && (
-            <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2">
+            <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2">
               <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {gError}
             </p>
           )}

@@ -49,7 +49,7 @@ export default function Commissions() {
   return (
     <div>
       <PageHeader
-        title={t('Sales Commissions')}
+        title={t('Sales commissions')}
         subtitle={t('Attribute invoices to reps and track what they have earned')}
         action={<Btn onClick={openNew}><Plus size={15} /> {t('New Sales Rep')}</Btn>}
       />

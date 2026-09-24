@@ -124,7 +124,7 @@ export default function Advances() {
   return (
     <div>
       <PageHeader
-        title={t('Customer Advances')}
+        title={t('Customer advances')}
         subtitle={t('Deposits and money on account — held as a liability until you invoice against them')}
         action={<Btn onClick={() => { setForm(emptyForm()); setError(''); setModal(true) }}><Plus size={15} /> {t('Receive advance')}</Btn>}
       />

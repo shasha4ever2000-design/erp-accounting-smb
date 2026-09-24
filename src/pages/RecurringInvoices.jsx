@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, RefreshCw, Pause, Play, Repeat, X } from 'lucide-react'
@@ -85,7 +85,7 @@ export default function RecurringInvoices() {
   return (
     <div>
       <PageHeader
-        title="Recurring & Subscription Invoices"
+        title="Recurring & subscription invoices"
         subtitle={`${activeCount} ${t('active')} · ${fmtMoney(mrr, sym)} ${t('monthly recurring')}`}
         action={
           <div className="flex gap-2">
@@ -111,11 +111,7 @@ export default function RecurringInvoices() {
                 <Td className="text-slate-500 dark:text-slate-400">{r.status === 'active' ? fmtDate(r.nextDate) : '—'}</Td>
                 <Td><span className="text-slate-600 dark:text-slate-300">{r.generatedCount || 0}×</span></Td>
                 <Td>
-                  <Badge className={
-                    r.status === 'active' ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300'
-                    : r.status === 'paused' ? 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300'
-                    : 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'
-                  }>{r.status}</Badge>
+                  <Badge className={statusColor(r.status)}>{t(r.status)}</Badge>
                 </Td>
                 <Td right>
                   <div className="flex justify-end gap-1">

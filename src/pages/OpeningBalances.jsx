@@ -120,7 +120,7 @@ export default function OpeningBalances() {
               <Td><Input type="date" value={row.dueDate} onChange={(e) => setDoc(setRows, i, 'dueDate', e.target.value)} /></Td>
               <Td right><Input type="number" min="0" step="0.01" value={row.amount} onChange={(e) => setDoc(setRows, i, 'amount', e.target.value)} className="w-32" /></Td>
               <Td>
-                <button onClick={() => delDoc(setRows, i)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                <button onClick={() => delDoc(setRows, i)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10">
                   <Trash2 size={14} />
                 </button>
               </Td>
@@ -135,7 +135,7 @@ export default function OpeningBalances() {
   return (
     <div>
       <PageHeader
-        title="Opening Balances"
+        title="Opening balances"
         subtitle="What your business was carrying on the day it moved onto this system"
         action={posted
           ? <Btn variant="secondary" onClick={handleReverse}><RotateCcw size={15} /> {t('Undo')}</Btn>
@@ -195,8 +195,8 @@ export default function OpeningBalances() {
       </Card>
 
       {(errors.length > 0 || dateWarnings.length > 0) && !posted && (
-        <Card className="p-4 mb-6 bg-rose-50/50 dark:bg-rose-500/[0.07] ring-1 ring-inset ring-rose-500/20">
-          <ul className="text-sm text-rose-700 dark:text-rose-300 space-y-1">
+        <Card className="p-4 mb-6 bg-danger-50/50 dark:bg-danger-500/[0.07] ring-1 ring-inset ring-danger-500/20">
+          <ul className="text-sm text-danger-700 dark:text-danger-300 space-y-1">
             {errors.map((e, i) => <li key={`e${i}`}>• {e}</li>)}
             {dateWarnings.map((w, i) => <li key={`w${i}`} className="text-warning-700 dark:text-warning-300">• {w}</li>)}
           </ul>
@@ -275,7 +275,7 @@ export default function OpeningBalances() {
                       <Td right><Input type="number" min="0" step="0.01" value={row.unitCost || ''} onChange={(e) => setDoc(setItemRows, i, 'unitCost', e.target.value)} className="w-32" /></Td>
                       <Td right className="tabular-nums">{fmtMoney((Number(row.quantity) || 0) * (Number(row.unitCost) || 0), sym)}</Td>
                       <Td>
-                        <button onClick={() => delDoc(setItemRows, i)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">
+                        <button onClick={() => delDoc(setItemRows, i)} className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10">
                           <Trash2 size={14} />
                         </button>
                       </Td>

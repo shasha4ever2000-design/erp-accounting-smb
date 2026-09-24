@@ -46,7 +46,7 @@ export default function CreditNotes() {
   return (
     <div>
       <PageHeader
-        title="Credit Notes"
+        title="Credit notes"
         subtitle="Sales returns and credit adjustments to customers"
         action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Credit Note')}</Btn>}
       />

@@ -1,7 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate } from '../utils/formatters'
+import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import Scanner from '../components/Scanner'
 import { resolveScan } from '../utils/scanning'
@@ -130,7 +130,7 @@ export default function StockCounts() {
     return (
       <div>
         <PageHeader
-          title="Stock Counts"
+          title="Stock counts"
           subtitle="Make the books agree with the shelves"
           action={
             <>
@@ -174,13 +174,11 @@ export default function StockCounts() {
                     <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(c.date)}</Td>
                     <Td className="text-slate-500 dark:text-slate-400">{wh?.name || t('All warehouses')}</Td>
                     <Td>
-                      <Badge className={c.status === 'posted'
-                        ? 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'
-                        : 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300'}>
+                      <Badge className={statusColor(c.status === 'posted' ? 'posted' : 'counting')}>
                         {c.status === 'posted' ? t('posted') : `${s.counted}/${s.total}`}
                       </Badge>
                     </Td>
-                    <Td className={`text-end tabular-nums ${s.netValue < 0 ? 'text-rose-600 dark:text-rose-400' : s.netValue > 0 ? 'text-success-700 dark:text-success-400' : 'text-slate-500'}`}>
+                    <Td className={`text-end tabular-nums ${s.netValue < 0 ? 'text-danger-600 dark:text-danger-400' : s.netValue > 0 ? 'text-success-700 dark:text-success-400' : 'text-slate-500'}`}>
                       {s.netValue ? fmtMoney(s.netValue, sym) : '—'}
                     </Td>
                     <Td>
@@ -229,7 +227,7 @@ export default function StockCounts() {
   return (
     <div>
       <PageHeader
-        title={`${t('Stock Count')} ${count.number}`}
+        title={`${t('Stock count')} ${count.number}`}
         subtitle={posted ? t('Posted — this is a record of what was found') : t('Scan or type each item you find')}
         action={
           <>
@@ -253,7 +251,7 @@ export default function StockCounts() {
             <p className={`text-sm mt-2 font-medium ${
               feedback.tone === 'good' ? 'text-success-700 dark:text-success-400'
               : feedback.tone === 'warn' ? 'text-warning-700 dark:text-warning-400'
-              : 'text-rose-600 dark:text-rose-400'}`}>
+              : 'text-danger-600 dark:text-danger-400'}`}>
               {feedback.text}
             </p>
           )}
@@ -273,9 +271,9 @@ export default function StockCounts() {
       )}
 
       {postError && (
-        <Card className="p-3.5 mb-6 bg-rose-50/60 dark:bg-rose-500/[0.08] ring-1 ring-inset ring-rose-500/20 flex items-start gap-3">
-          <AlertTriangle size={16} className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-rose-800 dark:text-rose-200">{postError}</p>
+        <Card className="p-3.5 mb-6 bg-danger-50/60 dark:bg-danger-500/[0.08] ring-1 ring-inset ring-danger-500/20 flex items-start gap-3">
+          <AlertTriangle size={16} className="text-danger-600 dark:text-danger-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-danger-800 dark:text-danger-200">{postError}</p>
         </Card>
       )}
 
@@ -307,7 +305,7 @@ export default function StockCounts() {
                       className="w-24 border rounded px-2 py-1 text-sm text-end tabular-nums bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
                   )}
                 </Td>
-                <Td className={`text-end tabular-nums font-medium ${v == null ? 'text-slate-500 dark:text-slate-400' : v === 0 ? 'text-slate-500' : v > 0 ? 'text-success-700 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                <Td className={`text-end tabular-nums font-medium ${v == null ? 'text-slate-500 dark:text-slate-400' : v === 0 ? 'text-slate-500' : v > 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                   {v == null ? '—' : v > 0 ? `+${v}` : v}
                 </Td>
                 <Td className="text-end tabular-nums text-slate-500 dark:text-slate-400">

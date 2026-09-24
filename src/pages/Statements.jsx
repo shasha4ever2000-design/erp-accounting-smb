@@ -80,7 +80,7 @@ export default function Statements() {
     <div>
       <div className="no-print">
         <PageHeader
-          title="Statements of Account"
+          title="Statements of account"
           subtitle="Printable customer & supplier account statements"
           action={entity && (
             <div className="flex flex-wrap items-center gap-2">
@@ -186,7 +186,7 @@ export default function Statements() {
                     <td className="py-2 text-end tabular-nums text-slate-600 dark:text-slate-300">{fmtMoney(r.total, sym)}</td>
                     <td className="py-2 text-end tabular-nums text-slate-500 dark:text-slate-400">{r.paid ? fmtMoney(r.paid, sym) : '—'}</td>
                     <td className="py-2 text-end tabular-nums font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(r.outstanding, sym)}</td>
-                    <td className={`py-2 text-end tabular-nums ${r.daysOverdue > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
+                    <td className={`py-2 text-end tabular-nums ${r.daysOverdue > 0 ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
                       {r.daysOverdue > 0 ? t('{n} days').replace('{n}', r.daysOverdue) : t('not due')}
                     </td>
                   </tr>
@@ -257,7 +257,7 @@ export default function Statements() {
                   <tbody>
                     <tr className="border-t border-slate-100 dark:border-surface-750">
                       {aged.cells.map((v, i) => (
-                        <td key={i} className={`text-end py-2 tabular-nums ${i > 1 && v > 0 ? 'text-rose-600 dark:text-rose-400 font-medium' : 'text-slate-700 dark:text-slate-200'}`}>
+                        <td key={i} className={`text-end py-2 tabular-nums ${i > 1 && v > 0 ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-slate-700 dark:text-slate-200'}`}>
                           {v ? fmtMoney(v, sym) : '—'}
                         </td>
                       ))}
