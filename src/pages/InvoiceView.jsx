@@ -16,7 +16,7 @@ import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import { buildEtaInvoice, validateEtaInvoice, etaFilename } from '../utils/etaEinvoice'
 import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, FileJson } from 'lucide-react'
-import { ask } from '../components/Dialogs'
+import { ask, askText } from '../components/Dialogs'
 
 export default function InvoiceView() {
   const { id } = useParams()
@@ -118,8 +118,8 @@ export default function InvoiceView() {
   const grossSubtotal = (invoice.items || []).reduce((s, l) => s + (Number(l.quantity) || 0) * (Number(l.unitPrice) || 0), 0)
   const invDiscount = Math.round((grossSubtotal - (invoice.subtotal || 0)) * 100) / 100
   const canReturn = invoice.status !== 'void' && (invoice.items || []).some((l) => lineRemaining(l, 'returnedQty') > 1e-6)
-  const doReturn = (selections) => {
-    const reason = window.prompt(t('Reason for the return? (a credit note will be raised and stock restocked)')) || ''
+  const doReturn = async (selections) => {
+    const reason = await askText(t('Reason for the return? (a credit note will be raised and stock restocked)')) || ''
     try { createSalesReturn(invoice.id, selections, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setReturnOpen(false)
   }
@@ -134,8 +134,8 @@ export default function InvoiceView() {
     setPayForm({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
   }
 
-  const handleVoid = () => {
-    const reason = window.prompt(t('Reason for voiding this invoice? (posts reversing entries — the invoice is kept for the audit trail)'))
+  const handleVoid = async () => {
+    const reason = await askText(t('Reason for voiding this invoice? (posts reversing entries — the invoice is kept for the audit trail)'))
     if (reason === null) return
     try { voidInvoice(invoice.id, { reason }) }
     catch (e) { if (alertIfLocked(e, t)) return; throw e }

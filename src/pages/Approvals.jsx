@@ -6,7 +6,7 @@ import { fmtMoney, fmtDate, tone } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import { canApprove, describeRequest, APPROVAL_KINDS } from '../utils/approvals'
 import { ShieldCheck, Check, X, Clock, Undo2, FileText, BookOpen } from 'lucide-react'
-import { ask } from '../components/Dialogs'
+import { ask, askText } from '../components/Dialogs'
 
 const KIND_ICON = { purchase: FileText, journal: BookOpen, payment: FileText }
 
@@ -49,7 +49,7 @@ export default function Approvals() {
         return alert(t('Could not approve') + ': ' + String(e.message || e).replace(/^APPROVAL_\w+:/, ''))
       }
     } else {
-      const reason = prompt(t('Reason for rejection (optional):')) ?? ''
+      const reason = await askText(t('Reason for rejection (optional):')) ?? ''
       try { rejectRequest(req.id, reason) } catch (e) { return alert(String(e.message || e)) }
     }
     setDetail(null)

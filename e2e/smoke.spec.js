@@ -54,8 +54,10 @@ test('create, pay and void an invoice', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Record Payment' })).toHaveCount(0)
   await expect(page.getByText('Amount Paid')).toBeVisible()
 
-  page.once('dialog', (d) => d.accept('Entered twice'))
   await page.getByRole('button', { name: 'Void' }).click()
+  const why = page.getByRole('alertdialog')
+  await why.getByRole('textbox').fill('Entered twice')
+  await why.getByRole('button', { name: 'Void' }).click()
   // Voided: it can't be voided (or returned) again.
   await expect(page.getByRole('button', { name: 'Void' })).toHaveCount(0)
 

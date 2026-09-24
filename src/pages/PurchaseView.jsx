@@ -12,6 +12,7 @@ import { documentDue, notesAgainst } from '../utils/partyBalance'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, BookOpen } from 'lucide-react'
+import { askText } from '../components/Dialogs'
 
 // A supplier bill is a document you received rather than one you issue, so this
 // is a working view rather than a printable customer-facing one: what was
@@ -82,14 +83,14 @@ export default function PurchaseView() {
       alert(t('This payment is over the approval threshold and has been sent for approval. Nothing has left the bank yet.'))
   }
 
-  const doReturn = (selections) => {
-    const reason = window.prompt(t('Reason for the return? (a debit note will be raised and stock removed)')) || ''
+  const doReturn = async (selections) => {
+    const reason = await askText(t('Reason for the return? (a debit note will be raised and stock removed)')) || ''
     try { createPurchaseReturn(purchase.id, selections, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setReturnOpen(false)
   }
 
-  const handleVoid = () => {
-    const reason = window.prompt(t('Reason for voiding bill {n}? (posts reversing entries — the bill is kept for the audit trail)').replace('{n}', purchase.number))
+  const handleVoid = async () => {
+    const reason = await askText(t('Reason for voiding bill {n}? (posts reversing entries — the bill is kept for the audit trail)').replace('{n}', purchase.number))
     if (reason === null) return
     try { voidPurchase(purchase.id, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
   }

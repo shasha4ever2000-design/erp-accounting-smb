@@ -8,7 +8,7 @@
 // mounted, so every existing alert() call becomes one of these without being
 // touched. `ask(message)` returns a Promise<boolean> — confirm() is
 // synchronous and cannot be replaced in place, so callers `await ask(...)`.
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { tr, useT } from '../i18n'
 import { Btn } from './UI'
@@ -40,6 +40,20 @@ export function ask(message, { danger, confirmLabel } = {}) {
   }))
 }
 
+/**
+ * Ask for a line of text (a reason, a note). Resolves the text — possibly
+ * empty — or null when cancelled, exactly like window.prompt did.
+ */
+export function askText(message, { defaultValue = '', danger, confirmLabel } = {}) {
+  const text = tr(String(message ?? ''))
+  if (!mounted) return Promise.resolve(typeof window !== 'undefined' && window.prompt ? window.prompt(text, defaultValue) : null)
+  return new Promise((resolve) => useDialogs.getState().push({
+    kind: 'text', text, resolve, defaultValue,
+    danger: danger ?? (DANGER.test(String(message ?? '').trim()) || /^reason for voiding/i.test(String(message ?? '').trim())),
+    confirmLabel: confirmLabel || (/^reason for voiding/i.test(String(message ?? '')) ? 'Void' : 'OK'),
+  }))
+}
+
 /** Show a message. Returns a Promise that resolves when it is dismissed. */
 export function notify(message) {
   const text = tr(String(message ?? ''))
@@ -54,6 +68,9 @@ export function DialogHost() {
   const t = useT()
   const current = useDialogs((s) => s.queue[0])
   const okRef = useRef(null)
+  const inputRef = useRef(null)
+  const [value, setValue] = useState('')
+  useEffect(() => { if (current?.kind === 'text') setValue(current.defaultValue || '') }, [current])
 
   useEffect(() => {
     mounted = true
@@ -64,24 +81,37 @@ export function DialogHost() {
   }, [])
 
   // Focus the confirming button so Enter answers and Escape cancels.
-  useEffect(() => { if (current) okRef.current?.querySelector('button:last-of-type')?.focus() }, [current])
+  useEffect(() => {
+    if (!current) return
+    if (current.kind === 'text') inputRef.current?.focus()
+    else okRef.current?.querySelector('button:last-of-type')?.focus()
+  }, [current])
 
   if (!current) return null
-  const close = (value) => { useDialogs.getState().shift(); current.resolve(value) }
-  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(current.kind === 'ask' ? false : undefined) } }
+  const close = (result) => { useDialogs.getState().shift(); current.resolve(result) }
+  const cancelValue = current.kind === 'ask' ? false : current.kind === 'text' ? null : undefined
+  const confirmValue = current.kind === 'ask' ? true : current.kind === 'text' ? value : undefined
+  const onKey = (e) => { if (e.key === 'Escape') { e.preventDefault(); close(cancelValue) } }
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onKeyDown={onKey}>
       <div className="absolute inset-0 bg-surface-950/55 backdrop-blur-[3px] animate-fade-in"
-        onClick={() => close(current.kind === 'ask' ? false : undefined)} />
-      <div role={current.kind === 'ask' ? 'alertdialog' : 'dialog'} aria-modal="true" aria-describedby="erp-dialog-text"
+        onClick={() => close(cancelValue)} />
+      <div role={current.kind === 'notify' ? 'dialog' : 'alertdialog'} aria-modal="true" aria-describedby="erp-dialog-text"
         className="relative bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 w-full max-w-md animate-scale-in overflow-hidden">
         <p id="erp-dialog-text" className="px-6 pt-6 pb-5 text-sm leading-relaxed text-slate-700 dark:text-slate-200 whitespace-pre-line">{current.text}</p>
+        {current.kind === 'text' && (
+          <div className="px-6 pb-5 -mt-2">
+            <input ref={inputRef} value={value} onChange={(e) => setValue(e.target.value)} aria-labelledby="erp-dialog-text"
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); close(value) } }}
+              className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300 dark:border-surface-600 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15" />
+          </div>
+        )}
         <div ref={okRef} className="flex justify-end gap-2 px-6 py-4 bg-slate-50 dark:bg-surface-900/40 border-t border-slate-100 dark:border-surface-750">
-          {current.kind === 'ask' && <Btn variant="secondary" onClick={() => close(false)}>{t('Cancel')}</Btn>}
-          <Btn variant={current.kind === 'ask' && current.danger ? 'danger' : 'primary'}
-            onClick={() => close(current.kind === 'ask' ? true : undefined)}>
-            {current.kind === 'ask' ? t(current.confirmLabel || 'Confirm') : t('OK')}
+          {current.kind !== 'notify' && <Btn variant="secondary" onClick={() => close(cancelValue)}>{t('Cancel')}</Btn>}
+          <Btn variant={current.kind !== 'notify' && current.danger ? 'danger' : 'primary'}
+            onClick={() => close(confirmValue)}>
+            {current.kind === 'notify' ? t('OK') : t(current.confirmLabel || 'Confirm')}
           </Btn>
         </div>
       </div>

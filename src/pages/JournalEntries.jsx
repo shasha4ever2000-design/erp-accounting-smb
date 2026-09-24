@@ -8,6 +8,7 @@ import AttachmentButton from '../components/Attachments'
 import { Plus, Ban, Eye, Pencil, Search, Trash2 } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 import { narrate } from '../utils/jeNarration'
+import { askText } from '../components/Dialogs'
 
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
 const blankForm = () => ({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
@@ -121,11 +122,11 @@ export default function JournalEntries() {
   }
 
   // Entries are never deleted — they are voided by posting a reversal (immutable ledger).
-  const handleVoid = (je) => {
+  const handleVoid = async (je) => {
     if (je.type !== 'manual') return alert(t('Auto-generated entries are voided from their source document.'))
     if (je.reversedBy) return alert(t('This entry has already been voided.'))
     if (je.reverses) return alert(t('This is a reversal entry and cannot be voided.'))
-    const reason = window.prompt(t('Reason for voiding {n}? A reversing entry will be posted.').replace('{n}', je.number))
+    const reason = await askText(t('Reason for voiding {n}? A reversing entry will be posted.').replace('{n}', je.number))
     if (reason === null) return
     try { voidJournalEntry(je.id, { reason }) }
     catch (e) { if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.')); throw e }

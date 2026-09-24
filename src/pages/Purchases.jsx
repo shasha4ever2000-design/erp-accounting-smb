@@ -14,6 +14,7 @@ import { today } from '../utils/formatters'
 import { todayISO } from '../utils/localDate'
 import { shortcutHint } from '../components/Shortcuts'
 import { documentDue } from '../utils/partyBalance'
+import { askText } from '../components/Dialogs'
 
 export default function Purchases() {
   const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings, debitNotes, cashAccountOptions } = useStore()
@@ -30,8 +31,8 @@ export default function Purchases() {
   const [returnDoc, setReturnDoc] = useState(null)
 
   const canReturn = (p) => p.status !== 'void' && (p.items || []).some((l) => lineRemaining(l, 'returnedQty') > 1e-6)
-  const doReturn = (selections) => {
-    const reason = window.prompt(t('Reason for the return? (a debit note will be raised and stock removed)')) || ''
+  const doReturn = async (selections) => {
+    const reason = await askText(t('Reason for the return? (a debit note will be raised and stock removed)')) || ''
     try { createPurchaseReturn(returnDoc.id, selections, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
     setReturnDoc(null)
   }
@@ -76,9 +77,9 @@ export default function Purchases() {
       alert(t('This payment is over the approval threshold and has been sent for approval. Nothing has left the bank yet.'))
   }
 
-  const handleVoid = (p) => {
+  const handleVoid = async (p) => {
     if (p.status === 'void') return
-    const reason = window.prompt(t('Reason for voiding bill {n}? (posts reversing entries — the bill is kept for the audit trail)').replace('{n}', p.number))
+    const reason = await askText(t('Reason for voiding bill {n}? (posts reversing entries — the bill is kept for the audit trail)').replace('{n}', p.number))
     if (reason === null) return
     try { voidPurchase(p.id, { reason }) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
   }

@@ -6,7 +6,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, TrendingUp, TrendingDown, Check, X, ShieldCheck, Clock } from 'lucide-react'
-import { ask } from '../components/Dialogs'
+import { ask, askText } from '../components/Dialogs'
 
 const emptyForm = () => ({
   date: today(), type: 'increase', itemId: '', itemName: '', quantity: '', unitCost: '', reason: '', inventoryAccountId: 'acc-inv',
@@ -55,8 +55,8 @@ export default function StockAdjustments() {
     if (!canApprove(adj)) return alert('Segregation of duties: a different manager must approve this adjustment.')
     if (await ask(`Approve adjustment ${adj.number}? This posts the journal entry and updates stock.`)) approveStockAdjustment(adj.id, me)
   }
-  const handleReject = (adj) => {
-    const reason = prompt('Reason for rejection (optional):') ?? ''
+  const handleReject = async (adj) => {
+    const reason = await askText('Reason for rejection (optional):') ?? ''
     rejectStockAdjustment(adj.id, me, reason)
   }
 
