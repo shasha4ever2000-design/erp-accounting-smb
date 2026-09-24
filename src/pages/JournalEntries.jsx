@@ -190,7 +190,7 @@ export default function JournalEntries() {
                       {je.type === 'manual' && !je.reversedBy && !je.reverses && (
                         <>
                           <Btn size="sm" variant="ghost" onClick={() => openEdit(je)} title={t('Edit')}><Pencil size={13} className="text-brand-600 dark:text-brand-400" /></Btn>
-                          <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-rose-400" /></Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-danger-400" /></Btn>
                         </>
                       )}
                     </div>

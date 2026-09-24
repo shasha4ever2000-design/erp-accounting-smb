@@ -1,7 +1,7 @@
 import { useState, useRef } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle, ScanLine, Loader2 } from 'lucide-react'
@@ -109,7 +109,6 @@ export default function ExpenseClaims() {
     setForm(emptyForm())
   }
 
-  const STATUS_CLR   = { pending: 'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300', approved: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300', paid: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300' }
   const STATUS_ICONS = { pending: <Clock size={10} />, approved: <AlertCircle size={10} />, paid: <CheckCircle size={10} /> }
 
   return (
@@ -156,7 +155,7 @@ export default function ExpenseClaims() {
                 </Td>
                 <Td right className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{fmtMoney(claim.amount, sym)}</Td>
                 <Td>
-                  <Badge className={`${STATUS_CLR[claim.status]} inline-flex items-center gap-1`}>
+                  <Badge className={`${statusColor(claim.status)} inline-flex items-center gap-1`}>
                     {STATUS_ICONS[claim.status]} {claim.status}
                   </Badge>
                 </Td>
@@ -210,7 +209,7 @@ export default function ExpenseClaims() {
             </div>
             {scanNote && (
               <p className={`text-xs mt-2 ${
-                scanNote.tone === 'bad' ? 'text-rose-600 dark:text-rose-400'
+                scanNote.tone === 'bad' ? 'text-danger-600 dark:text-danger-400'
                 : scanNote.tone === 'warn' ? 'text-warning-700 dark:text-warning-300'
                 : 'text-success-700 dark:text-success-400'}`}>
                 {scanNote.text}

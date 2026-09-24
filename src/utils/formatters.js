@@ -58,21 +58,37 @@ export const tone = {
   danger:  'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
 }
 
+// One colour per meaning, for every document and record in the app:
+//   grey   — not started yet, or finished and handed on (draft, invoiced, posted)
+//   blue   — under way (sent, open, received, approved-but-unpaid)
+//   amber  — needs someone (partial, pending, paused)
+//   green  — the good outcome (paid, accepted, active)
+//   red    — a problem (overdue, rejected, void)
+// Screens used to keep their own maps, so "draft" was amber on one list and
+// grey on the next. Every status badge now comes from here.
+const STATUS_TONE = {
+  // not started / finished
+  draft: 'neutral', invoiced: 'muted', ordered: 'muted', posted: 'muted', closed: 'muted',
+  cancelled: 'muted', converted: 'muted', delivered: 'muted', settled: 'muted',
+  inactive: 'muted', disposed: 'muted', terminated: 'muted',
+  // under way
+  sent: 'brand', open: 'brand', received: 'brand', issued: 'brand', approved: 'brand',
+  in_progress: 'brand', counting: 'brand', processed: 'brand',
+  // needs someone
+  partial: 'warning', pending: 'warning', paused: 'warning', awaiting: 'warning', on_hold: 'warning',
+  expired: 'warning', low_stock: 'warning',
+  // good outcome
+  paid: 'success', accepted: 'success', active: 'success', completed: 'success', cleared: 'success',
+  money_in: 'success', won: 'success', in_stock: 'success',
+  // problem
+  overdue: 'danger', rejected: 'danger', bounced: 'danger', money_out: 'danger', lost: 'danger', out_of_stock: 'danger',
+  // other
+  manual: 'accent', overstock: 'accent',
+}
+
 export function statusColor(status) {
-  const map = {
-    draft:    tone.neutral,
-    sent:     tone.brand,
-    partial:  tone.warning,
-    paid:     tone.success,
-    overdue:  tone.danger,
-    received: tone.brand,
-    cancelled: tone.muted,
-    void:     `${tone.danger} line-through`,
-    money_in: tone.success,
-    money_out: tone.danger,
-    manual:   tone.accent,
-  }
-  return map[status] || tone.neutral
+  if (status === 'void') return `${tone.danger} line-through`
+  return tone[STATUS_TONE[status]] || tone.neutral
 }
 
 export function accountTypeLabel(type) {

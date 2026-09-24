@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate } from '../utils/formatters'
+import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
@@ -10,12 +10,6 @@ import { docFulfillment } from '../utils/fulfillment'
 import { Trash2, ClipboardList, ArrowRight, Truck, FileText } from 'lucide-react'
 import { ask } from '../components/Dialogs'
 
-const STATUS_COLORS = {
-  open:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
-  partial:  'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-  invoiced: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
-  cancelled:'bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300',
-}
 
 export default function SalesOrders() {
   const t = useT()
@@ -110,7 +104,7 @@ export default function SalesOrders() {
                   <Td className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(o.date)}</Td>
                   <Td className="text-xs text-slate-500 dark:text-slate-400">{Math.round(shipped.pct || 0)}%</Td>
                   <Td>
-                    <Badge className={STATUS_COLORS[o.status] || STATUS_COLORS.open}>
+                    <Badge className={statusColor(o.status || 'open')}>
                       {Math.round(billed.pct || 0)}% · {t(o.status)}
                     </Badge>
                   </Td>

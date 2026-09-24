@@ -125,7 +125,7 @@ export default function Consolidation() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {[
           { label: 'Group Revenue', value: data.totals.revenue, tone: 'from-success-500 to-success-600' },
-          { label: 'Group Expenses', value: data.totals.expense, tone: 'from-rose-500 to-danger-600' },
+          { label: 'Group Expenses', value: data.totals.expense, tone: 'from-danger-500 to-danger-600' },
           { label: 'Group Net Profit', value: data.totals.net, tone: 'from-brand-500 to-accent-600' },
           { label: 'Group Assets', value: data.totals.assets, tone: 'from-violet-500 to-purple-600' },
         ].map((k) => (

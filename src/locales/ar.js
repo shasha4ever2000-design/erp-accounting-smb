@@ -3153,6 +3153,7 @@ const AR = {
   'Period locked': 'الفترة مقفلة',
   'Locked through {d}.': 'مقفلة حتى {d}.',
   'Lock the period once everything above is done.': 'اقفل الفترة بعد إنجاز كل ما سبق.',
+  'void': 'ملغاة',
 }
 
 export default AR

@@ -108,7 +108,7 @@ export default function DataImport() {
             <span className="inline-flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
               <FileSpreadsheet size={15} className="text-brand-600 dark:text-brand-400" />
               {file.name} · {t('{n} row(s)').replace('{n}', file.rows.length)}
-              <button onClick={reset} className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600"><X size={14} /></button>
+              <button onClick={reset} className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-danger-600"><X size={14} /></button>
             </span>
           )}
           <span className="ms-auto text-sm text-slate-500 dark:text-slate-400">
@@ -132,7 +132,7 @@ export default function DataImport() {
                 {t('Imported {c} new and updated {u}.').replace('{c}', result.created).replace('{u}', result.updated)}
               </p>
               {result.failed.length > 0 && (
-                <ul className="text-sm text-rose-700 dark:text-rose-300 mt-2 space-y-0.5">
+                <ul className="text-sm text-danger-700 dark:text-danger-300 mt-2 space-y-0.5">
                   {result.failed.map((f, i) => <li key={i}>{t('Line')} {f.line}: {f.error}</li>)}
                 </ul>
               )}
@@ -163,7 +163,7 @@ export default function DataImport() {
               {schema.fields.map((f) => (
                 <div key={f.name}>
                   <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-                    {t(f.label)} {f.required && <span className="text-rose-500">*</span>}
+                    {t(f.label)} {f.required && <span className="text-danger-500">*</span>}
                     {f.key && <span className="ms-1.5 text-[10px] uppercase tracking-wider text-brand-600 dark:text-brand-400">{t('match key')}</span>}
                   </label>
                   <Select value={map[f.name] ?? -1} onChange={(e) => setMap((m) => ({ ...m, [f.name]: Number(e.target.value) }))}>
@@ -183,7 +183,7 @@ export default function DataImport() {
                   ['Create', plan.counts.create, 'text-success-700 dark:text-success-400'],
                   ['Update', plan.counts.update, 'text-brand-600 dark:text-brand-400'],
                   ['Unchanged', plan.counts.skip, 'text-slate-500 dark:text-slate-400'],
-                  ['Errors', plan.counts.error, plan.counts.error ? 'text-rose-600 dark:text-rose-400' : 'text-slate-500 dark:text-slate-400'],
+                  ['Errors', plan.counts.error, plan.counts.error ? 'text-danger-600 dark:text-danger-400' : 'text-slate-500 dark:text-slate-400'],
                 ].map(([label, n, cls]) => (
                   <div key={label}>
                     <p className="text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(label)}</p>
@@ -208,7 +208,7 @@ export default function DataImport() {
           {plan.errors.length > 0 && (
             <Card className="overflow-hidden mb-6">
               <div className="p-4 border-b border-slate-100 dark:border-surface-750 flex items-center gap-2">
-                <AlertTriangle size={16} className="text-rose-600 dark:text-rose-400" />
+                <AlertTriangle size={16} className="text-danger-600 dark:text-danger-400" />
                 <h3 className="font-semibold text-slate-800 dark:text-slate-100">
                   {t('{n} row(s) will be skipped').replace('{n}', plan.errors.length)}
                 </h3>
@@ -217,7 +217,7 @@ export default function DataImport() {
                 {plan.errors.slice(0, 50).map((e) => (
                   <Tr key={e.line}>
                     <Td className="tabular-nums">{e.line}</Td>
-                    <Td className="text-rose-700 dark:text-rose-300">{e.errors.join(' · ')}</Td>
+                    <Td className="text-danger-700 dark:text-danger-300">{e.errors.join(' · ')}</Td>
                   </Tr>
                 ))}
               </Table>

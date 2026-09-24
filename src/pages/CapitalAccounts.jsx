@@ -188,11 +188,11 @@ export default function CapitalAccounts() {
           {/* The subledger must equal the control account. If it ever doesn't,
               say so loudly — the balance sheet would look fine regardless. */}
           {!check.ok && (
-            <Card className="p-4 mb-6 bg-rose-50/60 dark:bg-rose-500/[0.08] ring-1 ring-inset ring-rose-500/20 flex items-start gap-3">
-              <AlertTriangle size={18} className="text-rose-600 dark:text-rose-400 flex-shrink-0 mt-0.5" />
+            <Card className="p-4 mb-6 bg-danger-50/60 dark:bg-danger-500/[0.08] ring-1 ring-inset ring-danger-500/20 flex items-start gap-3">
+              <AlertTriangle size={18} className="text-danger-600 dark:text-danger-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-semibold text-rose-800 dark:text-rose-200">{t('These accounts do not add up to the ledger')}</p>
-                <p className="text-rose-700 dark:text-rose-300 mt-0.5">
+                <p className="font-semibold text-danger-800 dark:text-danger-200">{t('These accounts do not add up to the ledger')}</p>
+                <p className="text-danger-700 dark:text-danger-300 mt-0.5">
                   {t('The Capital Accounts control account holds {c}, but the accounts below total {s} — a difference of {d}. Some entry posted to capital without naming an owner.')
                     .replace('{c}', fmtMoney(check.control, sym))
                     .replace('{s}', fmtMoney(check.subledger, sym))
@@ -263,7 +263,7 @@ export default function CapitalAccounts() {
                             <button onClick={() => openEdit(acc)} title={t('Edit')}
                               className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-brand-600 hover:bg-brand-50 dark:hover:bg-brand-500/10"><Pencil size={14} /></button>
                             <button onClick={() => removePartner(acc)} title={t('Delete')}
-                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10"><Trash2 size={14} /></button>
+                              className="p-1 rounded text-slate-500 dark:text-slate-400 hover:text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-500/10"><Trash2 size={14} /></button>
                           </div>
                         </td>
                       </tr>
@@ -328,7 +328,7 @@ export default function CapitalAccounts() {
               checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} />
             <span className="text-slate-700 dark:text-slate-200">{t('Active — include in new entries and profit splits')}</span>
           </label>
-          {error && <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}</p>}
+          {error && <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={savePartner}>{editing ? 'Save Changes' : 'Create'}</Btn>
@@ -359,7 +359,7 @@ export default function CapitalAccounts() {
             <Input label="Date *" type="date" value={move.date} onChange={(e) => setMove((m) => ({ ...m, date: e.target.value }))} />
           </div>
           <Input label="Description (optional)" value={move.description} onChange={(e) => setMove((m) => ({ ...m, description: e.target.value }))} />
-          {moveError && <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {moveError}</p>}
+          {moveError && <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {moveError}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setMoveModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveMove}>{t('Post')}</Btn>
@@ -403,7 +403,7 @@ export default function CapitalAccounts() {
               ))}
             </div>
           )}
-          {allocError && <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {allocError}</p>}
+          {allocError && <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {allocError}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setAllocModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveAlloc}>{t('Post allocation')}</Btn>
@@ -431,7 +431,7 @@ export default function CapitalAccounts() {
                     <Td className="text-slate-500 dark:text-slate-400">{l.number}</Td>
                     <Td><Badge className="bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300">{t(subName(l.subaccountId))}</Badge></Td>
                     <Td className="text-slate-600 dark:text-slate-300">{l.description}</Td>
-                    <Td className={`text-end tabular-nums font-medium ${l.amount < 0 ? 'text-rose-600 dark:text-rose-400' : 'text-slate-800 dark:text-slate-100'}`}>
+                    <Td className={`text-end tabular-nums font-medium ${l.amount < 0 ? 'text-danger-600 dark:text-danger-400' : 'text-slate-800 dark:text-slate-100'}`}>
                       {fmtMoney(l.amount, sym)}
                     </Td>
                   </Tr>

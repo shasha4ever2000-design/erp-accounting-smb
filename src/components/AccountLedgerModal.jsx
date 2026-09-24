@@ -14,7 +14,7 @@ const ACCENT = {
   liability: { text: 'text-warning-700 dark:text-warning-400', dot: 'bg-warning-500',  soft: 'from-warning-500/10' },
   equity:    { text: 'text-violet-600 dark:text-violet-400', dot: 'bg-violet-500',  soft: 'from-violet-500/10' },
   revenue:   { text: 'text-success-700 dark:text-success-400', dot: 'bg-success-500', soft: 'from-success-500/10' },
-  expense:   { text: 'text-rose-600 dark:text-rose-400',     dot: 'bg-rose-500',    soft: 'from-rose-500/10' },
+  expense:   { text: 'text-danger-600 dark:text-danger-400',     dot: 'bg-danger-500',    soft: 'from-danger-500/10' },
 }
 
 const isDebitNormal = (type) => type === 'asset' || type === 'expense'
@@ -198,7 +198,7 @@ export default function AccountLedgerModal({ open, onClose, account, accounts, j
                     </td>
                     <td className="px-2 py-2 text-end font-mono tabular-nums text-slate-600 dark:text-slate-300 align-top">{r.dr > 0 ? fmtMoney(r.dr, sym) : ''}</td>
                     <td className="px-2 py-2 text-end font-mono tabular-nums text-slate-600 dark:text-slate-300 align-top">{r.cr > 0 ? fmtMoney(r.cr, sym) : ''}</td>
-                    <td className={`ps-2 pe-6 py-2 text-end font-mono tabular-nums font-semibold align-top ${r.balance >= 0 ? 'text-slate-800 dark:text-slate-100' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(r.balance, sym)}</td>
+                    <td className={`ps-2 pe-6 py-2 text-end font-mono tabular-nums font-semibold align-top ${r.balance >= 0 ? 'text-slate-800 dark:text-slate-100' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(r.balance, sym)}</td>
                   </tr>
                 ))}
               </tbody>

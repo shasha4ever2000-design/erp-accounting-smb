@@ -137,7 +137,7 @@ export default function Reports() {
     // bug, not a signal.
     const tone = pct === null || pct === 0 ? 'flat' : varianceTone(value - prior, type)
     const cls = tone === 'good' ? 'text-success-700 dark:text-success-400'
-      : tone === 'bad' ? 'text-rose-600 dark:text-rose-400'
+      : tone === 'bad' ? 'text-danger-600 dark:text-danger-400'
       : 'text-slate-500 dark:text-slate-400'
     return (
       <>
@@ -405,15 +405,15 @@ export default function Reports() {
             )}
 
             {/* Expenses */}
-            <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-rose-500" /><h4 className="font-bold text-rose-700 dark:text-rose-400 text-xs uppercase tracking-wider">{showGross ? t('Operating & Other Expenses') : t('Expenses')}</h4></div>
+            <div className="flex items-center gap-2 mb-1 mt-6"><span className="w-1.5 h-1.5 rounded-full bg-danger-500" /><h4 className="font-bold text-danger-700 dark:text-danger-400 text-xs uppercase tracking-wider">{showGross ? t('Operating & Other Expenses') : t('Expenses')}</h4></div>
             {!hasOpex ? <p className="text-slate-500 dark:text-slate-400 text-sm mb-4 ps-3.5">{t('No expenses for this period')}</p> : (
               <div className="mb-2">
                 {priorBalances && <CompareHead label={t('Account')} />}
                 <GroupedRows tree={opexTree} mode="period" type="expense" compare={!!priorBalances} />
                 <TotalRow label={showGross ? t('Total Operating & Other Expenses') : t('Total Expenses')}
                   value={showGross ? totalOpex : totalExpenses} prior={showGross ? priorOpex : priorExpenses} type="expense"
-                  className="mt-1 rounded-lg bg-rose-50/60 dark:bg-rose-500/[0.08] px-3 py-2"
-                  valueClass="text-rose-800 dark:text-rose-300" />
+                  className="mt-1 rounded-lg bg-danger-50/60 dark:bg-danger-500/[0.08] px-3 py-2"
+                  valueClass="text-danger-800 dark:text-danger-300" />
               </div>
             )}
 
@@ -422,7 +422,7 @@ export default function Reports() {
               <span className="text-lg font-black text-slate-900 dark:text-slate-100 tracking-tight">{t('Net')} {netProfit >= 0 ? t('Profit') : t('Loss')}</span>
               <span className="flex items-center gap-4 flex-shrink-0">
                 {priorNet != null && <VarianceCells value={netProfit} prior={priorNet} type="revenue" />}
-                <span className={`w-32 text-end text-2xl font-black tabular-nums tracking-tight ${netProfit >= 0 ? 'text-success-700 dark:text-success-400' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(Math.abs(netProfit), sym)}</span>
+                <span className={`w-32 text-end text-2xl font-black tabular-nums tracking-tight ${netProfit >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(Math.abs(netProfit), sym)}</span>
               </span>
             </div>
           </div>
@@ -495,9 +495,9 @@ export default function Reports() {
               prior={priorBalancesToEnd ? assetTree.totals.prior : null} />
           </div>
           <div>
-            <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-4 ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'bg-success-50/60 dark:bg-success-500/[0.08]' : 'bg-rose-50/60 dark:bg-rose-500/[0.08]'}`}>
-              <span className={`text-sm font-bold uppercase tracking-wide ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-700 dark:text-rose-300'}`}>{t('Liabilities + Equity')}</span>
-              <span className={`text-lg font-black tabular-nums ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-rose-600 dark:text-rose-400'}`}>{fmtMoney(totalLiabs + totalEquityAndProfit, sym)}</span>
+            <div className={`flex items-center justify-between rounded-xl px-4 py-3 mb-4 ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'bg-success-50/60 dark:bg-success-500/[0.08]' : 'bg-danger-50/60 dark:bg-danger-500/[0.08]'}`}>
+              <span className={`text-sm font-bold uppercase tracking-wide ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-danger-700 dark:text-danger-300'}`}>{t('Liabilities + Equity')}</span>
+              <span className={`text-lg font-black tabular-nums ${Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) < 0.01 ? 'text-success-700 dark:text-success-300' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(totalLiabs + totalEquityAndProfit, sym)}</span>
             </div>
             <Section title="Liabilities" tree={liabTree} total={totalLiabs} type="liability" dot="bg-warning-500"
               prior={priorBalancesToEnd ? liabTree.totals.prior : null} />
@@ -506,7 +506,7 @@ export default function Reports() {
               total={totalEquityAndProfit}
               prior={priorBalancesToEnd ? equityTree.totals.prior + priorNetProfit : null} />
             {Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)) > 0.01 && (
-              <p className="text-xs text-rose-500 dark:text-rose-400 mt-1 flex items-center gap-1">⚠ {t('Balance sheet is out of balance by')} {fmtMoney(Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)), sym)}</p>
+              <p className="text-xs text-danger-500 dark:text-danger-400 mt-1 flex items-center gap-1">⚠ {t('Balance sheet is out of balance by')} {fmtMoney(Math.abs(totalAssets - (totalLiabs + totalEquityAndProfit)), sym)}</p>
             )}
           </div>
         </div>

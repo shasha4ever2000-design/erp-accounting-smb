@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useT, tr } from '../i18n'
 import { useStore } from '../store'
-import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Briefcase, TrendingUp, TrendingDown, Clock, ChevronDown, ChevronRight } from 'lucide-react'
@@ -11,12 +11,6 @@ const emptyProject = { name: '', client: '', budget: '', startDate: today(), sta
 const emptyTx      = { type: 'money_out', amount: '', date: today(), accountId: '', bankAccountId: '', description: '' }
 const emptyTime    = { employeeName: '', date: today(), hours: '', rate: '', billable: true, description: '' }
 
-const STATUS_CLR = {
-  active:    'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
-  on_hold:   'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
-  completed: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
-  cancelled: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
-}
 
 export default function Projects() {
   const t = useT()
@@ -120,7 +114,7 @@ export default function Projects() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{p.name}</p>
-                        <Badge className={STATUS_CLR[p.status]}>{p.status.replace('_', ' ')}</Badge>
+                        <Badge className={statusColor(p.status)}>{t(p.status.replace('_', ' '))}</Badge>
                       </div>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{p.number}{p.client ? ` · ${p.client}` : ''}</p>
                     </div>

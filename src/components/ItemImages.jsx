@@ -82,7 +82,7 @@ export default function ItemImages({ itemId }) {
       </div>
 
       {error && (
-        <p className="text-sm text-rose-600 dark:text-rose-400 flex items-start gap-2 mt-2">
+        <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2 mt-2">
           <AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}
         </p>
       )}
@@ -107,7 +107,7 @@ export default function ItemImages({ itemId }) {
                       className="p-0.5 text-white/80 hover:text-warning-300"><Star size={13} /></button>
                   )}
                   <button type="button" onClick={() => remove(img)} title={t('Remove')}
-                    className="p-0.5 text-white/80 hover:text-rose-300"><Trash2 size={13} /></button>
+                    className="p-0.5 text-white/80 hover:text-danger-300"><Trash2 size={13} /></button>
                 </span>
               </div>
             </div>

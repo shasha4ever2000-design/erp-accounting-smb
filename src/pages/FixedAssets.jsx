@@ -3,13 +3,12 @@ import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
 import { todayISO } from '../utils/localDate'
-import { fmtMoney, fmtDate, today } from '../utils/formatters'
+import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Calculator, Trash2, TrendingDown, Package } from 'lucide-react'
 import { ask } from '../components/Dialogs'
 
-const STATUS_CLR = { active: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300', disposed: 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400' }
 
 export default function FixedAssets() {
   const t = useT()
@@ -133,7 +132,7 @@ export default function FixedAssets() {
                 <Td right className="text-warning-700 dark:text-warning-400">{fmtMoney(asset.accumulatedDepreciation, sym)}</Td>
                 <Td right className="font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(asset.currentBookValue, sym)}</Td>
                 <Td className="text-xs text-slate-500 dark:text-slate-400">{asset.depreciationMethod === 'straight_line' ? 'SL' : asset.depreciationMethod || 'SL'}</Td>
-                <Td><Badge className={STATUS_CLR[asset.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{asset.status}</Badge></Td>
+                <Td><Badge className={statusColor(asset.status)}>{t(asset.status)}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="fixedasset" entityId={asset.id} />
