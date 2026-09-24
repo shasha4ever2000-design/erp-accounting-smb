@@ -28,13 +28,14 @@ export default function CreditNotes() {
   }
 
   const subtotal  = parseFloat(form.subtotal)  || 0
-  const taxAmt    = taxEnabled ? subtotal * (taxRate / 100) : (parseFloat(form.taxAmount) || 0)
-  const total     = subtotal + taxAmt
+  const taxAmt    = Math.round((taxEnabled ? subtotal * (taxRate / 100) : (parseFloat(form.taxAmount) || 0)) * 100) / 100
+  const total     = Math.round((subtotal + taxAmt) * 100) / 100
 
   const handleSave = () => {
     if (!form.customerName.trim())  return alert('Customer is required.')
     if (!subtotal || subtotal <= 0) return alert('Enter a valid subtotal amount.')
-    addCreditNote({ ...form, subtotal, taxAmount: taxAmt, total })
+    try { addCreditNote({ ...form, subtotal, taxAmount: taxAmt, total }) }
+    catch (e) { return alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
     setModal(false)
     setForm(emptyForm())
   }
@@ -60,14 +61,14 @@ export default function CreditNotes() {
                 <Td><span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400">{cn.number}</span></Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{cn.customerName}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(cn.date)}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{cn.invoiceRef || '—'}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{cn.invoiceRef || cn.invoiceNumber || '—'}</Td>
                 <Td className="text-gray-600 dark:text-slate-300 text-sm max-w-[200px] truncate">{cn.reason || '—'}</Td>
                 <Td right>
                   <span className="font-semibold text-red-600 dark:text-red-400">({fmtMoney(cn.total, sym)})</span>
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="creditnote" entityId={cn.id} />
-                  <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete ${cn.number}?`)) deleteCreditNote(cn.id) }}>
+                  <Btn size="sm" variant="ghost" onClick={() => { if (!confirm(`Delete ${cn.number}?`)) return; try { deleteCreditNote(cn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>
                 </Td>

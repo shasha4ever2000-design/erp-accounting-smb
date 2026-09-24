@@ -216,6 +216,30 @@ export function reseal(entries, fromIndex) {
 }
 
 /**
+ * Remove entries and repair the chain from the first gap onward.
+ *
+ * Every document delete (an invoice, a bill, a payroll run...) takes its own
+ * journal entries with it. Filtering them out of the list without re-sealing
+ * leaves the next entry pointing at a predecessor that no longer exists, so
+ * the integrity check reports a legitimate delete as tampering. Like
+ * `reseal`, this only works forward of the first removal, so any earlier
+ * alteration stays visible.
+ *
+ * @param {Array} entries
+ * @param {(je) => boolean} shouldRemove
+ */
+export function removeEntries(entries, shouldRemove) {
+  const list = entries || []
+  const first = list.findIndex((je) => shouldRemove(je))
+  if (first < 0) return list
+  const kept = list.filter((je) => !shouldRemove(je))
+  // A ledger that was never sealed stays unsealed; a delete is not the place
+  // to seal it as a side effect.
+  if (!list.some((je) => je?.hash)) return kept
+  return reseal(kept, first)
+}
+
+/**
  * Walk the chain and report what does not add up.
  *
  * An entry with no `hash` at all is *unsealed*, not broken — that is what

@@ -28,13 +28,14 @@ export default function DebitNotes() {
   }
 
   const subtotal = parseFloat(form.subtotal)  || 0
-  const taxAmt   = taxEnabled ? subtotal * (taxRate / 100) : (parseFloat(form.taxAmount) || 0)
-  const total    = subtotal + taxAmt
+  const taxAmt   = Math.round((taxEnabled ? subtotal * (taxRate / 100) : (parseFloat(form.taxAmount) || 0)) * 100) / 100
+  const total    = Math.round((subtotal + taxAmt) * 100) / 100
 
   const handleSave = () => {
     if (!form.supplierName.trim()) return alert('Supplier is required.')
     if (!subtotal || subtotal <= 0) return alert('Enter a valid subtotal amount.')
-    addDebitNote({ ...form, subtotal, taxAmount: taxAmt, total })
+    try { addDebitNote({ ...form, subtotal, taxAmount: taxAmt, total }) }
+    catch (e) { return alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
     setModal(false)
     setForm(emptyForm())
   }
@@ -60,14 +61,14 @@ export default function DebitNotes() {
                 <Td><span className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">{dn.number}</span></Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{dn.supplierName}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(dn.date)}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{dn.purchaseRef || '—'}</Td>
+                <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{dn.purchaseRef || dn.purchaseNumber || '—'}</Td>
                 <Td className="text-gray-600 dark:text-slate-300 text-sm max-w-[200px] truncate">{dn.reason || '—'}</Td>
                 <Td right>
                   <span className="font-semibold text-green-600 dark:text-green-400">{fmtMoney(dn.total, sym)}</span>
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="debitnote" entityId={dn.id} />
-                  <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete ${dn.number}?`)) deleteDebitNote(dn.id) }}>
+                  <Btn size="sm" variant="ghost" onClick={() => { if (!confirm(`Delete ${dn.number}?`)) return; try { deleteDebitNote(dn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>
                 </Td>

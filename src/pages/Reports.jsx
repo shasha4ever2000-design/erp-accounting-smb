@@ -18,6 +18,7 @@ import { narrate } from '../utils/jeNarration'
 import { marginByCustomer, marginByItem, marginSummary } from '../utils/margin'
 import { buildEquityStatement } from '../utils/equityStatement'
 import { BUCKETS as ECL_BUCKETS } from '../utils/ecl'
+import { documentDue } from '../utils/partyBalance'
 
 const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)', group: 'Financial Statements' },
@@ -106,7 +107,6 @@ export default function Reports() {
   )
 
   const balances = useMemo(() => getAllBalances(startDate, endDate), [getAllBalances, startDate, endDate, journalEntries])
-  const allBalances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
   // cumulative balances as at the report end date — the correct basis for a
   // balance sheet (assets, liabilities, equity and retained earnings to date)
   const balancesToEnd = useMemo(() => getAllBalances(undefined, endDate), [getAllBalances, endDate, journalEntries])
@@ -515,8 +515,10 @@ export default function Reports() {
 
   // ─── Trial Balance ─────────────────────────────────────────────
   const TBReport = () => {
+    // "As at" the end date: entries dated after it are not part of this
+    // trial balance (it used to include every entry ever posted).
     const rows = accounts.map((a) => {
-      const b = allBalances[a.id] || { dr: 0, cr: 0 }
+      const b = balancesToEnd[a.id] || { dr: 0, cr: 0 }
       return { ...a, drRaw: b.dr, crRaw: b.cr, netDr: b.dr > b.cr ? b.dr - b.cr : 0, netCr: b.cr > b.dr ? b.cr - b.dr : 0 }
     }).filter((r) => r.drRaw > 0 || r.crRaw > 0)
 
@@ -581,7 +583,16 @@ export default function Reports() {
     const acc = accounts.find((a) => a.id === selectedAcc)
 
     const lines = []
-    let running = 0
+    const sign = ['asset', 'expense'].includes(acc?.type) ? 1 : -1
+    // A balance-sheet account carries its balance into the period; starting
+    // the running total at zero made every GL after the first year wrong.
+    // Income and expense accounts start each period from nothing.
+    const opening = ['revenue', 'expense'].includes(acc?.type) ? 0 : journalEntries
+      .filter((je) => je.date < startDate)
+      .reduce((s, je) => s + je.lines.filter((l) => l.accountId === selectedAcc)
+        .reduce((t2, l) => t2 + sign * ((l.debit || 0) - (l.credit || 0)), 0), 0)
+    let running = Math.round(opening * 100) / 100
+    if (running) lines.push({ date: startDate, desc: t('Opening balance'), ref: '', dr: 0, cr: 0, running })
     const filtered = journalEntries
       .filter((je) => je.date >= startDate && je.date <= endDate && je.lines.some((l) => l.accountId === selectedAcc))
       .sort((a, b) => a.date.localeCompare(b.date))
@@ -590,8 +601,7 @@ export default function Reports() {
       je.lines.filter((l) => l.accountId === selectedAcc).forEach((l) => {
         const dr = l.debit || 0
         const cr = l.credit || 0
-        if (['asset', 'expense'].includes(acc?.type)) running += dr - cr
-        else running += cr - dr
+        running += sign * (dr - cr)
         lines.push({ date: je.date, desc: narrate(je.description, t), ref: je.number, dr, cr, running })
       })
     })
@@ -653,13 +663,17 @@ export default function Reports() {
   // ─── AR Aging ─────────────────────────────────────────────────
   const ARReport = () => {
     const todayStr = new Date().toISOString().slice(0, 10)
-    const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void' && i.amountPaid < i.total)
+    // What is still due after payments and returns, in base currency — a
+    // foreign-currency invoice was added in at its face value before, under
+    // the base currency symbol.
+    const dueBase = (i) => Math.round(documentDue(i, creditNotes, 'invoiceId') * (Number(i.exchangeRate) || 1) * 100) / 100
+    const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void' && dueBase(i) > 0.005)
 
     const buckets = { current: [], days30: [], days60: [], days90: [], over90: [] }
     unpaid.forEach((inv) => {
       const due = inv.dueDate || inv.date
       const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      const amt = inv.total - inv.amountPaid
+      const amt = dueBase(inv)
       if (days <= 0) buckets.current.push({ ...inv, days, amt })
       else if (days <= 30) buckets.days30.push({ ...inv, days, amt })
       else if (days <= 60) buckets.days60.push({ ...inv, days, amt })
@@ -737,12 +751,14 @@ export default function Reports() {
   // ─── AP Aging ─────────────────────────────────────────────────
   const APReport = () => {
     const todayStr = new Date().toISOString().slice(0, 10)
-    const unpaid = purchases.filter((p) => p.status !== 'paid' && p.status !== 'cancelled' && p.status !== 'void' && p.amountPaid < p.total)
+    // After payments and returns, in base currency (see ARReport).
+    const dueBase = (p) => Math.round(documentDue(p, debitNotes, 'purchaseId') * (Number(p.exchangeRate) || 1) * 100) / 100
+    const unpaid = purchases.filter((p) => p.status !== 'paid' && p.status !== 'cancelled' && p.status !== 'void' && dueBase(p) > 0.005)
 
     const rows = unpaid.map((p) => {
       const due = p.dueDate || p.date
       const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      return { ...p, days, amt: p.total - p.amountPaid }
+      return { ...p, days, amt: dueBase(p) }
     }).sort((a, b) => b.days - a.days)
 
     const total = rows.reduce((s, r) => s + r.amt, 0)
@@ -2011,7 +2027,7 @@ export default function Reports() {
   const buildReportExport = () => {
     if (report === 'tb') {
       const rows = accounts.map((a) => {
-        const b = allBalances[a.id] || { dr: 0, cr: 0 }
+        const b = balancesToEnd[a.id] || { dr: 0, cr: 0 }
         return { code: a.code, name: a.name, netDr: b.dr > b.cr ? b.dr - b.cr : 0, netCr: b.cr > b.dr ? b.cr - b.dr : 0 }
       }).filter((r) => r.netDr || r.netCr)
       return { filename: `trial-balance-${endDate}`, rows, columns: [
@@ -2029,8 +2045,13 @@ export default function Reports() {
       ] }
     }
     if (report === 'bs') {
-      const mk = (type, lbl) => accounts.filter((a) => a.type === type).map((a) => ({ section: lbl, name: a.name, balance: accountBalance(a.id, allBalances) })).filter((a) => a.balance)
-      const rows = [...mk('asset', t('Assets')), ...mk('liability', t('Liabilities')), ...mk('equity', t('Equity'))]
+      // As at the end date, with retained earnings — the same figures the
+      // screen shows, so the exported sheet balances too.
+      const mk = (type, lbl) => accounts.filter((a) => a.type === type).map((a) => ({ section: lbl, name: a.name, balance: accountBalance(a.id, balancesToEnd) })).filter((a) => a.balance)
+      const sumOf = (type) => accounts.filter((a) => a.type === type).reduce((s, a) => s + accountBalance(a.id, balancesToEnd), 0)
+      const retained = Math.round((sumOf('revenue') - sumOf('expense')) * 100) / 100
+      const rows = [...mk('asset', t('Assets')), ...mk('liability', t('Liabilities')), ...mk('equity', t('Equity')),
+        ...(retained ? [{ section: t('Equity'), name: t('Retained Earnings (to date)'), balance: retained }] : [])]
       return { filename: `balance-sheet-${endDate}`, rows, columns: [
         { key: 'section', label: t('Section') }, { key: 'name', label: t('Account') },
         { key: 'balance', label: t('Amount'), right: true, map: (v) => Number(v).toFixed(2) },
@@ -2102,10 +2123,14 @@ export default function Reports() {
       ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void')
       : purchases.filter((p) => p.status !== 'paid' && p.status !== 'void' && p.status !== 'cancelled')
     const todayStr = new Date().toISOString().slice(0, 10)
-    const rows = src.map((d) => {
+    // Same figures as the on-screen aging: net of returns, in base currency.
+    const dueBase = (d) => Math.round((report === 'ar'
+      ? documentDue(d, creditNotes, 'invoiceId')
+      : documentDue(d, debitNotes, 'purchaseId')) * (Number(d.exchangeRate) || 1) * 100) / 100
+    const rows = src.filter((d) => dueBase(d) > 0.005).map((d) => {
       const due = d.dueDate || d.date
       const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      return { number: d.number, party: report === 'ar' ? d.customerName : d.supplierName, due, days: days > 0 ? days : 0, amt: d.total - d.amountPaid }
+      return { number: d.number, party: report === 'ar' ? d.customerName : d.supplierName, due, days: days > 0 ? days : 0, amt: dueBase(d) }
     }).sort((a, b) => b.days - a.days)
     return { filename: `${report}-aging-${todayStr}`, rows, columns: [
       { key: 'number', label: t('Invoice #') },

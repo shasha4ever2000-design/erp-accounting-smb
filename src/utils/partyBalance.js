@@ -65,3 +65,31 @@ export function totalPayable({ purchases = [], debitNotes = [] } = {}) {
   const debited = debitNotes.filter(isLiveDoc).reduce((s, d) => s + noteBase(d), 0)
   return r2(owed - debited)
 }
+
+/**
+ * What the credit (or debit) notes raised against one document have taken off
+ * it, in the document's own currency.
+ *
+ * A sales return is linked to its invoice by `invoiceId`, a purchase return to
+ * its bill by `purchaseId`. Notes raised on their own are not linked to any
+ * one document and only count at the party level (see customerBalance).
+ */
+export function notesAgainst(doc, notes = [], key = 'invoiceId') {
+  if (!doc?.id) return 0
+  return r2((notes || [])
+    .filter((n) => n && n[key] === doc.id && isLiveDoc(n))
+    .reduce((s, n) => s + num(n.total), 0))
+}
+
+/**
+ * What is still to be collected (or paid) on one document: its total, less
+ * what has been paid, less the returns raised against it. In the document's
+ * own currency; never below zero.
+ *
+ * Without the returns, an invoice of 1,000 with a 400 return still showed
+ * 1,000 due, and receiving that 1,000 drove Accounts Receivable to -400.
+ */
+export function documentDue(doc, notes = [], key = 'invoiceId') {
+  if (!doc) return 0
+  return r2(Math.max(0, num(doc.total) - num(doc.amountPaid) - notesAgainst(doc, notes, key)))
+}

@@ -8,6 +8,7 @@ import { CustomFieldValues } from '../components/CustomFields'
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
+import { documentDue, notesAgainst } from '../utils/partyBalance'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, BookOpen } from 'lucide-react'
@@ -22,7 +23,7 @@ export default function PurchaseView() {
   const navigate = useNavigate()
   const t = useT()
   const {
-    purchases, suppliers, accounts, journalEntries, settings,
+    purchases, suppliers, accounts, journalEntries, settings, debitNotes,
     voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock,
   } = useStore()
 
@@ -48,7 +49,9 @@ export default function PurchaseView() {
   const supplier = suppliers.find((s) => s.id === purchase.supplierId)
   const je = journalEntries.find((j) => j.id === purchase.journalEntryId)
   const editBlocked = purchaseEditBlock(purchase.id)
-  const amountDue = purchase.total - purchase.amountPaid
+  // Returns raised against this bill come off what is still owed on it.
+  const debited = notesAgainst(purchase, debitNotes, 'purchaseId')
+  const amountDue = documentDue(purchase, debitNotes, 'purchaseId')
   const accName = (accId) => accounts.find((a) => a.id === accId)?.name || accId || '—'
 
   const anyDiscount = (purchase.items || []).some((l) => (Number(l.discount) || 0) > 0)
@@ -241,9 +244,10 @@ export default function PurchaseView() {
                   <span>≈ {t('in')} {baseCurrency}</span><span>{fmtMoney(purchase.baseTotal ?? purchase.total * purRate, sym)}</span>
                 </div>
               )}
-              {purchase.amountPaid > 0 && (
+              {(purchase.amountPaid > 0 || debited > 0) && (
                 <>
-                  <div className="flex justify-between text-green-600 dark:text-green-400"><span>{t('Amount Paid')}</span><span>({fmtMoney(purchase.amountPaid, purSym)})</span></div>
+                  {purchase.amountPaid > 0 && <div className="flex justify-between text-green-600 dark:text-green-400"><span>{t('Amount Paid')}</span><span>({fmtMoney(purchase.amountPaid, purSym)})</span></div>}
+                  {debited > 0 && <div className="flex justify-between text-purple-600 dark:text-purple-400"><span>{t('Debit Notes')}</span><span>({fmtMoney(debited, purSym)})</span></div>}
                   <div className="flex justify-between font-bold text-orange-600 dark:text-orange-400 border-t border-slate-200 dark:border-surface-700 pt-2">
                     <span>{t('Balance Due')}</span><span>{fmtMoney(amountDue, purSym)}</span>
                   </div>

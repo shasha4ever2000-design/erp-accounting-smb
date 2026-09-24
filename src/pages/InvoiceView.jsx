@@ -11,6 +11,7 @@ import { CustomFieldPrintLines, CustomFieldValues } from '../components/CustomFi
 import { Card, Btn, Badge, Modal, Input, Select } from '../components/UI'
 import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
+import { documentDue, notesAgainst } from '../utils/partyBalance'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import { buildEtaInvoice, validateEtaInvoice, etaFilename } from '../utils/etaEinvoice'
@@ -19,7 +20,7 @@ import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, FileJson } from
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings } = useStore()
+  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings, creditNotes } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -78,7 +79,9 @@ export default function InvoiceView() {
     URL.revokeObjectURL(url)
   }
   const bankAccounts = accounts.filter((a) => a.type === 'asset' && (a.id === 'acc-cash' || a.id === 'acc-bank1' || a.subtype === 'current'))
-  const amountDue = invoice.total - invoice.amountPaid
+  // Returns raised against this invoice come off what the customer still owes.
+  const credited = notesAgainst(invoice, creditNotes, 'invoiceId')
+  const amountDue = documentDue(invoice, creditNotes, 'invoiceId')
   // Foreign-currency invoice: amounts show in the invoice currency; the receipt can
   // settle at a different rate, producing a realized FX gain/loss in the base ledger.
   const baseSym = settings.company.currencySymbol
@@ -311,12 +314,20 @@ export default function InvoiceView() {
                 <span>Total</span>
                 <span>{fmtMoney(invoice.total, invSym)}</span>
               </div>
-              {invoice.amountPaid > 0 && (
+              {(invoice.amountPaid > 0 || credited > 0) && (
                 <>
-                  <div className="flex justify-between text-green-600 dark:text-green-400">
-                    <span>{t('Amount Paid')}</span>
-                    <span>({fmtMoney(invoice.amountPaid, invSym)})</span>
-                  </div>
+                  {invoice.amountPaid > 0 && (
+                    <div className="flex justify-between text-green-600 dark:text-green-400">
+                      <span>{t('Amount Paid')}</span>
+                      <span>({fmtMoney(invoice.amountPaid, invSym)})</span>
+                    </div>
+                  )}
+                  {credited > 0 && (
+                    <div className="flex justify-between text-purple-600 dark:text-purple-400">
+                      <span>{t('Credit Notes')}</span>
+                      <span>({fmtMoney(credited, invSym)})</span>
+                    </div>
+                  )}
                   <div className="flex justify-between font-bold text-orange-600 dark:text-orange-400 border-t border-slate-200 dark:border-surface-700 pt-2">
                     <span>{t('Balance Due')}</span>
                     <span>{fmtMoney(amountDue, invSym)}</span>

@@ -9,8 +9,9 @@ import { editBlock } from './utils/docEdit'
 import { ETA_DEFAULT_TAX_SUBTYPES } from './utils/etaEinvoice'
 import { allocateLandedCost } from './utils/landedCost'
 import { explodeLines, isKit, kitCost, validateKit } from './utils/kits'
+import { documentDue, notesAgainst } from './utils/partyBalance'
 import { weightedAverageCost } from './utils/inventoryCost'
-import { WAC, FIFO, issueFrom, receiveInto, layersFromBalance } from './utils/fifo'
+import { WAC, FIFO, issueFrom, receiveInto, layersFromBalance, consume, unitCostOf } from './utils/fifo'
 import { CHEQUE_IN, CHEQUE_OUT, canTransition, validateCheque, chequeLines, isTerminal } from './utils/cheques'
 import {
   ADVANCE_ACCOUNT, validateAdvance, advanceBalance, appliedTotal, applicableAmount,
@@ -27,7 +28,7 @@ import {
 } from './utils/stockCount'
 import { diffRecord, describeChanges, severityFor } from './utils/auditDiff'
 import {
-  GENESIS, hashEntry, chainEntries, reseal, verifyChain, ledgerAnchor, matchesAnchor, shortHash,
+  GENESIS, hashEntry, chainEntries, reseal, removeEntries, verifyChain, ledgerAnchor, matchesAnchor, shortHash,
   PREV_TAG_LENGTH, prevTag,
 } from './utils/ledgerChain'
 import { isPersisted, storageEstimate, assessDurability } from './utils/durability'
@@ -234,6 +235,87 @@ const DEFAULT_WAREHOUSES = [
 
 function nextNum(prefix, n) {
   return `${prefix}${String(n).padStart(4, '0')}`
+}
+
+// How far debits and credits may drift apart and still post: less than half a
+// cent, so the two sides agree once rounded to the cent. This used to be 0.05,
+// which let a hand-typed entry that was 4 cents out go into the ledger and
+// leave the trial balance out by the same amount with nothing to say why.
+const BALANCE_TOLERANCE = 0.005
+
+/**
+ * Drop journal entries a deleted document owned, keeping the ones `keep`
+ * approves, and repair the hash chain from the gap. A plain filter left the
+ * next entry pointing at a deleted predecessor, so every legitimate delete or
+ * document edit showed up in the integrity check as tampering.
+ */
+function keepEntries(entries, keep) {
+  return removeEntries(entries, (je) => !keep(je))
+}
+
+/**
+ * Put stock back on the shelf at a known cost — a voided sale, an unposted
+ * invoice, a customer return.
+ *
+ * The ledger side of these always debits inventory with what the units cost,
+ * so the item has to take them back at that same value: blended into the
+ * weighted average, and pushed onto the FIFO queue. Adding the quantity alone
+ * left the cost layers short of the quantity on hand and let the carried cost
+ * drift away from the inventory account.
+ *
+ * @param {object} it      the inventory item
+ * @param {number} qty     units coming back
+ * @param {number} value   what they cost in total (base currency)
+ * @param {object} ctx     { method, date, ref, warehouseId }
+ */
+function restockAtCost(it, qty, value, { method, date, ref, warehouseId }) {
+  const oldQty = Number(it.quantity) || 0
+  const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
+  const wacCost = weightedAverageCost({ onHand: oldQty, unitCost: it.costPrice, receivedQty: qty, receivedValue: value })
+  const patch = { quantity: oldQty + qty, ...receiveInto(seeded, { qty, value, date, ref, method, wacCost }) }
+  if (it.stockByWarehouse) {
+    const map = { ...it.stockByWarehouse }
+    map[warehouseId] = (map[warehouseId] || 0) + qty
+    patch.stockByWarehouse = map
+  }
+  return { ...it, ...patch }
+}
+
+/**
+ * Take back stock that `restockAtCost` put on the shelf — deleting the return
+ * that brought it in. The layer that return pushed is removed by its `ref`;
+ * the weighted average is unblended by the same value.
+ */
+function unstockAtCost(it, qty, value, { method, ref, warehouseId }) {
+  const oldQty = Number(it.quantity) || 0
+  const carried = Number(it.costPrice) || 0
+  const newQty = oldQty - qty
+  let layers = Array.isArray(it.costLayers) ? [...it.costLayers] : layersFromBalance(oldQty, carried)
+  const at = layers.findIndex((l) => l.ref === ref && Math.abs((Number(l.qty) || 0) - qty) < 1e-6)
+  if (at >= 0) layers.splice(at, 1)
+  else layers = consume(layers, qty, carried).layers
+  const costPrice = method === FIFO
+    ? unitCostOf(layers, carried)
+    : (newQty > 1e-9 ? Math.max(0, Math.round(((oldQty * carried - (Number(value) || 0)) / newQty) * 10000) / 10000) : carried)
+  const patch = { quantity: newQty, costLayers: layers, costPrice }
+  if (it.stockByWarehouse) {
+    const map = { ...it.stockByWarehouse }
+    map[warehouseId] = (map[warehouseId] || 0) - qty
+    patch.stockByWarehouse = map
+  }
+  return { ...it, ...patch }
+}
+
+/**
+ * What an invoice actually took off the shelf, item by item.
+ *
+ * Stored on the invoice when it posts. Invoices posted before that fall back
+ * to exploding their lines, which is what the sale itself did — reversing by
+ * raw line instead put a kit back as a phantom kit and never returned its
+ * components.
+ */
+function stockIssuedBy(inv, items) {
+  return inv?.stockIssued || explodeLines(inv?.items || [], items)
 }
 
 /** Shift an ISO date by whole days. UTC, so a timezone can't move the boundary. */
@@ -1108,7 +1190,7 @@ export const useStore = create(
         const openingMoves = (st.stockMovements || []).filter((m) => m.type === 'opening' && m.ref === 'OPENING')
 
         set((s) => ({
-          journalEntries: s.journalEntries.filter((j) => j.id !== op.journalEntryId),
+          journalEntries: keepEntries(s.journalEntries, (j) => j.id !== op.journalEntryId),
           invoices: s.invoices.filter((i) => !i.isOpening),
           purchases: s.purchases.filter((p) => !p.isOpening),
           stockMovements: (s.stockMovements || []).filter((m) => !(m.type === 'opening' && m.ref === 'OPENING')),
@@ -1241,7 +1323,7 @@ export const useStore = create(
         }
         const _dr = (entry.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
         const _cr = (entry.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
-        if (Math.abs(_dr - _cr) > 0.05) throw new Error(`JE_UNBALANCED:${(_dr - _cr).toFixed(2)}`)
+        if (Math.abs(_dr - _cr) > BALANCE_TOLERANCE) throw new Error(`JE_UNBALANCED:${(_dr - _cr).toFixed(2)}`)
         // The capital control account is a subledger: its balance must always
         // be the sum of the partner accounts underneath it. A line that hits it
         // without naming a partner would break that quietly — the balance sheet
@@ -1319,7 +1401,7 @@ export const useStore = create(
             if (!merged.date) throw new Error('JE_NO_DATE')
             const dr = (merged.lines || []).reduce((t, l) => t + (+l.debit || 0), 0)
             const cr = (merged.lines || []).reduce((t, l) => t + (+l.credit || 0), 0)
-            if (Math.abs(dr - cr) > 0.05) throw new Error(`JE_UNBALANCED:${(dr - cr).toFixed(2)}`)
+            if (Math.abs(dr - cr) > BALANCE_TOLERANCE) throw new Error(`JE_UNBALANCED:${(dr - cr).toFixed(2)}`)
           }
           // Editing a manual entry is legal, so the chain is repaired — but only
           // from this entry forward. Re-hashing the whole ledger would also
@@ -1565,6 +1647,9 @@ export const useStore = create(
           exchangeRate: rate, baseTotal: arBase,
           journalEntryId: je.id, cogsJournalEntryId: cogsJeId,
           cogsTotal: Math.round(cogs * 100) / 100, cogsByItem,
+          // Exactly what left the shelf, so a void or an edit puts back the
+          // same units even if a kit's recipe has changed since.
+          stockIssued: issue,
           createdAt: reissue?.createdAt || new Date().toISOString(),
           ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
@@ -1600,13 +1685,16 @@ export const useStore = create(
         // the AR subledger can't go negative. Money beyond the invoice is not a
         // receipt against it — it belongs on account, which is what
         // receiveAdvance is for.
-        const remaining = Math.max(0, (invoice.total || 0) - (invoice.amountPaid || 0))
-        const amount = Math.min(Number(payment.amount) || 0, remaining)
+        // Returns raised against the invoice have already credited AR, so they
+        // come off what can still be received against it.
+        const credited = notesAgainst(invoice, s.creditNotes, 'invoiceId')
+        const remaining = documentDue(invoice, s.creditNotes, 'invoiceId')
+        const amount = Math.round(Math.min(Number(payment.amount) || 0, remaining) * 100) / 100
         if (amount <= 0) return
         const { prefix, next } = s.settings.receipt
         const number = nextNum(prefix, next)
-        const newAmountPaid = invoice.amountPaid + amount
-        const status = newAmountPaid >= invoice.total - 0.005 ? 'paid' : 'partial'
+        const newAmountPaid = Math.round(((Number(invoice.amountPaid) || 0) + amount) * 100) / 100
+        const status = newAmountPaid + credited >= invoice.total - 0.005 ? 'paid' : 'partial'
         // Multi-currency settlement: AR was booked at the invoice rate; cash arrives
         // valued at the payment-date rate. The difference is a realized FX gain/loss.
         // (Both rates default to 1, so base-currency receipts post exactly as before.)
@@ -1695,21 +1783,18 @@ export const useStore = create(
           const je = get().journalEntries.find((j) => j.id === jeId)
           if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void invoice ${inv.number}` })
         })
-        const restore = {}
-        ;(inv.items || []).forEach((line) => {
-          if (!line.itemId) return
-          const q = parseFloat(line.quantity) || 0
-          if (q > 0) restore[line.itemId] = (restore[line.itemId] || 0) + q
-        })
+        const restore = stockIssuedBy(inv, get().inventoryItems)
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const method = get().costingMethod()
         set((s) => ({
           invoices: s.invoices.map((i) => (i.id === id ? { ...i, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString(), amountPaid: 0 } : i)),
           inventoryItems: s.inventoryItems.map((it) => {
             const q = restore[it.id]
             if (!q) return it
-            const patch = { quantity: (it.quantity || 0) + q }
-            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + q; patch.stockByWarehouse = m }
-            return { ...it, ...patch }
+            // The COGS reversal debits inventory with what the sale cost, so
+            // the units come back at that same value.
+            const value = inv.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
+            return restockAtCost(it, q, value, { method, date: voidDate, ref: `Void ${inv.number}`, warehouseId: defWh })
           }),
         }))
         Object.entries(restore).forEach(([itemId, q]) => {
@@ -1728,28 +1813,21 @@ export const useStore = create(
         // reviseInvoice unposts through here before re-posting; logging a deletion
         // there would put an event in the audit trail that never happened.
         if (!opts.silent) get().logActivity('Deleted invoice', inv?.number || id)
-        // Restore any stock issued by this invoice's tracked lines.
-        const restore = {}
-        ;(inv?.items || []).forEach((line) => {
-          if (!line.itemId) return
-          const q = parseFloat(line.quantity) || 0
-          if (q > 0) restore[line.itemId] = (restore[line.itemId] || 0) + q
-        })
+        // Restore the stock this invoice issued — components, for a kit.
+        const restore = inv ? stockIssuedBy(inv, get().inventoryItems) : {}
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const method = get().costingMethod()
         set((s) => ({
           invoices: s.invoices.filter((i) => i.id !== id),
-          journalEntries: s.journalEntries.filter((j) => !jeIds.has(j.id)),
+          journalEntries: keepEntries(s.journalEntries, (j) => !jeIds.has(j.id)),
           stockMovements: s.stockMovements.filter((m) => m.ref !== inv?.number),
           inventoryItems: s.inventoryItems.map((it) => {
             const q = restore[it.id]
             if (!q) return it
-            const patch = { quantity: (it.quantity || 0) + q }
-            if (it.stockByWarehouse) {
-              const map = { ...it.stockByWarehouse }
-              map[defWh] = (map[defWh] || 0) + q
-              patch.stockByWarehouse = map
-            }
-            return { ...it, ...patch }
+            // The COGS entry is removed with the invoice, so the units go
+            // back at exactly what that entry had taken out of inventory.
+            const value = inv.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
+            return restockAtCost(it, q, value, { method, date: inv.date, ref: inv.number, warehouseId: defWh })
           }),
         }))
       },
@@ -2591,11 +2669,12 @@ export const useStore = create(
           cogsJeId = cje.id
         }
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const method = get().costingMethod()
         set((st) => ({ inventoryItems: st.inventoryItems.map((it) => {
           const q = restock[it.id]; if (!q) return it
-          const patch = { quantity: (it.quantity || 0) + q }
-          if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + q; patch.stockByWarehouse = m }
-          return { ...it, ...patch }
+          // Joins the back of the FIFO queue at the value just debited to
+          // inventory, so layers and quantity stay in step.
+          return restockAtCost(it, q, cogsByItem[it.id] || 0, { method, date: rDate, ref: number, warehouseId: defWh })
         }) }))
         Object.entries(restock).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
@@ -2677,15 +2756,42 @@ export const useStore = create(
         return dn
       },
 
-      deleteCreditNote: (id) =>
-        set((s) => {
-          const cn = s.creditNotes.find((c) => c.id === id)
-          get().assertJEsUnlocked(cn?.journalEntryId)
-          return {
-            creditNotes: s.creditNotes.filter((c) => c.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== cn?.journalEntryId),
-          }
-        }),
+      // Deleting a credit note undoes all of it. A sales return also restocked
+      // goods, reversed cost of sales and marked the invoice lines returned;
+      // removing only the credit entry left the goods on the shelf, the COGS
+      // reversal in the ledger and the invoice unable to be returned again.
+      deleteCreditNote: (id) => {
+        const cn = get().creditNotes.find((c) => c.id === id)
+        if (!cn) return
+        get().assertJEsUnlocked(cn.journalEntryId, cn.cogsJournalEntryId)
+        const jeIds = new Set([cn.journalEntryId, cn.cogsJournalEntryId].filter(Boolean))
+        const back = cn.invoiceId ? explodeLines(cn.items || [], get().inventoryItems) : {}
+        const giveBack = {}
+        ;(cn.items || []).forEach((l) => {
+          if (l.sourceLineId) giveBack[l.sourceLineId] = (giveBack[l.sourceLineId] || 0) + (Number(l.quantity) || 0)
+        })
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const method = get().costingMethod()
+        set((s) => ({
+          creditNotes: s.creditNotes.filter((c) => c.id !== id),
+          journalEntries: keepEntries(s.journalEntries, (j) => !jeIds.has(j.id)),
+          stockMovements: cn.invoiceId ? s.stockMovements.filter((m) => m.ref !== cn.number) : s.stockMovements,
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = back[it.id]
+            if (!q) return it
+            const value = cn.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
+            return unstockAtCost(it, q, value, { method, ref: cn.number, warehouseId: defWh })
+          }),
+          invoices: cn.invoiceId ? s.invoices.map((i) => (i.id !== cn.invoiceId ? i : {
+            ...i,
+            items: (i.items || []).map((l) => (giveBack[l.id]
+              ? { ...l, returnedQty: Math.max(0, Math.round(((Number(l.returnedQty) || 0) - giveBack[l.id]) * 1e6) / 1e6) }
+              : l)),
+            creditNoteIds: (i.creditNoteIds || []).filter((x) => x !== id),
+          })) : s.invoices,
+        }))
+        get().logActivity('Deleted credit note', `${cn.number}${cn.invoiceNumber ? ' · ' + cn.invoiceNumber : ''}`)
+      },
 
       // ─── PURCHASE ORDERS ───────────────────────────────────────────
       purchaseOrders: [],
@@ -2951,8 +3057,10 @@ export const useStore = create(
         const purchase = s.purchases.find((p) => p.id === purchaseId)
         if (!purchase) return
         // Overpayment guard: never pay more than the outstanding balance (keeps AP ≥ 0)
-        const remaining = Math.max(0, (purchase.total || 0) - (purchase.amountPaid || 0))
-        const amount = Math.min(Number(payment.amount) || 0, remaining)
+        // Returns raised against the bill have already debited AP.
+        const debited = notesAgainst(purchase, s.debitNotes, 'purchaseId')
+        const remaining = documentDue(purchase, s.debitNotes, 'purchaseId')
+        const amount = Math.round(Math.min(Number(payment.amount) || 0, remaining) * 100) / 100
         if (amount <= 0) return
         // Money leaving the business is the sharpest edge of all — gate it on the
         // capped amount, so an overpayment attempt can't clear a lower threshold.
@@ -2961,8 +3069,8 @@ export const useStore = create(
         }
         const { prefix, next } = s.settings.payment
         const number = nextNum(prefix, next)
-        const newAmountPaid = purchase.amountPaid + amount
-        const status = newAmountPaid >= purchase.total - 0.005 ? 'paid' : 'partial'
+        const newAmountPaid = Math.round(((Number(purchase.amountPaid) || 0) + amount) * 100) / 100
+        const status = newAmountPaid + debited >= purchase.total - 0.005 ? 'paid' : 'partial'
         const wht = Math.max(0, Math.min(amount, Number(payment.wht) || 0))
         const netCash = amount - wht
         // Multi-currency settlement: AP and WHT are relieved at the bill's rate; cash
@@ -3076,7 +3184,7 @@ export const useStore = create(
         const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
         set((s) => ({
           purchases: s.purchases.filter((p) => p.id !== id),
-          journalEntries: s.journalEntries.filter((j) => !jeIds.has(j.id)),
+          journalEntries: keepEntries(s.journalEntries, (j) => !jeIds.has(j.id)),
           stockMovements: s.stockMovements.filter((m) => m.ref !== pur?.number),
           inventoryItems: s.inventoryItems.map((it) => {
             const q = recv[it.id]
@@ -3118,15 +3226,41 @@ export const useStore = create(
         return newDN
       },
 
-      deleteDebitNote: (id) =>
-        set((s) => {
-          const dn = s.debitNotes.find((d) => d.id === id)
-          get().assertJEsUnlocked(dn?.journalEntryId)
-          return {
-            debitNotes: s.debitNotes.filter((d) => d.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== dn?.journalEntryId),
-          }
-        }),
+      // The mirror of deleteCreditNote: a purchase return took stock off the
+      // shelf and marked the bill lines returned, so deleting it puts both back.
+      deleteDebitNote: (id) => {
+        const dn = get().debitNotes.find((d) => d.id === id)
+        if (!dn) return
+        get().assertJEsUnlocked(dn.journalEntryId)
+        const back = {}, giveBack = {}
+        if (dn.purchaseId) {
+          ;(dn.items || []).forEach((l) => {
+            if (l.itemId) back[l.itemId] = (back[l.itemId] || 0) + (Number(l.quantity) || 0)
+            if (l.sourceLineId) giveBack[l.sourceLineId] = (giveBack[l.sourceLineId] || 0) + (Number(l.quantity) || 0)
+          })
+        }
+        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        set((s) => ({
+          debitNotes: s.debitNotes.filter((d) => d.id !== id),
+          journalEntries: keepEntries(s.journalEntries, (j) => j.id !== dn.journalEntryId),
+          stockMovements: dn.purchaseId ? s.stockMovements.filter((m) => m.ref !== dn.number) : s.stockMovements,
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = back[it.id]
+            if (!q) return it
+            const patch = { quantity: (Number(it.quantity) || 0) + q }
+            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + q; patch.stockByWarehouse = m }
+            return { ...it, ...patch }
+          }),
+          purchases: dn.purchaseId ? s.purchases.map((p) => (p.id !== dn.purchaseId ? p : {
+            ...p,
+            items: (p.items || []).map((l) => (giveBack[l.id]
+              ? { ...l, returnedQty: Math.max(0, Math.round(((Number(l.returnedQty) || 0) - giveBack[l.id]) * 1e6) / 1e6) }
+              : l)),
+            debitNoteIds: (p.debitNoteIds || []).filter((x) => x !== id),
+          })) : s.purchases,
+        }))
+        get().logActivity('Deleted debit note', `${dn.number}${dn.purchaseNumber ? ' · ' + dn.purchaseNumber : ''}`)
+      },
 
       // ─── DEPARTMENTS ───────────────────────────────────────────────
       departments: [],
@@ -3275,7 +3409,7 @@ export const useStore = create(
           get().assertJEsUnlocked(rec?.journalEntryId)
           return {
             eosbAccruals: s.eosbAccruals.filter((a) => a.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== rec?.journalEntryId),
+            journalEntries: keepEntries(s.journalEntries, (j) => j.id !== rec?.journalEntryId),
           }
         }),
 
@@ -3496,7 +3630,7 @@ export const useStore = create(
           get().assertJEsUnlocked(run?.journalEntryId, run?.paymentJEId)
           return {
             payrollRuns: s.payrollRuns.filter((r) => r.id !== id),
-            journalEntries: s.journalEntries.filter(
+            journalEntries: keepEntries(s.journalEntries, 
               (j) => j.id !== run?.journalEntryId && j.id !== run?.paymentJEId
             ),
           }
@@ -3646,7 +3780,7 @@ export const useStore = create(
           return {
             fixedAssets: s.fixedAssets.filter((a) => a.id !== id),
             assetDepreciations: s.assetDepreciations.filter((d) => d.assetId !== id),
-            journalEntries: s.journalEntries.filter((j) => !jeIds.has(j.id)),
+            journalEntries: keepEntries(s.journalEntries, (j) => !jeIds.has(j.id)),
           }
         }),
 
@@ -3704,7 +3838,14 @@ export const useStore = create(
             const q = it.quantity || 0
             if (q <= 0) return it
             const newCost = Math.round(((it.costPrice || 0) + share / q) * 10000) / 10000
-            return { ...it, costPrice: newCost }
+            // The FIFO layers carry the cost too. Under FIFO the carried cost
+            // is re-derived from the layers on the next sale, so bumping only
+            // costPrice let the landed cost vanish from cost of sales while
+            // it stayed in the inventory account.
+            const layers = it.costLayers || layersFromBalance(q, it.costPrice)
+            const perUnit = share / q
+            const costLayers = layers.map((l) => ({ ...l, unitCost: Math.round(((Number(l.unitCost) || 0) + perUnit) * 10000) / 10000 }))
+            return { ...it, costPrice: newCost, costLayers }
           }),
         }))
 
@@ -3785,7 +3926,7 @@ export const useStore = create(
           const qtyChange = wasPosted ? (adj.type === 'increase' ? -adj.quantity : adj.quantity) : 0
           return {
             stockAdjustments: s.stockAdjustments.filter((a) => a.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== adj?.journalEntryId),
+            journalEntries: keepEntries(s.journalEntries, (j) => j.id !== adj?.journalEntryId),
             stockMovements: s.stockMovements.filter((m) => m.ref !== adj?.number),
             inventoryItems: s.inventoryItems.map((i) =>
               i.id === adj?.itemId ? { ...i, quantity: (i.quantity || 0) + qtyChange } : i
@@ -3850,7 +3991,7 @@ export const useStore = create(
           get().assertJEsUnlocked(pre?.journalEntryId)
           return {
             prepaidExpenses: s.prepaidExpenses.filter((p) => p.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== pre?.journalEntryId),
+            journalEntries: keepEntries(s.journalEntries, (j) => j.id !== pre?.journalEntryId),
           }
         }),
 
@@ -4237,7 +4378,7 @@ export const useStore = create(
           get().assertJEsUnlocked(claim?.approvalJEId, claim?.paymentJEId)
           return {
             expenseClaims: s.expenseClaims.filter((c) => c.id !== id),
-            journalEntries: s.journalEntries.filter(
+            journalEntries: keepEntries(s.journalEntries, 
               (j) => j.id !== claim?.approvalJEId && j.id !== claim?.paymentJEId
             ),
           }
@@ -4420,7 +4561,7 @@ export const useStore = create(
           get().assertJEsUnlocked(wo?.jeIssueId, wo?.jeCompleteId)
           return {
             workOrders: s.workOrders.filter((w) => w.id !== id),
-            journalEntries: s.journalEntries.filter(
+            journalEntries: keepEntries(s.journalEntries, 
               (j) => j.id !== wo?.jeIssueId && j.id !== wo?.jeCompleteId
             ),
           }
@@ -4467,7 +4608,7 @@ export const useStore = create(
           get().assertJEsUnlocked(tx?.journalEntryId)
           return {
             bankTransactions: s.bankTransactions.filter((t) => t.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== tx?.journalEntryId),
+            journalEntries: keepEntries(s.journalEntries, (j) => j.id !== tx?.journalEntryId),
           }
         }),
 
@@ -4505,7 +4646,7 @@ export const useStore = create(
           get().assertJEsUnlocked(tf?.journalEntryId)
           return {
             bankTransfers: s.bankTransfers.filter((t) => t.id !== id),
-            journalEntries: s.journalEntries.filter((j) => j.id !== tf?.journalEntryId),
+            journalEntries: keepEntries(s.journalEntries, (j) => j.id !== tf?.journalEntryId),
           }
         }),
 
@@ -5093,6 +5234,13 @@ export const useStore = create(
         ]
         const out = { _app: 'erp-accounting-smb', _version: 43, _exportedAt: new Date().toISOString() }
         slices.forEach((k) => { out[k] = s[k] })
+        // The AI assistant's API key is a personal secret, not company data.
+        // This object is the backup file, the local snapshot and the cloud
+        // sync payload, so leaving the key in it handed it to whoever received
+        // a backup and to every member of a shared cloud company.
+        if (out.settings?.ai?.apiKey) {
+          out.settings = { ...out.settings, ai: { ...out.settings.ai, apiKey: '' } }
+        }
         // The anchor travels with the file. This is what turns the hash chain
         // from a local self-check into something an outsider can rely on: a
         // backup emailed to an accountant carries a value that fixes the ledger
@@ -5104,8 +5252,28 @@ export const useStore = create(
       importData: (data) => {
         if (!data || data._app !== 'erp-accounting-smb') throw new Error('Invalid backup file')
         // eslint-disable-next-line no-unused-vars
-        const { _app, _version, _exportedAt, _ledgerAnchor, ...slices } = data
-        set((s) => ({ ...s, ...slices }))
+        const { _app, _version, _exportedAt, _ledgerAnchor, ...rest } = data
+        // A backup made by an older version skipped every upgrade step since:
+        // missing accounts, settings and slices that the app now assumes are
+        // there. Run it through the same migration a stored company gets.
+        // Only when the file says which version made it: a payload without
+        // one (a merged sync result, say) is current data, and re-running
+        // every migration on it would, among other things, re-seal the ledger.
+        const current = useStore.persist?.getOptions?.().version
+        const from = Number(_version)
+        const migrate = useStore.persist?.getOptions?.().migrate
+        const slices = (migrate && current && Number.isFinite(from) && from > 0 && from < current)
+          ? migrate(rest, from) : rest
+        set((s) => {
+          const next = { ...s, ...slices }
+          // Backups carry no API key (see exportData); keep the one this
+          // device already has rather than wiping it on every restore or sync.
+          const localKey = s.settings?.ai?.apiKey
+          if (localKey && next.settings && !next.settings.ai?.apiKey) {
+            next.settings = { ...next.settings, ai: { ...(next.settings.ai || {}), apiKey: localKey } }
+          }
+          return next
+        })
       },
 
       /**
