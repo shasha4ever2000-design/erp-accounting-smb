@@ -36,7 +36,7 @@ Two things stay English in the screenshots, because the application generates th
   amount-in-words line.
 
 Both are real localisation gaps in the product rather than in the guide. Fixing them means
-routing those strings through `i18n.js`; the guides will pick the change up on the next build.
+routing those strings through `src/locales/ar.js`; the guides will pick the change up on the next build.
 
 They share this folder. The screen guide uses `seed.mjs` / `capture.mjs` /
 `build_guide.py`; the transaction guide uses `seed-transactions.mjs` /

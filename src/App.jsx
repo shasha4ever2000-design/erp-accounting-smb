@@ -84,6 +84,7 @@ const AuditLog = lazy(() => import('./pages/AuditLog'))
 const Requisitions = lazy(() => import('./pages/Requisitions'))
 const Team = lazy(() => import('./pages/Team'))
 const YearEndClose = lazy(() => import('./pages/YearEndClose'))
+const PeriodClose = lazy(() => import('./pages/PeriodClose'))
 
 function PageLoader() {
   return (
@@ -285,6 +286,7 @@ export default function App() {
         <Route path="/revaluation" element={<Revaluation />} />
         <Route path="/statements" element={<Statements />} />
         <Route path="/reports" element={<Reports />} />
+        <Route path="/period-close" element={<PeriodClose />} />
         <Route path="/year-end" element={<YearEndClose />} />
         <Route path="/audit-log" element={<AuditLog />} />
         <Route path="/team" element={<Team />} />

@@ -43,7 +43,7 @@ export default function Settings() {
   const [company, setCompany] = useState({ ...settings.company })
   const [tax, setTax] = useState({ ...settings.tax })
   const [invoice, setInvoice] = useState({ ...settings.invoice })
-  const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001' })
+  const [ai, setAi] = useState({ apiKey: settings.ai?.apiKey || '', model: settings.ai?.model || 'claude-haiku-4-5-20251001', useServer: !!settings.ai?.useServer })
   const [zatca, setZatca] = useState({ enabled: false, vatNumber: '', crNumber: '', showQr: true, ...(settings.zatca || {}) })
   const [wht, setWht] = useState({ enabled: false, rate: 5, name: 'Withholding Tax', ...(settings.wht || {}) })
   const setWhtField = (k, v) => setWht((w) => ({ ...w, [k]: v }))
@@ -438,12 +438,21 @@ export default function Settings() {
                   {showKey ? <EyeOff size={15} /> : <Eye size={15} />}
                 </button>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Your key is stored locally in the browser only. Get a key at console.anthropic.com.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('Your key stays in this browser only. It is never included in backups or cloud sync. Get a key at console.anthropic.com.')}</p>
             </div>
+            <label className="flex items-start gap-2.5 text-sm cursor-pointer">
+              <input type="checkbox" className="h-4 w-4 mt-0.5 rounded" checked={!!ai.useServer} onChange={(e) => setAiField('useServer', e.target.checked)} />
+              <span className="text-slate-700 dark:text-slate-200">
+                {t("Use the company's cloud assistant")}
+                <span className="block text-xs text-slate-500 dark:text-slate-400">{t('For cloud-linked companies: requests go through your Supabase project (function ai-chat), which holds the API key, so nobody needs one in their browser.')}</span>
+              </span>
+            </label>
             <Select label="Model" value={ai.model} onChange={(e) => setAiField('model', e.target.value)}>
               <option value="claude-haiku-4-5-20251001">{t('Claude Haiku 4.5 – Fast & Economical (Recommended)')}</option>
-              <option value="claude-sonnet-4-6">{t('Claude Sonnet 4.6 – Balanced')}</option>
-              <option value="claude-opus-4-8">{t('Claude Opus 4.8 – Most Capable')}</option>
+              <option value="claude-sonnet-5">{t('Claude Sonnet 5 – Balanced')}</option>
+              <option value="claude-opus-5">{t('Claude Opus 5 – Most Capable')}</option>
+              <option value="claude-sonnet-4-6">{t('Claude Sonnet 4.6 – Previous generation')}</option>
+              <option value="claude-opus-4-8">{t('Claude Opus 4.8 – Previous generation')}</option>
             </Select>
             <div className="bg-accent-50 dark:bg-accent-500/10 rounded-lg p-3 text-xs text-accent-700 dark:text-accent-300 space-y-1">
               <p className="font-medium">{t('What the AI assistant can do:')}</p>

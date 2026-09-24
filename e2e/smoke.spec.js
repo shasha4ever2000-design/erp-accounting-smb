@@ -95,7 +95,12 @@ test('dark mode and compact rows stick', async ({ page }) => {
   await expect(page.locator('html')).toHaveClass(/density-compact/)
 })
 
-test('Arabic switches the layout to right-to-left', async ({ page }) => {
+test('Arabic switches the layout to right-to-left and translates', async ({ page }) => {
   await page.getByTitle('العربية').click()
   await expect(page.locator('html')).toHaveAttribute('dir', 'rtl')
+  // The dictionary loads on demand; the navigation reads in Arabic once it lands.
+  await expect(page.getByText('لوحة التحكم').first()).toBeVisible()
+  // ...and on a fresh load it is there before the first paint.
+  await page.reload()
+  await expect(page.getByText('لوحة التحكم').first()).toBeVisible()
 })

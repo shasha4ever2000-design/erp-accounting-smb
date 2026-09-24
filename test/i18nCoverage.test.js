@@ -12,7 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
 
-const dict = readFileSync('src/i18n.js', 'utf8')
+const dict = readFileSync('src/locales/ar.js', 'utf8')
 const KEYS = new Set([
   ...[...dict.matchAll(/^\s+'((?:[^'\\]|\\.)*)':/gm)].map((m) => m[1]),
   ...[...dict.matchAll(/^\s+"((?:[^"\\]|\\.)*)":/gm)].map((m) => m[1]),
@@ -48,7 +48,7 @@ describe('Arabic coverage of form labels', () => {
   it('every field label, placeholder and tooltip has a translation', () => {
     const missing = scan()
     const report = [...missing].map(([s, f]) => `  ${f}: "${s}"`).join('\n')
-    expect(missing.size, `\n${missing.size} untranslated string(s) — add them to src/i18n.js:\n${report}\n`).toBe(0)
+    expect(missing.size, `\n${missing.size} untranslated string(s) — add them to src/locales/ar.js:\n${report}\n`).toBe(0)
   })
 
   it('is measuring something — the scanner finds real strings', () => {

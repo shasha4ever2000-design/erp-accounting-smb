@@ -20,7 +20,7 @@ import {
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
   Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2, Tag, FileQuestion, HandCoins,
-  Rows3, Rows4,
+  Rows3, Rows4, ListChecks,
 } from 'lucide-react'
 
 const NAV = [
@@ -100,6 +100,7 @@ const NAV = [
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
   { label: 'Opening Balances',   path: '/opening-balances',  icon: Flag },
   { label: 'Import & Export',    path: '/import-export',     icon: ArrowUpDown },
+  { label: 'Month-End Close',    path: '/period-close',      icon: ListChecks },
   { label: 'Year-End Close',     path: '/year-end',          icon: CalendarCheck },
   { label: 'Approvals',          path: '/approvals',         icon: ShieldCheck, badge: 'approvals' },
   { label: 'Recycle Bin',        path: '/recycle-bin',       icon: Archive },

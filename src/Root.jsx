@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { BrowserRouter, HashRouter } from 'react-router-dom'
 import { useAuth } from './auth'
 import { useStore } from './store'
-import { useI18n } from './i18n'
+import { useI18n, dictionaryReady } from './i18n'
 import App from './App'
 import AuthScreen from './components/AuthScreen'
 import CompanyScreen from './components/CompanyScreen'
@@ -21,6 +21,11 @@ export default function Root() {
     document.documentElement.lang = lang
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
   }, [lang])
+
+  // An Arabic user waits the moment it takes the dictionary to arrive rather
+  // than seeing the app flash up in English first.
+  useI18n((s) => s.dictVersion)
+  if (!dictionaryReady()) return null
 
   if (!currentUserId) return <AuthScreen />
   if (!currentCompanyId) return <CompanyScreen />

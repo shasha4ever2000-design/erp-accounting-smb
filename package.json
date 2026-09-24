@@ -19,6 +19,7 @@
     "e2e": "npm run build && playwright test"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@supabase/supabase-js": "^2.110.8",
     "date-fns": "^3.6.0",
     "lucide-react": "^0.441.0",
