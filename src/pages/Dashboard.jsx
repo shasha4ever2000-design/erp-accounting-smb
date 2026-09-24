@@ -12,6 +12,8 @@ import {
   FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles, ChevronRight,
 } from 'lucide-react'
 import { format, subMonths, parseISO, isValid } from 'date-fns'
+import { todayISO } from '../utils/localDate'
+import { shortcutHint } from '../components/Shortcuts'
 
 // recharts is 404 KB and this is the one eagerly-loaded page, so it is fetched
 // only when there is actually a chart to draw.
@@ -27,7 +29,7 @@ export default function Dashboard() {
 
   // Click a money tile → its ledger's Statement of Account (same drawer as Reports).
   const [drill, setDrill] = useState(null)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
 
   // journalEntries must be a dep: getAllBalances is a stable reference, so
   // without it the KPIs freeze until the page remounts.
@@ -83,7 +85,7 @@ export default function Dashboard() {
 
   const overdueInvoices = invoices.filter((i) => {
     if (i.status === 'paid') return false
-    return i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10)
+    return i.dueDate && i.dueDate < todayISO()
   })
 
   const recentInvoices = [...invoices].sort((a, b) => b.createdAt?.localeCompare(a.createdAt)).slice(0, 5)
@@ -208,16 +210,16 @@ export default function Dashboard() {
         <div className="absolute inset-0 opacity-[0.035] bg-[linear-gradient(to_right,white_1px,transparent_1px),linear-gradient(to_bottom,white_1px,transparent_1px)] bg-[size:40px_40px]" />
         <div className="relative flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-slate-400 text-[13px] font-medium tracking-wide">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+            <p className="text-slate-500 dark:text-slate-400 text-[13px] font-medium tracking-wide">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
             <h1 className="text-2xl lg:text-3xl font-bold tracking-tightest mt-1.5">{settings.company.name}</h1>
-            <p className="text-slate-300/90 text-sm mt-2 max-w-xl leading-relaxed">
+            <p className="text-slate-500/90 text-sm mt-2 max-w-xl leading-relaxed">
               {netProfit >= 0
                 ? t('You are profitable this period — net {v}.').replace('{v}', fmtMoney(netProfit, sym))
                 : t('Watch your spending — net loss of {v} this period.').replace('{v}', fmtMoney(Math.abs(netProfit), sym))}
             </p>
           </div>
           <div className="flex items-center gap-2.5">
-            <button onClick={() => navigate('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-surface-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-50 active:scale-[.98] transition-all shadow-elevated">
+            <button onClick={() => navigate('/invoices/new')} title={t('New Invoice') + shortcutHint('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-surface-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-50 active:scale-[.98] transition-all shadow-elevated">
               <FileText size={16} /> {t('New Invoice')}
             </button>
             <button onClick={() => navigate('/reports')} className="group inline-flex items-center gap-2 bg-white/[0.08] text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-white/[0.14] active:scale-[.98] transition-all ring-1 ring-inset ring-white/[0.14] backdrop-blur-sm">
@@ -235,8 +237,8 @@ export default function Dashboard() {
               <Sparkles size={16} className="text-white" />
             </div>
             <div>
-              <p className="font-semibold text-gray-800 dark:text-slate-100">{t('New here? Explore with sample data')}</p>
-              <p className="text-sm text-gray-500 dark:text-slate-400 mt-0.5 max-w-lg">
+              <p className="font-semibold text-slate-800 dark:text-slate-100">{t('New here? Explore with sample data')}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5 max-w-lg">
                 {t('Load a realistic demo company — customers, stock, invoices in every state, and four months of activity. Erase it anytime from Settings.')}
               </p>
             </div>
@@ -325,31 +327,31 @@ export default function Dashboard() {
       {/* Balance Sheet (left) & Profit and Loss (right) — Manager-style summaries */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
         <Card className="overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Balance Sheet')}</h2>
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Balance Sheet')}</h2>
             <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
-            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-blue-700 dark:text-blue-400" onOpen={setDrill} />
-            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-orange-700 dark:text-orange-400" onOpen={setDrill} />
+            <BSPLSection title="Assets" rows={assetAccs} total={totalAssets} sym={sym} color="text-brand-700 dark:text-brand-400" onOpen={setDrill} />
+            <BSPLSection title="Liabilities" rows={liabAccs} total={totalLiab} sym={sym} color="text-warning-700 dark:text-warning-400" onOpen={setDrill} />
             <BSPLSection title="Equity" rows={[...equityAccs, netProfit !== 0 && { id: 'np', code: '', name: 'Net Profit (to date)', balance: netProfit }].filter(Boolean)} total={totalEquity} sym={sym} color="text-purple-700 dark:text-purple-400" onOpen={setDrill} />
-            <div className="flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-bold text-gray-900 dark:text-slate-100">
+            <div className="flex justify-between border-t-2 border-slate-800 dark:border-slate-400 pt-2 mt-2 font-bold text-slate-900 dark:text-slate-100">
               <span>{t('Liabilities + Equity')}</span>
-              <span className={balanced ? '' : 'text-red-600 dark:text-red-400'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
+              <span className={balanced ? '' : 'text-danger-600 dark:text-danger-400'}>{fmtMoney(totalLiab + totalEquity, sym)}</span>
             </div>
           </div>
         </Card>
 
         <Card className="overflow-hidden">
-          <div className="px-5 py-3.5 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Profit & Loss')}</h2>
+          <div className="px-5 py-3.5 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Profit & Loss')}</h2>
             <button onClick={() => navigate('/reports')} className="text-xs font-semibold text-brand-600 dark:text-brand-400 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">{t('Full report →')}</button>
           </div>
           <div className="p-5 text-sm">
-            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-green-700 dark:text-green-400" onOpen={setDrill} />
-            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-red-700 dark:text-red-400" onOpen={setDrill} />
-            <div className={`flex justify-between border-t-2 border-gray-800 dark:border-slate-400 pt-2 mt-2 font-black text-base ${netProfit >= 0 ? 'text-green-700 dark:text-green-400' : 'text-red-600'}`}>
-              <span className="text-gray-900 dark:text-slate-100">{netProfit >= 0 ? t('Net Profit') : t('Net Loss')}</span>
+            <BSPLSection title="Revenue" rows={revenueAccs} total={totalRevenue} sym={sym} color="text-success-700 dark:text-success-400" onOpen={setDrill} />
+            <BSPLSection title="Expenses" rows={expenseAccs} total={totalExpenses} sym={sym} color="text-danger-700 dark:text-danger-400" onOpen={setDrill} />
+            <div className={`flex justify-between border-t-2 border-slate-800 dark:border-slate-400 pt-2 mt-2 font-black text-base ${netProfit >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600'}`}>
+              <span className="text-slate-900 dark:text-slate-100">{netProfit >= 0 ? t('Net Profit') : t('Net Loss')}</span>
               <span>{fmtMoney(Math.abs(netProfit), sym)}</span>
             </div>
           </div>
@@ -382,15 +384,15 @@ export default function Dashboard() {
 
         {/* Quick links */}
         <Card className="p-5">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100 mb-4">{t('Quick Actions')}</h2>
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 mb-4">{t('Quick Actions')}</h2>
           <div className="space-y-2">
             {[
-              { label: 'New Sales Invoice', path: '/invoices/new', color: 'text-blue-600 dark:text-blue-400' },
-              { label: 'New Purchase Invoice', path: '/purchases/new', color: 'text-orange-600 dark:text-orange-400' },
-              { label: 'New Project', path: '/projects', color: 'text-indigo-600 dark:text-indigo-400' },
-              { label: 'Budgets vs Actuals', path: '/budgets', color: 'text-green-600 dark:text-green-400' },
+              { label: 'New Sales Invoice', path: '/invoices/new', color: 'text-brand-600 dark:text-brand-400' },
+              { label: 'New Purchase Invoice', path: '/purchases/new', color: 'text-warning-700 dark:text-warning-400' },
+              { label: 'New Project', path: '/projects', color: 'text-accent-600 dark:text-accent-400' },
+              { label: 'Budgets vs Actuals', path: '/budgets', color: 'text-success-700 dark:text-success-400' },
               { label: 'Record Bank Transaction', path: '/banking', color: 'text-teal-600 dark:text-teal-400' },
-              { label: 'View Reports', path: '/reports', color: 'text-gray-600 dark:text-slate-300' },
+              { label: 'View Reports', path: '/reports', color: 'text-slate-600 dark:text-slate-300' },
             ].map((q) => (
               <button
                 key={q.path}
@@ -398,7 +400,7 @@ export default function Dashboard() {
                 className="group w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm ring-1 ring-inset ring-transparent hover:ring-slate-200/80 dark:hover:ring-surface-700 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] hover:shadow-xs transition-all"
               >
                 <span className={`font-medium ${q.color}`}>{t(q.label)}</span>
-                <ArrowRight size={14} className="text-slate-300 dark:text-slate-600 transition-all duration-150 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
+                <ArrowRight size={14} className="text-slate-500 dark:text-slate-400 transition-all duration-150 group-hover:text-slate-500 dark:group-hover:text-slate-400 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
               </button>
             ))}
           </div>
@@ -409,11 +411,11 @@ export default function Dashboard() {
       <Card className="mt-6 p-6">
         <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
           <div>
-            <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Cash-Flow Forecast — Next 6 Months')}</h2>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">{t('Projected from receivables, payables, recurring invoices and leases')}</p>
+            <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Cash-Flow Forecast — Next 6 Months')}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('Projected from receivables, payables, recurring invoices and leases')}</p>
           </div>
           {forecastLow < 0 && (
-            <div className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 px-2.5 py-1 rounded-full">
+            <div className="flex items-center gap-1.5 text-xs font-medium text-danger-600 dark:text-danger-400 bg-danger-50 dark:bg-danger-900/30 px-2.5 py-1 rounded-full">
               <AlertCircle size={13} /> {t('Projected cash shortfall')}: {fmtMoney(forecastLow, sym)}
             </div>
           )}
@@ -431,18 +433,18 @@ export default function Dashboard() {
 
       {/* Recent Invoices */}
       <Card className="mt-6">
-        <div className="px-6 py-4 border-b border-gray-100 dark:border-slate-700 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Recent Sales Invoices')}</h2>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
+          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Recent Sales Invoices')}</h2>
           <button onClick={() => navigate('/invoices')} className="group text-sm font-medium text-brand-600 dark:text-brand-400 flex items-center gap-1 px-2 py-1 -me-2 rounded-md hover:bg-brand-50 dark:hover:bg-brand-500/10 transition-colors">
             {t('View all')} <ArrowRight size={13} className="transition-transform duration-150 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />
           </button>
         </div>
         {recentInvoices.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No invoices yet')}</div>
+          <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No invoices yet')}</div>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-left text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase tracking-wide border-b border-gray-50 dark:border-slate-700">
+              <tr className="text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide border-b border-slate-50 dark:border-slate-700">
                 <th className="px-6 py-3">Invoice #</th>
                 <th className="px-4 py-3">{t('Customer')}</th>
                 <th className="px-4 py-3">Date</th>
@@ -456,13 +458,13 @@ export default function Dashboard() {
                 <tr
                   key={inv.id}
                   onClick={() => navigate(`/invoices/${inv.id}`)}
-                  className="border-b border-gray-50 dark:border-slate-700/50 hover:bg-blue-50/40 dark:hover:bg-slate-700/40 cursor-pointer transition-colors"
+                  className="border-b border-slate-50 dark:border-slate-700/50 hover:bg-brand-50/40 dark:hover:bg-slate-700/40 cursor-pointer transition-colors"
                 >
-                  <td className="px-6 py-3 font-medium text-blue-600 dark:text-blue-400">{inv.number}</td>
-                  <td className="px-4 py-3 text-gray-700 dark:text-slate-300">{inv.customerName}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{fmtDate(inv.date)}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-slate-400">{fmtDate(inv.dueDate)}</td>
-                  <td className="px-4 py-3 text-right font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(inv.total, sym)}</td>
+                  <td className="px-6 py-3 font-medium text-brand-600 dark:text-brand-400">{inv.number}</td>
+                  <td className="px-4 py-3 text-slate-700 dark:text-slate-300">{inv.customerName}</td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{fmtDate(inv.date)}</td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{fmtDate(inv.dueDate)}</td>
+                  <td className="px-4 py-3 text-right font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(inv.total, sym)}</td>
                   <td className="px-4 py-3">
                     <Badge className={statusBadge(inv.status)}>{inv.status}</Badge>
                   </td>
@@ -496,7 +498,7 @@ function BSPLSection({ title, rows, total, sym, color, onOpen }) {
     <div className="mb-4">
       <p className={`text-xs font-bold uppercase tracking-wide mb-1.5 ${color}`}>{t(title)}</p>
       {rows.length === 0 ? (
-        <p className="text-gray-400 dark:text-slate-500 text-xs mb-1">{t('None')}</p>
+        <p className="text-slate-500 dark:text-slate-400 text-xs mb-1">{t('None')}</p>
       ) : rows.map((a) => {
         // Synthetic aggregate rows (e.g. the injected "Net Profit (to date)"
         // equity line) carry no account code and aren't a real ledger — leave
@@ -506,9 +508,9 @@ function BSPLSection({ title, rows, total, sym, color, onOpen }) {
           <>
             <span className="truncate pe-2 flex items-center gap-1">
               {a.name}
-              {clickable && <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity flex-shrink-0" />}
+              {clickable && <ChevronRight size={11} className="opacity-0 group-hover:opacity-100 text-brand-600 dark:text-brand-400 transition-opacity flex-shrink-0" />}
             </span>
-            <span className="text-gray-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
+            <span className="text-slate-800 dark:text-slate-100 whitespace-nowrap">{fmtMoney(a.balance, sym)}</span>
           </>
         )
         return clickable ? (
@@ -516,17 +518,17 @@ function BSPLSection({ title, rows, total, sym, color, onOpen }) {
             key={a.id}
             type="button"
             onClick={() => onOpen(a)}
-            className="group w-full flex justify-between items-center py-0.5 text-gray-600 dark:text-slate-300 text-start rounded-md hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] hover:text-brand-700 dark:hover:text-brand-300 transition-colors -mx-1.5 px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
+            className="group w-full flex justify-between items-center py-0.5 text-slate-600 dark:text-slate-300 text-start rounded-md hover:bg-brand-50/50 dark:hover:bg-brand-500/[0.07] hover:text-brand-700 dark:hover:text-brand-300 transition-colors -mx-1.5 px-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40"
           >
             {body}
           </button>
         ) : (
-          <div key={a.id} className="flex justify-between py-0.5 text-gray-600 dark:text-slate-300">
+          <div key={a.id} className="flex justify-between py-0.5 text-slate-600 dark:text-slate-300">
             {body}
           </div>
         )
       })}
-      <div className="flex justify-between border-t border-gray-100 dark:border-slate-700 mt-1 pt-1 font-semibold text-gray-800 dark:text-slate-100">
+      <div className="flex justify-between border-t border-slate-100 dark:border-slate-700 mt-1 pt-1 font-semibold text-slate-800 dark:text-slate-100">
         <span>{t('Total')} {t(title)}</span><span>{fmtMoney(total, sym)}</span>
       </div>
     </div>

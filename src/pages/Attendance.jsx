@@ -16,21 +16,22 @@ import { describeService, serviceStart } from '../utils/contracts'
 import { PageHeader, Card, Btn, Select, Input, EmptyState, StatCard, Badge } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
 import { CalendarCheck, Save, Users, Clock, TrendingDown, Eraser, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const WEEKDAY_SHORT = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa']
 
 // Tailwind needs whole class names, so the palette is spelled out rather than
 // interpolated — a computed `bg-${color}-100` compiles to nothing.
 const CELL_CLR = {
-  present: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-200',
+  present: 'bg-success-100 text-success-800 dark:bg-success-500/20 dark:text-success-200',
   remote:  'bg-teal-100 text-teal-800 dark:bg-teal-500/20 dark:text-teal-200',
-  annual:  'bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-200',
-  sick:    'bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-200',
+  annual:  'bg-brand-100 text-brand-800 dark:bg-brand-500/20 dark:text-brand-200',
+  sick:    'bg-warning-100 text-warning-800 dark:bg-warning-500/20 dark:text-warning-200',
   holiday: 'bg-violet-100 text-violet-800 dark:bg-violet-500/20 dark:text-violet-200',
   rest:    'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400',
-  unpaid:  'bg-orange-100 text-orange-800 dark:bg-orange-500/20 dark:text-orange-200',
-  absent:  'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-200',
-  '':      'bg-white dark:bg-surface-850 text-slate-300 dark:text-slate-600 border-dashed',
+  unpaid:  'bg-warning-100 text-warning-800 dark:bg-warning-500/20 dark:text-warning-200',
+  absent:  'bg-danger-100 text-danger-800 dark:bg-danger-500/20 dark:text-danger-200',
+  '':      'bg-white dark:bg-surface-850 text-slate-500 dark:text-slate-400 border-dashed',
 }
 const LETTER = { present: 'P', remote: 'R', annual: 'A', sick: 'S', holiday: 'H', rest: '·', unpaid: 'U', absent: 'X', '': '' }
 
@@ -100,8 +101,8 @@ export default function Attendance() {
     alert(t('Saved {n} days for {m}.').replace('{n}', n).replace('{m}', period))
   }
 
-  const clearMonth = () => {
-    if (!confirm(t('Clear every mark for this employee in {m}?').replace('{m}', period))) return
+  const clearMonth = async () => {
+    if (!await ask(t('Clear every mark for this employee in {m}?').replace('{m}', period))) return
     clearAttendanceMonth(employeeId, period)
     setDirty(false)
   }
@@ -174,11 +175,11 @@ export default function Attendance() {
             {activeEmps.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
           </Select>
           <div className="flex-1 min-w-[16rem]">
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Click a day to mark it as')}</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Click a day to mark it as')}</label>
             <div className="flex flex-wrap gap-1">
               {DAY_STATUSES.map((s) => (
                 <button key={s.id} onClick={() => setPaint(s.id)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${CELL_CLR[s.id]} ${paint === s.id ? 'ring-2 ring-blue-500 ring-offset-1 dark:ring-offset-surface-900' : 'opacity-70 hover:opacity-100'}`}>
+                  className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${CELL_CLR[s.id]} ${paint === s.id ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-surface-900' : 'opacity-70 hover:opacity-100'}`}>
                   {LETTER[s.id]} {t(s.label)}
                 </button>
               ))}
@@ -190,7 +191,7 @@ export default function Attendance() {
           </div>
         </div>
         {!contract && (
-          <p className="text-xs text-amber-600 dark:text-amber-400 mt-3">
+          <p className="text-xs text-warning-700 dark:text-warning-400 mt-3">
             {t('No employment contract covers this month, so nothing can be costed. The sheet still records who was in.')}
           </p>
         )}
@@ -200,7 +201,7 @@ export default function Attendance() {
       <Card className="p-4 mb-6">
         <div className="grid grid-cols-7 gap-1.5 mb-2">
           {WEEKDAY_SHORT.map((w) => (
-            <div key={w} className="text-center text-[11px] font-semibold uppercase text-slate-400 dark:text-slate-500">{t(w)}</div>
+            <div key={w} className="text-center text-[11px] font-semibold uppercase text-slate-500 dark:text-slate-400">{t(w)}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-1.5">
@@ -211,7 +212,7 @@ export default function Attendance() {
               key={d.date}
               onClick={() => clickDay(d)}
               title={`${fmtDate(d.date)} — ${t(statusMeta(d.status)?.label || 'Unmarked')}`}
-              className={`aspect-square rounded-lg border border-slate-200 dark:border-surface-750 flex flex-col items-center justify-center transition-colors hover:ring-2 hover:ring-blue-400 ${CELL_CLR[d.status] || CELL_CLR['']}`}
+              className={`aspect-square rounded-lg border border-slate-200 dark:border-surface-750 flex flex-col items-center justify-center transition-colors hover:ring-2 hover:ring-brand-400 ${CELL_CLR[d.status] || CELL_CLR['']}`}
             >
               <span className="text-[11px] opacity-70">{Number(d.date.slice(8))}</span>
               <span className="text-sm font-bold">{LETTER[d.status] ?? ''}</span>
@@ -234,10 +235,10 @@ export default function Attendance() {
 
       {/* ── Hours and lateness, only where they were worked ── */}
       <Card className="p-4 mb-6">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-100 mb-3">{t('Overtime and lateness')}</h2>
+        <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100 mb-3">{t('Overtime and lateness')}</h2>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[32rem]">
-            <thead className="text-xs uppercase text-gray-500 dark:text-slate-400">
+            <thead className="text-xs uppercase text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="text-start py-1.5">{t('Day')}</th>
                 <th className="text-start py-1.5">{t('Status')}</th>
@@ -249,7 +250,7 @@ export default function Attendance() {
             </thead>
             <tbody>
               {days.filter((d) => statusMeta(d.status)?.works).map((d) => (
-                <tr key={d.date} className="border-t border-gray-50 dark:border-slate-700/50">
+                <tr key={d.date} className="border-t border-slate-50 dark:border-slate-700/50">
                   <td className="py-1 text-slate-600 dark:text-slate-300">{fmtDate(d.date)}</td>
                   <td className="py-1"><Badge className={CELL_CLR[d.status]}>{t(statusMeta(d.status)?.label)}</Badge></td>
                   <td className="py-1 text-end"><Num v={d.hours} onChange={(v) => setDay(d.date, { hours: v })} /></td>
@@ -257,18 +258,18 @@ export default function Attendance() {
                   <td className="py-1 text-end"><Num v={d.lateMinutes} onChange={(v) => setDay(d.date, { lateMinutes: v })} /></td>
                   <td className="py-1 ps-3">
                     <input value={d.note || ''} onChange={(e) => setDay(d.date, { note: e.target.value })}
-                      className="w-full px-2 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+                      className="w-full px-2 py-1 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500" />
                   </td>
                 </tr>
               ))}
               {days.filter((d) => statusMeta(d.status)?.works).length === 0 && (
-                <tr><td colSpan={6} className="py-4 text-center text-slate-400 dark:text-slate-500">{t('Mark some days as worked to record hours against them.')}</td></tr>
+                <tr><td colSpan={6} className="py-4 text-center text-slate-500 dark:text-slate-400">{t('Mark some days as worked to record hours against them.')}</td></tr>
               )}
             </tbody>
           </table>
         </div>
         {impact && (
-          <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2 mt-3">
+          <p className="text-xs text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 rounded p-2 mt-3">
             {t('At this contract: a day is worth')} {fmtMoney(impact.dailyRate, sym)}, {t('an hour')} {fmtMoney(impact.hourlyRate, sym)}.
             {' '}{summary.unpaidDays > 0 && t('{n} unpaid days deduct {a}.').replace('{n}', summary.unpaidDays).replace('{a}', fmtMoney(impact.absenceDeduction, sym))}
             {' '}{summary.overtimeHours > 0 && t('{h} overtime hours add {a}.').replace('{h}', summary.overtimeHours).replace('{a}', fmtMoney(impact.overtimePay, sym))}
@@ -282,11 +283,11 @@ export default function Attendance() {
       {/* ── Everyone, this month ── */}
       <Card>
         <div className="p-4 pb-0">
-          <h2 className="text-sm font-semibold text-gray-800 dark:text-slate-100">{t('Everyone this month')}</h2>
+          <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t('Everyone this month')}</h2>
         </div>
         <div className="overflow-x-auto p-4">
           <table className="w-full text-sm min-w-[42rem]">
-            <thead className="text-xs uppercase text-gray-500 dark:text-slate-400">
+            <thead className="text-xs uppercase text-slate-500 dark:text-slate-400">
               <tr>
                 <th className="text-start py-2">{t('Employee')}</th>
                 <th className="text-end py-2">{t('Present')}</th>
@@ -299,15 +300,15 @@ export default function Attendance() {
             </thead>
             <tbody>
               {overview.map((r) => (
-                <tr key={r.employee.id} className="border-t border-gray-50 dark:border-slate-700/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02]"
+                <tr key={r.employee.id} className="border-t border-slate-50 dark:border-slate-700/50 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/[0.02]"
                   onClick={() => setEmployeeId(r.employee.id)}>
                   <td className="py-1.5 font-medium text-slate-800 dark:text-slate-100">{r.employee.name}</td>
                   <td className="py-1.5 text-end text-slate-600 dark:text-slate-300">{r.summary.counts.present + r.summary.counts.remote}</td>
                   <td className="py-1.5 text-end text-slate-600 dark:text-slate-300">{r.summary.counts.annual + r.summary.counts.sick}</td>
-                  <td className={`py-1.5 text-end ${r.summary.unpaidDays ? 'text-red-600 dark:text-red-400 font-medium' : 'text-slate-400'}`}>{r.summary.unpaidDays}</td>
-                  <td className="py-1.5 text-end text-slate-400 dark:text-slate-500">{r.summary.unmarked}</td>
+                  <td className={`py-1.5 text-end ${r.summary.unpaidDays ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-slate-500'}`}>{r.summary.unpaidDays}</td>
+                  <td className="py-1.5 text-end text-slate-500 dark:text-slate-400">{r.summary.unmarked}</td>
                   <td className="py-1.5 text-end text-slate-600 dark:text-slate-300">{r.summary.overtimeHours || '—'}</td>
-                  <td className={`py-1.5 text-end font-medium ${r.impact && r.impact.net < 0 ? 'text-red-600 dark:text-red-400' : r.impact && r.impact.net > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`}>
+                  <td className={`py-1.5 text-end font-medium ${r.impact && r.impact.net < 0 ? 'text-danger-600 dark:text-danger-400' : r.impact && r.impact.net > 0 ? 'text-success-700 dark:text-success-400' : 'text-slate-500'}`}>
                     {r.impact ? fmtMoney(r.impact.net, sym) : '—'}
                   </td>
                 </tr>
@@ -323,6 +324,6 @@ export default function Attendance() {
 function Num({ v, onChange }) {
   return (
     <input type="number" step="0.5" min="0" value={v ?? ''} onChange={(e) => onChange(e.target.value)}
-      className="w-20 text-end px-1.5 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500" />
+      className="w-20 text-end px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500" />
   )
 }

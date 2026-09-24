@@ -3,6 +3,7 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyForm = { name: '', description: '', costCenter: '' }
 
@@ -25,10 +26,10 @@ export default function Departments() {
     close()
   }
 
-  const handleDelete = (d) => {
+  const handleDelete = async (d) => {
     const empCount = employees.filter((e) => e.departmentId === d.id).length
     if (empCount > 0) return alert(`Cannot delete: ${empCount} employee(s) are assigned to this department.`)
-    if (confirm(`Delete department "${d.name}"?`)) deleteDepartment(d.id)
+    if (await ask(`Delete department "${d.name}"?`)) deleteDepartment(d.id)
   }
 
   return (
@@ -54,20 +55,20 @@ export default function Departments() {
                       <div className="w-8 h-8 bg-accent-50 dark:bg-accent-500/10 ring-1 ring-inset ring-accent-600/10 dark:ring-accent-400/20 rounded-lg flex items-center justify-center">
                         <Building2 size={14} className="text-accent-600 dark:text-accent-400" />
                       </div>
-                      <span className="font-medium text-gray-800 dark:text-slate-100">{d.name}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100">{d.name}</span>
                     </div>
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{d.description || '—'}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{d.costCenter || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{d.description || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm font-mono">{d.costCenter || '—'}</Td>
                   <Td>
-                    <span className={`text-sm font-medium ${empCount > 0 ? 'text-gray-800 dark:text-slate-100' : 'text-gray-400 dark:text-slate-500'}`}>
+                    <span className={`text-sm font-medium ${empCount > 0 ? 'text-slate-800 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'}`}>
                       {empCount} employee{empCount !== 1 ? 's' : ''}
                     </span>
                   </Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(d)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(d)}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(d)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>

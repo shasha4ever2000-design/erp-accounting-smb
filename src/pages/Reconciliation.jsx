@@ -6,6 +6,8 @@ import { PageHeader, Card, Select, Input, Btn, Modal } from '../components/UI'
 import { parseCSV, detectStatementColumns } from '../utils/csv'
 import { matchRule, suggestRules } from '../utils/bankRules'
 import { CheckCircle2, Circle, Landmark, Upload, AlertCircle, Filter, Sparkles, Zap, Plus } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
 export default function Reconciliation() {
   const t = useT()
@@ -47,7 +49,7 @@ export default function Reconciliation() {
   const isRec = (jeId) => reconciliations.includes(`${accId}::${jeId}`)
 
   // ─── CSV statement import + auto-match ─────────────────────────────
-  const parseAmount = (s) => parseFloat(String(s || '').replace(/[^0-9.\-]/g, '')) || 0
+  const parseAmount = (s) => parseFloat(String(s || '').replace(/[^0-9.-]/g, '')) || 0
   const normalizeDate = (s) => {
     const v = String(s || '').trim()
     let m = v.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
@@ -111,7 +113,7 @@ export default function Reconciliation() {
       const tx = addBankTransaction({
         type: u.amount >= 0 ? 'money_in' : 'money_out',
         bankAccountId: accId, accountId: u.catAccountId,
-        amount: Math.abs(u.amount), date: u.date || new Date().toISOString().slice(0, 10),
+        amount: Math.abs(u.amount), date: u.date || todayISO(),
         description: u.desc || t('Bank statement line'), reference: 'STMT',
       })
       if (tx?.journalEntryId) toggleReconciled(accId, tx.journalEntryId)
@@ -132,10 +134,10 @@ export default function Reconciliation() {
 
   // Book every unmatched line that already has a category, in one pass —
   // otherwise a 40-line statement means 40 individual clicks.
-  const bookAllCategorised = () => {
+  const bookAllCategorised = async () => {
     const ready = (importResult?.unmatched || []).filter((u) => u.catAccountId)
     if (!ready.length) return
-    if (!confirm(t('Book {n} categorised line(s) now?').replace('{n}', ready.length))) return
+    if (!await ask(t('Book {n} categorised line(s) now?').replace('{n}', ready.length))) return
     let booked = 0, failed = 0
     const remaining = []
     ;(importResult.unmatched || []).forEach((u) => {
@@ -144,7 +146,7 @@ export default function Reconciliation() {
         const tx = addBankTransaction({
           type: u.amount >= 0 ? 'money_in' : 'money_out',
           bankAccountId: accId, accountId: u.catAccountId,
-          amount: Math.abs(u.amount), date: u.date || new Date().toISOString().slice(0, 10),
+          amount: Math.abs(u.amount), date: u.date || todayISO(),
           description: u.desc || t('Bank statement line'), reference: 'STMT',
         })
         if (tx?.journalEntryId) toggleReconciled(accId, tx.journalEntryId)
@@ -179,16 +181,16 @@ export default function Reconciliation() {
             <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Import Statement (CSV)')}</Btn>
           </div>
         </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mt-2">{t('Upload a bank statement CSV to auto-match and clear transactions. Expected columns: Date, Description, Amount (or Debit/Credit).')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('Upload a bank statement CSV to auto-match and clear transactions. Expected columns: Date, Description, Amount (or Debit/Credit).')}</p>
       </Card>
 
       {/* Matching rules: auto-categorize statement lines by keyword */}
       <Card className="p-5 mb-6">
         <div className="flex items-center gap-2 mb-3">
-          <Filter size={16} className="text-blue-500" />
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Auto-Match Rules')}</h3>
+          <Filter size={16} className="text-brand-600 dark:text-brand-400" />
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200">{t('Auto-Match Rules')}</h3>
         </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mb-3">{t('When a statement line description contains a keyword, suggest this category so you can book it in one click.')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">{t('When a statement line description contains a keyword, suggest this category so you can book it in one click.')}</p>
         <div className="flex flex-wrap items-end gap-2 mb-3">
           <Input label={t('If description contains')} value={newRule.contains} onChange={(e) => setNewRule((r) => ({ ...r, contains: e.target.value }))} placeholder={t('e.g. STC, Aramex, salary')} className="w-56" />
           <Select label={t('Categorize as')} value={newRule.accountId} onChange={(e) => setNewRule((r) => ({ ...r, accountId: e.target.value }))} className="w-56">
@@ -207,9 +209,9 @@ export default function Reconciliation() {
             <div className="space-y-1.5">
               {suggestions.map((s) => (
                 <div key={s.contains} className="flex items-center justify-between gap-3 text-sm">
-                  <span className="min-w-0 text-gray-700 dark:text-slate-200 truncate">
+                  <span className="min-w-0 text-slate-700 dark:text-slate-200 truncate">
                     "<span className="font-medium">{s.contains}</span>" → {acctName(s.accountId)}
-                    <span className="text-xs text-gray-400 dark:text-slate-500 ms-1.5">
+                    <span className="text-xs text-slate-500 dark:text-slate-400 ms-1.5">
                       {t('seen {n}×').replace('{n}', s.occurrences)}{s.flow !== 'auto' ? ` · ${t(s.flow === 'in' ? 'money in' : 'money out')}` : ''}
                     </span>
                   </span>
@@ -220,15 +222,15 @@ export default function Reconciliation() {
           </div>
         )}
         {matchRules.length === 0 ? (
-          <p className="text-xs text-gray-400 dark:text-slate-500">{t('No rules yet.')}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t('No rules yet.')}</p>
         ) : (
           <div className="flex flex-wrap gap-2">
             {matchRules.map((r) => {
               const acc = accounts.find((a) => a.id === r.accountId)
               return (
-                <span key={r.id} className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-slate-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-gray-600 dark:text-slate-300">
+                <span key={r.id} className="inline-flex items-center gap-1.5 bg-slate-100 dark:bg-slate-700 rounded-full pl-3 pr-1.5 py-1 text-xs text-slate-600 dark:text-slate-300">
                   <span className="font-medium">"{r.contains}"</span> → {acc?.name || '—'}
-                  <button onClick={() => deleteMatchRule(r.id)} className="w-4 h-4 rounded-full hover:bg-gray-200 dark:hover:bg-slate-600 flex items-center justify-center text-gray-400">×</button>
+                  <button onClick={() => deleteMatchRule(r.id)} className="w-4 h-4 rounded-full hover:bg-slate-200 dark:hover:bg-slate-600 flex items-center justify-center text-slate-500 dark:text-slate-400">×</button>
                 </span>
               )
             })}
@@ -238,40 +240,40 @@ export default function Reconciliation() {
 
       <Modal open={!!importResult} onClose={() => setImportResult(null)} title={t('Import Bank Statement')} width="max-w-2xl">
         {importResult?.error ? (
-          <div className="flex items-start gap-2 text-sm text-red-600 dark:text-red-400">
+          <div className="flex items-start gap-2 text-sm text-danger-600 dark:text-danger-400">
             <AlertCircle size={18} className="flex-shrink-0 mt-0.5" /><span>{importResult.error}</span>
           </div>
         ) : importResult && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3">
-                <p className="text-2xl font-bold text-green-700 dark:text-green-300">{importResult.matched.length}</p>
-                <p className="text-xs text-green-600 dark:text-green-400">{t('matched to your ledger')}</p>
+              <div className="bg-success-50 dark:bg-success-900/30 rounded-lg p-3">
+                <p className="text-2xl font-bold text-success-700 dark:text-success-300">{importResult.matched.length}</p>
+                <p className="text-xs text-success-700 dark:text-success-400">{t('matched to your ledger')}</p>
               </div>
-              <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg p-3">
-                <p className="text-2xl font-bold text-amber-700 dark:text-amber-300">{importResult.unmatched.length}</p>
-                <p className="text-xs text-amber-600 dark:text-amber-400">{t('not found in your books')}</p>
+              <div className="bg-warning-50 dark:bg-warning-900/30 rounded-lg p-3">
+                <p className="text-2xl font-bold text-warning-700 dark:text-warning-300">{importResult.unmatched.length}</p>
+                <p className="text-xs text-warning-700 dark:text-warning-400">{t('not found in your books')}</p>
               </div>
             </div>
 
             {importResult.unmatched.length > 0 && (
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">{t('Unmatched statement lines')}</p>
+                  <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('Unmatched statement lines')}</p>
                   {importResult.unmatched.some((u) => u.catAccountId) && (
                     <Btn size="sm" variant="secondary" onClick={bookAllCategorised}>
                       <Zap size={13} /> {t('Book all {n} categorised').replace('{n}', importResult.unmatched.filter((u) => u.catAccountId).length)}
                     </Btn>
                   )}
                 </div>
-                <div className="max-h-64 overflow-y-auto border border-gray-100 dark:border-slate-700 rounded-lg divide-y divide-gray-50 dark:divide-slate-700/50">
+                <div className="max-h-64 overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-lg divide-y divide-slate-50 dark:divide-slate-700/50">
                   {importResult.unmatched.map((u, i) => (
                     <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm">
-                      <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(u.date)}</span>
-                      <span className="flex-1 min-w-0 truncate text-gray-700 dark:text-slate-200" title={u.desc}>{u.desc || '—'}</span>
-                      <span className={`whitespace-nowrap ${u.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{u.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(u.amount), sym)}</span>
+                      <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(u.date)}</span>
+                      <span className="flex-1 min-w-0 truncate text-slate-700 dark:text-slate-200" title={u.desc}>{u.desc || '—'}</span>
+                      <span className={`whitespace-nowrap ${u.amount >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{u.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(u.amount), sym)}</span>
                       <select value={u.catAccountId || ''} onChange={(e) => setUnmatchedCat(i, e.target.value)}
-                        className="text-xs border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-1.5 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        className="text-xs border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-1.5 py-1 max-w-[120px] focus:outline-none focus:ring-1 focus:ring-brand-500">
                         <option value="">{t('Category…')}</option>
                         {categoryAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                       </select>
@@ -279,7 +281,7 @@ export default function Reconciliation() {
                     </div>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400 dark:text-slate-500 mt-1.5">{t('Pick a category (auto-filled from your rules) and click Book to record and clear each line.')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t('Pick a category (auto-filled from your rules) and click Book to record and clear each line.')}</p>
               </div>
             )}
 
@@ -297,23 +299,23 @@ export default function Reconciliation() {
         <Kpi label="Book Balance" value={fmtMoney(bookBalance, sym)} />
         <Kpi label="Cleared Balance" value={fmtMoney(clearedBalance, sym)} />
         <Kpi label="Uncleared" value={fmtMoney(bookBalance - clearedBalance, sym)} />
-        <div className={`rounded-xl p-4 ${reconciled ? 'bg-green-50 dark:bg-green-900/30' : difference === null ? 'bg-gray-50 dark:bg-slate-800' : 'bg-amber-50 dark:bg-amber-900/30'}`}>
-          <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">Difference</p>
-          <p className={`text-lg font-bold ${reconciled ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'}`}>
+        <div className={`rounded-xl p-4 ${reconciled ? 'bg-success-50 dark:bg-success-900/30' : difference === null ? 'bg-slate-50 dark:bg-slate-800' : 'bg-warning-50 dark:bg-warning-900/30'}`}>
+          <p className="text-[11px] uppercase text-slate-500 dark:text-slate-400">Difference</p>
+          <p className={`text-lg font-bold ${reconciled ? 'text-success-700 dark:text-success-300' : 'text-warning-700 dark:text-warning-300'}`}>
             {difference === null ? '—' : fmtMoney(difference, sym)}
           </p>
-          {reconciled && <p className="text-[11px] text-green-600 dark:text-green-400">✓ Reconciled</p>}
+          {reconciled && <p className="text-[11px] text-success-700 dark:text-success-400">✓ Reconciled</p>}
         </div>
       </div>
 
       <Card className="overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 dark:border-slate-700 flex items-center gap-2">
-          <Landmark size={15} className="text-gray-400 dark:text-slate-500" />
-          <h3 className="font-semibold text-sm text-gray-700 dark:text-slate-200">{t('Transactions — tick each one that appears on your bank statement')}</h3>
+        <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center gap-2">
+          <Landmark size={15} className="text-slate-500 dark:text-slate-400" />
+          <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200">{t('Transactions — tick each one that appears on your bank statement')}</h3>
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-gray-50 dark:bg-slate-800/60">
-            <tr className="text-xs text-gray-400 dark:text-slate-500 uppercase">
+          <thead className="bg-slate-50 dark:bg-slate-800/60">
+            <tr className="text-xs text-slate-500 dark:text-slate-400 uppercase">
               <th className="px-4 py-2 text-left w-12">Clear</th>
               <th className="px-4 py-2 text-left">Date</th>
               <th className="px-4 py-2 text-left">{t('Description')}</th>
@@ -322,17 +324,17 @@ export default function Reconciliation() {
             </tr>
           </thead>
           <tbody>
-            {movements.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-gray-400 dark:text-slate-500">{t('No transactions for this account')}</td></tr>}
+            {movements.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500 dark:text-slate-400">{t('No transactions for this account')}</td></tr>}
             {movements.map((m) => {
               const rec = isRec(m.id)
               return (
-                <tr key={m.id} className={`border-b border-gray-50 dark:border-slate-700/50 cursor-pointer ${rec ? 'bg-green-50/40 dark:bg-green-900/10' : 'hover:bg-gray-50 dark:hover:bg-slate-700/30'}`}
+                <tr key={m.id} className={`border-b border-slate-50 dark:border-slate-700/50 cursor-pointer ${rec ? 'bg-success-50/40 dark:bg-success-900/10' : 'hover:bg-slate-50 dark:hover:bg-slate-700/30'}`}
                   onClick={() => toggleReconciled(accId, m.id)}>
-                  <td className="px-4 py-2">{rec ? <CheckCircle2 size={17} className="text-green-500" /> : <Circle size={17} className="text-gray-300 dark:text-slate-600" />}</td>
-                  <td className="px-4 py-2 text-gray-500 dark:text-slate-400">{fmtDate(m.date)}</td>
-                  <td className="px-4 py-2 text-gray-700 dark:text-slate-200">{m.desc}</td>
-                  <td className="px-4 py-2 text-gray-400 dark:text-slate-500 font-mono text-xs">{m.ref}</td>
-                  <td className={`px-4 py-2 text-right font-medium ${m.amount >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                  <td className="px-4 py-2">{rec ? <CheckCircle2 size={17} className="text-success-700 dark:text-success-400" /> : <Circle size={17} className="text-slate-500 dark:text-slate-400" />}</td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400">{fmtDate(m.date)}</td>
+                  <td className="px-4 py-2 text-slate-700 dark:text-slate-200">{m.desc}</td>
+                  <td className="px-4 py-2 text-slate-500 dark:text-slate-400 font-mono text-xs">{m.ref}</td>
+                  <td className={`px-4 py-2 text-right font-medium ${m.amount >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                     {m.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(m.amount), sym)}
                   </td>
                 </tr>
@@ -347,9 +349,9 @@ export default function Reconciliation() {
 
 function Kpi({ label, value }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-gray-100 dark:border-slate-700">
-      <p className="text-[11px] uppercase text-gray-400 dark:text-slate-500">{typeof label === 'string' ? tr(label) : label}</p>
-      <p className="text-lg font-bold text-gray-800 dark:text-slate-100">{value}</p>
+    <div className="bg-white dark:bg-slate-800 rounded-xl p-4 border border-slate-100 dark:border-slate-700">
+      <p className="text-[11px] uppercase text-slate-500 dark:text-slate-400">{typeof label === 'string' ? tr(label) : label}</p>
+      <p className="text-lg font-bold text-slate-800 dark:text-slate-100">{value}</p>
     </div>
   )
 }

@@ -39,6 +39,8 @@ const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100
 export function explode(item, qty, items = [], { chain = [], depth = 0 } = {}) {
   const n = Number(qty) || 0
   if (!item || n <= 0) return []
+  // A service is sold but never stocked: nothing leaves a shelf.
+  if (item.type === 'service') return []
   if (!isKit(item)) return [{ itemId: item.id, qty: round6(n) }]
 
   // Already inside this kit, or nested too deep to be anything but a mistake.

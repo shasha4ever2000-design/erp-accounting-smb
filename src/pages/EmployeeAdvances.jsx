@@ -5,8 +5,10 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import { advanceBalance, repaidTotal, runsRemaining, owedBy } from '../utils/employeeAdvances'
 import { HandCoins, Plus, Trash2, Undo2, XCircle, Users } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 const STATUS_CLASS = {
   open: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
@@ -90,8 +92,8 @@ export default function EmployeeAdvances() {
     } catch (e) { setError(String(e.message || e)) }
   }
 
-  const remove = (adv) => {
-    if (!confirm(t('Delete this advance? Its journal entry goes to the recycle bin.'))) return
+  const remove = async (adv) => {
+    if (!await ask(t('Delete this advance? Its journal entry goes to the recycle bin.'))) return
     try { deleteEmployeeAdvance(adv.id) } catch (e) {
       if (String(e.message).startsWith('EMPADV_IN_USE'))
         return alert(t('Some of this advance has already been repaid, so it stays on the record.'))
@@ -115,7 +117,7 @@ export default function EmployeeAdvances() {
       <Card>
         {rows.length === 0 ? (
           <EmptyState
-            icon={<HandCoins size={28} className="text-slate-400 dark:text-slate-500" />}
+            icon={<HandCoins size={28} className="text-slate-500 dark:text-slate-400" />}
             title={t('No advances yet')}
             desc={t('An advance is money lent to an employee, not a cost. It is held as an asset and comes back through payroll a bit at a time, so nobody has to remember the deduction each month.')}
           />
@@ -129,12 +131,12 @@ export default function EmployeeAdvances() {
                   <Td>{fmtDate(a.date)}</Td>
                   <Td>
                     {a.employeeName || '—'}
-                    {a.notes && <span className="block text-[11px] text-gray-400 dark:text-slate-500">{a.notes}</span>}
+                    {a.notes && <span className="block text-[11px] text-slate-500 dark:text-slate-400">{a.notes}</span>}
                   </Td>
                   <Td className="tabular">{fmtMoney(a.amount, sym)}</Td>
-                  <Td className="tabular text-gray-500 dark:text-slate-400">{fmtMoney(repaidTotal(a), sym)}</Td>
+                  <Td className="tabular text-slate-500 dark:text-slate-400">{fmtMoney(repaidTotal(a), sym)}</Td>
                   <Td className="tabular font-semibold">{a.status === 'written_off' ? '—' : fmtMoney(left, sym)}</Td>
-                  <Td className="tabular text-gray-500 dark:text-slate-400">
+                  <Td className="tabular text-slate-500 dark:text-slate-400">
                     {a.instalment > 0 ? fmtMoney(a.instalment, sym) : t('whole balance')}
                     {runs != null && runs > 0 && (
                       <span className="block text-[11px]">{runs} {runs === 1 ? t('run left') : t('runs left')}</span>
@@ -149,13 +151,13 @@ export default function EmployeeAdvances() {
                           <Undo2 size={12} /> {t('Repay')}
                         </button>
                         <button onClick={() => { setWriteOffForm({ date: today(), expenseAccountId: 'acc-salary', reason: '' }); setError(''); setWriteOffFor(a) }}
-                          className="text-xs font-semibold text-gray-500 hover:text-danger-600 dark:text-slate-400 ms-3 inline-flex items-center gap-1">
+                          className="text-xs font-semibold text-slate-500 hover:text-danger-600 dark:text-slate-400 ms-3 inline-flex items-center gap-1">
                           <XCircle size={12} /> {t('Write off')}
                         </button>
                       </>
                     )}
                     {(a.repayments || []).length === 0 && a.status === 'open' && (
-                      <button onClick={() => remove(a)} title={t('Delete')} className="text-gray-300 hover:text-red-500 ms-3 align-middle">
+                      <button onClick={() => remove(a)} title={t('Delete')} className="text-slate-500 dark:text-slate-400 hover:text-danger-500 ms-3 align-middle">
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -187,12 +189,12 @@ export default function EmployeeAdvances() {
           </div>
           <Input label={t('Note')} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('Advance against salary')} />
           {form.employeeId && owedBy(employeeAdvances, form.employeeId) > 0 && (
-            <p className="text-xs text-warning-600 dark:text-warning-400">
+            <p className="text-xs text-warning-700 dark:text-warning-400">
               {t('This employee already owes {amt}.').replace('{amt}', fmtMoney(owedBy(employeeAdvances, form.employeeId), sym))}
             </p>
           )}
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <p className="text-xs text-gray-400 dark:text-slate-500">
+          {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('Recorded as an asset, not a payroll cost — the money is still yours until it is worked off. Payroll deducts the instalment automatically.')}
           </p>
           <div className="flex justify-end gap-2 pt-1">
@@ -206,7 +208,7 @@ export default function EmployeeAdvances() {
       <Modal open={!!repayFor} onClose={() => setRepayFor(null)} title={t('Repay in cash')}>
         {repayFor && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('{name} · {amt} outstanding').replace('{name}', repayFor.employeeName || '').replace('{amt}', fmtMoney(advanceBalance(repayFor), sym))}
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -217,8 +219,8 @@ export default function EmployeeAdvances() {
               <option value="">{t('Select…')}</option>
               {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
             </Select>
-            <p className="text-xs text-gray-400 dark:text-slate-500">{t('For money handed back outside payroll. Payroll deductions are recorded automatically.')}</p>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('For money handed back outside payroll. Payroll deductions are recorded automatically.')}</p>
+            {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <Btn variant="secondary" onClick={() => setRepayFor(null)}>{t('Cancel')}</Btn>
               <Btn onClick={doRepay}>{t('Record repayment')}</Btn>
@@ -231,7 +233,7 @@ export default function EmployeeAdvances() {
       <Modal open={!!writeOffFor} onClose={() => setWriteOffFor(null)} title={t('Write off advance')}>
         {writeOffFor && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('{name} · {amt} outstanding').replace('{name}', writeOffFor.employeeName || '').replace('{amt}', fmtMoney(advanceBalance(writeOffFor), sym))}
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -241,10 +243,10 @@ export default function EmployeeAdvances() {
               </Select>
             </div>
             <Input label={t('Reason')} value={writeOffForm.reason} onChange={(e) => setWriteOffForm((f) => ({ ...f, reason: e.target.value }))} placeholder={t('Left without notice')} />
-            <p className="text-xs text-warning-600 dark:text-warning-400">
+            <p className="text-xs text-warning-700 dark:text-warning-400">
               {t('This is the point the advance becomes a cost. It cannot be undone from here — the entry would have to be reversed manually.')}
             </p>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <Btn variant="secondary" onClick={() => setWriteOffFor(null)}>{t('Cancel')}</Btn>
               <Btn onClick={doWriteOff}>{t('Write off')}</Btn>

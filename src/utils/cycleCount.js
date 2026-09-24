@@ -17,6 +17,7 @@
 // of the queue for another year.
 
 import { isKit } from './kits'
+import { todayISO } from './localDate'
 
 const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100
 const num = (v) => Number(v) || 0
@@ -42,7 +43,7 @@ export const CLASS_LABELS = {
  * the attention of one machine worth 40,000.
  */
 export function classifyABC(items = []) {
-  const stocked = items.filter((i) => i && !isKit(i))
+  const stocked = items.filter((i) => i && !isKit(i) && i.type !== 'service')
   const valued = stocked.map((i) => ({
     id: i.id, code: i.code || '', name: i.name || '',
     quantity: num(i.quantity),
@@ -110,7 +111,7 @@ const daysBetween = (from, to) => {
  */
 export function dueForCount(items = [], stockCounts = [], { policy = null, asAt = '' } = {}) {
   const pol = { ...defaultPolicy(), ...(policy || {}) }
-  const at = asAt || new Date().toISOString().slice(0, 10)
+  const at = asAt || todayISO()
   const last = lastCountedMap(stockCounts)
 
   return classifyABC(items)

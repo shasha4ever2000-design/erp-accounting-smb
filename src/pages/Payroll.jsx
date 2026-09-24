@@ -7,6 +7,7 @@ import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, 
 import AttachmentButton from '../components/Attachments'
 import { Plus, Play, DollarSign, Trash2, Users, MinusCircle, CalendarCheck, FileSignature } from 'lucide-react'
 import { grossOf as contractGross } from '../utils/contracts'
+import { ask } from '../components/Dialogs'
 
 const STATUS_CLR = {
   draft:     'bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300',
@@ -130,9 +131,9 @@ export default function Payroll() {
     setNewModal(false)
   }
 
-  const handleProcess = (run) => { if (confirm(`Process payroll run ${run.number}? This posts the journal entry.`)) { try { processPayrollRun(run.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e } } }
+  const handleProcess = async (run) => { if (await ask(`Process payroll run ${run.number}? This posts the journal entry.`)) { try { processPayrollRun(run.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e } } }
   const handlePay = () => { if (!payBankId) return alert('Select a bank account.'); try { payPayrollRun(payModal.id, payBankId, payPayDate) } catch (e) { if (alertIfLocked(e, t)) return; throw e } setPayModal(null) }
-  const handleDelete = (run) => { if (confirm(`Delete payroll run ${run.number}?`)) { try { deletePayrollRun(run.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e } } }
+  const handleDelete = async (run) => { if (await ask(`Delete payroll run ${run.number}?`)) { try { deletePayrollRun(run.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e } } }
 
   const bankOpts = bankAccounts.map((ba) => ({ id: ba.accountId, name: ba.name }))
   const sorted = [...payrollRuns].sort((a, b) => b.createdAt?.localeCompare(a.createdAt || '') || 0)
@@ -146,7 +147,7 @@ export default function Payroll() {
 
   const NumCell = ({ v, onChange, muted }) => (
     <input type="number" step="0.01" value={v} onChange={(e) => onChange(e.target.value)}
-      className={`w-20 text-right px-1.5 py-1 text-xs rounded border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-500 ${muted ? 'text-red-500' : ''}`} />
+      className={`w-20 text-right px-1.5 py-1 text-xs rounded border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 focus:outline-none focus:ring-1 focus:ring-brand-500 ${muted ? 'text-danger-600 dark:text-danger-400' : ''}`} />
   )
 
   return (
@@ -175,21 +176,21 @@ export default function Payroll() {
               const nnet = run.lines?.reduce((s, l) => s + (l.net ?? netOf(l)), 0) || 0
               return (
               <Tr key={run.id}>
-                <Td><span className="font-mono text-sm font-medium text-indigo-600 dark:text-indigo-400">{run.number}</span></Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{run.period}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(run.payDate)}</Td>
-                <Td className="text-gray-600 dark:text-slate-300">{run.lines?.length || 0}</Td>
+                <Td><span className="font-mono text-sm font-medium text-accent-600 dark:text-accent-400">{run.number}</span></Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{run.period}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{fmtDate(run.payDate)}</Td>
+                <Td className="text-slate-600 dark:text-slate-300">{run.lines?.length || 0}</Td>
                 <Td right className="font-medium">{fmtMoney(g, sym)}</Td>
-                <Td right className="text-red-500 dark:text-red-400">{fmtMoney(g - nnet, sym)}</Td>
-                <Td right className="font-semibold text-green-700 dark:text-green-400">{fmtMoney(nnet, sym)}</Td>
+                <Td right className="text-danger-600 dark:text-danger-400">{fmtMoney(g - nnet, sym)}</Td>
+                <Td right className="font-semibold text-success-700 dark:text-success-400">{fmtMoney(nnet, sym)}</Td>
                 <Td><Badge className={STATUS_CLR[run.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{run.status}</Badge></Td>
-                <Td>{run.paid ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('Paid')} {run.paymentDate ? fmtDate(run.paymentDate) : ''}</Badge> : <span className="text-xs text-gray-400">{t('Unpaid')}</span>}</Td>
+                <Td>{run.paid ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('Paid')} {run.paymentDate ? fmtDate(run.paymentDate) : ''}</Badge> : <span className="text-xs text-slate-500 dark:text-slate-400">{t('Unpaid')}</span>}</Td>
                 <Td right>
                   <div className="flex justify-end items-center gap-1">
                     <AttachmentButton entityType="payroll" entityId={run.id} />
                     {run.status === 'draft' && <Btn size="sm" variant="secondary" onClick={() => handleProcess(run)}><Play size={12} /> {t('Process')}</Btn>}
                     {run.status === 'processed' && !run.paid && <Btn size="sm" variant="success" onClick={() => { setPayModal(run); setPayBankId(bankOpts[0]?.id || '') }}><DollarSign size={12} /> {t('Pay')}</Btn>}
-                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(run)}><Trash2 size={13} className="text-red-400" /></Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(run)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                   </div>
                 </Td>
               </Tr>
@@ -208,75 +209,75 @@ export default function Payroll() {
           </div>
 
           {runLines.length === 0 ? (
-            <div className="text-center py-6 text-gray-400 dark:text-slate-500">{t('No active employees. Add employees in the HR section first.')}</div>
+            <div className="text-center py-6 text-slate-500 dark:text-slate-400">{t('No active employees. Add employees in the HR section first.')}</div>
           ) : (
             <>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {t('Pay comes from the employment contract in force for this month; overtime and absence come from the attendance sheet. Edit any cell for this run.')}
                 {fromContractCount < runLines.length && (
-                  <span className="text-amber-600 dark:text-amber-400"> {' '}
+                  <span className="text-warning-700 dark:text-warning-400"> {' '}
                     {t('{n} of {m} have no contract for this month, so their employee record was used instead.')
                       .replace('{n}', runLines.length - fromContractCount).replace('{m}', runLines.length)}
                   </span>
                 )}
                 {unmarkedTotal > 0 && (
-                  <span className="text-slate-400 dark:text-slate-500"> {' '}
+                  <span className="text-slate-500 dark:text-slate-400"> {' '}
                     {t('{d} days this month are unmarked on the attendance sheet and were not deducted.').replace('{d}', unmarkedTotal)}
                   </span>
                 )}
               </p>
-              <div className="overflow-x-auto border border-gray-100 dark:border-slate-700 rounded-lg">
+              <div className="overflow-x-auto border border-slate-100 dark:border-slate-700 rounded-lg">
                 <table className="text-xs whitespace-nowrap">
-                  <thead className="bg-gray-50 dark:bg-slate-800/60">
-                    <tr className="text-[11px] text-gray-500 dark:text-slate-400 uppercase">
-                      <th className="text-left px-2 py-2 sticky left-0 bg-gray-50 dark:bg-slate-800/60">{t('Employee')}</th>
+                  <thead className="bg-slate-50 dark:bg-slate-800/60">
+                    <tr className="text-[11px] text-slate-500 dark:text-slate-400 uppercase">
+                      <th className="text-left px-2 py-2 sticky left-0 bg-slate-50 dark:bg-slate-800/60">{t('Employee')}</th>
                       <th className="px-2 py-2">{t('Basic')}</th>
                       <th className="px-2 py-2">{t('Housing')}</th>
                       <th className="px-2 py-2">{t('Transport')}</th>
                       <th className="px-2 py-2">{t('Other')}</th>
                       <th className="px-2 py-2">{t('Overtime')}</th>
-                      <th className="px-2 py-2 text-right bg-green-50/60 dark:bg-green-900/10">{t('Gross')}</th>
+                      <th className="px-2 py-2 text-right bg-success-50/60 dark:bg-success-900/10">{t('Gross')}</th>
                       <th className="px-2 py-2">{t('Late')}</th>
                       <th className="px-2 py-2">{t('Absent')}</th>
                       <th className="px-2 py-2">{t('Penalty')}</th>
                       <th className="px-2 py-2">{t('GOSI')}</th>
                       <th className="px-2 py-2">{t('Tax')}</th>
                       <th className="px-2 py-2">{t('Advance')}</th>
-                      <th className="px-2 py-2 text-right bg-blue-50/60 dark:bg-blue-900/10">{t('Net')}</th>
+                      <th className="px-2 py-2 text-right bg-brand-50/60 dark:bg-brand-900/10">{t('Net')}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {runLines.map((l, i) => (
-                      <tr key={l.employeeId} className="border-t border-gray-50 dark:border-slate-700/50">
-                        <td className="px-2 py-1.5 font-medium text-gray-800 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-800">{l.employeeName}</td>
+                      <tr key={l.employeeId} className="border-t border-slate-50 dark:border-slate-700/50">
+                        <td className="px-2 py-1.5 font-medium text-slate-800 dark:text-slate-100 sticky left-0 bg-white dark:bg-slate-800">{l.employeeName}</td>
                         <td className="px-2 py-1.5"><NumCell v={l.basic} onChange={(v) => setCell(i, 'basic', v)} /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.housing} onChange={(v) => setCell(i, 'housing', v)} /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.transport} onChange={(v) => setCell(i, 'transport', v)} /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.other} onChange={(v) => setCell(i, 'other', v)} /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.overtime} onChange={(v) => setCell(i, 'overtime', v)} /></td>
-                        <td className="px-2 py-1.5 text-right font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(grossOf(l), sym)}</td>
+                        <td className="px-2 py-1.5 text-right font-semibold text-slate-800 dark:text-slate-100">{fmtMoney(grossOf(l), sym)}</td>
                         <td className="px-2 py-1.5"><NumCell v={l.late} onChange={(v) => setCell(i, 'late', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.absent} onChange={(v) => setCell(i, 'absent', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.penalty} onChange={(v) => setCell(i, 'penalty', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.gosi} onChange={(v) => setCell(i, 'gosi', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.tax} onChange={(v) => setCell(i, 'tax', v)} muted /></td>
                         <td className="px-2 py-1.5"><NumCell v={l.loan ?? 0} onChange={(v) => setCell(i, 'loan', v)} muted /></td>
-                        <td className="px-2 py-1.5 text-right font-bold text-green-700 dark:text-green-400">{fmtMoney(netOf(l), sym)}</td>
+                        <td className="px-2 py-1.5 text-right font-bold text-success-700 dark:text-success-400">{fmtMoney(netOf(l), sym)}</td>
                       </tr>
                     ))}
                   </tbody>
                   <tfoot>
-                    <tr className="border-t-2 border-gray-200 dark:border-slate-600 font-bold bg-gray-50 dark:bg-slate-800/60">
-                      <td className="px-2 py-2 sticky left-0 bg-gray-50 dark:bg-slate-800/60">{t('Totals')}</td>
+                    <tr className="border-t-2 border-slate-200 dark:border-slate-600 font-bold bg-slate-50 dark:bg-slate-800/60">
+                      <td className="px-2 py-2 sticky left-0 bg-slate-50 dark:bg-slate-800/60">{t('Totals')}</td>
                       <td colSpan={5} />
                       <td className="px-2 py-2 text-right">{fmtMoney(totalGross, sym)}</td>
-                      <td colSpan={6} className="px-2 py-2 text-right text-red-500 dark:text-red-400">-{fmtMoney(totalDed, sym)}</td>
-                      <td className="px-2 py-2 text-right text-green-700 dark:text-green-400">{fmtMoney(totalNet, sym)}</td>
+                      <td colSpan={6} className="px-2 py-2 text-right text-danger-600 dark:text-danger-400">-{fmtMoney(totalDed, sym)}</td>
+                      <td className="px-2 py-2 text-right text-success-700 dark:text-success-400">{fmtMoney(totalNet, sym)}</td>
                     </tr>
                   </tfoot>
                 </table>
               </div>
-              <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2">
+              <p className="text-xs text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 rounded p-2">
                 {t('On processing: Dr Salaries')} ({fmtMoney(totalGross - runLines.reduce((s,l)=>s+num(l.late)+num(l.absent)+num(l.penalty),0), sym)}) → {t('Cr Net Pay')} ({fmtMoney(totalNet, sym)}) + {t('Cr Tax & GOSI Payable')}
                 {totalLoan > 0 && <> + {t('Cr Employee Advances')} ({fmtMoney(totalLoan, sym)})</>}
               </p>
@@ -293,15 +294,15 @@ export default function Payroll() {
       {/* Pay Employees Modal */}
       <Modal open={!!payModal} onClose={() => setPayModal(null)} title={`Pay Employees – ${payModal?.number}`}>
         <div className="space-y-4">
-          <p className="text-sm text-gray-600 dark:text-slate-300">
-            {t('Total net pay')}: <span className="font-semibold text-gray-900 dark:text-slate-100">{fmtMoney(payModal?.lines?.reduce((s, l) => s + (l.net ?? netOf(l)), 0) || 0, sym)}</span>
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {t('Total net pay')}: <span className="font-semibold text-slate-900 dark:text-slate-100">{fmtMoney(payModal?.lines?.reduce((s, l) => s + (l.net ?? netOf(l)), 0) || 0, sym)}</span>
           </p>
           <Select label="Pay From Bank Account" value={payBankId} onChange={(e) => setPayBankId(e.target.value)}>
             <option value="">— Select account —</option>
             {bankOpts.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </Select>
           <Input label="Payment Date" type="date" value={payPayDate} onChange={(e) => setPayPayDate(e.target.value)} />
-          <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded p-2">{t('Posts: Dr Salaries Payable → Cr Bank Account')}</p>
+          <p className="text-xs text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 rounded p-2">{t('Posts: Dr Salaries Payable → Cr Bank Account')}</p>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
             <Btn variant="success" onClick={handlePay}>{t('Confirm Payment')}</Btn>

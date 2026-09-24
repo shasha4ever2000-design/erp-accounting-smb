@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyStat
 import AttachmentButton from '../components/Attachments'
 import { alertIfLocked } from '../utils/periodLock'
 import { Plus, Trash2, ArrowUpRight, ArrowDownLeft, Landmark } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const BANK_IDS = ['acc-cash', 'acc-bank1']
 
@@ -52,8 +53,8 @@ export default function Banking() {
     setForm(emptyForm())
   }
 
-  const handleDelete = (tx) => {
-    if (confirm('Delete this transaction?')) {
+  const handleDelete = async (tx) => {
+    if (await ask('Delete this transaction?')) {
       try { deleteBankTransaction(tx.id) } catch (e) { if (alertIfLocked(e, t)) return; throw e }
     }
   }
@@ -91,11 +92,11 @@ export default function Banking() {
 
       {/* Filter by account */}
       <div className="flex gap-2 mb-4 flex-wrap">
-        <button onClick={() => setSelectedBank('all')} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === 'all' ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+        <button onClick={() => setSelectedBank('all')} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === 'all' ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
           {t('All Accounts')}
         </button>
         {bankAccounts.map((a) => (
-          <button key={a.id} onClick={() => setSelectedBank(a.id)} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === a.id ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+          <button key={a.id} onClick={() => setSelectedBank(a.id)} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === a.id ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
             {a.name}
           </button>
         ))}
@@ -108,21 +109,21 @@ export default function Banking() {
           <Table headers={['Date', 'Description', 'Account', 'Bank Account', 'Type', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((tx) => (
               <Tr key={tx.id}>
-                <Td className="text-gray-500 dark:text-slate-400">{fmtDate(tx.date)}</Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">
+                <Td className="text-slate-500 dark:text-slate-400">{fmtDate(tx.date)}</Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">
                   {tx.description}
-                  {tx.reference && <span className="text-xs text-gray-400 dark:text-slate-500 ml-2">({tx.reference})</span>}
+                  {tx.reference && <span className="text-xs text-slate-500 dark:text-slate-400 ml-2">({tx.reference})</span>}
                 </Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{tx.accountName}</Td>
-                <Td className="text-gray-500 dark:text-slate-400 text-sm">{tx.bankName}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{tx.accountName}</Td>
+                <Td className="text-slate-500 dark:text-slate-400 text-sm">{tx.bankName}</Td>
                 <Td>
                   {tx.type === 'money_in'
-                    ? <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
-                    : <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
+                    ? <span className="inline-flex items-center gap-1 text-success-700 dark:text-success-400 text-xs font-medium"><ArrowDownLeft size={12} /> {t('Money In')}</span>
+                    : <span className="inline-flex items-center gap-1 text-danger-600 dark:text-danger-400 text-xs font-medium"><ArrowUpRight size={12} /> {t('Money Out')}</span>
                   }
                 </Td>
                 <Td right>
-                  <span className={`font-semibold ${tx.type === 'money_in' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                  <span className={`font-semibold ${tx.type === 'money_in' ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                     {tx.type === 'money_in' ? '+' : '-'}{fmtMoney(tx.amount, sym)}
                   </span>
                 </Td>
@@ -130,7 +131,7 @@ export default function Banking() {
                   <div className="flex items-center justify-end gap-1">
                     <AttachmentButton entityType="banktx" entityId={tx.id} />
                     <Btn size="sm" variant="ghost" onClick={() => handleDelete(tx)}>
-                      <Trash2 size={13} className="text-red-400" />
+                      <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                     </Btn>
                   </div>
                 </Td>

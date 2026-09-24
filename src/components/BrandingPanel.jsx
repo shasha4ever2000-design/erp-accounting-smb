@@ -6,6 +6,7 @@ import { LAYOUTS, DOC_TYPES, DOC_TYPE_LIST, resolveDocBrand, contrastOn } from '
 import { saveBrandAsset, getBrandAsset, deleteBrandAsset } from '../utils/brandAssets'
 import { formatBytes, dataUrlBytes } from '../utils/itemImages'
 import { ImagePlus, Trash2, AlertTriangle, Loader2, PenLine } from 'lucide-react'
+import { ask } from './Dialogs'
 
 function AssetSlot({ kind, label, hint, height = 'h-20' }) {
   const t = useT()
@@ -35,19 +36,19 @@ function AssetSlot({ kind, label, hint, height = 'h-20' }) {
   }
 
   const remove = async () => {
-    if (!confirm(t('Remove this image?'))) return
+    if (!await ask(t('Remove this image?'))) return
     await deleteBrandAsset(kind)
     await refresh()
   }
 
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t(label)}</label>
+      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t(label)}</label>
       <div className="flex items-center gap-4">
-        <div className={`w-32 ${height} rounded-lg border border-dashed border-gray-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-slate-700/50 p-2`}>
+        <div className={`w-32 ${height} rounded-lg border border-dashed border-slate-300 dark:border-slate-600 flex items-center justify-center overflow-hidden bg-slate-50 dark:bg-slate-700/50 p-2`}>
           {asset?.dataUrl
             ? <img src={asset.dataUrl} alt="" className="max-w-full max-h-full object-contain" />
-            : <span className="text-xs text-gray-400 dark:text-slate-500">{t('None')}</span>}
+            : <span className="text-xs text-slate-500 dark:text-slate-400">{t('None')}</span>}
         </div>
         <div className="space-y-2">
           <div className="flex gap-2">
@@ -55,12 +56,12 @@ function AssetSlot({ kind, label, hint, height = 'h-20' }) {
               {busy ? <Loader2 size={14} className="animate-spin" /> : <ImagePlus size={14} />}
               {busy ? t('Saving…') : t('Upload')}
             </Btn>
-            {asset && <Btn size="sm" variant="ghost" onClick={remove}><Trash2 size={13} className="text-red-400" /></Btn>}
+            {asset && <Btn size="sm" variant="ghost" onClick={remove}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>}
           </div>
           <input ref={ref} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={onFile} className="hidden" />
-          <p className="text-xs text-gray-400 dark:text-slate-500 max-w-xs">{t(hint)}</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs">{t(hint)}</p>
           {asset?.dataUrl && (
-            <p className="text-xs text-gray-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {asset.width ? `${asset.width}×${asset.height} · ` : ''}{formatBytes(dataUrlBytes(asset.dataUrl))}
               {asset.mime === 'image/png' ? ` · ${t('transparency kept')}` : ''}
             </p>
@@ -103,11 +104,11 @@ export default function BrandingPanel() {
       {/* Colour + layout */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Brand colour')}</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Brand colour')}</label>
           <div className="flex items-center gap-2">
             <input type="color" value={resolved.accentColor}
               onChange={(e) => set({ accentColor: e.target.value })}
-              className="h-9 w-12 rounded border border-gray-300 dark:border-slate-600 bg-transparent cursor-pointer" />
+              className="h-9 w-12 rounded border border-slate-300 dark:border-slate-600 bg-transparent cursor-pointer" />
             <input value={b.accentColor || ''} onChange={(e) => set({ accentColor: e.target.value })}
               className="flex-1 border rounded-lg px-3 py-2 text-sm font-mono bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
           </div>
@@ -134,30 +135,30 @@ export default function BrandingPanel() {
       {/* Shared text */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Default terms')}</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Default terms')}</label>
           <textarea rows={3} value={b.terms || ''} onChange={(e) => set({ terms: e.target.value })}
             placeholder={t('e.g. Payment due within 30 days of invoice date.')}
             className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Footer line')}</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Footer line')}</label>
           <textarea rows={3} value={b.footer || ''} onChange={(e) => set({ footer: e.target.value })}
             placeholder={t('e.g. Registered in Riyadh · CR 1010xxxxxx')}
             className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
         </div>
       </div>
-      <p className="text-xs text-gray-400 dark:text-slate-500 -mt-3">
+      <p className="text-xs text-slate-500 dark:text-slate-400 -mt-3">
         {t('These appear on every document. Override just the ones that differ below.')}
       </p>
 
       {/* Signature */}
-      <div className="pt-4 border-t border-gray-100 dark:border-surface-750 space-y-4">
+      <div className="pt-4 border-t border-slate-100 dark:border-surface-750 space-y-4">
         <label className="flex items-start gap-2.5 text-sm cursor-pointer">
-          <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-gray-300 dark:border-slate-600"
+          <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-slate-300 dark:border-slate-600"
             checked={!!b.showSignature} onChange={(e) => set({ showSignature: e.target.checked })} />
-          <span className="text-gray-700 dark:text-slate-200">
+          <span className="text-slate-700 dark:text-slate-200">
             {t('Show a signature block')}
-            <span className="block text-xs text-gray-400 dark:text-slate-500">
+            <span className="block text-xs text-slate-500 dark:text-slate-400">
               {t('A ruled line at the foot of the document, with your signature image above it if you upload one.')}
             </span>
           </span>
@@ -172,10 +173,10 @@ export default function BrandingPanel() {
       </div>
 
       {/* Per-document overrides */}
-      <div className="pt-4 border-t border-gray-100 dark:border-surface-750">
+      <div className="pt-4 border-t border-slate-100 dark:border-surface-750">
         <div className="flex items-center gap-3 mb-3 flex-wrap">
-          <PenLine size={15} className="text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-slate-300">{t('Wording for one document type')}</span>
+          <PenLine size={15} className="text-slate-500 dark:text-slate-400" />
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('Wording for one document type')}</span>
           <Select value={docType} onChange={(e) => setDocType(e.target.value)} className="w-56">
             {DOC_TYPE_LIST.map((k) => <option key={k} value={k}>{t(DOC_TYPES[k].label)}</option>)}
           </Select>
@@ -183,14 +184,14 @@ export default function BrandingPanel() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Note under the header')}</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Note under the header')}</label>
             <textarea rows={2} value={per.header || ''} onChange={(e) => updateDocBranding(docType, { header: e.target.value })}
               className="w-full border rounded-lg px-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
           </div>
           {DOC_TYPES[docType]?.terms !== false && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
-                {t('Terms')} <span className="text-xs text-gray-400">{t('(blank uses the default)')}</span>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                {t('Terms')} <span className="text-xs text-slate-500 dark:text-slate-400">{t('(blank uses the default)')}</span>
               </label>
               <textarea rows={2} value={per.terms || ''} onChange={(e) => updateDocBranding(docType, { terms: e.target.value })}
                 placeholder={b.terms || ''}
@@ -201,13 +202,13 @@ export default function BrandingPanel() {
 
         {DOC_TYPES[docType]?.bank && (
           <label className="flex items-center gap-2 text-sm cursor-pointer mt-3">
-            <input type="checkbox" className="h-4 w-4 rounded border-gray-300 dark:border-slate-600"
+            <input type="checkbox" className="h-4 w-4 rounded border-slate-300 dark:border-slate-600"
               checked={per.showBank !== false} onChange={(e) => updateDocBranding(docType, { showBank: e.target.checked })} />
-            <span className="text-gray-700 dark:text-slate-200">{t('Show payment details on this document')}</span>
+            <span className="text-slate-700 dark:text-slate-200">{t('Show payment details on this document')}</span>
           </label>
         )}
         {!DOC_TYPES[docType]?.bank && (
-          <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
             {t('Payment details are not shown on this document — nobody pays from it.')}
           </p>
         )}

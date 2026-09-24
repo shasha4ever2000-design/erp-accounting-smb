@@ -46,7 +46,7 @@ export function qtyOnHand(item, warehouseId = '') {
 
 /** Items a count may include — stocked goods only. */
 export function countableItems(items = []) {
-  return items.filter((i) => i && !isKit(i))
+  return items.filter((i) => i && !isKit(i) && i.type !== 'service')
 }
 
 /**
@@ -54,7 +54,7 @@ export function countableItems(items = []) {
  * `counted` stays null until someone enters a number.
  */
 export function makeLine(item, warehouseId = '', { counted = null } = {}) {
-  if (!item || isKit(item)) return null
+  if (!item || isKit(item) || item.type === 'service') return null
   return {
     itemId: item.id,
     code: item.code || '',

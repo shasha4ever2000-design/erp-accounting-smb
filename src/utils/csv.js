@@ -51,7 +51,7 @@ export function exportCSV(filename, rows, columns) {
  * Handles quoted fields, escaped quotes, and \r\n / \n line endings.
  */
 export function parseCSV(text) {
-  const clean = text.replace(/^﻿/, '') // strip BOM if present
+  const clean = text.replace(/^\uFEFF/, '') // strip BOM if present
   const rows = []
   let row = []
   let field = ''

@@ -1,3 +1,4 @@
+import { todayISO as localToday } from './localDate'
 // Receipt OCR — read a photographed receipt into the expense-claim form.
 //
 // Uses the Claude vision API with structured outputs, so the model returns a
@@ -81,7 +82,7 @@ export function buildOcrRequest(dataUrl, { model, todayISO, currency } = {}) {
         { type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } },
         {
           type: 'text',
-          text: `Extract this receipt. Today is ${todayISO || new Date().toISOString().slice(0, 10)}.`
+          text: `Extract this receipt. Today is ${todayISO || localToday()}.`
             + (currency ? ` The company books in ${currency}.` : ''),
         },
       ],

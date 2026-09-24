@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Table, Tr, Td, Badge, EmptyState } from '../components/UI'
 import { Plus, Trash2, Repeat, Play, CalendarClock, Pencil } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const FREQ = ['weekly', 'biweekly', 'monthly', 'quarterly', 'yearly']
 const emptyLine = () => ({ accountId: '', debit: '', credit: '', description: '' })
@@ -84,19 +85,19 @@ export default function RecurringJournals() {
               const due = r.status === 'active' && r.nextDate <= todayStr
               return (
                 <Tr key={r.id}>
-                  <Td><span className="font-medium text-gray-800 dark:text-slate-100">{r.name}</span></Td>
-                  <Td className="capitalize text-gray-500 dark:text-slate-400">{t(r.frequency)}</Td>
+                  <Td><span className="font-medium text-slate-800 dark:text-slate-100">{r.name}</span></Td>
+                  <Td className="capitalize text-slate-500 dark:text-slate-400">{t(r.frequency)}</Td>
                   <Td>
-                    <span className={due ? 'text-amber-600 dark:text-amber-400 font-medium' : 'text-gray-600 dark:text-slate-300'}>{fmtDate(r.nextDate)}</span>
+                    <span className={due ? 'text-warning-700 dark:text-warning-400 font-medium' : 'text-slate-600 dark:text-slate-300'}>{fmtDate(r.nextDate)}</span>
                     {due && <Badge className="ms-2 bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{t('Due')}</Badge>}
                   </Td>
-                  <Td right className="font-medium text-gray-800 dark:text-slate-100">{fmtMoney(amt, sym)}</Td>
-                  <Td right className="text-gray-500 dark:text-slate-400">{r.postedCount || 0}</Td>
+                  <Td right className="font-medium text-slate-800 dark:text-slate-100">{fmtMoney(amt, sym)}</Td>
+                  <Td right className="text-slate-500 dark:text-slate-400">{r.postedCount || 0}</Td>
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
-                      <Btn size="sm" variant="ghost" onClick={() => postNow(r)} title={t('Post now')}><Play size={13} className="text-green-500" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => postNow(r)} title={t('Post now')}><Play size={13} className="text-success-700 dark:text-success-400" /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(r)} title={t('Edit')}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => { if (confirm(t('Delete this recurring entry?'))) deleteRecurringJournal(r.id) }} title={t('Delete')}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={async () => { if (await ask(t('Delete this recurring entry?'))) deleteRecurringJournal(r.id) }} title={t('Delete')}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -116,32 +117,32 @@ export default function RecurringJournals() {
             <Input label={t('Next Date')} type="date" value={form.nextDate} onChange={(e) => setField('nextDate', e.target.value)} />
           </div>
 
-          <div className="border rounded-lg overflow-hidden border-gray-200 dark:border-slate-700">
+          <div className="border rounded-lg overflow-hidden border-slate-200 dark:border-slate-700">
             <table className="w-full text-sm">
-              <thead className="bg-gray-50 dark:bg-slate-800/60 text-xs text-gray-400 uppercase">
+              <thead className="bg-slate-50 dark:bg-slate-800/60 text-xs text-slate-500 dark:text-slate-400 uppercase">
                 <tr><th className="text-start px-3 py-2">{t('Account')}</th><th className="text-end px-2 py-2 w-28">{t('Debit')}</th><th className="text-end px-2 py-2 w-28">{t('Credit')}</th><th className="w-8"></th></tr>
               </thead>
               <tbody>
                 {form.lines.map((l, i) => (
-                  <tr key={i} className="border-t border-gray-50 dark:border-slate-700/50">
+                  <tr key={i} className="border-t border-slate-50 dark:border-slate-700/50">
                     <td className="px-3 py-1.5">
                       <select value={l.accountId} onChange={(e) => setLine(i, 'accountId', e.target.value)}
-                        className="w-full border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500">
+                        className="w-full border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500">
                         <option value="">{t('Select account…')}</option>
                         {accounts.map((a) => <option key={a.id} value={a.id}>{a.code} — {a.name}</option>)}
                       </select>
                     </td>
-                    <td className="px-2 py-1.5"><input type="number" step="0.01" value={l.debit} onChange={(e) => setLine(i, 'debit', e.target.value)} className="w-full text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm" /></td>
-                    <td className="px-2 py-1.5"><input type="number" step="0.01" value={l.credit} onChange={(e) => setLine(i, 'credit', e.target.value)} className="w-full text-end border border-gray-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm" /></td>
-                    <td className="px-1">{form.lines.length > 2 && <button onClick={() => removeLine(i)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>}</td>
+                    <td className="px-2 py-1.5"><input type="number" step="0.01" value={l.debit} onChange={(e) => setLine(i, 'debit', e.target.value)} className="w-full text-end border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm" /></td>
+                    <td className="px-2 py-1.5"><input type="number" step="0.01" value={l.credit} onChange={(e) => setLine(i, 'credit', e.target.value)} className="w-full text-end border border-slate-200 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 rounded px-2 py-1 text-sm" /></td>
+                    <td className="px-1">{form.lines.length > 2 && <button onClick={() => removeLine(i)} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>}</td>
                   </tr>
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t border-gray-200 dark:border-slate-600 bg-gray-50/60 dark:bg-slate-800/40 font-semibold text-sm">
-                  <td className="px-3 py-2 text-end text-gray-500 dark:text-slate-400">{t('Totals')}</td>
-                  <td className={`px-2 py-2 text-end ${balanced ? 'text-gray-800 dark:text-slate-100' : 'text-red-500'}`}>{fmtMoney(totalDr, sym)}</td>
-                  <td className={`px-2 py-2 text-end ${balanced ? 'text-gray-800 dark:text-slate-100' : 'text-red-500'}`}>{fmtMoney(totalCr, sym)}</td>
+                <tr className="border-t border-slate-200 dark:border-slate-600 bg-slate-50/60 dark:bg-slate-800/40 font-semibold text-sm">
+                  <td className="px-3 py-2 text-end text-slate-500 dark:text-slate-400">{t('Totals')}</td>
+                  <td className={`px-2 py-2 text-end ${balanced ? 'text-slate-800 dark:text-slate-100' : 'text-danger-600'}`}>{fmtMoney(totalDr, sym)}</td>
+                  <td className={`px-2 py-2 text-end ${balanced ? 'text-slate-800 dark:text-slate-100' : 'text-danger-600'}`}>{fmtMoney(totalCr, sym)}</td>
                   <td></td>
                 </tr>
               </tfoot>
@@ -149,7 +150,7 @@ export default function RecurringJournals() {
           </div>
           <div className="flex items-center justify-between">
             <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add line')}</Btn>
-            <span className={`text-xs font-medium ${balanced ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{balanced ? t('Balanced') : t('Out of balance')}</span>
+            <span className={`text-xs font-medium ${balanced ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{balanced ? t('Balanced') : t('Out of balance')}</span>
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>

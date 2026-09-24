@@ -1,7 +1,8 @@
 // Shared UI primitives (light + dark mode aware)
-import { Fragment, Children, cloneElement, isValidElement, useState } from 'react'
+import { Fragment, Children, cloneElement, isValidElement, useState, useEffect } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useT } from '../i18n'
+import { fmtMoney } from '../utils/formatters'
 
 // Translate string children of buttons while preserving icons/layout.
 function translateChildren(children, t) {
@@ -45,11 +46,13 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', type 
   const base = 'group inline-flex items-center justify-center gap-2 font-semibold rounded-lg whitespace-nowrap select-none transition-all duration-150 ease-spring active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:brightness-100'
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
   const variants = {
-    primary:   'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary hover:from-brand-600 hover:to-brand-700 active:from-brand-700 active:to-brand-700 focus-visible:ring-brand-500',
+    // Gradients start at the 600 step: white text on brand-500 was 3.7:1, on
+    // success-500 2.5:1. These all clear 4.5:1 top to bottom.
+    primary:   'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary hover:from-brand-700 hover:to-brand-800 active:from-brand-800 active:to-brand-800 focus-visible:ring-brand-500',
     secondary: 'bg-white dark:bg-surface-800 text-slate-700 dark:text-slate-200 border border-slate-300/90 dark:border-surface-600 shadow-btn-secondary dark:shadow-none hover:bg-slate-50 hover:border-slate-400/80 hover:text-slate-900 dark:hover:bg-surface-750 dark:hover:border-surface-500 dark:hover:text-white focus-visible:ring-slate-400',
-    danger:    'bg-gradient-to-b from-danger-500 to-danger-600 text-white shadow-sm hover:from-danger-600 hover:to-danger-700 focus-visible:ring-danger-500',
+    danger:    'bg-gradient-to-b from-danger-600 to-danger-700 text-white shadow-sm hover:from-danger-700 hover:to-danger-800 focus-visible:ring-danger-500',
     ghost:     'text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:hover:bg-white/[0.06] dark:hover:text-white focus-visible:ring-slate-400',
-    success:   'bg-gradient-to-b from-success-500 to-success-600 text-white shadow-sm hover:from-success-600 hover:to-success-700 focus-visible:ring-success-500',
+    success:   'bg-gradient-to-b from-success-700 to-success-800 text-white shadow-sm hover:from-success-800 hover:to-success-900 focus-visible:ring-success-500',
   }
   return (
     <button type={type} onClick={onClick} disabled={disabled} title={typeof title === 'string' ? t(title) : title} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
@@ -163,17 +166,24 @@ export function Textarea({ label, error, className = '', ...props }) {
 
 export function Modal({ open, onClose, title, children, width = 'max-w-lg' }) {
   const t = useT()
+  // Escape closes, as every dialog is expected to.
+  useEffect(() => {
+    if (!open || !onClose) return
+    const onKey = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-surface-950/55 backdrop-blur-[3px] animate-fade-in" onClick={onClose} />
-      <div className={`relative bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 w-full ${width} max-h-[90vh] flex flex-col animate-scale-in overflow-hidden`}>
+      <div role="dialog" aria-modal="true" className={`relative bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 w-full ${width} max-h-[90vh] flex flex-col animate-scale-in overflow-hidden`}>
         <div className="flex items-center justify-between ps-6 pe-4 py-4 border-b border-slate-100 dark:border-surface-750">
           <h2 className="text-lg font-semibold tracking-snug text-slate-900 dark:text-slate-50">{typeof title === 'string' ? t(title) : title}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-100 dark:hover:bg-white/[0.07] transition-colors text-xl leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-700 hover:bg-slate-100 dark:hover:text-slate-100 dark:hover:bg-white/[0.07] transition-colors text-xl leading-none focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
           >
             &times;
           </button>
@@ -208,9 +218,9 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
   // Soft tinted icon chips — quieter and more premium than saturated fills.
   const colors = {
     blue:   'bg-brand-50 text-brand-600 ring-brand-600/10 dark:bg-brand-500/10 dark:text-brand-400 dark:ring-brand-400/20',
-    green:  'bg-success-50 text-success-600 ring-success-600/10 dark:bg-success-500/10 dark:text-success-400 dark:ring-success-400/20',
-    orange: 'bg-warning-50 text-warning-600 ring-warning-600/10 dark:bg-warning-500/10 dark:text-warning-400 dark:ring-warning-400/20',
-    amber:  'bg-warning-50 text-warning-600 ring-warning-600/10 dark:bg-warning-500/10 dark:text-warning-400 dark:ring-warning-400/20',
+    green:  'bg-success-50 text-success-700 ring-success-600/10 dark:bg-success-500/10 dark:text-success-400 dark:ring-success-400/20',
+    orange: 'bg-warning-50 text-warning-700 ring-warning-600/10 dark:bg-warning-500/10 dark:text-warning-400 dark:ring-warning-400/20',
+    amber:  'bg-warning-50 text-warning-700 ring-warning-600/10 dark:bg-warning-500/10 dark:text-warning-400 dark:ring-warning-400/20',
     red:    'bg-danger-50 text-danger-600 ring-danger-600/10 dark:bg-danger-500/10 dark:text-danger-400 dark:ring-danger-400/20',
     purple: 'bg-accent-50 text-accent-600 ring-accent-600/10 dark:bg-accent-500/10 dark:text-accent-400 dark:ring-accent-400/20',
   }
@@ -218,7 +228,7 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
     <Card {...clickProps} className={`group p-4 sm:p-5 transition-all duration-200 ease-spring hover:shadow-card-hover hover:-translate-y-px ${onClick ? 'cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500/40' : ''}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">{label}{onClick && <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 text-brand-400 transition-opacity" />}</p>
+          <p className="text-[11px] uppercase tracking-[0.08em] text-slate-500 dark:text-slate-400 font-semibold flex items-center gap-1">{label}{onClick && <ChevronRight size={12} className="opacity-0 group-hover:opacity-100 text-brand-600 dark:text-brand-400 transition-opacity" />}</p>
           {/* Long amounts shrink instead of truncating — money must stay fully
               readable. The step-down is per-breakpoint because the card itself
               is far narrower on a phone: a value sized for a 300px desktop card
@@ -234,7 +244,7 @@ export function StatCard({ label, value, sub, color = 'blue', icon, trend, trend
                 {trendUp ? '▲' : '▼'} {trend}
               </span>
             )}
-            {sub && <p className="text-xs text-slate-400 dark:text-slate-500 truncate min-w-0">{sub}</p>}
+            {sub && <p className="text-xs text-slate-500 dark:text-slate-400 truncate min-w-0">{sub}</p>}
           </div>
         </div>
         {icon && (
@@ -303,8 +313,30 @@ export function SectionDivider({ title }) {
   return (
     <div className="flex items-center gap-3 my-6">
       <div className="flex-1 border-t border-slate-200/90 dark:border-surface-700" />
-      <span className="text-[11px] font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-[0.12em]">{typeof title === 'string' ? t(title) : title}</span>
+      <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-[0.12em]">{typeof title === 'string' ? t(title) : title}</span>
       <div className="flex-1 border-t border-slate-200/90 dark:border-surface-700" />
     </div>
+  )
+}
+
+/**
+ * An amount of money, formatted the one way the app shows money: tabular,
+ * lining numerals, the minus before the symbol, never "-0.00". A document in
+ * a foreign currency shows its own code; pass `base` to add the base-currency
+ * figure underneath.
+ *
+ * @param {number} amount
+ * @param {string} symbol      the symbol or code to show (e.g. "SAR ", "$")
+ * @param {number} [base]      the same amount in base currency
+ * @param {string} [baseSymbol]
+ * @param {boolean} [signed]   colour negatives with the danger tone
+ */
+export function Money({ amount, symbol = '', base, baseSymbol = '', signed = false, className = '' }) {
+  const n = Number(amount) || 0
+  return (
+    <span className={`inline-flex flex-col items-end tabular-nums whitespace-nowrap ${signed && n < -0.004 ? 'text-danger-600 dark:text-danger-400' : ''} ${className}`}>
+      <span>{fmtMoney(n, symbol)}</span>
+      {base != null && <span className="text-[11px] font-normal text-slate-500 dark:text-slate-400">≈ {fmtMoney(base, baseSymbol)}</span>}
+    </span>
   )
 }

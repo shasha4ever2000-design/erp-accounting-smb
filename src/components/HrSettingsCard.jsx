@@ -37,9 +37,9 @@ export default function HrSettingsCard() {
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-700 flex items-center justify-center">
           <Users size={14} className="text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('HR & Attendance')}</h2>
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('HR & Attendance')}</h2>
       </div>
-      <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
         {t('The end-of-service scheme, your working week, and how lateness is treated. Changes here save straight away.')}
       </p>
 
@@ -48,7 +48,7 @@ export default function HrSettingsCard() {
           <Select label={t('End-of-service scheme')} value={eosb.rule || 'none'} onChange={(e) => updateHrSettings({ eosb: { rule: e.target.value } })}>
             {EOSB_RULES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
           </Select>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {eosb.rule === 'saudi' && t('Half a month per year for the first five years, a full month after. A resignation earns nothing under two years, a third to five, two thirds to ten.')}
             {eosb.rule === 'simple' && t('A flat number of days per year, with no resignation scaling.')}
             {(!eosb.rule || eosb.rule === 'none') && t('No provision is built and nothing is posted. Turn a scheme on to start accruing.')}
@@ -68,25 +68,25 @@ export default function HrSettingsCard() {
               <option value="contributory">{t('Basic + housing')}</option>
               <option value="gross">{t('Full gross pay')}</option>
             </Select>
-            <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {t('Basic plus housing is the GCC convention. Computing on basic alone understates the award; on full gross it overstates it.')}
             </p>
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1.5">{t('Weekly rest days')}</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('Weekly rest days')}</label>
           <div className="flex flex-wrap gap-1.5">
             {WEEKDAYS.map((d) => (
               <button key={d.id} onClick={() => toggleRest(d.id)}
                 className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${restDays.includes(d.id)
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
+                  ? 'bg-brand-600 text-white'
+                  : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}>
                 {t(d.label)}
               </button>
             ))}
           </div>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">
             {t('New attendance sheets come pre-filled with these, so nobody has to mark eight rest days by hand every month.')}
           </p>
         </div>
@@ -94,10 +94,10 @@ export default function HrSettingsCard() {
         <div>
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
             <input type="checkbox" checked={!!hr.deductLate} onChange={(e) => updateHrSettings({ deductLate: e.target.checked })}
-              className="rounded border-slate-300 dark:border-surface-700 text-blue-600 focus:ring-blue-500" />
+              className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" />
             {t('Deduct pay for lateness')}
           </label>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
             {t('Off by default. Docking pay by the minute has legal limits in most places, so it is never done unless you ask.')}
           </p>
           {hr.deductLate && (

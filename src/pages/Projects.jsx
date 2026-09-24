@@ -5,6 +5,7 @@ import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Briefcase, TrendingUp, TrendingDown, Clock, ChevronDown, ChevronRight } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyProject = { name: '', client: '', budget: '', startDate: today(), status: 'active', notes: '' }
 const emptyTx      = { type: 'money_out', amount: '', date: today(), accountId: '', bankAccountId: '', description: '' }
@@ -104,54 +105,54 @@ export default function Projects() {
             desc="Track income, costs and billable time per project or job, and see profitability instantly."
             action={<Btn onClick={openNew}><Plus size={14} /> {t('Create Project')}</Btn>} />
         ) : (
-          <div className="divide-y divide-gray-100 dark:divide-slate-700">
+          <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {projects.map((p) => {
               const s = stats(p.id)
               const open = expanded === p.id
               const budgetUsed = p.budget ? Math.min(100, (s.cost / p.budget) * 100) : 0
               return (
                 <div key={p.id}>
-                  <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-gray-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => setExpanded(open ? null : p.id)}>
-                    <button className="text-gray-400 dark:text-slate-500">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
-                    <div className="w-9 h-9 rounded-lg bg-indigo-50 dark:bg-indigo-900/40 flex items-center justify-center flex-shrink-0">
-                      <Briefcase size={16} className="text-indigo-600 dark:text-indigo-300" />
+                  <div className="flex items-center gap-3 px-5 py-3.5 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer" onClick={() => setExpanded(open ? null : p.id)}>
+                    <button className="text-slate-500 dark:text-slate-400">{open ? <ChevronDown size={16} /> : <ChevronRight size={16} />}</button>
+                    <div className="w-9 h-9 rounded-lg bg-accent-50 dark:bg-accent-900/40 flex items-center justify-center flex-shrink-0">
+                      <Briefcase size={16} className="text-accent-600 dark:text-accent-300" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
-                        <p className="font-semibold text-gray-800 dark:text-slate-100 truncate">{p.name}</p>
+                        <p className="font-semibold text-slate-800 dark:text-slate-100 truncate">{p.name}</p>
                         <Badge className={STATUS_CLR[p.status]}>{p.status.replace('_', ' ')}</Badge>
                       </div>
-                      <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">{p.number}{p.client ? ` · ${p.client}` : ''}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{p.number}{p.client ? ` · ${p.client}` : ''}</p>
                     </div>
                     <div className="hidden md:flex items-center gap-6 text-end">
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">{t('Income')}</p><p className="text-sm font-semibold text-green-600 dark:text-green-400 tabular-nums">{fmtMoney(s.income, sym)}</p></div>
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">Cost</p><p className="text-sm font-semibold text-red-500 dark:text-red-400 tabular-nums">{fmtMoney(s.cost, sym)}</p></div>
-                      <div><p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">Profit</p><p className={`text-sm font-bold tabular-nums ${s.profit >= 0 ? 'text-gray-800 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(s.profit, sym)}</p></div>
+                      <div><p className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('Income')}</p><p className="text-sm font-semibold text-success-700 dark:text-success-400 tabular-nums">{fmtMoney(s.income, sym)}</p></div>
+                      <div><p className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Cost</p><p className="text-sm font-semibold text-danger-600 dark:text-danger-400 tabular-nums">{fmtMoney(s.cost, sym)}</p></div>
+                      <div><p className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">Profit</p><p className={`text-sm font-bold tabular-nums ${s.profit >= 0 ? 'text-slate-800 dark:text-slate-100' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(s.profit, sym)}</p></div>
                     </div>
                     <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       <AttachmentButton entityType="project" entityId={p.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(p)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete project "${p.name}"? Ledger entries are kept.`)) deleteProject(p.id) }}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={async () => { if (await ask(`Delete project "${p.name}"? Ledger entries are kept.`)) deleteProject(p.id) }}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </div>
 
                   {open && (
-                    <div className="px-5 pb-5 pt-1 bg-gray-50/60 dark:bg-slate-800/30">
+                    <div className="px-5 pb-5 pt-1 bg-slate-50/60 dark:bg-slate-800/30">
                       {/* KPI row */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
-                        <Kpi label="Income"  value={fmtMoney(s.income, sym)} color="text-green-600 dark:text-green-400" />
-                        <Kpi label="Cost"    value={fmtMoney(s.cost, sym)}   color="text-red-500 dark:text-red-400" />
-                        <Kpi label="Margin"  value={`${(s.margin * 100).toFixed(0)}%`} color="text-indigo-600 dark:text-indigo-300" />
-                        <Kpi label="Billable Time" value={fmtMoney(s.billable, sym)} sub={`${s.hours} hrs`} color="text-gray-800 dark:text-slate-100" />
+                        <Kpi label="Income"  value={fmtMoney(s.income, sym)} color="text-success-700 dark:text-success-400" />
+                        <Kpi label="Cost"    value={fmtMoney(s.cost, sym)}   color="text-danger-600 dark:text-danger-400" />
+                        <Kpi label="Margin"  value={`${(s.margin * 100).toFixed(0)}%`} color="text-accent-600 dark:text-accent-300" />
+                        <Kpi label="Billable Time" value={fmtMoney(s.billable, sym)} sub={`${s.hours} hrs`} color="text-slate-800 dark:text-slate-100" />
                       </div>
 
                       {p.budget > 0 && (
                         <div className="mb-4">
-                          <div className="flex justify-between text-xs text-gray-500 dark:text-slate-400 mb-1">
+                          <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
                             <span>{t('Budget used')}</span><span>{fmtMoney(s.cost, sym)} / {fmtMoney(p.budget, sym)}</span>
                           </div>
-                          <div className="h-2 rounded-full bg-gray-200 dark:bg-slate-700 overflow-hidden">
-                            <div className={`h-full rounded-full transition-all ${budgetUsed >= 100 ? 'bg-red-500' : budgetUsed > 80 ? 'bg-yellow-500' : 'bg-green-500'}`} style={{ width: `${budgetUsed}%` }} />
+                          <div className="h-2 rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden">
+                            <div className={`h-full rounded-full transition-all ${budgetUsed >= 100 ? 'bg-danger-500' : budgetUsed > 80 ? 'bg-warning-500' : 'bg-success-500'}`} style={{ width: `${budgetUsed}%` }} />
                           </div>
                         </div>
                       )}
@@ -165,15 +166,15 @@ export default function Projects() {
                       {/* Transactions */}
                       {s.txns.length > 0 && (
                         <div className="mb-4">
-                          <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1">Transactions</p>
-                          <div className="rounded-lg border border-gray-100 dark:border-slate-700 overflow-hidden">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">Transactions</p>
+                          <div className="rounded-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
                             {s.txns.slice().reverse().map((t) => (
-                              <div key={t.id} className="flex items-center justify-between px-3 py-2 text-sm border-b last:border-0 border-gray-50 dark:border-slate-700/50 bg-white dark:bg-slate-800">
+                              <div key={t.id} className="flex items-center justify-between px-3 py-2 text-sm border-b last:border-0 border-slate-50 dark:border-slate-700/50 bg-white dark:bg-slate-800">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-gray-400 dark:text-slate-500 text-xs w-20">{fmtDate(t.date)}</span>
-                                  <span className="text-gray-700 dark:text-slate-200">{t.description}</span>
+                                  <span className="text-slate-500 dark:text-slate-400 text-xs w-20">{fmtDate(t.date)}</span>
+                                  <span className="text-slate-700 dark:text-slate-200">{t.description}</span>
                                 </div>
-                                <span className={`font-semibold ${t.type === 'money_in' ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+                                <span className={`font-semibold ${t.type === 'money_in' ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                                   {t.type === 'money_in' ? '+' : '−'}{fmtMoney(t.amount, sym)}
                                 </span>
                               </div>
@@ -185,18 +186,18 @@ export default function Projects() {
                       {/* Time entries */}
                       {timeEntries.filter((t) => t.projectId === p.id).length > 0 && (
                         <div>
-                          <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase mb-1">{t('Time Log')}</p>
-                          <div className="rounded-lg border border-gray-100 dark:border-slate-700 overflow-hidden">
+                          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('Time Log')}</p>
+                          <div className="rounded-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
                             {timeEntries.filter((t) => t.projectId === p.id).slice().reverse().map((t) => (
-                              <div key={t.id} className="flex items-center justify-between px-3 py-2 text-sm border-b last:border-0 border-gray-50 dark:border-slate-700/50 bg-white dark:bg-slate-800">
+                              <div key={t.id} className="flex items-center justify-between px-3 py-2 text-sm border-b last:border-0 border-slate-50 dark:border-slate-700/50 bg-white dark:bg-slate-800">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-gray-400 dark:text-slate-500 text-xs w-20">{fmtDate(t.date)}</span>
-                                  <span className="text-gray-700 dark:text-slate-200">{t.employeeName || 'Staff'} — {t.description || 'work'}</span>
+                                  <span className="text-slate-500 dark:text-slate-400 text-xs w-20">{fmtDate(t.date)}</span>
+                                  <span className="text-slate-700 dark:text-slate-200">{t.employeeName || 'Staff'} — {t.description || 'work'}</span>
                                   {t.billable && <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">billable</Badge>}
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <span className="text-gray-600 dark:text-slate-300">{t.hours} hrs{t.rate ? ` @ ${fmtMoney(t.rate, sym)}` : ''}</span>
-                                  <button onClick={() => deleteTimeEntry(t.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={12} /></button>
+                                  <span className="text-slate-600 dark:text-slate-300">{t.hours} hrs{t.rate ? ` @ ${fmtMoney(t.rate, sym)}` : ''}</span>
+                                  <button onClick={() => deleteTimeEntry(t.id)} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={12} /></button>
                                 </div>
                               </div>
                             ))}
@@ -230,7 +231,7 @@ export default function Projects() {
             </Select>
           </div>
           <Textarea label="Notes" rows={2} value={pForm.notes} onChange={(e) => setP('notes', e.target.value)} />
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setProjModal(false)}>{t('Cancel')}</Btn>
             <Btn onClick={saveProject}>{editing ? 'Save Changes' : 'Create Project'}</Btn>
           </div>
@@ -253,7 +254,7 @@ export default function Projects() {
             {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
           </Select>
           <Input label="Description" value={txForm.description} onChange={(e) => setT('description', e.target.value)} />
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTxModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={saveTx}>{t('Record')}</Btn>
           </div>
@@ -272,11 +273,11 @@ export default function Projects() {
             <Input label="Rate / hour" type="number" min="0" step="0.01" value={tForm.rate} onChange={(e) => setTime('rate', e.target.value)} />
           </div>
           <Input label="Description" value={tForm.description} onChange={(e) => setTime('description', e.target.value)} />
-          <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300">
-            <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+            <input type="checkbox" checked={tForm.billable} onChange={(e) => setTime('billable', e.target.checked)} className="w-4 h-4 rounded text-brand-600 dark:text-brand-400" />
             Billable
           </label>
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTimeModal(null)}>{t('Cancel')}</Btn>
             <Btn onClick={saveTime}>{t('Log Time')}</Btn>
           </div>
@@ -288,10 +289,10 @@ export default function Projects() {
 
 function Kpi({ label, value, sub, color }) {
   return (
-    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-gray-100 dark:border-slate-700">
-      <p className="text-[11px] text-gray-400 dark:text-slate-500 uppercase tracking-wide">{typeof label === 'string' ? tr(label) : label}</p>
+    <div className="bg-white dark:bg-slate-800 rounded-lg p-3 border border-slate-100 dark:border-slate-700">
+      <p className="text-[11px] text-slate-500 dark:text-slate-400 uppercase tracking-wide">{typeof label === 'string' ? tr(label) : label}</p>
       <p className={`text-lg font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-[11px] text-gray-400 dark:text-slate-500">{typeof sub === 'string' ? tr(sub) : sub}</p>}
+      {sub && <p className="text-[11px] text-slate-500 dark:text-slate-400">{typeof sub === 'string' ? tr(sub) : sub}</p>}
     </div>
   )
 }

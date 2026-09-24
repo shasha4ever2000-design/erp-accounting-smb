@@ -11,6 +11,7 @@ import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Pencil, Trash2, Search } from 'lucide-react'
 import { supplierBalance } from '../utils/partyBalance'
+import { ask } from '../components/Dialogs'
 
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
 
@@ -56,8 +57,8 @@ export default function Suppliers() {
     close()
   }
 
-  const handleDelete = (s) => {
-    if (confirm(`Delete supplier "${s.name}"?`)) deleteSupplier(s.id)
+  const handleDelete = async (s) => {
+    if (await ask(`Delete supplier "${s.name}"?`)) deleteSupplier(s.id)
   }
 
   // Net of debit notes — see utils/partyBalance for why that has to be shared.
@@ -91,9 +92,9 @@ export default function Suppliers() {
       />
 
       <div className="relative mb-5 max-w-sm">
-        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
         <input
-          className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+          className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder={t('Search suppliers...')}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -109,7 +110,7 @@ export default function Suppliers() {
             action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Supplier')}</Btn>}
           />
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No suppliers match your search')}</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No suppliers match your search')}</div>
         ) : (
           <Table headers={[t('Supplier'), t('Contact'), t('Tax ID'), { label: t('Amount Owed'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((s) => {
@@ -118,22 +119,22 @@ export default function Suppliers() {
                 <Tr key={s.id}>
                   <Td>
                     <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/50 dark:to-orange-900/50 rounded-full flex items-center justify-center text-orange-600 dark:text-orange-300 font-semibold text-sm ring-1 ring-orange-200/60 dark:ring-orange-800/60">
+                      <div className="w-9 h-9 shrink-0 bg-gradient-to-br from-warning-100 to-warning-100 dark:from-warning-900/50 dark:to-warning-900/50 rounded-full flex items-center justify-center text-warning-700 dark:text-warning-300 font-semibold text-sm ring-1 ring-warning-200/60 dark:ring-warning-800/60">
                         {s.name[0]?.toUpperCase()}
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 dark:text-slate-100 truncate">{s.name}</p>
-                        <p className="text-xs text-gray-400 dark:text-slate-500">Since {fmtDate(s.createdAt)}</p>
+                        <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{s.name}</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Since {fmtDate(s.createdAt)}</p>
                       </div>
                     </div>
                   </Td>
                   <Td>
-                    {s.email && <p className="text-sm text-gray-600 dark:text-slate-300">{s.email}</p>}
-                    {s.phone && <p className="text-xs text-gray-400 dark:text-slate-500">{s.phone}</p>}
+                    {s.email && <p className="text-sm text-slate-600 dark:text-slate-300">{s.email}</p>}
+                    {s.phone && <p className="text-xs text-slate-500 dark:text-slate-400">{s.phone}</p>}
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm tabular-nums">{s.taxId || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm tabular-nums">{s.taxId || '—'}</Td>
                   <Td right>
-                    <span className={`font-semibold tabular-nums ${balance > 0 ? 'text-red-600 dark:text-red-400' : 'text-gray-700 dark:text-slate-300'}`}>
+                    <span className={`font-semibold tabular-nums ${balance > 0 ? 'text-danger-600 dark:text-danger-400' : 'text-slate-700 dark:text-slate-300'}`}>
                       {fmtMoney(balance, sym)}
                     </span>
                   </Td>
@@ -141,7 +142,7 @@ export default function Suppliers() {
                     <div className="flex items-center justify-end gap-1">
                       <AttachmentButton entityType="supplier" entityId={s.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(s)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(s)}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(s)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -176,9 +177,9 @@ export default function Suppliers() {
             entityId="supplier"
             values={form.customFields}
             onChange={setCustom}
-            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+            className="pt-3 border-t border-slate-100 dark:border-slate-700"
           />
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Supplier'}</Btn>
           </div>

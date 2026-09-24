@@ -7,6 +7,7 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Search, User } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyForm = {
   name: '', email: '', phone: '', departmentId: '', position: '',
@@ -66,8 +67,8 @@ export default function Employees() {
     close()
   }
 
-  const handleDelete = (emp) => {
-    if (confirm(`Delete employee "${emp.name}"?`)) deleteEmployee(emp.id)
+  const handleDelete = async (emp) => {
+    if (await ask(`Delete employee "${emp.name}"?`)) deleteEmployee(emp.id)
   }
 
   const getDeptName = (id) => departments.find((d) => d.id === id)?.name || '—'
@@ -90,8 +91,8 @@ export default function Employees() {
       />
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
+        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder="Search employees..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -100,33 +101,33 @@ export default function Employees() {
           <EmptyState icon="👥" title="No employees" desc="Add employees to manage payroll, departments, and HR records."
             action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Employee')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No employees match your search')}</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No employees match your search')}</div>
         ) : (
           <Table headers={['Employee', 'Department', 'Position', 'Type', 'Pay Frequency', { label: 'Salary', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {filtered.map((emp) => (
               <Tr key={emp.id}>
                 <Td>
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 bg-gradient-to-br from-blue-100 to-indigo-100 dark:from-blue-900/50 dark:to-indigo-900/50 rounded-full flex items-center justify-center flex-shrink-0 ring-1 ring-blue-200/60 dark:ring-blue-800/60">
-                      <User size={14} className="text-blue-600 dark:text-blue-300" />
+                    <div className="w-9 h-9 bg-gradient-to-br from-brand-100 to-accent-100 dark:from-brand-900/50 dark:to-accent-900/50 rounded-full flex items-center justify-center flex-shrink-0 ring-1 ring-brand-200/60 dark:ring-brand-800/60">
+                      <User size={14} className="text-brand-600 dark:text-brand-300" />
                     </div>
                     <div className="min-w-0">
-                      <p className="font-medium text-gray-900 dark:text-slate-100 truncate">{emp.name}</p>
-                      {emp.email && <p className="text-xs text-gray-400 dark:text-slate-500">{emp.email}</p>}
+                      <p className="font-medium text-slate-900 dark:text-slate-100 truncate">{emp.name}</p>
+                      {emp.email && <p className="text-xs text-slate-500 dark:text-slate-400">{emp.email}</p>}
                     </div>
                   </div>
                 </Td>
-                <Td className="text-gray-600 dark:text-slate-300 text-sm">{getDeptName(emp.departmentId)}</Td>
-                <Td className="text-gray-600 dark:text-slate-300 text-sm">{emp.position || '—'}</Td>
-                <Td><span className="text-xs text-gray-600 dark:text-slate-400">{EMP_TYPES[emp.employmentType] || emp.employmentType}</span></Td>
-                <Td><span className="text-xs text-gray-600 dark:text-slate-400">{PAY_FREQ[emp.payFrequency] || emp.payFrequency}</span></Td>
-                <Td right><span className="font-medium text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(emp.salary || 0, sym)}</span></Td>
+                <Td className="text-slate-600 dark:text-slate-300 text-sm">{getDeptName(emp.departmentId)}</Td>
+                <Td className="text-slate-600 dark:text-slate-300 text-sm">{emp.position || '—'}</Td>
+                <Td><span className="text-xs text-slate-600 dark:text-slate-400">{EMP_TYPES[emp.employmentType] || emp.employmentType}</span></Td>
+                <Td><span className="text-xs text-slate-600 dark:text-slate-400">{PAY_FREQ[emp.payFrequency] || emp.payFrequency}</span></Td>
+                <Td right><span className="font-medium text-slate-900 dark:text-slate-100 tabular-nums">{fmtMoney(emp.salary || 0, sym)}</span></Td>
                 <Td><Badge className={STATUS_CLR[emp.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{emp.status}</Badge></Td>
                 <Td right>
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="employee" entityId={emp.id} />
                     <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)}><Pencil size={13} /></Btn>
-                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(emp)}><Trash2 size={13} className="text-red-400" /></Btn>
+                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(emp)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                   </div>
                 </Td>
               </Tr>
@@ -167,9 +168,9 @@ export default function Employees() {
           </div>
 
           {/* Compensation (from contract) */}
-          <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-4 space-y-3">
+          <div className="border border-slate-100 dark:border-slate-700 rounded-xl p-4 space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-gray-700 dark:text-slate-200">{t('Salary Structure (from contract)')}</h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('Salary Structure (from contract)')}</h3>
               {editing && <AttachmentButton entityType="employee-contract" entityId={editing.id} label="Contract" />}
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -178,18 +179,18 @@ export default function Employees() {
               <Input label="Transport Allowance" type="number" min="0" step="0.01" value={form.transportAllowance} onChange={(e) => setField('transportAllowance', e.target.value)} />
               <Input label="Other Benefits" type="number" min="0" step="0.01" value={form.otherAllowance} onChange={(e) => setField('otherAllowance', e.target.value)} />
             </div>
-            <div className="flex justify-between text-sm bg-gray-50 dark:bg-slate-700/40 rounded-lg px-3 py-2">
-              <span className="text-gray-500 dark:text-slate-400">{t('Gross Monthly Salary')}</span>
-              <span className="font-bold text-gray-800 dark:text-slate-100 tabular-nums">{fmtMoney(gross, sym)}</span>
+            <div className="flex justify-between text-sm bg-slate-50 dark:bg-slate-700/40 rounded-lg px-3 py-2">
+              <span className="text-slate-500 dark:text-slate-400">{t('Gross Monthly Salary')}</span>
+              <span className="font-bold text-slate-800 dark:text-slate-100 tabular-nums">{fmtMoney(gross, sym)}</span>
             </div>
-            {!editing && <p className="text-[11px] text-gray-400 dark:text-slate-500">{t('Save the employee first, then re-open to attach the contract file.')}</p>}
+            {!editing && <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('Save the employee first, then re-open to attach the contract file.')}</p>}
           </div>
 
           {/* Statutory: GOSI & tax (off by default) */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
-                <input type="checkbox" checked={form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
+            <div className="border border-slate-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <input type="checkbox" checked={form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)} className="w-4 h-4 rounded text-brand-600 dark:text-brand-400" />
                 {t('GOSI / Social Insurance')}
               </label>
               {form.gosiApplicable && (
@@ -199,14 +200,14 @@ export default function Employees() {
                 </div>
               )}
             </div>
-            <div className="border border-gray-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
-              <label className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200">
-                <input type="checkbox" checked={form.taxApplicable} onChange={(e) => setField('taxApplicable', e.target.checked)} className="w-4 h-4 rounded text-blue-600 dark:text-blue-400" />
+            <div className="border border-slate-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
+              <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <input type="checkbox" checked={form.taxApplicable} onChange={(e) => setField('taxApplicable', e.target.checked)} className="w-4 h-4 rounded text-brand-600 dark:text-brand-400" />
                 {t('Income Tax on salary')}
               </label>
               {form.taxApplicable
                 ? <Input label="Tax Rate %" type="number" min="0" step="0.01" value={form.taxRate} onChange={(e) => setField('taxRate', e.target.value)} />
-                : <p className="text-[11px] text-gray-400 dark:text-slate-500">{t('No salary tax (default). Enable only where your country taxes salaries.')}</p>}
+                : <p className="text-[11px] text-slate-500 dark:text-slate-400">{t('No salary tax (default). Enable only where your country taxes salaries.')}</p>}
             </div>
           </div>
 
@@ -221,9 +222,9 @@ export default function Employees() {
             entityId="employee"
             values={form.customFields}
             onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
-            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+            className="pt-3 border-t border-slate-100 dark:border-slate-700"
           />
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Employee'}</Btn>
           </div>

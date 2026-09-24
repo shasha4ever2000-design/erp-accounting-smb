@@ -5,8 +5,10 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import { advanceBalance, appliedTotal, applicableAmount, customerCredit } from '../utils/advances'
 import { Wallet, Plus, Trash2, Undo2, Link2, Users } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
+import { ask } from '../components/Dialogs'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 const emptyForm = () => ({
   customerId: '', customerName: '', amount: '', date: today(),
@@ -107,8 +109,8 @@ export default function Advances() {
     }
   }
 
-  const remove = (advance) => {
-    if (!confirm(t('Delete this advance? Its journal entry goes to the recycle bin.'))) return
+  const remove = async (advance) => {
+    if (!await ask(t('Delete this advance? Its journal entry goes to the recycle bin.'))) return
     try { deleteAdvance(advance.id) } catch (e) {
       if (String(e.message).startsWith('ADVANCE_IN_USE'))
         return alert(t('Some of this advance has already been applied or refunded, so it stays on the record.'))
@@ -135,7 +137,7 @@ export default function Advances() {
       <Card>
         {rows.length === 0 ? (
           <EmptyState
-            icon={<Wallet size={28} className="text-slate-400 dark:text-slate-500" />}
+            icon={<Wallet size={28} className="text-slate-500 dark:text-slate-400" />}
             title={t('No advances yet')}
             desc={t('Record a deposit here when a customer pays before you invoice. It is held as a liability, not revenue, until you apply it to an invoice or refund it.')}
           />
@@ -149,17 +151,17 @@ export default function Advances() {
                   <Td>{fmtDate(a.date)}</Td>
                   <Td>
                     {a.customerName || '—'}
-                    {a.notes && <span className="block text-[11px] text-gray-400 dark:text-slate-500">{a.notes}</span>}
+                    {a.notes && <span className="block text-[11px] text-slate-500 dark:text-slate-400">{a.notes}</span>}
                   </Td>
                   <Td className="tabular">{fmtMoney(a.amount, sym)}</Td>
-                  <Td className="tabular text-gray-500 dark:text-slate-400">
+                  <Td className="tabular text-slate-500 dark:text-slate-400">
                     {fmtMoney(used, sym)}
                     {a.refunded > 0 && <span className="block text-[11px]">{t('refunded')} {fmtMoney(a.refunded, sym)}</span>}
                   </Td>
                   <Td className="tabular font-semibold">
                     {left > 0.005
                       ? fmtMoney(left, sym)
-                      : <Badge className="bg-gray-100 text-gray-500 dark:bg-slate-700 dark:text-slate-400">{t('Settled')}</Badge>}
+                      : <Badge className="bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400">{t('Settled')}</Badge>}
                   </Td>
                   <Td className="text-end whitespace-nowrap">
                     {left > 0.005 && (
@@ -167,13 +169,13 @@ export default function Advances() {
                         <button onClick={() => openApply(a)} className="text-xs font-semibold text-brand-600 hover:text-brand-700 dark:text-brand-400 ms-2 inline-flex items-center gap-1">
                           <Link2 size={12} /> {t('Apply')}
                         </button>
-                        <button onClick={() => openRefund(a)} className="text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-slate-400 ms-3 inline-flex items-center gap-1">
+                        <button onClick={() => openRefund(a)} className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 ms-3 inline-flex items-center gap-1">
                           <Undo2 size={12} /> {t('Refund')}
                         </button>
                       </>
                     )}
                     {used === 0 && !(a.refunded > 0) && (
-                      <button onClick={() => remove(a)} title={t('Delete')} className="text-gray-300 hover:text-red-500 ms-3 align-middle">
+                      <button onClick={() => remove(a)} title={t('Delete')} className="text-slate-500 dark:text-slate-400 hover:text-danger-500 ms-3 align-middle">
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -202,12 +204,12 @@ export default function Advances() {
           </Select>
           <Input label={t('Note')} value={form.notes} onChange={(e) => setField('notes', e.target.value)} placeholder={t('50% deposit on order')} />
           {form.customerId && (
-            <p className="text-xs text-gray-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('This customer already holds {amt} on account.').replace('{amt}', fmtMoney(customerCredit(customerAdvances, form.customerId), sym))}
             </p>
           )}
-          {error && <p className="text-sm text-red-500">{error}</p>}
-          <p className="text-xs text-gray-400 dark:text-slate-500">
+          {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
+          <p className="text-xs text-slate-500 dark:text-slate-400">
             {t('Recorded as a liability, not revenue — the cash is yours to hold, but the work is not done yet.')}
           </p>
           <div className="flex justify-end gap-2 pt-1">
@@ -221,7 +223,7 @@ export default function Advances() {
       <Modal open={!!applyFor} onClose={() => setApplyFor(null)} title={t('Apply to invoice')}>
         {applyFor && (
           <div className="space-y-3">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('{name} · {amt} available').replace('{name}', applyFor.customerName || '').replace('{amt}', fmtMoney(advanceBalance(applyFor), sym))}
             </p>
             {openInvoicesFor(applyFor).length === 0 ? (
@@ -246,12 +248,12 @@ export default function Advances() {
                   />
                   <Input label={t('Date')} type="date" value={applyForm.date} onChange={(e) => setApplyForm((f) => ({ ...f, date: e.target.value }))} />
                 </div>
-                <p className="text-xs text-gray-400 dark:text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {t('Leave the amount blank to apply the most this invoice can take ({amt}).').replace('{amt}', fmtMoney(maxApply, sym))}
                 </p>
               </>
             )}
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <Btn variant="secondary" onClick={() => setApplyFor(null)}>{t('Cancel')}</Btn>
               <Btn onClick={doApply} disabled={!applyForm.invoiceId}>{t('Apply')}</Btn>
@@ -272,7 +274,7 @@ export default function Advances() {
               <option value="">{t('Select…')}</option>
               {bankAccounts.map((b) => <option key={b.id} value={b.accountId}>{b.name}</option>)}
             </Select>
-            {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
             <div className="flex justify-end gap-2 pt-1">
               <Btn variant="secondary" onClick={() => setRefundFor(null)}>{t('Cancel')}</Btn>
               <Btn onClick={doRefund}>{t('Refund')}</Btn>

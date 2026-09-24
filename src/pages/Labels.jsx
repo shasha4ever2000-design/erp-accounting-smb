@@ -98,47 +98,47 @@ export default function Labels() {
           <div>
             <label className="block text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-1.5">{t('Find')}</label>
             <div className="relative">
-              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400" />
               <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('Name, code, location…')}
                 className="w-full border rounded-lg ps-9 pe-3 py-2 text-sm bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 border-slate-300/90 dark:border-surface-600" />
             </div>
           </div>
         </div>
-        <p className="text-xs text-gray-400 dark:text-slate-500 mt-3">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">
           {t('Skipping labels lets you reuse a part-used sheet instead of wasting the rest of it.')}
         </p>
       </Card>
 
       {/* ── Pick what to print ── */}
       <Card className="overflow-hidden mb-6 print:hidden">
-        <div className="p-4 border-b border-gray-100 dark:border-surface-750 flex items-center gap-3">
-          <button onClick={toggleAll} className="inline-flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400">
+        <div className="p-4 border-b border-slate-100 dark:border-surface-750 flex items-center gap-3">
+          <button onClick={toggleAll} className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 hover:text-brand-600 dark:hover:text-brand-400">
             {allShown ? <CheckSquare size={16} /> : <Square size={16} />}
             {allShown ? t('Clear all') : t('Select all')}
           </button>
-          <span className="text-xs text-gray-400 dark:text-slate-500">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
             {t('{n} selected · {p} label(s) to print').replace('{n}', chosen.length).replace('{p}', sheet.total)}
           </span>
         </div>
 
         {rows.length === 0 ? (
           <EmptyState
-            icon={<Tag size={26} className="text-slate-400 dark:text-slate-500" />}
+            icon={<Tag size={26} className="text-slate-500 dark:text-slate-400" />}
             title={kind === 'fixedAssets' ? 'No fixed assets yet' : 'No inventory items yet'}
             desc="Add some first, then come back here to print tags for them."
           />
         ) : (
-          <div className="max-h-[380px] overflow-y-auto divide-y divide-gray-50 dark:divide-surface-800">
+          <div className="max-h-[380px] overflow-y-auto divide-y divide-slate-50 dark:divide-surface-800">
             {rows.map((r) => {
               const code = kind === 'fixedAssets' ? (r.number || r.code || '') : (r.code || r.barcode || '')
               return (
-                <label key={r.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50/70 dark:hover:bg-surface-800/50 cursor-pointer">
+                <label key={r.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50/70 dark:hover:bg-surface-800/50 cursor-pointer">
                   <input type="checkbox" checked={!!selected[r.id]} onChange={() => toggle(r.id)}
-                    className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 flex-shrink-0" />
-                  <span className="font-mono text-xs text-gray-500 dark:text-slate-400 w-24 flex-shrink-0 truncate">{code}</span>
-                  <span className="flex-1 min-w-0 text-sm text-gray-800 dark:text-slate-100 truncate">{r.name}</span>
+                    className="h-4 w-4 rounded border-slate-300 dark:border-slate-600 flex-shrink-0" />
+                  <span className="font-mono text-xs text-slate-500 dark:text-slate-400 w-24 flex-shrink-0 truncate">{code}</span>
+                  <span className="flex-1 min-w-0 text-sm text-slate-800 dark:text-slate-100 truncate">{r.name}</span>
                   {kind === 'fixedAssets' && r.location && (
-                    <span className="hidden sm:inline text-xs text-gray-400 dark:text-slate-500 truncate max-w-[140px]">{r.location}</span>
+                    <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 truncate max-w-[140px]">{r.location}</span>
                   )}
                   {selected[r.id] && (
                     <input type="number" min="0" value={copies[r.id] ?? 1}
@@ -158,7 +158,7 @@ export default function Labels() {
       {sheet.total === 0 ? (
         <Card className="print:hidden">
           <EmptyState
-            icon={<QrCode size={26} className="text-slate-400 dark:text-slate-500" />}
+            icon={<QrCode size={26} className="text-slate-500 dark:text-slate-400" />}
             title="Nothing selected yet"
             desc="Tick the assets or items you want tags for. Each label carries a QR code holding that record's permanent id, so scanning it still finds the right thing after names and numbers have been changed."
           />

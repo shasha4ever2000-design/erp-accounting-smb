@@ -161,7 +161,7 @@ export default function CommandPalette() {
       <div className="absolute inset-0 bg-surface-950/55 backdrop-blur-[3px] animate-fade-in" />
       <div className="relative w-full max-w-xl bg-white dark:bg-surface-850 rounded-2xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 overflow-hidden animate-scale-in" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 px-4 py-3.5 border-b border-slate-100 dark:border-surface-750">
-          <Search size={17} className="text-slate-400 dark:text-slate-500 flex-shrink-0" />
+          <Search size={17} className="text-slate-500 dark:text-slate-400 flex-shrink-0" />
           <input
             ref={inputRef}
             value={query}
@@ -170,16 +170,16 @@ export default function CommandPalette() {
             placeholder={t('Search modules or actions…')}
             className="flex-1 bg-transparent outline-none text-[15px] text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
           />
-          <kbd className="hidden sm:inline-block text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-white/[0.05] border border-slate-200/90 dark:border-surface-700 rounded-md px-1.5 py-0.5">ESC</kbd>
+          <kbd className="hidden sm:inline-block text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-white/[0.05] border border-slate-200/90 dark:border-surface-700 rounded-md px-1.5 py-0.5">ESC</kbd>
         </div>
         <div className="max-h-80 overflow-y-auto py-2 px-2">
-          {results.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-400 dark:text-slate-500">{t('No matches')}</p>}
+          {results.length === 0 && <p className="px-4 py-8 text-center text-sm text-slate-500 dark:text-slate-400">{t('No matches')}</p>}
           {results.map((cmd, i) => {
             const showGroup = cmd.group !== lastGroup
             lastGroup = cmd.group
             return (
               <div key={cmd.path + cmd.label}>
-                {showGroup && <p className="px-3 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400 dark:text-slate-500">{t(cmd.group)}</p>}
+                {showGroup && <p className="px-3 pt-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{t(cmd.group)}</p>}
                 <button
                   onMouseEnter={() => setActive(i)}
                   onClick={() => go(cmd)}
@@ -196,7 +196,7 @@ export default function CommandPalette() {
             )
           })}
         </div>
-        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-slate-100 dark:border-surface-750 bg-slate-50/60 dark:bg-surface-900/40 text-[11px] text-slate-400 dark:text-slate-500">
+        <div className="flex items-center gap-4 px-4 py-2.5 border-t border-slate-100 dark:border-surface-750 bg-slate-50/60 dark:bg-surface-900/40 text-[11px] text-slate-500 dark:text-slate-400">
           <span className="inline-flex items-center gap-1.5"><kbd className="font-sans font-semibold bg-white dark:bg-white/[0.06] border border-slate-200/90 dark:border-surface-700 rounded px-1 py-px">↑↓</kbd> {t('Navigate')}</span>
           <span className="inline-flex items-center gap-1.5"><kbd className="font-sans font-semibold bg-white dark:bg-white/[0.06] border border-slate-200/90 dark:border-surface-700 rounded px-1 py-px">↵</kbd> {t('Open')}</span>
         </div>

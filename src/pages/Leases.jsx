@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyStat
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CreditCard, Home, XCircle, Landmark, ListOrdered, Info } from 'lucide-react'
 import { leaseSchedule, initialMeasurement, exemption, compareToStraightLine } from '../utils/ifrs16'
+import { ask } from '../components/Dialogs'
 
 export default function Leases() {
   const t = useT()
@@ -94,7 +95,7 @@ export default function Leases() {
       <div className="flex gap-2 mb-4">
         {[['active','Active'],['terminated','Terminated'],['all','All']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
             {label} ({val === 'all' ? leases.length : leases.filter(l => l.status === val).length})
           </button>
         ))}
@@ -105,7 +106,7 @@ export default function Leases() {
           <EmptyState icon="🏢" title="No leases recorded" desc="Add office space, equipment, or vehicle leases. Each rent payment automatically posts a journal entry (Dr Rent Expense / Cr Bank)."
             action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Lease')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">No {filter} leases</div>
+          <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No {filter} leases</div>
         ) : (
           <Table headers={['Number', 'Name', 'Landlord', 'Type', 'Start', 'End', { label: 'Monthly Rent', right: true }, { label: 'Total Paid', right: true }, 'Payments', 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((lease) => {
@@ -113,23 +114,23 @@ export default function Leases() {
               const status     = leaseStatus(lease)
               return (
                 <Tr key={lease.id}>
-                  <Td><span className="font-mono text-xs text-gray-500 dark:text-slate-400">{lease.number}</span></Td>
+                  <Td><span className="font-mono text-xs text-slate-500 dark:text-slate-400">{lease.number}</span></Td>
                   <Td>
-                    <p className="font-medium text-gray-800 dark:text-slate-100 flex items-center gap-1.5">
+                    <p className="font-medium text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
                       {lease.name}
                       {lease.treatment === 'ifrs16' && (
                         <Badge className="bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">IFRS 16</Badge>
                       )}
                     </p>
-                    {lease.notes && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-[120px]">{lease.notes}</p>}
+                    {lease.notes && <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[120px]">{lease.notes}</p>}
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.landlord || '—'}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm capitalize">{lease.leaseType}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(lease.startDate)}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{lease.endDate ? fmtDate(lease.endDate) : 'Open'}</Td>
-                  <Td right className="font-medium text-gray-700 dark:text-slate-200">{fmtMoney(lease.monthlyRent, sym)}</Td>
-                  <Td right className="text-gray-700 dark:text-slate-200">{fmtMoney(totalPaid, sym)}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{lease.landlord || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm capitalize">{lease.leaseType}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{fmtDate(lease.startDate)}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{lease.endDate ? fmtDate(lease.endDate) : 'Open'}</Td>
+                  <Td right className="font-medium text-slate-700 dark:text-slate-200">{fmtMoney(lease.monthlyRent, sym)}</Td>
+                  <Td right className="text-slate-700 dark:text-slate-200">{fmtMoney(totalPaid, sym)}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{(lease.payments || []).length} payment{(lease.payments || []).length !== 1 ? 's' : ''}</Td>
                   <Td><Badge className={STATUS_CLR[status] || 'bg-slate-100 text-slate-500 dark:bg-white/[0.06] dark:text-slate-400'}>{status}</Badge></Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
@@ -142,7 +143,7 @@ export default function Leases() {
                       {status === 'active' && lease.treatment !== 'ifrs16' && Number(lease.termMonths) > 0 && (
                         <Btn size="sm" variant="ghost" title={t('Capitalise under IFRS 16')}
                           onClick={() => setCapModal(lease)}>
-                          <Landmark size={13} className="text-brand-500" />
+                          <Landmark size={13} className="text-brand-600 dark:text-brand-400" />
                         </Btn>
                       )}
                       {status === 'active' && lease.treatment !== 'ifrs16' && (
@@ -151,13 +152,13 @@ export default function Leases() {
                             <CreditCard size={12} /> Pay
                           </Btn>
                           <Btn size="sm" variant="ghost" title="Terminate"
-                            onClick={() => { if (confirm(`Terminate lease "${lease.name}"?`)) terminateLease(lease.id, today()) }}>
-                            <XCircle size={13} className="text-amber-500" />
+                            onClick={async () => { if (await ask(`Terminate lease "${lease.name}"?`)) terminateLease(lease.id, today()) }}>
+                            <XCircle size={13} className="text-warning-700 dark:text-warning-400" />
                           </Btn>
                         </>
                       )}
-                      <Btn size="sm" variant="ghost" onClick={() => { if (confirm(`Delete lease "${lease.name}"? Payment journal entries will remain.`)) deleteLease(lease.id) }}>
-                        <Trash2 size={13} className="text-red-400" />
+                      <Btn size="sm" variant="ghost" onClick={async () => { if (await ask(`Delete lease "${lease.name}"? Payment journal entries will remain.`)) deleteLease(lease.id) }}>
+                        <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                       </Btn>
                     </div>
                   </Td>
@@ -192,8 +193,8 @@ export default function Leases() {
           {/* IFRS 16 measurement. Filling these in does not capitalise the
               lease — it only makes the option available, because capitalising
               changes the balance sheet and should be a deliberate act. */}
-          <div className="rounded-xl border border-gray-200 dark:border-surface-700 p-3 space-y-3">
-            <p className="text-xs font-semibold text-gray-600 dark:text-slate-300 flex items-center gap-1.5">
+          <div className="rounded-xl border border-slate-200 dark:border-surface-700 p-3 space-y-3">
+            <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-1.5">
               <Landmark size={13} /> {t('IFRS 16 measurement (optional)')}
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -214,7 +215,7 @@ export default function Leases() {
               <Input label={t('Useful life (months)')} type="number" min="0" step="1" value={form.usefulLifeMonths}
                 onChange={(e) => setField('usefulLifeMonths', e.target.value)} />
             </div>
-            <p className="text-xs text-gray-400 dark:text-slate-500">
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               {t('Leave blank to keep this lease as a straight-line rent expense.')}
             </p>
           </div>
@@ -239,12 +240,12 @@ export default function Leases() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-slate-50 dark:bg-surface-800 p-3">
-                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('Right-of-use asset')}</p>
-                  <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(m.rouAsset, sym)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('Right-of-use asset')}</p>
+                  <p className="text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">{fmtMoney(m.rouAsset, sym)}</p>
                 </div>
                 <div className="rounded-xl bg-slate-50 dark:bg-surface-800 p-3">
-                  <p className="text-xs text-gray-500 dark:text-slate-400">{t('Lease liability')}</p>
-                  <p className="text-lg font-semibold tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(m.liability, sym)}</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">{t('Lease liability')}</p>
+                  <p className="text-lg font-semibold tabular-nums text-slate-900 dark:text-slate-100">{fmtMoney(m.liability, sym)}</p>
                 </div>
               </div>
 
@@ -255,14 +256,14 @@ export default function Leases() {
                 </div>
               )}
 
-              <div className="rounded-xl border border-gray-200 dark:border-surface-700 p-3 text-sm space-y-1">
-                <p className="text-xs font-semibold text-gray-600 dark:text-slate-300 mb-1.5">{t('What changes')}</p>
-                <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{t('Year 1 expense under IFRS 16')}</span><span className="tabular-nums">{fmtMoney(cmp.firstYearIfrs16, sym)}</span></div>
-                <div className="flex justify-between"><span className="text-gray-500 dark:text-slate-400">{t('Year 1 as straight-line rent')}</span><span className="tabular-nums">{fmtMoney(cmp.firstYearStraightLine, sym)}</span></div>
-                <div className="flex justify-between font-medium border-t border-gray-100 dark:border-surface-750 pt-1 mt-1">
+              <div className="rounded-xl border border-slate-200 dark:border-surface-700 p-3 text-sm space-y-1">
+                <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-1.5">{t('What changes')}</p>
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">{t('Year 1 expense under IFRS 16')}</span><span className="tabular-nums">{fmtMoney(cmp.firstYearIfrs16, sym)}</span></div>
+                <div className="flex justify-between"><span className="text-slate-500 dark:text-slate-400">{t('Year 1 as straight-line rent')}</span><span className="tabular-nums">{fmtMoney(cmp.firstYearStraightLine, sym)}</span></div>
+                <div className="flex justify-between font-medium border-t border-slate-100 dark:border-surface-750 pt-1 mt-1">
                   <span>{t('Total cost over the lease')}</span><span className="tabular-nums">{fmtMoney(cmp.ifrs16Total, sym)}</span>
                 </div>
-                <p className="text-xs text-gray-400 dark:text-slate-500 pt-1">
+                <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
                   {t('Total cost is unchanged — IFRS 16 moves expense earlier, it does not add any.')}
                 </p>
               </div>
@@ -292,7 +293,7 @@ export default function Leases() {
           return (
             <div className="space-y-3">
               <div className="flex items-center justify-between flex-wrap gap-2">
-                <p className="text-xs text-gray-500 dark:text-slate-400">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   {posted.size} {t('of')} {rows.length} {t('periods posted')}
                 </p>
                 {nextUnposted && (
@@ -318,7 +319,7 @@ export default function Leases() {
                       <Td right className="tabular-nums">{fmtMoney(r.depreciation, sym)}</Td>
                       <Td>{posted.has(r.period)
                         ? <Badge className="bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300">{t('Posted')}</Badge>
-                        : <span className="text-gray-300 dark:text-slate-600">—</span>}</Td>
+                        : <span className="text-slate-500 dark:text-slate-400">—</span>}</Td>
                     </Tr>
                   ))}
                 </Table>
@@ -333,7 +334,7 @@ export default function Leases() {
         <div className="space-y-4">
           <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
             <p>Monthly rent: <strong>{fmtMoney(payModal?.monthlyRent || 0, sym)}</strong></p>
-            <p className="text-xs mt-0.5 text-blue-500">Posts: Dr Rent Expense → Cr Bank</p>
+            <p className="text-xs mt-0.5 text-brand-600 dark:text-brand-400">Posts: Dr Rent Expense → Cr Bank</p>
           </div>
           <Input label="Period *" value={payForm.period} onChange={(e) => setPayForm((f) => ({ ...f, period: e.target.value }))} placeholder="e.g. June 2026" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

@@ -19,7 +19,8 @@ import {
   Sun, Moon, Menu, Repeat, Warehouse, Filter, Store, CheckSquare,
   Truck as TruckIcon, Coins, ChevronDown, LogOut, Check, Plus,
   PieChart, History, ClipboardCheck, UsersRound, Globe, ArrowLeftRight, BellRing, Layers, Activity, GitCompareArrows, BadgePercent, Ship, CalendarCheck,
-  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2, Tag, FileQuestion, HandCoins
+  Cloud, CloudOff, RefreshCw, AlertTriangle, ShieldCheck, Flag, ArrowUpDown, Archive, Users2, Tag, FileQuestion, HandCoins,
+  Rows3, Rows4, ListChecks,
 } from 'lucide-react'
 
 const NAV = [
@@ -99,6 +100,7 @@ const NAV = [
   { label: 'Reports',            path: '/reports',           icon: BarChart3 },
   { label: 'Opening Balances',   path: '/opening-balances',  icon: Flag },
   { label: 'Import & Export',    path: '/import-export',     icon: ArrowUpDown },
+  { label: 'Month-End Close',    path: '/period-close',      icon: ListChecks },
   { label: 'Year-End Close',     path: '/year-end',          icon: CalendarCheck },
   { label: 'Approvals',          path: '/approvals',         icon: ShieldCheck, badge: 'approvals' },
   { label: 'Recycle Bin',        path: '/recycle-bin',       icon: Archive },
@@ -111,6 +113,8 @@ export default function Layout({ children }) {
   const company = useStore((s) => s.settings.company)
   const theme = useStore((s) => s.settings.theme || 'light')
   const setTheme = useStore((s) => s.setTheme)
+  const density = useStore((s) => s.settings.density || 'comfortable')
+  const setDensity = useStore((s) => s.setDensity)
   const t = useT()
   const lang = useI18n((s) => s.lang)
   const toggleLang = useI18n((s) => s.toggle)
@@ -162,7 +166,7 @@ export default function Layout({ children }) {
             </div>
             <div className="min-w-0">
               <p className="text-white font-semibold text-sm leading-tight truncate tracking-snug">{company.name}</p>
-              <p className="text-slate-500 dark:text-slate-400 text-[10.5px] font-medium tracking-[0.08em] uppercase mt-0.5">{t('Accounting ERP')}</p>
+              <p className="text-slate-400 text-[10.5px] font-medium tracking-[0.08em] uppercase mt-0.5">{t('Accounting ERP')}</p>
             </div>
           </div>
         </div>
@@ -172,7 +176,7 @@ export default function Layout({ children }) {
           {NAV.map((item, i) => {
             if (item.divider) {
               return (
-                <p key={i} className="px-5 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500/90">
+                <p key={i} className="px-5 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                   {t(item.divider)}
                 </p>
               )
@@ -188,17 +192,17 @@ export default function Layout({ children }) {
                   `group relative flex items-center gap-3 mx-2.5 px-3 py-[7px] my-px rounded-lg text-sm transition-colors duration-100 ${
                     isActive
                       ? 'bg-white/[0.07] text-white font-semibold ring-1 ring-inset ring-white/[0.06]'
-                      : 'text-slate-400 hover:bg-white/[0.04] hover:text-slate-100'
+                      : 'text-slate-300 hover:bg-white/[0.04] hover:text-white'
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
                     {isActive && <span className="absolute inset-y-[7px] start-0 w-[3px] rounded-full bg-gradient-to-b from-brand-400 to-accent-500" />}
-                    <Icon size={16} strokeWidth={isActive ? 2.25 : 2} className={`flex-shrink-0 transition-colors ${isActive ? 'text-brand-400' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-300'}`} />
+                    <Icon size={16} strokeWidth={isActive ? 2.25 : 2} className={`flex-shrink-0 transition-colors ${isActive ? 'text-brand-400' : 'text-slate-400 group-hover:text-slate-200'}`} />
                     <span className="flex-1 truncate text-[13px]">{t(item.label)}</span>
                     {item.badge && badges[item.badge] > 0 && (
-                      <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-warning-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      <span className="flex-shrink-0 min-w-[18px] h-[18px] px-1 rounded-full bg-warning-700 text-white text-[10px] font-bold flex items-center justify-center">
                         {badges[item.badge]}
                       </span>
                     )}
@@ -211,7 +215,7 @@ export default function Layout({ children }) {
 
         {/* Footer */}
         <div className="px-4 py-3 border-t border-white/[0.06]">
-          <p className="text-[10px] font-medium tracking-[0.08em] text-slate-600 dark:text-slate-300 text-center">ERP ACCOUNTING v3.0</p>
+          <p className="text-[10px] font-medium tracking-[0.08em] text-slate-400 text-center">ERP ACCOUNTING v3.0</p>
         </div>
       </aside>
 
@@ -227,11 +231,11 @@ export default function Layout({ children }) {
           </button>
           <button
             onClick={openPalette}
-            className="group flex items-center gap-2 text-sm text-slate-400 dark:text-slate-500 bg-slate-100/70 dark:bg-surface-800/80 border border-slate-200/80 dark:border-surface-700 rounded-lg px-3 py-1.5 hover:border-slate-300 hover:bg-white dark:hover:border-surface-600 dark:hover:bg-surface-800 hover:shadow-xs transition-all w-full max-w-xs"
+            className="group flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 bg-slate-100/70 dark:bg-surface-800/80 border border-slate-200/80 dark:border-surface-700 rounded-lg px-3 py-1.5 hover:border-slate-300 hover:bg-white dark:hover:border-surface-600 dark:hover:bg-surface-800 hover:shadow-xs transition-all w-full max-w-xs"
           >
             <Search size={15} className="group-hover:text-slate-500 dark:group-hover:text-slate-400 transition-colors" />
             <span className="flex-1 text-start">{t('Search…')}</span>
-            <kbd className="hidden sm:inline text-[10px] font-semibold text-slate-400 dark:text-slate-500 bg-white dark:bg-surface-900 border border-slate-200 dark:border-surface-600 rounded-md px-1.5 py-0.5 shadow-xs dark:shadow-none">⌘K</kbd>
+            <kbd className="hidden sm:inline text-[10px] font-semibold text-slate-500 dark:text-slate-400 bg-white dark:bg-surface-900 border border-slate-200 dark:border-surface-600 rounded-md px-1.5 py-0.5 shadow-xs dark:shadow-none">⌘K</kbd>
           </button>
           <CompanySwitcher />
           <div className="flex-1" />
@@ -251,6 +255,14 @@ export default function Layout({ children }) {
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
           </button>
+          <button
+            onClick={() => setDensity(density === 'compact' ? 'comfortable' : 'compact')}
+            aria-pressed={density === 'compact'}
+            className="hidden sm:flex p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:hover:bg-white/[0.06] dark:hover:text-slate-200 transition-colors"
+            title={t(density === 'compact' ? 'Comfortable rows' : 'Compact rows')}
+          >
+            {density === 'compact' ? <Rows3 size={18} /> : <Rows4 size={18} />}
+          </button>
           <UserMenu />
         </header>
 
@@ -269,7 +281,7 @@ export default function Layout({ children }) {
             the writer — which happens on its own as soon as the other one is
             closed or backgrounded. */}
         {shouldWarn({ role: tabRole, sawOtherTab: otherTab }) && (
-          <div className="no-print bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200 border-b border-amber-200/70 dark:border-amber-800/50 text-sm px-4 py-2 flex items-center gap-2">
+          <div className="no-print bg-warning-50 dark:bg-warning-900/30 text-warning-800 dark:text-warning-200 border-b border-warning-200/70 dark:border-warning-800/50 text-sm px-4 py-2 flex items-center gap-2">
             <AlertTriangle size={15} className="flex-shrink-0" />
             <span>{t(WARNING_TEXT)}</span>
           </div>
@@ -322,7 +334,7 @@ function SyncStatusIndicator() {
       onClick={() => useStore.getState().syncNow()}
       title={label}
       className={`p-2 rounded-lg transition-colors ${
-        syncStatus === 'error' ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+        syncStatus === 'error' ? 'text-danger-600 dark:text-danger-400 hover:bg-danger-50 dark:hover:bg-danger-900/20'
         : 'text-slate-500 dark:text-slate-400 hover:bg-slate-900/[0.05] hover:text-slate-700 dark:hover:bg-white/[0.06] dark:hover:text-slate-200'
       }`}
     >
@@ -351,11 +363,11 @@ function CompanySwitcher() {
       <button onClick={() => setOpen((o) => !o)} className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 bg-slate-100/70 dark:bg-surface-800/80 border border-slate-200/80 dark:border-surface-700 rounded-lg px-3 py-1.5 hover:border-slate-300 hover:bg-white dark:hover:border-surface-600 dark:hover:bg-surface-800 hover:shadow-xs transition-all max-w-[200px]">
         <Building2 size={15} className="text-brand-600 dark:text-brand-400 flex-shrink-0" />
         <span className="truncate">{current?.name || 'Company'}</span>
-        <ChevronDown size={14} className={`text-slate-400 flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`text-slate-500 dark:text-slate-400 flex-shrink-0 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} />
       </button>
       {open && (
         <div className="absolute start-0 mt-1.5 w-64 bg-white dark:bg-surface-850 rounded-xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 border border-slate-100 dark:border-surface-750 z-50 py-1.5 animate-slide-down">
-          <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{t('Companies')}</p>
+          <p className="px-3 pt-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-slate-400">{t('Companies')}</p>
           <div className="max-h-60 overflow-y-auto">
             {companies.map((c) => (
               <button key={c.id} onClick={() => switchCompany(c.id)} className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors">
@@ -398,7 +410,7 @@ function UserMenu() {
         <div className="absolute end-0 mt-1.5 w-56 bg-white dark:bg-surface-850 rounded-xl shadow-modal ring-1 ring-black/5 dark:ring-white/10 border border-slate-100 dark:border-surface-750 z-50 py-1.5 animate-slide-down">
           <div className="px-3 py-2 border-b border-slate-100 dark:border-surface-750">
             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{user?.name}</p>
-            <p className="text-xs text-slate-400 dark:text-slate-500 truncate">{user?.email}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user?.email}</p>
           </div>
           <button onClick={logout} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-white/[0.05] transition-colors"><LogOut size={15} /> {t('Log out')}</button>
         </div>

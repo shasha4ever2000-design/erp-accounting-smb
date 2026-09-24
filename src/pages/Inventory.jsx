@@ -12,12 +12,13 @@ import { validateValues } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
 import { ETA_ITEM_CODE_TYPES } from '../utils/etaEinvoice'
 import { Plus, Pencil, Trash2, Search, Package } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const emptyForm = {
   name: '', code: '', description: '', unit: 'pcs', category: '', barcode: '',
   costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
-  taxRate: 0, isKit: false, components: [],
+  type: 'product', taxRate: 0, isKit: false, components: [],
   // Egyptian e-invoicing: ETA rejects an invoice line whose item carries no
   // EGS or GS1 code. Only asked for when ETA filing is switched on.
   etaItemCode: '', etaItemCodeType: '',
@@ -58,7 +59,9 @@ export default function Inventory() {
       ...form,
       costPrice: parseFloat(form.costPrice) || 0,
       salePrice: parseFloat(form.salePrice) || 0,
-      quantity: parseFloat(form.quantity) || 0,
+      // A service holds no stock, so it can't carry a quantity either.
+      quantity: form.type === 'service' ? 0 : (parseFloat(form.quantity) || 0),
+      type: form.type === 'service' ? 'service' : 'product',
       reorderLevel: parseFloat(form.reorderLevel) || 0,
       maxLevel: parseFloat(form.maxLevel) || 0,
       taxRate: parseFloat(form.taxRate) || 0,
@@ -78,8 +81,8 @@ export default function Inventory() {
     close()
   }
 
-  const handleDelete = (item) => {
-    if (!confirm(`Delete "${item.name}"?`)) return
+  const handleDelete = async (item) => {
+    if (!await ask(`Delete "${item.name}"?`)) return
     deleteInventoryItem(item.id)
     // Otherwise the photos linger in IndexedDB with nothing pointing at them.
     deleteImagesFor(item.id).catch(() => {})
@@ -121,20 +124,20 @@ export default function Inventory() {
       />
 
       {lowStock.length > 0 && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/60 rounded-xl p-4 mb-5 flex items-start gap-3">
-          <div className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex-shrink-0">
-            <Package size={16} className="text-amber-600 dark:text-amber-400" />
+        <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800/60 rounded-xl p-4 mb-5 flex items-start gap-3">
+          <div className="p-1.5 rounded-lg bg-warning-100 dark:bg-warning-900/40 flex-shrink-0">
+            <Package size={16} className="text-warning-700 dark:text-warning-400" />
           </div>
           <div className="min-w-0">
-            <p className="font-semibold text-amber-800 dark:text-amber-300 text-sm">{t('Low Stock Alert')}</p>
-            <p className="text-amber-700 dark:text-amber-400/90 text-sm mt-0.5">{lowStock.map((i) => i.name).join(', ')} {lowStock.length === 1 ? 'is' : 'are'} at or below reorder level.</p>
+            <p className="font-semibold text-warning-800 dark:text-warning-300 text-sm">{t('Low Stock Alert')}</p>
+            <p className="text-warning-700 dark:text-warning-400/90 text-sm mt-0.5">{lowStock.map((i) => i.name).join(', ')} {lowStock.length === 1 ? 'is' : 'are'} at or below reorder level.</p>
           </div>
         </div>
       )}
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
+        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder={t('Search items...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -142,7 +145,7 @@ export default function Inventory() {
         {inventoryItems.length === 0 ? (
           <EmptyState icon="📦" title={t('No inventory items')} desc={t('Add products or services to your inventory.')} action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Item')}</Btn>} />
         ) : filtered.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No items match your search')}</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No items match your search')}</div>
         ) : (
           <Table headers={[t('Code'), t('Item Name'), t('Unit'), { label: t('Cost Price'), right: true }, { label: t('Sale Price'), right: true }, { label: t('Qty on Hand'), right: true }, { label: t('Stock Value'), right: true }, { label: t('Actions'), right: true }]}>
             {filtered.map((item) => {
@@ -150,12 +153,12 @@ export default function Inventory() {
               const isLow = (item.reorderLevel || 0) > 0 && (item.quantity || 0) <= (item.reorderLevel || 0)
               return (
                 <Tr key={item.id}>
-                  <Td className="font-mono text-gray-500 dark:text-slate-400 text-xs">{item.code || '—'}</Td>
+                  <Td className="font-mono text-slate-500 dark:text-slate-400 text-xs">{item.code || '—'}</Td>
                   <Td>
-                    <p className="font-medium text-gray-900 dark:text-slate-100 flex items-center gap-2">
+                    <p className="font-medium text-slate-900 dark:text-slate-100 flex items-center gap-2">
                       {thumbs[item.id] && (
                         <img src={thumbs[item.id]} alt="" loading="lazy"
-                          className="w-8 h-8 rounded object-cover ring-1 ring-gray-200 dark:ring-surface-700 flex-shrink-0" />
+                          className="w-8 h-8 rounded object-cover ring-1 ring-slate-200 dark:ring-surface-700 flex-shrink-0" />
                       )}
                       {item.name}
                       {isKit(item) && (
@@ -165,27 +168,27 @@ export default function Inventory() {
                       )}
                     </p>
                     {isKit(item) && (
-                      <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {describeKit(item, inventoryItems)} · {t('can build')} {kitAvailability(item, inventoryItems)}
                       </p>
                     )}
-                    {item.description && <p className="text-xs text-gray-400 dark:text-slate-500 truncate max-w-xs">{item.description}</p>}
+                    {item.description && <p className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-xs">{item.description}</p>}
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400">{item.unit}</Td>
-                  <Td right className="tabular-nums text-gray-600 dark:text-slate-400">{fmtMoney(item.costPrice || 0, sym)}</Td>
-                  <Td right className="font-medium tabular-nums text-gray-900 dark:text-slate-100">{fmtMoney(item.salePrice || 0, sym)}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400">{item.unit}</Td>
+                  <Td right className="tabular-nums text-slate-600 dark:text-slate-400">{fmtMoney(item.costPrice || 0, sym)}</Td>
+                  <Td right className="font-medium tabular-nums text-slate-900 dark:text-slate-100">{fmtMoney(item.salePrice || 0, sym)}</Td>
                   <Td right>
-                    <span className={`tabular-nums ${isLow ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-gray-800 dark:text-slate-200'}`}>
+                    <span className={`tabular-nums ${isLow ? 'text-danger-600 dark:text-danger-400 font-semibold' : 'text-slate-800 dark:text-slate-200'}`}>
                       {item.quantity || 0} {item.unit}
-                      {isLow && <span className="ms-1.5 text-[10px] font-semibold bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 px-1.5 py-px rounded-full uppercase tracking-wide">LOW</span>}
+                      {isLow && <span className="ms-1.5 text-[10px] font-semibold bg-danger-100 dark:bg-danger-900/40 text-danger-600 dark:text-danger-300 px-1.5 py-px rounded-full uppercase tracking-wide">LOW</span>}
                     </span>
                   </Td>
-                  <Td right className="text-gray-600 dark:text-slate-400 tabular-nums">{fmtMoney(stockValue, sym)}</Td>
+                  <Td right className="text-slate-600 dark:text-slate-400 tabular-nums">{fmtMoney(stockValue, sym)}</Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="inventory" entityId={item.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(item)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(item)}><Trash2 size={13} className="text-red-400" /></Btn>
+                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(item)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -225,16 +228,24 @@ export default function Inventory() {
               the first thing a new user does and the last thing they would
               guess was wrong, so it is said here rather than left to the
               integrity check to report weeks later. */}
-          {!editing && (parseFloat(form.quantity) || 0) > 0 && (
+          <div>
+            <Select label={t('Item type')} value={form.type === 'service' ? 'service' : 'product'} onChange={(e) => setField('type', e.target.value)}
+              disabled={!!form.isKit}>
+              <option value="product">{t('Product (stocked)')}</option>
+              <option value="service">{t('Service (not stocked)')}</option>
+            </Select>
+            {form.type === 'service' && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t('A service is sold and bought but never held in stock: no quantity, no cost of sales.')}</p>}
+          </div>
+          {form.type !== 'service' && !editing && (parseFloat(form.quantity) || 0) > 0 && (
             <div className="text-xs rounded-lg px-3 py-2 bg-warning-50 dark:bg-warning-500/10 text-warning-700 dark:text-warning-300 border border-warning-200 dark:border-warning-500/20">
               {t('This opening quantity is not an accounting entry — the goods appear in stock but their value will not appear on your balance sheet. For stock you already own, use Opening Balances instead.')}
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {form.type !== 'service' && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Qty on Hand" type="number" min="0" step="0.01" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label="Reorder Level" type="number" min="0" step="0.01" value={form.reorderLevel} onChange={(e) => setField('reorderLevel', e.target.value)} />
             <Input label="Max Level" type="number" min="0" step="0.01" value={form.maxLevel} onChange={(e) => setField('maxLevel', e.target.value)} placeholder="optional" />
-          </div>
+          </div>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label="Inventory Account" value={form.inventoryAccountId} onChange={(e) => setField('inventoryAccountId', e.target.value)}>
               {assetAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
@@ -247,19 +258,19 @@ export default function Inventory() {
             </Select>
           </div>
           {/* Pictures */}
-          <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
             <p className="text-[13px] font-medium text-slate-600 dark:text-slate-300 mb-2">{t('Pictures')}</p>
             <ItemImages itemId={editing?.id} />
           </div>
 
           {/* Kit builder */}
-          <div className="pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="pt-3 border-t border-slate-100 dark:border-slate-700">
             <label className="flex items-start gap-2.5 text-sm cursor-pointer">
-              <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-gray-300 dark:border-slate-600"
+              <input type="checkbox" className="h-4 w-4 mt-0.5 rounded border-slate-300 dark:border-slate-600"
                 checked={!!form.isKit} onChange={(e) => setField('isKit', e.target.checked)} />
-              <span className="text-gray-700 dark:text-slate-200">
+              <span className="text-slate-700 dark:text-slate-200">
                 {t('This item is a kit')}
-                <span className="block text-xs text-gray-400 dark:text-slate-500">
+                <span className="block text-xs text-slate-500 dark:text-slate-400">
                   {t('Sold as one line, but made of other items. It holds no stock of its own — selling one takes its components off the shelf and costs them to sales.')}
                 </span>
               </span>
@@ -282,14 +293,14 @@ export default function Inventory() {
                       onChange={(e) => setField('components', form.components.map((x, i) => (i === idx ? { ...x, quantity: e.target.value } : x)))} />
                     <button type="button" title={t('Remove')}
                       onClick={() => setField('components', form.components.filter((_, i) => i !== idx))}
-                      className="p-1.5 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
+                      className="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10">×</button>
                   </div>
                 ))}
                 <Btn size="sm" variant="secondary" onClick={() => setField('components', [...(form.components || []), { itemId: '', quantity: 1 }])}>
                   + {t('Add component')}
                 </Btn>
                 {(form.components || []).some((c) => c.itemId) && (
-                  <p className="text-xs text-gray-500 dark:text-slate-400 pt-1">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 pt-1">
                     {t('Cost of one kit')}: <span className="font-semibold tabular-nums">{sym}{kitCost({ isKit: true, components: (form.components || []).map((c) => ({ itemId: c.itemId, quantity: parseFloat(c.quantity) || 0 })) }, inventoryItems).toFixed(2)}</span>
                     {' · '}
                     {t('Can build')} <span className="font-semibold tabular-nums">{kitAvailability({ isKit: true, components: (form.components || []).map((c) => ({ itemId: c.itemId, quantity: parseFloat(c.quantity) || 0 })) }, inventoryItems)}</span> {t('from stock')}
@@ -303,9 +314,9 @@ export default function Inventory() {
             entityId="item"
             values={form.customFields}
             onChange={(id, v) => setForm((f) => ({ ...f, customFields: { ...(f.customFields || {}), [id]: v } }))}
-            className="pt-3 border-t border-gray-100 dark:border-slate-700"
+            className="pt-3 border-t border-slate-100 dark:border-slate-700"
           />
-          <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-slate-700">
+          <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
             <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>
           </div>

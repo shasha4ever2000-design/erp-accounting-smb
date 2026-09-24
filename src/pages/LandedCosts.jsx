@@ -5,8 +5,9 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Table, Tr, Td, EmptyState, Badge } from '../components/UI'
 import { allocateLandedCost } from '../utils/landedCost'
 import { Ship, Plus, Trash2, Layers } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 export default function LandedCosts() {
   const t = useT()
@@ -65,7 +66,7 @@ export default function LandedCosts() {
         {/* Entry */}
         <div className="xl:col-span-2 space-y-6">
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('New Landed Cost')}</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('New Landed Cost')}</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <Input label={t('Date')} type="date" value={date} onChange={(e) => setDate(e.target.value)} />
               <Input label={t('Reference')} value={reference} onChange={(e) => setReference(e.target.value)} placeholder={t('e.g. Freight bill #')} />
@@ -82,17 +83,17 @@ export default function LandedCosts() {
           </Card>
 
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Select items to cost')}</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Select items to cost')}</h2>
             {stocked.length === 0 ? (
-              <p className="text-sm text-gray-400 dark:text-slate-500 py-4">{t('No items with stock on hand to allocate cost onto.')}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 py-4">{t('No items with stock on hand to allocate cost onto.')}</p>
             ) : (
               <div className="max-h-72 overflow-y-auto -mx-2 px-2 space-y-1">
                 {stocked.map((it) => (
-                  <label key={it.id} className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-gray-50 dark:hover:bg-surface-800 cursor-pointer">
+                  <label key={it.id} className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-slate-50 dark:hover:bg-surface-800 cursor-pointer">
                     <input type="checkbox" checked={picked.includes(it.id)} onChange={() => toggle(it.id)}
-                      className="rounded border-gray-300 text-brand-600 focus:ring-brand-500/40" />
-                    <span className="flex-1 text-sm text-gray-800 dark:text-slate-100">{it.name}</span>
-                    <span className="text-xs text-gray-400 dark:text-slate-500 tabular-nums">{it.quantity} {it.unit || ''} @ {money(it.costPrice || 0)}</span>
+                      className="rounded border-slate-300 text-brand-600 dark:text-brand-400 focus:ring-brand-500/40" />
+                    <span className="flex-1 text-sm text-slate-800 dark:text-slate-100">{it.name}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 tabular-nums">{it.quantity} {it.unit || ''} @ {money(it.costPrice || 0)}</span>
                   </label>
                 ))}
               </div>
@@ -101,20 +102,20 @@ export default function LandedCosts() {
 
           {preview.length > 0 && (
             <Card className="p-0 overflow-hidden">
-              <div className="px-6 pt-5 pb-3 flex items-center gap-2"><Layers size={16} className="text-brand-500" /><h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide">{t('Allocation preview')}</h2></div>
+              <div className="px-6 pt-5 pb-3 flex items-center gap-2"><Layers size={16} className="text-brand-600 dark:text-brand-400" /><h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">{t('Allocation preview')}</h2></div>
               <Table headers={[t('Item'), { label: t('On hand'), right: true }, { label: t('Old Cost'), right: true }, { label: t('Allocated'), right: true }, { label: t('New Cost'), right: true }]}>
                 {preview.map((p) => (
                   <Tr key={p.itemId}>
-                    <Td className="text-gray-800 dark:text-slate-100">{p.name}</Td>
-                    <Td right className="tabular-nums text-gray-500 dark:text-slate-400">{p.qty}</Td>
-                    <Td right className="tabular-nums text-gray-500 dark:text-slate-400">{money(p.unitCost)}</Td>
+                    <Td className="text-slate-800 dark:text-slate-100">{p.name}</Td>
+                    <Td right className="tabular-nums text-slate-500 dark:text-slate-400">{p.qty}</Td>
+                    <Td right className="tabular-nums text-slate-500 dark:text-slate-400">{money(p.unitCost)}</Td>
                     <Td right className="tabular-nums font-medium text-brand-600 dark:text-brand-400">{money(p.allocated)}</Td>
-                    <Td right className="tabular-nums font-semibold text-gray-900 dark:text-slate-100">{money(p.newCost)}</Td>
+                    <Td right className="tabular-nums font-semibold text-slate-900 dark:text-slate-100">{money(p.newCost)}</Td>
                   </Tr>
                 ))}
               </Table>
-              <div className="flex items-center justify-between px-6 py-4 border-t border-gray-100 dark:border-surface-750">
-                <span className="text-sm text-gray-500 dark:text-slate-400">{t('Dr Inventory')} {money(Number(amount) || 0)} · {t('Cr')} {accName(creditAccountId)}</span>
+              <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-surface-750">
+                <span className="text-sm text-slate-500 dark:text-slate-400">{t('Dr Inventory')} {money(Number(amount) || 0)} · {t('Cr')} {accName(creditAccountId)}</span>
                 <Btn onClick={handlePost} disabled={!canPost}><Plus size={15} /> {t('Post Landed Cost')}</Btn>
               </div>
             </Card>
@@ -124,21 +125,21 @@ export default function LandedCosts() {
         {/* History */}
         <div>
           <Card className="p-0 overflow-hidden">
-            <div className="px-5 pt-5 pb-3 flex items-center gap-2"><Ship size={16} className="text-gray-400" /><h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide">{t('History')}</h2></div>
+            <div className="px-5 pt-5 pb-3 flex items-center gap-2"><Ship size={16} className="text-slate-500 dark:text-slate-400" /><h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">{t('History')}</h2></div>
             {(!landedCosts || landedCosts.length === 0) ? (
               <div className="px-5 pb-6"><EmptyState icon="🚢" title={t('No landed costs yet')} desc={t('Capitalised freight and duty will appear here.')} /></div>
             ) : (
-              <div className="divide-y divide-gray-100 dark:divide-surface-800">
+              <div className="divide-y divide-slate-100 dark:divide-surface-800">
                 {[...landedCosts].reverse().map((lc) => (
                   <div key={lc.id} className="px-5 py-3">
                     <div className="flex items-center justify-between">
-                      <span className="font-medium text-gray-800 dark:text-slate-100 text-sm">{lc.reference || t('Landed cost')}</span>
+                      <span className="font-medium text-slate-800 dark:text-slate-100 text-sm">{lc.reference || t('Landed cost')}</span>
                       <span className="font-semibold text-brand-600 dark:text-brand-400 tabular-nums">{money(lc.amount)}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-400 dark:text-slate-500">{fmtDate(lc.date)}</span>
-                      <Badge className="bg-gray-100 dark:bg-surface-700 text-gray-600 dark:text-slate-300">{lc.lines.length} {t('items')}</Badge>
-                      <span className="text-xs text-gray-400 dark:text-slate-500">{lc.method === 'quantity' ? t('By quantity') : t('By value')}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{fmtDate(lc.date)}</span>
+                      <Badge className="bg-slate-100 dark:bg-surface-700 text-slate-600 dark:text-slate-300">{lc.lines.length} {t('items')}</Badge>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">{lc.method === 'quantity' ? t('By quantity') : t('By value')}</span>
                     </div>
                   </div>
                 ))}

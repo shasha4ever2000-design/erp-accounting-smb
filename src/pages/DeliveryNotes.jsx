@@ -5,6 +5,7 @@ import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, Truck, Printer, X, ArrowLeft, Check } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const blankLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1 })
 const emptyForm = { customerId: '', customerName: '', date: today(), reference: '', address: '', notes: '', lines: [blankLine()] }
@@ -49,7 +50,7 @@ export default function DeliveryNotes() {
     return (
       <div>
         <div className="flex items-center justify-between mb-6 no-print">
-          <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-800 dark:text-slate-400"><ArrowLeft size={15} /> {t('Back')}</button>
+          <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400"><ArrowLeft size={15} /> {t('Back')}</button>
           <div className="flex items-center gap-2">
             <AttachmentButton entityType="deliverynote" entityId={dn.id} />
             {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> {t('Mark Delivered')}</Btn>}
@@ -62,45 +63,45 @@ export default function DeliveryNotes() {
               <div className="flex items-center gap-3">
                 {company.logo && <img src={company.logo} alt="logo" className="h-12 w-auto object-contain" />}
                 <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">{company.name}</h1>
-                  {company.arabicName && <p className="text-lg font-bold text-gray-700 dark:text-slate-200" dir="rtl">{company.arabicName}</p>}
+                  <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{company.name}</h1>
+                  {company.arabicName && <p className="text-lg font-bold text-slate-700 dark:text-slate-200" dir="rtl">{company.arabicName}</p>}
                 </div>
               </div>
               <div className="text-right">
                 <p className="text-2xl font-black" style={{ color: company.accentColor || '#2563eb' }}>{t('DELIVERY NOTE')}</p>
-                <p className="text-sm font-semibold text-gray-600 dark:text-slate-300" dir="rtl">سند تسليم</p>
-                <p className="text-lg font-bold text-gray-800 dark:text-slate-100 mt-1">{dn.number}</p>
+                <p className="text-sm font-semibold text-slate-600 dark:text-slate-300" dir="rtl">سند تسليم</p>
+                <p className="text-lg font-bold text-slate-800 dark:text-slate-100 mt-1">{dn.number}</p>
               </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mb-8">
               <div>
-                <p className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase mb-1">{t('Deliver To')}</p>
-                <p className="font-semibold text-gray-800 dark:text-slate-100">{dn.customerName}</p>
-                {dn.address && <p className="text-sm text-gray-500 dark:text-slate-400 whitespace-pre-line">{dn.address}</p>}
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('Deliver To')}</p>
+                <p className="font-semibold text-slate-800 dark:text-slate-100">{dn.customerName}</p>
+                {dn.address && <p className="text-sm text-slate-500 dark:text-slate-400 whitespace-pre-line">{dn.address}</p>}
               </div>
               <div className="text-right space-y-1">
-                <p className="text-xs text-gray-400">Date</p><p className="font-medium text-gray-800 dark:text-slate-100">{fmtDate(dn.date)}</p>
-                {dn.reference && <><p className="text-xs text-gray-400 mt-2">{t('Reference')}</p><p className="font-medium text-gray-800 dark:text-slate-100">{dn.reference}</p></>}
+                <p className="text-xs text-slate-500 dark:text-slate-400">Date</p><p className="font-medium text-slate-800 dark:text-slate-100">{fmtDate(dn.date)}</p>
+                {dn.reference && <><p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('Reference')}</p><p className="font-medium text-slate-800 dark:text-slate-100">{dn.reference}</p></>}
               </div>
             </div>
             <table className="w-full text-sm mb-6">
-              <thead className="bg-gray-50/70 dark:bg-slate-800/50"><tr className="border-b-2 border-gray-200 dark:border-slate-600 text-xs text-gray-500 dark:text-slate-400 uppercase">
+              <thead className="bg-slate-50/70 dark:bg-slate-800/50"><tr className="border-b-2 border-slate-200 dark:border-slate-600 text-xs text-slate-500 dark:text-slate-400 uppercase">
                 <th className="text-left py-2">#</th><th className="text-left py-2">Description · الوصف</th><th className="text-right py-2">Qty · الكمية</th>
               </tr></thead>
               <tbody>
                 {dn.items.map((it, i) => (
-                  <tr key={i} className="border-b border-gray-100 dark:border-slate-700/50">
-                    <td className="py-3 text-gray-400 dark:text-slate-500">{i + 1}</td>
-                    <td className="py-3 text-gray-700 dark:text-slate-200">{it.description}</td>
-                    <td className="py-3 text-right font-medium text-gray-800 dark:text-slate-100">{it.quantity}</td>
+                  <tr key={i} className="border-b border-slate-100 dark:border-slate-700/50">
+                    <td className="py-3 text-slate-500 dark:text-slate-400">{i + 1}</td>
+                    <td className="py-3 text-slate-700 dark:text-slate-200">{it.description}</td>
+                    <td className="py-3 text-right font-medium text-slate-800 dark:text-slate-100">{it.quantity}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            {dn.notes && <p className="text-sm text-gray-600 dark:text-slate-300 border-t border-gray-100 dark:border-slate-700 pt-4">{dn.notes}</p>}
+            {dn.notes && <p className="text-sm text-slate-600 dark:text-slate-300 border-t border-slate-100 dark:border-slate-700 pt-4">{dn.notes}</p>}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-8 mt-12 text-sm">
-              <div className="border-t border-gray-300 dark:border-slate-600 pt-2 text-gray-500 dark:text-slate-400">Received by · المستلم</div>
-              <div className="border-t border-gray-300 dark:border-slate-600 pt-2 text-gray-500 dark:text-slate-400 text-right">Authorized signature · التوقيع</div>
+              <div className="border-t border-slate-300 dark:border-slate-600 pt-2 text-slate-500 dark:text-slate-400">Received by · المستلم</div>
+              <div className="border-t border-slate-300 dark:border-slate-600 pt-2 text-slate-500 dark:text-slate-400 text-right">Authorized signature · التوقيع</div>
             </div>
           </Card>
         </div>
@@ -124,13 +125,13 @@ export default function DeliveryNotes() {
             {deliveryNotes.slice().reverse().map((dn) => (
               <Tr key={dn.id} onClick={() => setViewing(dn.id)}>
                 <Td className="font-mono text-xs">{dn.number}</Td>
-                <Td className="font-medium text-gray-800 dark:text-slate-100">{dn.customerName}</Td>
-                <Td className="text-gray-500 dark:text-slate-400">{fmtDate(dn.date)}</Td>
+                <Td className="font-medium text-slate-800 dark:text-slate-100">{dn.customerName}</Td>
+                <Td className="text-slate-500 dark:text-slate-400">{fmtDate(dn.date)}</Td>
                 <Td>{dn.items.length}</Td>
-                <Td className="text-gray-400 dark:text-slate-500">{dn.reference || '—'}</Td>
+                <Td className="text-slate-500 dark:text-slate-400">{dn.reference || '—'}</Td>
                 <Td><Badge className={STATUS[dn.status] || STATUS.pending}>{dn.status}</Badge></Td>
                 <Td right>
-                  <button onClick={(e) => { e.stopPropagation(); if (confirm('Delete this delivery note?')) deleteDeliveryNote(dn.id) }} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={14} /></button>
+                  <button onClick={async (e) => { e.stopPropagation(); if (await ask('Delete this delivery note?')) deleteDeliveryNote(dn.id) }} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={14} /></button>
                 </Td>
               </Tr>
             ))}
@@ -150,19 +151,19 @@ export default function DeliveryNotes() {
           <Input label="Reference (PO / Invoice no.)" value={form.reference} onChange={(e) => setF('reference', e.target.value)} />
           <Textarea label="Delivery Address" rows={2} value={form.address} onChange={(e) => setF('address', e.target.value)} />
           <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Items</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Items</label>
             <div className="space-y-2">
               {form.lines.map((l) => (
                 <div key={l.id} className="flex gap-2">
-                  <input className="flex-1 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" placeholder="Item description"
+                  <input className="flex-1 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" placeholder="Item description"
                     value={l.description} onChange={(e) => setLine(l.id, 'description', e.target.value)} />
-                  <input className="w-20 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty"
+                  <input className="w-20 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-2 py-1.5 text-sm" type="number" min="0" placeholder="Qty"
                     value={l.quantity} onChange={(e) => setLine(l.id, 'quantity', e.target.value)} />
-                  <button onClick={() => removeLine(l.id)} className="text-gray-400 dark:text-slate-500 hover:text-red-500 mt-1.5"><X size={15} /></button>
+                  <button onClick={() => removeLine(l.id)} className="text-slate-500 dark:text-slate-400 hover:text-danger-500 mt-1.5"><X size={15} /></button>
                 </div>
               ))}
             </div>
-            <button onClick={addLine} className="mt-2 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add item')}</button>
+            <button onClick={addLine} className="mt-2 text-sm text-brand-600 dark:text-brand-400 hover:underline flex items-center gap-1"><Plus size={13} /> {t('Add item')}</button>
           </div>
           <Textarea label="Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">

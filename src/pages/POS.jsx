@@ -76,12 +76,12 @@ export default function POS() {
         {/* Products */}
         <div className="lg:col-span-2">
           <div className="relative mb-4">
-            <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-            <input className="w-full ps-9 pe-3 py-2.5 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+            <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
+            <input className="w-full ps-9 pe-3 py-2.5 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
               placeholder="Search products…" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           {inventoryItems.length === 0 ? (
-            <Card className="p-12 text-center text-gray-400 dark:text-slate-500">
+            <Card className="p-12 text-center text-slate-500 dark:text-slate-400">
               <Package size={30} className="mx-auto mb-3 opacity-40" />
               {t('Add products in the Inventory module to sell them here.')}
             </Card>
@@ -91,12 +91,12 @@ export default function POS() {
                 <button key={item.id} onClick={() => addToCart(item)}
                   className="bg-white dark:bg-surface-850/90 border border-slate-200/80 dark:border-surface-750 rounded-xl p-3 text-start shadow-card dark:shadow-none hover:border-brand-300 dark:hover:border-brand-500/40 hover:shadow-card-hover hover:-translate-y-px active:scale-[.98] transition-all duration-150 ease-spring">
                   <div className="w-full h-12 rounded-lg bg-gradient-to-br from-brand-50 to-accent-50 dark:from-brand-500/[0.08] dark:to-accent-500/[0.08] ring-1 ring-inset ring-brand-600/[0.06] dark:ring-brand-400/10 flex items-center justify-center mb-2">
-                    <Package size={18} className="text-brand-400 dark:text-brand-500" />
+                    <Package size={18} className="text-brand-600 dark:text-brand-500" />
                   </div>
-                  <p className="text-sm font-medium text-gray-800 dark:text-slate-100 truncate">{item.name}</p>
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{item.name}</p>
                   <div className="flex items-center justify-between mt-1">
                     <span className="text-sm font-bold tabular text-brand-600 dark:text-brand-400">{fmtMoney(item.salePrice || 0, sym)}</span>
-                    <span className="text-[10px] text-gray-400 dark:text-slate-500">{item.quantity || 0} {item.unit}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400">{item.quantity || 0} {item.unit}</span>
                   </div>
                 </button>
               ))}
@@ -107,47 +107,47 @@ export default function POS() {
         {/* Cart */}
         <Card className="p-4 h-fit lg:sticky lg:top-4">
           <div className="flex items-center gap-2 mb-3">
-            <ShoppingCart size={17} className="text-gray-500 dark:text-slate-400" />
-            <h2 className="font-semibold text-gray-800 dark:text-slate-100">{t('Current Sale')}</h2>
-            {cart.length > 0 && <span className="ml-auto text-xs text-gray-400 dark:text-slate-500">{cart.length} item(s)</span>}
+            <ShoppingCart size={17} className="text-slate-500 dark:text-slate-400" />
+            <h2 className="font-semibold text-slate-800 dark:text-slate-100">{t('Current Sale')}</h2>
+            {cart.length > 0 && <span className="ml-auto text-xs text-slate-500 dark:text-slate-400">{cart.length} item(s)</span>}
           </div>
 
           {lastSale && (
-            <div className="bg-green-50 dark:bg-green-900/30 rounded-lg p-3 mb-3 flex items-center gap-2">
-              <CheckCircle2 size={18} className="text-green-500" />
+            <div className="bg-success-50 dark:bg-success-900/30 rounded-lg p-3 mb-3 flex items-center gap-2">
+              <CheckCircle2 size={18} className="text-success-700 dark:text-success-400" />
               <div className="flex-1 text-sm">
-                <p className="font-medium text-green-700 dark:text-green-300">Sale complete · {lastSale.number}</p>
-                <button onClick={() => navigate(`/invoices/${lastSale.id}`)} className="text-xs text-green-600 dark:text-green-400 underline">View / print receipt</button>
+                <p className="font-medium text-success-700 dark:text-success-300">Sale complete · {lastSale.number}</p>
+                <button onClick={() => navigate(`/invoices/${lastSale.id}`)} className="text-xs text-success-700 dark:text-success-400 underline">View / print receipt</button>
               </div>
             </div>
           )}
 
           {cart.length === 0 ? (
-            <p className="text-sm text-gray-400 dark:text-slate-500 text-center py-8">{t('Tap products to add them.')}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-8">{t('Tap products to add them.')}</p>
           ) : (
             <div className="space-y-2 mb-3 max-h-72 overflow-y-auto">
               {cart.map((c) => (
                 <div key={c.itemId} className="flex items-center gap-2 text-sm">
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-800 dark:text-slate-100 truncate">{c.name}</p>
-                    <p className="text-xs text-gray-400 dark:text-slate-500">{fmtMoney(c.price, sym)} × {c.qty}</p>
+                    <p className="font-medium text-slate-800 dark:text-slate-100 truncate">{c.name}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{fmtMoney(c.price, sym)} × {c.qty}</p>
                   </div>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setQty(c.itemId, -1)} className="w-6 h-6 rounded-md bg-slate-100 dark:bg-white/[0.07] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12] transition-colors flex items-center justify-center"><Minus size={12} /></button>
                     <span className="w-6 text-center tabular">{c.qty}</span>
                     <button onClick={() => setQty(c.itemId, 1)} className="w-6 h-6 rounded-md bg-slate-100 dark:bg-white/[0.07] text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-white/[0.12] transition-colors flex items-center justify-center"><Plus size={12} /></button>
                   </div>
-                  <span className="w-16 text-right font-medium text-gray-800 dark:text-slate-100">{fmtMoney(c.qty * c.price, sym)}</span>
-                  <button onClick={() => removeLine(c.itemId)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
+                  <span className="w-16 text-right font-medium text-slate-800 dark:text-slate-100">{fmtMoney(c.qty * c.price, sym)}</span>
+                  <button onClick={() => removeLine(c.itemId)} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={13} /></button>
                 </div>
               ))}
             </div>
           )}
 
-          <div className="space-y-2 border-t border-gray-100 dark:border-slate-700 pt-3 text-sm">
-            <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>Subtotal</span><span>{fmtMoney(subtotal, sym)}</span></div>
-            {taxOn && <div className="flex justify-between text-gray-600 dark:text-slate-300"><span>{settings.tax.name} ({rate}%)</span><span>{fmtMoney(taxAmount, sym)}</span></div>}
-            <div className="flex justify-between font-bold text-base text-gray-900 dark:text-slate-100"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
+          <div className="space-y-2 border-t border-slate-100 dark:border-slate-700 pt-3 text-sm">
+            <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>Subtotal</span><span>{fmtMoney(subtotal, sym)}</span></div>
+            {taxOn && <div className="flex justify-between text-slate-600 dark:text-slate-300"><span>{settings.tax.name} ({rate}%)</span><span>{fmtMoney(taxAmount, sym)}</span></div>}
+            <div className="flex justify-between font-bold text-base text-slate-900 dark:text-slate-100"><span>Total</span><span>{fmtMoney(total, sym)}</span></div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">

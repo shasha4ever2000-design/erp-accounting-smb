@@ -11,6 +11,7 @@ import { CF_ENTITIES, CF_TYPES, newField, entityMeta } from '../utils/customFiel
 import { Card, Btn, Modal, Input, Select, EmptyState } from './UI'
 import { useT } from '../i18n'
 import { Plus, Pencil, Trash2, ArrowUp, ArrowDown, SlidersHorizontal, Printer } from 'lucide-react'
+import { ask } from './Dialogs'
 
 export default function CustomFieldsManager() {
   const settings = useStore((s) => s.settings)
@@ -50,10 +51,10 @@ export default function CustomFieldsManager() {
     }
   }
 
-  const remove = (f) => {
+  const remove = async (f) => {
     // Values already entered stay in the records — see the store action. Say so,
     // because "delete" on a field people have filled in reads as data loss.
-    if (confirm(t('Remove the field “{n}”? Values already entered stay in your records and reappear if you add the field back.').replace('{n}', f.name)))
+    if (await ask(t('Remove the field “{n}”? Values already entered stay in your records and reappear if you add the field back.').replace('{n}', f.name)))
       deleteCustomField(entity, f.id)
   }
 
@@ -63,9 +64,9 @@ export default function CustomFieldsManager() {
         <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-violet-500 to-violet-700 flex items-center justify-center">
           <SlidersHorizontal size={14} className="text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Custom Fields')}</h2>
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Custom Fields')}</h2>
       </div>
-      <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
         {t('Add your own fields to any form — a contract number, a site code, a warranty date. Changes here save straight away.')}
       </p>
 
@@ -78,10 +79,10 @@ export default function CustomFieldsManager() {
               key={e.id}
               onClick={() => setEntity(e.id)}
               className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${on
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-slate-200 hover:bg-gray-200 dark:hover:bg-slate-600'}`}
+                ? 'bg-brand-600 text-white'
+                : 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
             >
-              {t(e.label)}{count > 0 && <span className={`ms-1.5 text-xs ${on ? 'text-blue-100' : 'text-gray-400 dark:text-slate-400'}`}>{count}</span>}
+              {t(e.label)}{count > 0 && <span className={`ms-1.5 text-xs ${on ? 'text-brand-100' : 'text-slate-500 dark:text-slate-400'}`}>{count}</span>}
             </button>
           )
         })}
@@ -104,28 +105,28 @@ export default function CustomFieldsManager() {
                     onClick={() => moveCustomField(entity, f.id, -1)}
                     disabled={i === 0}
                     title={t('Move up')}
-                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-25"
+                    className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-25"
                   ><ArrowUp size={13} /></button>
                   <button
                     onClick={() => moveCustomField(entity, f.id, 1)}
                     disabled={i === fields.length - 1}
                     title={t('Move down')}
-                    className="text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-25"
+                    className="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 disabled:opacity-25"
                   ><ArrowDown size={13} /></button>
                 </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">
                     {f.name}
-                    {f.required && <span className="text-red-500 ms-1" title={t('Required')}>*</span>}
+                    {f.required && <span className="text-danger-600 dark:text-danger-400 ms-1" title={t('Required')}>*</span>}
                   </p>
                   <p className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2 flex-wrap">
                     <span>{t(CF_TYPES.find((tp) => tp.id === f.type)?.label || 'Text')}</span>
                     {f.type === 'select' && <span className="truncate">· {f.options.join(', ')}</span>}
-                    {f.showOnPrint && <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400"><Printer size={11} /> {t('On printout')}</span>}
+                    {f.showOnPrint && <span className="inline-flex items-center gap-1 text-success-700 dark:text-success-400"><Printer size={11} /> {t('On printout')}</span>}
                   </p>
                 </div>
-                <button onClick={() => openEdit(f)} title={t('Edit')} className="text-slate-400 hover:text-blue-600 p-1"><Pencil size={14} /></button>
-                <button onClick={() => remove(f)} title={t('Remove')} className="text-slate-400 hover:text-red-600 p-1"><Trash2 size={14} /></button>
+                <button onClick={() => openEdit(f)} title={t('Edit')} className="text-slate-500 dark:text-slate-400 hover:text-brand-600 p-1"><Pencil size={14} /></button>
+                <button onClick={() => remove(f)} title={t('Remove')} className="text-slate-500 dark:text-slate-400 hover:text-danger-600 p-1"><Trash2 size={14} /></button>
               </div>
             ))}
           </div>
@@ -148,33 +149,33 @@ export default function CustomFieldsManager() {
 
           {form.type === 'select' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">{t('Choices')}</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('Choices')}</label>
               <textarea
                 rows={4}
                 value={optionText}
                 onChange={(e) => setOptionText(e.target.value)}
                 placeholder={t('One per line')}
-                className="w-full border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
+                className="w-full border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15"
               />
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('One per line. A dropdown needs at least two.')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{t('One per line. A dropdown needs at least two.')}</p>
             </div>
           )}
 
           <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
             <input type="checkbox" checked={!!form.required} onChange={(e) => setField('required', e.target.checked)}
-              className="rounded border-slate-300 dark:border-surface-700 text-blue-600 focus:ring-blue-500" />
+              className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" />
             {t('Required — the form cannot be saved without it')}
           </label>
 
           {meta?.printable && (
             <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <input type="checkbox" checked={!!form.showOnPrint} onChange={(e) => setField('showOnPrint', e.target.checked)}
-                className="rounded border-slate-300 dark:border-surface-700 text-blue-600 focus:ring-blue-500" />
+                className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" />
               {t('Show on the printed document')}
             </label>
           )}
 
-          {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+          {error && <p className="text-sm text-danger-600 dark:text-danger-400">{error}</p>}
 
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>

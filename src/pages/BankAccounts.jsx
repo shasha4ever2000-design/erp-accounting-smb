@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import { Plus, Pencil, Trash2, Landmark, Wallet, CreditCard, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const TYPE_LABELS = { bank: 'Bank Account', cash: 'Cash Account', credit_card: 'Credit Card' }
 const TYPE_ICONS  = { bank: Landmark, cash: Wallet, credit_card: CreditCard }
@@ -46,8 +47,8 @@ export default function BankAccounts() {
     close()
   }
 
-  const handleDelete = (ba) => {
-    if (confirm(`Delete "${ba.name}"? The journal entry history will be preserved.`)) deleteBankAccount(ba.id)
+  const handleDelete = async (ba) => {
+    if (await ask(`Delete "${ba.name}"? The journal entry history will be preserved.`)) deleteBankAccount(ba.id)
   }
 
   // Recent transactions for selected account
@@ -93,18 +94,18 @@ export default function BankAccounts() {
                 </div>
                 <div className="flex gap-1">
                   <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); openEdit(ba) }}><Pencil size={13} /></Btn>
-                  <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(ba) }}><Trash2 size={13} className="text-red-400" /></Btn>
+                  <Btn size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); handleDelete(ba) }}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                 </div>
               </div>
-              <p className="font-semibold text-gray-900 dark:text-slate-100">{ba.name}</p>
-              <p className="text-xs text-gray-400 dark:text-slate-500 mt-0.5">
+              <p className="font-semibold text-slate-900 dark:text-slate-100">{ba.name}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 {TYPE_LABELS[ba.type] || ba.type}{ba.bankName ? ` · ${ba.bankName}` : ''}
                 {ba.currency && ba.currency !== settings.company.currency && (
                   <span className="ms-2 text-[10px] bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300 px-1.5 py-0.5 rounded font-semibold">{ba.currency}</span>
                 )}
               </p>
-              {ba.accountNumber && <p className="text-xs text-gray-400 dark:text-slate-500 font-mono">···{ba.accountNumber.slice(-4)}</p>}
-              <p className={`text-2xl font-bold mt-3 ${balance >= 0 ? 'text-gray-900 dark:text-slate-100' : 'text-red-600 dark:text-red-400'}`}>
+              {ba.accountNumber && <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">···{ba.accountNumber.slice(-4)}</p>}
+              <p className={`text-2xl font-bold mt-3 ${balance >= 0 ? 'text-slate-900 dark:text-slate-100' : 'text-danger-600 dark:text-danger-400'}`}>
                 {fmtMoney(balance, sym)}
               </p>
               {ba.isDefault && <Badge className="mt-1 bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300">Default</Badge>}
@@ -121,26 +122,26 @@ export default function BankAccounts() {
       {/* Recent transactions for selected account */}
       {selected && (
         <Card>
-          <div className="px-4 py-3 border-b border-gray-100 dark:border-surface-750 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-800 dark:text-slate-100">Recent Transactions – {selected.name}</h3>
-            <button onClick={() => setSelected(null)} className="text-gray-400 dark:text-slate-500 hover:text-gray-600 dark:hover:text-slate-300 text-xl">&times;</button>
+          <div className="px-4 py-3 border-b border-slate-100 dark:border-surface-750 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100">Recent Transactions – {selected.name}</h3>
+            <button onClick={() => setSelected(null)} className="text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 text-xl">&times;</button>
           </div>
           {filteredTxns.length === 0 ? (
-            <div className="py-10 text-center text-gray-400 dark:text-slate-500 text-sm">{t('No transactions yet for this account.')}</div>
+            <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No transactions yet for this account.')}</div>
           ) : (
             <Table headers={['Date', 'Description', 'Type', { label: 'Amount', right: true }]}>
               {filteredTxns.map((tx, i) => (
                 <Tr key={tx.id || i}>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(tx.date)}</Td>
-                  <Td className="font-medium text-gray-800 dark:text-slate-100">{tx.description}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm">{fmtDate(tx.date)}</Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-100">{tx.description}</Td>
                   <Td>
                     {tx.type === 'money_in' || tx.type === 'receipt'
-                      ? <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 text-xs"><ArrowDownLeft size={12} /> In</span>
-                      : <span className="inline-flex items-center gap-1 text-red-600 dark:text-red-400 text-xs"><ArrowUpRight size={12} /> Out</span>
+                      ? <span className="inline-flex items-center gap-1 text-success-700 dark:text-success-400 text-xs"><ArrowDownLeft size={12} /> In</span>
+                      : <span className="inline-flex items-center gap-1 text-danger-600 dark:text-danger-400 text-xs"><ArrowUpRight size={12} /> Out</span>
                     }
                   </Td>
                   <Td right>
-                    <span className={`font-semibold ${tx.type === 'money_in' || tx.type === 'receipt' ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    <span className={`font-semibold ${tx.type === 'money_in' || tx.type === 'receipt' ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                       {tx.type === 'money_in' || tx.type === 'receipt' ? '+' : '-'}{fmtMoney(tx.amount, sym)}
                     </span>
                   </Td>
@@ -171,7 +172,7 @@ export default function BankAccounts() {
                 <option key={c.id || c.code} value={c.code}>{c.code} — {c.name}</option>
               ))}
             </Select>
-            <p className="text-xs text-gray-400 dark:text-slate-500 mt-1">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
               {t('A foreign-currency account is restated to the closing rate on the FX Revaluation page.')}
             </p>
           </div>

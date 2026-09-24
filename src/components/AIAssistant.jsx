@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useAuth } from '../auth'
 import { Bot, X, Send, Sparkles, Trash2, AlertCircle, Minimize2 } from 'lucide-react'
 
 export default function AIAssistant() {
@@ -18,6 +19,11 @@ export default function AIAssistant() {
   const inputRef       = useRef(null)
 
   const apiKey = settings.ai?.apiKey || ''
+  // A cloud-linked company can use the assistant through its server function
+  // (supabase/functions/ai-chat), so no key has to live in this browser.
+  const cloudCompanyId = useAuth((s) => s.companies.find((c) => c.id === s.currentCompanyId)?.cloudCompanyId || '')
+  const viaServer = !!settings.ai?.useServer && !!cloudCompanyId
+  const ready = viaServer || !!apiKey
   const model  = settings.ai?.model  || 'claude-haiku-4-5-20251001'
 
   // Build greeting on first open using live company name
@@ -83,7 +89,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
     const text = input.trim()
     if (!text || loading) return
 
-    if (!apiKey) {
+    if (!ready) {
       setError('No API key set. Go to Settings → AI Assistant and enter your Claude API key.')
       return
     }
@@ -96,29 +102,44 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
     setError('')
 
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'anthropic-dangerous-direct-browser-calls': 'true',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 1024,
-          system: buildSystemPrompt(),
-          messages: history.map(m => ({ role: m.role, content: m.content })),
-        }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error?.message || `API error ${res.status}`)
+      let reply
+      if (viaServer) {
+        const { getSupabase } = await import('../lib/supabase')
+        const { data, error: fnErr } = await getSupabase().functions.invoke('ai-chat', {
+          body: {
+            companyId: cloudCompanyId, model, system: buildSystemPrompt(),
+            messages: history.map(m => ({ role: m.role, content: m.content })),
+          },
+        })
+        if (fnErr) {
+          let msg = fnErr.message
+          try { msg = (await fnErr.context?.json())?.error || msg } catch { /* keep the generic message */ }
+          throw new Error(msg)
+        }
+        reply = data?.reply || 'No response received.'
+      } else {
+        // Official SDK, loaded only when someone actually uses the assistant.
+        const { default: Anthropic } = await import('@anthropic-ai/sdk')
+        const client = new Anthropic({ apiKey, dangerouslyAllowBrowser: true })
+        try {
+          const response = await client.messages.create({
+            model,
+            max_tokens: model.startsWith('claude-haiku') ? 4096 : 16000,
+            system: buildSystemPrompt(),
+            messages: history.map(m => ({ role: m.role, content: m.content })),
+          })
+          // Newer models may put a thinking block first, so collect the text
+          // blocks rather than reading content[0].
+          reply = response.stop_reason === 'refusal'
+            ? "I can't help with that request."
+            : response.content.filter((b) => b.type === 'text').map((b) => b.text).join('\n').trim() || 'No response received.'
+        } catch (err) {
+          if (err instanceof Anthropic.AuthenticationError) throw new Error('Your API key was rejected. Check it in Settings → AI Assistant.')
+          if (err instanceof Anthropic.RateLimitError) throw new Error('Too many requests right now. Try again in a minute.')
+          if (err instanceof Anthropic.APIError) throw new Error(err.message || `API error ${err.status}`)
+          throw err
+        }
       }
-
-      const data  = await res.json()
-      const reply = data.content?.[0]?.text || 'No response received.'
       setMessages(prev => [...prev, { role: 'assistant', content: reply }])
     } catch (e) {
       setError(e.message || 'Connection failed. Check your API key.')
@@ -189,7 +210,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
           </div>
 
           {/* No API Key Banner */}
-          {!apiKey && (
+          {!ready && (
             <div className="px-3 py-2 bg-warning-50 dark:bg-warning-500/10 border-b border-warning-200 dark:border-warning-400/20 text-xs text-warning-700 dark:text-warning-300 flex items-center gap-1.5 flex-shrink-0">
               <AlertCircle size={12} className="flex-shrink-0" />
               <span>{t('Add your Claude API key in')}<strong>Settings → AI Assistant</strong> to enable chat.</span>
@@ -207,7 +228,7 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
                 )}
                 <div className={`max-w-[80%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ${
                   msg.role === 'user'
-                    ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white rounded-ee-sm'
+                    ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white rounded-ee-sm'
                     : 'bg-white dark:bg-surface-800 text-slate-800 dark:text-slate-100 shadow-xs dark:shadow-none border border-slate-200/70 dark:border-surface-700 rounded-es-sm'
                 }`}>
                   {renderText(msg.content)}
@@ -270,13 +291,13 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-                placeholder={apiKey ? 'Ask about your finances...' : 'Set API key in Settings first'}
+                placeholder={ready ? 'Ask about your finances...' : 'Set API key in Settings first'}
                 className="flex-1 text-sm border border-slate-300/90 dark:border-surface-600 rounded-xl px-3.5 py-2 bg-white dark:bg-surface-800 text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-accent-500 focus:ring-4 focus:ring-accent-500/15"
                 disabled={loading}
               />
               <button
                 onClick={sendMessage}
-                disabled={!input.trim() || loading || !apiKey}
+                disabled={!input.trim() || loading || !ready}
                 className="w-9 h-9 rounded-xl bg-gradient-to-br from-accent-500 to-brand-600 hover:from-accent-600 hover:to-brand-700 flex items-center justify-center disabled:opacity-40 transition-all duration-150 active:scale-95 flex-shrink-0"
               >
                 <Send size={14} className="text-white ms-0.5 rtl:-scale-x-100" />

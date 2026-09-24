@@ -8,6 +8,7 @@ import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
 import { docFulfillment } from '../utils/fulfillment'
 import { Plus, Trash2, FileText, ArrowRight, ClipboardList } from 'lucide-react'
+import { ask } from '../components/Dialogs'
 
 const STATUS_COLORS = {
   sent:     'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
@@ -43,8 +44,8 @@ export default function Quotations() {
     if (so) navigate('/sales-orders')
   }
 
-  const handleDelete = (q) => {
-    if (confirm(`Delete quotation ${q.number}?`)) deleteQuotation(q.id)
+  const handleDelete = async (q) => {
+    if (await ask(`Delete quotation ${q.number}?`)) deleteQuotation(q.id)
   }
 
   const counts = { all: quotations.length }
@@ -64,9 +65,9 @@ export default function Quotations() {
       <div className="flex gap-2 mb-4 flex-wrap">
         {[['all','All'], ['sent','Sent'], ['accepted','Accepted'], ['rejected','Rejected'], ['invoiced','Invoiced']].map(([val, label]) => (
           <button key={val} onClick={() => setFilter(val)}
-            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-500 to-brand-600 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-gray-600 dark:text-slate-300 border border-gray-200 dark:border-slate-700 hover:border-blue-300 dark:hover:border-slate-500 hover:text-gray-900 dark:hover:text-slate-100'}`}>
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${filter === val ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
             {label}
-            <span className={`text-xs tabular-nums font-semibold px-1.5 py-px rounded-full ${filter === val ? 'bg-white/20' : 'bg-gray-100 dark:bg-slate-700 text-gray-500 dark:text-slate-400'}`}>{counts[val] ?? 0}</span>
+            <span className={`text-xs tabular-nums font-semibold px-1.5 py-px rounded-full ${filter === val ? 'bg-white/20' : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'}`}>{counts[val] ?? 0}</span>
           </button>
         ))}
       </div>
@@ -76,7 +77,7 @@ export default function Quotations() {
           <EmptyState icon="📋" title="No quotations yet" desc="Create quotations and estimates for your customers. Convert them to invoices with one click."
             action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> {t('New Quotation')}</Btn>} />
         ) : sorted.length === 0 ? (
-          <div className="py-12 text-center text-gray-400 dark:text-slate-500 text-sm">No quotations with status "{filter}"</div>
+          <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">No quotations with status "{filter}"</div>
         ) : (
           <Table headers={['Number', 'Customer', 'Date', 'Expiry', 'Status', { label: 'Total', right: true }, { label: 'Actions', right: true }]}>
             {sorted.map((q) => {
@@ -84,27 +85,27 @@ export default function Quotations() {
               return (
                 <Tr key={q.id}>
                   <Td>
-                    <span className="font-mono text-sm font-semibold text-blue-600 dark:text-blue-400">{q.number}</span>
+                    <span className="font-mono text-sm font-semibold text-brand-600 dark:text-brand-400">{q.number}</span>
                   </Td>
                   <Td>
-                    <p className="font-medium text-gray-900 dark:text-slate-100">{q.customerName}</p>
-                    {q.customerEmail && <p className="text-xs text-gray-400 dark:text-slate-500">{q.customerEmail}</p>}
+                    <p className="font-medium text-slate-900 dark:text-slate-100">{q.customerName}</p>
+                    {q.customerEmail && <p className="text-xs text-slate-500 dark:text-slate-400">{q.customerEmail}</p>}
                   </Td>
-                  <Td className="text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">{fmtDate(q.date)}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">{fmtDate(q.date)}</Td>
                   <Td>
-                    <span className={`text-sm whitespace-nowrap ${expired ? 'text-red-500 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-slate-400'}`}>
+                    <span className={`text-sm whitespace-nowrap ${expired ? 'text-danger-600 dark:text-danger-400 font-medium' : 'text-slate-500 dark:text-slate-400'}`}>
                       {q.expiryDate ? fmtDate(q.expiryDate) : '—'}
-                      {expired && <span className="ms-1.5 text-[10px] font-semibold bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-300 px-1.5 py-px rounded-full uppercase tracking-wide">EXPIRED</span>}
+                      {expired && <span className="ms-1.5 text-[10px] font-semibold bg-danger-100 dark:bg-danger-900/40 text-danger-600 dark:text-danger-300 px-1.5 py-px rounded-full uppercase tracking-wide">EXPIRED</span>}
                     </span>
                   </Td>
                   <Td>
                     <Badge className={STATUS_COLORS[q.status] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>
                       {q.status.charAt(0).toUpperCase() + q.status.slice(1)}
                     </Badge>
-                    {q.status === 'partial' && (() => { const f = docFulfillment(q.items || [], 'invoicedQty'); return <p className="text-[11px] text-gray-400 dark:text-slate-500 mt-1">{f.done} / {f.ordered} {t('invoiced')}</p> })()}
+                    {q.status === 'partial' && (() => { const f = docFulfillment(q.items || [], 'invoicedQty'); return <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{f.done} / {f.ordered} {t('invoiced')}</p> })()}
                   </Td>
                   <Td right>
-                    <span className="font-semibold text-gray-900 dark:text-slate-100 tabular-nums">{fmtMoney(q.total, sym)}</span>
+                    <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{fmtMoney(q.total, sym)}</span>
                   </Td>
                   <Td right>
                     <div className="flex justify-end gap-1">
@@ -113,7 +114,7 @@ export default function Quotations() {
                         <>
                           {q.status !== 'partial' && (
                             <Btn size="sm" variant="ghost" title="Mark Accepted" onClick={() => updateQuotation(q.id, { status: 'accepted' })}>
-                              <FileText size={13} className="text-green-500" />
+                              <FileText size={13} className="text-success-700 dark:text-success-400" />
                             </Btn>
                           )}
                           <Btn size="sm" variant="ghost" onClick={() => setOrderDoc(q)} title={t('Turn this quotation into a sales order')}>
@@ -125,10 +126,10 @@ export default function Quotations() {
                         </>
                       )}
                       {q.status === 'invoiced' && (
-                        <span className="text-xs text-gray-400 dark:text-slate-500 px-2">{t('Converted')}</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 px-2">{t('Converted')}</span>
                       )}
                       <Btn size="sm" variant="ghost" onClick={() => handleDelete(q)}>
-                        <Trash2 size={13} className="text-red-400" />
+                        <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                       </Btn>
                     </div>
                   </Td>

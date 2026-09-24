@@ -117,11 +117,11 @@ export default function CashForecast() {
             ? 'border-s-danger-500 bg-danger-50/50 dark:bg-danger-500/[0.07]'
             : 'border-s-success-500 bg-success-50/50 dark:bg-success-500/[0.07]'}`}>
             <div className="flex items-start gap-3">
-              <VerdictIcon size={22} className={verdict.tone === 'danger' ? 'text-danger-600 dark:text-danger-400 mt-0.5' : 'text-success-600 dark:text-success-400 mt-0.5'} />
+              <VerdictIcon size={22} className={verdict.tone === 'danger' ? 'text-danger-600 dark:text-danger-400 mt-0.5' : 'text-success-700 dark:text-success-400 mt-0.5'} />
               <div className="min-w-0">
-                <h2 className="font-semibold text-gray-900 dark:text-slate-100">{verdict.title}</h2>
-                <p className="text-sm text-gray-700 dark:text-slate-300 mt-0.5">{verdict.line}</p>
-                <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">{verdict.sub}</p>
+                <h2 className="font-semibold text-slate-900 dark:text-slate-100">{verdict.title}</h2>
+                <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">{verdict.line}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">{verdict.sub}</p>
               </div>
             </div>
           </Card>
@@ -144,35 +144,35 @@ export default function CashForecast() {
             <Card className="p-4">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-start gap-2.5 min-w-0">
-                  <Info size={16} className="text-warning-600 dark:text-warning-400 mt-0.5 flex-shrink-0" />
+                  <Info size={16} className="text-warning-700 dark:text-warning-400 mt-0.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
+                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
                       {t('Past due and not yet settled')}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5 max-w-xl">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 max-w-xl">
                       {t('This money was due before today, so its timing is unknown. It is kept out of the weekly projection rather than assumed to arrive — turn it on only if you expect to collect it now.')}
                     </p>
                     <p className="text-sm mt-2 tabular-nums">
                       <span className="text-success-700 dark:text-success-400 font-medium">
                         +{fmtMoney(forecast.overdue.inflows, sym)}
                       </span>
-                      <span className="text-gray-400 dark:text-slate-500 mx-2">·</span>
+                      <span className="text-slate-500 dark:text-slate-400 mx-2">·</span>
                       <span className="text-danger-600 dark:text-danger-400 font-medium">
                         −{fmtMoney(forecast.overdue.outflows, sym)}
                       </span>
-                      <span className="text-gray-400 dark:text-slate-500 mx-2">·</span>
-                      <span className="text-gray-700 dark:text-slate-200">
+                      <span className="text-slate-500 dark:text-slate-400 mx-2">·</span>
+                      <span className="text-slate-700 dark:text-slate-200">
                         {t('net')} {fmtMoney(forecast.overdue.net, sym)}
                       </span>
                     </p>
                   </div>
                 </div>
-                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-300 cursor-pointer flex-shrink-0">
+                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer flex-shrink-0">
                   <input
                     type="checkbox"
                     checked={collectOverdue}
                     onChange={(e) => setCollect(e.target.checked)}
-                    className="rounded border-gray-300 dark:border-slate-600 text-brand-600 focus:ring-brand-500"
+                    className="rounded border-slate-300 dark:border-slate-600 text-brand-600 dark:text-brand-400 focus:ring-brand-500"
                   />
                   {t('Assume collected now')}
                 </label>
@@ -183,7 +183,7 @@ export default function CashForecast() {
           {/* ── Chart ── */}
           <Card className="p-4">
             <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
-              <h3 className="font-semibold text-gray-800 dark:text-slate-100 text-sm">{t('Projected closing cash')}</h3>
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{t('Projected closing cash')}</h3>
               <div className="flex gap-1.5">
                 {[4, 8, 13, 26].map((n) => (
                   <button
@@ -192,7 +192,7 @@ export default function CashForecast() {
                     className={`text-xs px-2.5 py-1 rounded-full border transition-colors ${
                       weeks === n
                         ? 'bg-brand-600 text-white border-brand-600'
-                        : 'bg-white dark:bg-surface-800 text-gray-600 dark:text-slate-300 border-gray-200 dark:border-surface-700 hover:border-brand-300'
+                        : 'bg-white dark:bg-surface-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-surface-700 hover:border-brand-300'
                     }`}
                   >{n}{t('w')}</button>
                 ))}
@@ -212,8 +212,8 @@ export default function CashForecast() {
 
           {/* ── What is being projected ── */}
           <Card className="p-4">
-            <h3 className="font-semibold text-gray-800 dark:text-slate-100 text-sm mb-1">{t('What this includes')}</h3>
-            <p className="text-xs text-gray-500 dark:text-slate-400 mb-3">
+            <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm mb-1">{t('What this includes')}</h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
               {t('Switch a source off to see the position without it.')}
             </p>
             <div className="flex flex-wrap gap-2">
@@ -228,16 +228,16 @@ export default function CashForecast() {
                     aria-pressed={active}
                     className={`text-start px-3 py-2 rounded-xl border transition-all ${
                       active
-                        ? 'bg-white dark:bg-surface-800 border-gray-200 dark:border-surface-700'
-                        : 'bg-slate-50 dark:bg-surface-900 border-dashed border-gray-300 dark:border-surface-700 opacity-55'
+                        ? 'bg-white dark:bg-surface-800 border-slate-200 dark:border-surface-700'
+                        : 'bg-slate-50 dark:bg-surface-900 border-dashed border-slate-300 dark:border-surface-700 opacity-55'
                     }`}
                   >
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full ${s.dir === 'in' ? 'bg-success-500' : 'bg-danger-500'}`} />
-                      <span className="text-sm font-medium text-gray-800 dark:text-slate-100">{t(s.label)}</span>
+                      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{t(s.label)}</span>
                       <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${chip.cls}`}>{t(chip.label)}</span>
                     </div>
-                    <div className="text-xs text-gray-500 dark:text-slate-400 mt-1 tabular-nums ms-4">
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-1 tabular-nums ms-4">
                       {row
                         ? `${fmtMoney(row.inflow || row.outflow, sym)} · ${row.count} ${row.count === 1 ? t('item') : t('items')}`
                         : t('nothing due')}
@@ -250,9 +250,9 @@ export default function CashForecast() {
 
           {/* ── Week by week ── */}
           <Card className="p-0 overflow-hidden">
-            <div className="px-4 py-3 border-b border-gray-100 dark:border-surface-750">
-              <h3 className="font-semibold text-gray-800 dark:text-slate-100 text-sm">{t('Week by week')}</h3>
-              <p className="text-xs text-gray-500 dark:text-slate-400 mt-0.5">{t('Select a week to see every movement behind it.')}</p>
+            <div className="px-4 py-3 border-b border-slate-100 dark:border-surface-750">
+              <h3 className="font-semibold text-slate-800 dark:text-slate-100 text-sm">{t('Week by week')}</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('Select a week to see every movement behind it.')}</p>
             </div>
             <Table headers={[t('Week'), t('Period'), t('Opening'), t('In'), t('Out'), t('Net'), t('Closing')]}>
               {forecast.weeks.map((w) => {
@@ -262,27 +262,27 @@ export default function CashForecast() {
                   <Tr key={w.index} onClick={() => setOpenWeek(isOpen ? null : w.index)}
                     className={negative ? 'bg-danger-50/60 dark:bg-danger-500/[0.07]' : ''}>
                     <Td>
-                      <span className="flex items-center gap-1.5 font-medium text-gray-700 dark:text-slate-200">
+                      <span className="flex items-center gap-1.5 font-medium text-slate-700 dark:text-slate-200">
                         {w.events.length > 0
                           ? (isOpen ? <ChevronDown size={13} /> : <ChevronRight size={13} className="rtl:-scale-x-100" />)
                           : <span className="w-[13px]" />}
                         {w.index}
                       </span>
                     </Td>
-                    <Td className="text-gray-500 dark:text-slate-400 text-sm whitespace-nowrap">
+                    <Td className="text-slate-500 dark:text-slate-400 text-sm whitespace-nowrap">
                       {fmtDate(w.start)} – {fmtDate(w.end)}
                     </Td>
-                    <Td right className="tabular-nums text-gray-500 dark:text-slate-400">{fmtMoney(w.opening, sym)}</Td>
+                    <Td right className="tabular-nums text-slate-500 dark:text-slate-400">{fmtMoney(w.opening, sym)}</Td>
                     <Td right className="tabular-nums text-success-700 dark:text-success-400">
                       {w.inflows ? fmtMoney(w.inflows, sym) : '—'}
                     </Td>
                     <Td right className="tabular-nums text-danger-600 dark:text-danger-400">
                       {w.outflows ? fmtMoney(w.outflows, sym) : '—'}
                     </Td>
-                    <Td right className={`tabular-nums font-medium ${w.net >= 0 ? 'text-gray-700 dark:text-slate-200' : 'text-danger-600 dark:text-danger-400'}`}>
+                    <Td right className={`tabular-nums font-medium ${w.net >= 0 ? 'text-slate-700 dark:text-slate-200' : 'text-danger-600 dark:text-danger-400'}`}>
                       {fmtMoney(w.net, sym)}
                     </Td>
-                    <Td right className={`tabular-nums font-semibold ${negative ? 'text-danger-600 dark:text-danger-400' : 'text-gray-900 dark:text-slate-100'}`}>
+                    <Td right className={`tabular-nums font-semibold ${negative ? 'text-danger-600 dark:text-danger-400' : 'text-slate-900 dark:text-slate-100'}`}>
                       {fmtMoney(w.closing, sym)}
                     </Td>
                   </Tr>,
@@ -294,9 +294,9 @@ export default function CashForecast() {
                             const chip = CERTAINTY_CHIP[e.certainty]
                             return (
                               <li key={i} className="flex items-center gap-2 text-sm flex-wrap">
-                                <span className="text-gray-400 dark:text-slate-500 text-xs w-20 flex-shrink-0 tabular-nums">{fmtDate(e.date)}</span>
+                                <span className="text-slate-500 dark:text-slate-400 text-xs w-20 flex-shrink-0 tabular-nums">{fmtDate(e.date)}</span>
                                 <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 ${chip.cls}`}>{t(chip.label)}</span>
-                                <span className="text-gray-700 dark:text-slate-200 truncate">{e.label}</span>
+                                <span className="text-slate-700 dark:text-slate-200 truncate">{e.label}</span>
                                 {e.ref && <Badge className="bg-slate-100 dark:bg-surface-700 text-slate-500 dark:text-slate-400">{e.ref}</Badge>}
                                 <span className={`ms-auto tabular-nums font-medium ${e.amount > 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>
                                   {e.amount > 0 ? '+' : '−'}{fmtMoney(Math.abs(e.amount), sym)}
@@ -313,7 +313,7 @@ export default function CashForecast() {
             </Table>
           </Card>
 
-          <p className="text-xs text-gray-400 dark:text-slate-500 px-1">
+          <p className="text-xs text-slate-500 dark:text-slate-400 px-1">
             {t('Projected from unpaid invoices and bills, dated cheques, recurring schedules, lease commitments and active payroll. Transfers between your own bank accounts are excluded because they do not change total cash.')}
           </p>
         </>
@@ -331,7 +331,7 @@ function Summary({ label, value, icon: Icon, tone }) {
   }
   return (
     <Card className="p-4">
-      <div className="flex items-center gap-2 text-gray-500 dark:text-slate-400 mb-1">
+      <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 mb-1">
         <Icon size={14} />
         <span className="text-xs font-medium">{label}</span>
       </div>

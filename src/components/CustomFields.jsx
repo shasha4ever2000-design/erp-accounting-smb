@@ -51,7 +51,7 @@ export function CustomFieldInputs({ entityId, values = {}, onChange, columns = 2
                 type="checkbox"
                 checked={value === true}
                 onChange={set(f)}
-                className="rounded border-slate-300 dark:border-surface-700 text-blue-600 focus:ring-blue-500"
+                className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500"
               />
               {label}
             </label>
@@ -137,7 +137,7 @@ export function CustomFieldPrintLines({ entityId, values = {}, className = '' })
     <div className={`text-xs text-slate-600 dark:text-slate-400 space-y-0.5 ${className}`}>
       {rows.map(({ field, text }) => (
         <div key={field.id}>
-          <span className="text-slate-500 dark:text-slate-500">{t(field.name)}: </span>
+          <span className="text-slate-500 dark:text-slate-400">{t(field.name)}: </span>
           <span className="font-medium text-slate-800 dark:text-slate-200">{text}</span>
         </div>
       ))}

@@ -6,6 +6,7 @@ import { Card, Btn, Input, Select } from './UI'
 import {
   Cloud, CloudOff, RefreshCw, Users, Mail, X, Crown, Shield, Eye, LogOut, Link2, Unlink, CheckCircle2, AlertTriangle,
 } from 'lucide-react'
+import { ask } from './Dialogs'
 
 const ROLE_ICON = { owner: Crown, admin: Shield, member: Users, viewer: Eye }
 
@@ -152,8 +153,8 @@ export default function CloudSyncCard() {
     refreshCloudState(session)
   }
 
-  const handleUnlink = () => {
-    if (!confirm(t('Stop syncing this company to the cloud? Your local data is unaffected — you can re-link anytime.'))) return
+  const handleUnlink = async () => {
+    if (!await ask(t('Stop syncing this company to the cloud? Your local data is unaffected — you can re-link anytime.'))) return
     unlinkCompanyCloud(company.id)
   }
 
@@ -183,7 +184,7 @@ export default function CloudSyncCard() {
   }
 
   const handleRemoveMember = async (userId) => {
-    if (!confirm(t('Remove this teammate from the company?'))) return
+    if (!await ask(t('Remove this teammate from the company?'))) return
     const cloudAuth = await import('../cloudAuth')
     await cloudAuth.removeMember(company.cloudCompanyId, userId)
     refreshCloudState(session)
@@ -192,14 +193,14 @@ export default function CloudSyncCard() {
   return (
     <Card className="p-6">
       <div className="flex items-center gap-2.5 mb-4">
-        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center">
+        <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-sky-500 to-brand-600 flex items-center justify-center">
           <Cloud size={14} className="text-white" />
         </div>
-        <h2 className="text-base font-semibold text-gray-800 dark:text-slate-100">{t('Cloud Sync')}</h2>
+        <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Cloud Sync')}</h2>
         {company?.cloudCompanyId && (
           <span className={`ms-auto inline-flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded-md ${
-            syncStatus === 'syncing' ? 'bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-            : syncStatus === 'error' ? 'bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+            syncStatus === 'syncing' ? 'bg-brand-50 text-brand-700 dark:bg-brand-900/30 dark:text-brand-300'
+            : syncStatus === 'error' ? 'bg-danger-50 text-danger-700 dark:bg-danger-900/30 dark:text-danger-300'
             : 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300'}`}>
             {syncStatus === 'syncing' ? <RefreshCw size={12} className="animate-spin" /> : syncStatus === 'error' ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
             {syncStatus === 'syncing' ? t('Syncing…') : syncStatus === 'error' ? t('Sync error') : lastSyncAt ? t('Synced') : t('Not yet synced')}
@@ -208,10 +209,10 @@ export default function CloudSyncCard() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-gray-400 dark:text-slate-500">{t('Checking cloud account…')}</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400">{t('Checking cloud account…')}</p>
       ) : recovering ? (
         <>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">{t('Choose a new password for your cloud account.')}</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">{t('Choose a new password for your cloud account.')}</p>
           {resetDone ? (
             <p className="text-sm bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 rounded-lg px-3 py-2.5">
               {t('Password updated. You are signed in.')}
@@ -219,7 +220,7 @@ export default function CloudSyncCard() {
           ) : (
             <div className="max-w-sm space-y-3">
               <Input label={t('New password')} type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} />
-              {err && <p className="text-sm text-red-500">{err}</p>}
+              {err && <p className="text-sm text-danger-600 dark:text-danger-400">{err}</p>}
               <Btn onClick={handleSetNewPassword} disabled={busy || !newPassword}>
                 {busy ? t('Please wait…') : t('Set new password')}
               </Btn>
@@ -228,7 +229,7 @@ export default function CloudSyncCard() {
         </>
       ) : !session ? (
         <>
-          <p className="text-sm text-gray-500 dark:text-slate-400 mb-4">
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {t('Sign in to sync this company across devices and invite teammates. Your data stays local-only until you do — nothing changes unless you opt in.')}
           </p>
           {signupSent ? (
@@ -238,7 +239,7 @@ export default function CloudSyncCard() {
           ) : mode === 'forgot' ? (
             <div className="max-w-sm space-y-3">
               <div className="flex gap-1.5 mb-1">
-                <button onClick={() => { setMode('signin'); setErr(''); setResetSent(false) }} className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-slate-300">{t('← Back to sign in')}</button>
+                <button onClick={() => { setMode('signin'); setErr(''); setResetSent(false) }} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">{t('← Back to sign in')}</button>
               </div>
               {resetSent ? (
                 <p className="text-sm bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300 rounded-lg px-3 py-2.5">
@@ -247,7 +248,7 @@ export default function CloudSyncCard() {
               ) : (
                 <>
                   <Input label={t('Email')} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
-                  {err && <p className="text-sm text-red-500">{err}</p>}
+                  {err && <p className="text-sm text-danger-600 dark:text-danger-400">{err}</p>}
                   <Btn onClick={handleAuth} disabled={busy || !form.email}>
                     {busy ? t('Please wait…') : t('Send reset link')}
                   </Btn>
@@ -257,8 +258,8 @@ export default function CloudSyncCard() {
           ) : (
             <div className="max-w-sm space-y-3">
               <div className="flex gap-1.5 mb-1">
-                <button onClick={() => setMode('signin')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mode === 'signin' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>{t('Sign in')}</button>
-                <button onClick={() => setMode('signup')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mode === 'signup' ? 'bg-brand-600 text-white' : 'bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300'}`}>{t('Create cloud account')}</button>
+                <button onClick={() => setMode('signin')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mode === 'signin' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{t('Sign in')}</button>
+                <button onClick={() => setMode('signup')} className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mode === 'signup' ? 'bg-brand-600 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300'}`}>{t('Create cloud account')}</button>
               </div>
               {mode === 'signup' && <Input label={t('Your name')} value={form.name} onChange={(e) => setField('name', e.target.value)} />}
               <Input label={t('Email')} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} />
@@ -266,7 +267,7 @@ export default function CloudSyncCard() {
               {mode === 'signin' && (
                 <button onClick={() => { setMode('forgot'); setErr('') }} className="text-xs font-semibold text-brand-600 hover:text-brand-700">{t('Forgot password?')}</button>
               )}
-              {err && <p className="text-sm text-red-500">{err}</p>}
+              {err && <p className="text-sm text-danger-600 dark:text-danger-400">{err}</p>}
               <Btn onClick={handleAuth} disabled={busy || !form.email || !form.password}>
                 {busy ? t('Please wait…') : mode === 'signup' ? t('Create cloud account') : t('Sign in')}
               </Btn>
@@ -276,35 +277,35 @@ export default function CloudSyncCard() {
       ) : !company?.cloudCompanyId ? (
         <>
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500 dark:text-slate-400">{t('Signed in as')} <strong className="text-gray-700 dark:text-slate-200">{session.user.email}</strong></p>
-            <button onClick={handleSignOut} className="text-xs font-semibold text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 inline-flex items-center gap-1"><LogOut size={12} /> {t('Sign out')}</button>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('Signed in as')} <strong className="text-slate-700 dark:text-slate-200">{session.user.email}</strong></p>
+            <button onClick={handleSignOut} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 inline-flex items-center gap-1"><LogOut size={12} /> {t('Sign out')}</button>
           </div>
 
           {myInvites.length > 0 && (
             <div className="mb-5 space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">{t('Invitations for you')}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('Invitations for you')}</p>
               {myInvites.map((inv) => (
                 <div key={inv.id} className="flex items-center justify-between rounded-lg bg-brand-50/60 dark:bg-brand-500/[0.08] px-3 py-2.5 text-sm">
-                  <span className="text-gray-700 dark:text-slate-200">{inv.companies?.name || t('Unnamed company')} <span className="text-gray-400 dark:text-slate-500">· {inv.role}</span></span>
+                  <span className="text-slate-700 dark:text-slate-200">{inv.companies?.name || t('Unnamed company')} <span className="text-slate-500 dark:text-slate-400">· {inv.role}</span></span>
                   <Btn size="sm" onClick={() => handleAcceptInvite(inv.token, inv.company_id)}>{t('Accept & link this company')}</Btn>
                 </div>
               ))}
             </div>
           )}
 
-          <p className="text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">{t('Link "{name}" to the cloud').replace('{name}', company?.name)}</p>
+          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">{t('Link "{name}" to the cloud').replace('{name}', company?.name)}</p>
           <div className="flex flex-wrap items-end gap-2 mb-4">
             <Input label={t('New cloud company name')} value={newCloudName} onChange={(e) => setNewCloudName(e.target.value)} className="w-56" />
             <Btn onClick={handleCreateCloudCompany} disabled={busy}><Link2 size={14} /> {t('Create & link')}</Btn>
           </div>
-          {err && <p className="text-sm text-red-500 mb-3">{err}</p>}
+          {err && <p className="text-sm text-danger-600 dark:text-danger-400 mb-3">{err}</p>}
 
           {myCloudCompanies.length > 0 && (
             <div className="space-y-2">
-              <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">{t('Or link to a cloud company you already belong to')}</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">{t('Or link to a cloud company you already belong to')}</p>
               {myCloudCompanies.map((c) => (
-                <div key={c.id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-slate-800/60 px-3 py-2.5 text-sm">
-                  <span className="text-gray-700 dark:text-slate-200">{c.name}</span>
+                <div key={c.id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2.5 text-sm">
+                  <span className="text-slate-700 dark:text-slate-200">{c.name}</span>
                   <Btn size="sm" variant="secondary" onClick={() => handleLinkExisting(c.id)}>{t('Link')}</Btn>
                 </div>
               ))}
@@ -314,42 +315,42 @@ export default function CloudSyncCard() {
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <p className="text-sm text-gray-500 dark:text-slate-400">
-              {t('Signed in as')} <strong className="text-gray-700 dark:text-slate-200">{session.user.email}</strong>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              {t('Signed in as')} <strong className="text-slate-700 dark:text-slate-200">{session.user.email}</strong>
               {lastSyncAt && <span className="block text-xs mt-0.5">{t('Last synced')}: {new Date(lastSyncAt).toLocaleString()}</span>}
-              {lastSyncError && <span className="block text-xs mt-0.5 text-red-500">{lastSyncError}</span>}
+              {lastSyncError && <span className="block text-xs mt-0.5 text-danger-600 dark:text-danger-400">{lastSyncError}</span>}
             </p>
             <div className="flex items-center gap-2">
               <Btn size="sm" variant="secondary" onClick={handleSyncNow} disabled={syncStatus === 'syncing'}>
                 <RefreshCw size={13} className={syncStatus === 'syncing' ? 'animate-spin' : ''} /> {t('Sync now')}
               </Btn>
-              <button onClick={handleUnlink} title={t('Stop syncing')} className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"><Unlink size={14} /></button>
-              <button onClick={handleSignOut} title={t('Sign out')} className="p-2 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"><LogOut size={14} /></button>
+              <button onClick={handleUnlink} title={t('Stop syncing')} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-danger-500 hover:bg-danger-50 dark:hover:bg-danger-900/20 transition-colors"><Unlink size={14} /></button>
+              <button onClick={handleSignOut} title={t('Sign out')} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"><LogOut size={14} /></button>
             </div>
           </div>
 
-          <div className="border-t border-gray-100 dark:border-slate-700 pt-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-2">{t('Team members')}</p>
+          <div className="border-t border-slate-100 dark:border-slate-700 pt-4">
+            <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-2">{t('Team members')}</p>
             <div className="space-y-1.5 mb-3">
               {members.map((m) => {
                 const RoleIcon = ROLE_ICON[m.role] || Users
                 return (
-                  <div key={m.user_id} className="flex items-center justify-between rounded-lg bg-gray-50 dark:bg-slate-800/60 px-3 py-2 text-sm">
-                    <span className="flex items-center gap-2 text-gray-700 dark:text-slate-200">
-                      <RoleIcon size={13} className="text-gray-400 dark:text-slate-500" />
-                      {m.name || m.email} {m.user_id === session.user.id && <span className="text-gray-400 dark:text-slate-500 text-xs">({t('you')})</span>}
+                  <div key={m.user_id} className="flex items-center justify-between rounded-lg bg-slate-50 dark:bg-slate-800/60 px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                      <RoleIcon size={13} className="text-slate-500 dark:text-slate-400" />
+                      {m.name || m.email} {m.user_id === session.user.id && <span className="text-slate-500 dark:text-slate-400 text-xs">({t('you')})</span>}
                     </span>
                     {canManage && m.user_id !== session.user.id ? (
                       <div className="flex items-center gap-2">
-                        <select value={m.role} onChange={(e) => handleRoleChange(m.user_id, e.target.value)} className="text-xs bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-md px-1.5 py-1">
+                        <select value={m.role} onChange={(e) => handleRoleChange(m.user_id, e.target.value)} className="text-xs bg-white dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-md px-1.5 py-1">
                           <option value="admin">{t('Admin')}</option>
                           <option value="member">{t('Member')}</option>
                           <option value="viewer">{t('Viewer')}</option>
                         </select>
-                        <button onClick={() => handleRemoveMember(m.user_id)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
+                        <button onClick={() => handleRemoveMember(m.user_id)} className="text-slate-500 dark:text-slate-400 hover:text-danger-500"><X size={14} /></button>
                       </div>
                     ) : (
-                      <span className="text-xs text-gray-400 dark:text-slate-500 capitalize">{t(m.role)}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">{t(m.role)}</span>
                     )}
                   </div>
                 )
@@ -367,13 +368,13 @@ export default function CloudSyncCard() {
                   </Select>
                   <Btn size="sm" onClick={handleInvite} disabled={busy}><Mail size={13} /> {t('Invite')}</Btn>
                 </div>
-                {err && <p className="text-sm text-red-500 mt-2">{err}</p>}
+                {err && <p className="text-sm text-danger-600 dark:text-danger-400 mt-2">{err}</p>}
                 {invites.length > 0 && (
                   <div className="mt-3 space-y-1.5">
                     {invites.map((inv) => (
-                      <div key={inv.id} className="flex items-center justify-between rounded-lg bg-amber-50/60 dark:bg-amber-500/[0.08] px-3 py-2 text-sm">
-                        <span className="text-gray-600 dark:text-slate-300">{inv.email} <span className="text-gray-400 dark:text-slate-500">· {t('pending')} · {inv.role}</span></span>
-                        <button onClick={() => handleCancelInvite(inv.id)} className="text-gray-300 hover:text-red-500"><X size={14} /></button>
+                      <div key={inv.id} className="flex items-center justify-between rounded-lg bg-warning-50/60 dark:bg-warning-500/[0.08] px-3 py-2 text-sm">
+                        <span className="text-slate-600 dark:text-slate-300">{inv.email} <span className="text-slate-500 dark:text-slate-400">· {t('pending')} · {inv.role}</span></span>
+                        <button onClick={() => handleCancelInvite(inv.id)} className="text-slate-500 dark:text-slate-400 hover:text-danger-500"><X size={14} /></button>
                       </div>
                     ))}
                   </div>

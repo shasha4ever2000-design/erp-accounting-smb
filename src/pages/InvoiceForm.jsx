@@ -12,6 +12,7 @@ import { v4 as uuid } from 'uuid'
 import { VAT_CATEGORIES, vatCatRate } from '../utils/vat'
 import { creditStatus } from '../utils/credit'
 import { computeLine, invoiceTotals } from '../utils/lineMath'
+import { ask } from '../components/Dialogs'
 
 const emptyLine = () => ({ id: uuid(), itemId: '', description: '', quantity: 1, unitPrice: 0, discount: 0, taxCategory: 'standard', taxRate: 0, accountId: 'acc-sales', subtotal: 0, taxAmount: 0, total: 0 })
 
@@ -24,7 +25,7 @@ export default function InvoiceForm() {
   // With an :id in the path this form is correcting an invoice that is already
   // posted, rather than raising a new one.
   const { id: editId } = useParams()
-  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
+  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, warehouses = [], settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []
@@ -50,6 +51,7 @@ export default function InvoiceForm() {
     dueDate: addDays(today(), settings.invoice.dueDays || 30),
     notes: settings.invoice.notes || '',
     departmentId: '',
+    warehouseId: '',
     salesRepId: '',
     docDiscount: 0,
     shipping: 0,
@@ -124,7 +126,7 @@ export default function InvoiceForm() {
   // as well as its own replacement would report double the real exposure.
   const credit = creditStatus(selectedCustomer, invoices.filter((i) => i.id !== editId), newBase, creditNotes)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.customerId) return alert('Please select a customer.')
     if (form.items.length === 0) return alert('Add at least one line item.')
     if (form.items.some((l) => !l.description)) return alert('All line items must have a description.')
@@ -137,7 +139,7 @@ export default function InvoiceForm() {
         .replace('{limit}', fmtMoney(credit.limit, settings.company.currencySymbol))
         .replace('{exp}', fmtMoney(credit.exposure, settings.company.currencySymbol))
         .replace('{proj}', fmtMoney(credit.projected, settings.company.currencySymbol))
-      if (!confirm(msg)) return
+      if (!await ask(msg)) return
     }
 
     // Selling stock that isn't there is allowed, but it skews the weighted
@@ -146,7 +148,7 @@ export default function InvoiceForm() {
     const short = stockShortfall(form.items, { creditFrom: editing?.items || null })
     if (short.length) {
       const detail = short.map((s) => `• ${s.name}: ${t('{on} in stock, {req} needed').replace('{on}', s.onHand).replace('{req}', s.required)}`).join('\n')
-      if (!confirm(`${t('This invoice sells more than you have in stock:')}\n\n${detail}\n\n${t('Stock will go negative and item costs may be distorted until you receive more. Create it anyway?')}`)) return
+      if (!await ask(`${t('This invoice sells more than you have in stock:')}\n\n${detail}\n\n${t('Stock will go negative and item costs may be distorted until you receive more. Create it anyway?')}`)) return
     }
 
     const lock = settings?.accounting?.lockDate
@@ -166,8 +168,8 @@ export default function InvoiceForm() {
 
   if (editId && editBlocked) return (
     <div className="max-w-lg mx-auto text-center py-20 space-y-4">
-      <p className="text-gray-700 dark:text-slate-200 font-medium">{t('This invoice cannot be edited')}</p>
-      <p className="text-sm text-gray-500 dark:text-slate-400">{t(EDIT_BLOCK_MESSAGE[editBlocked])}</p>
+      <p className="text-slate-700 dark:text-slate-200 font-medium">{t('This invoice cannot be edited')}</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400">{t(EDIT_BLOCK_MESSAGE[editBlocked])}</p>
       <Btn variant="secondary" onClick={() => navigate(editing ? `/invoices/${editId}` : '/invoices')}>{t('Back')}</Btn>
     </div>
   )
@@ -175,10 +177,10 @@ export default function InvoiceForm() {
   return (
     <div>
       <div className="mb-6">
-        <button onClick={() => navigate(editId ? `/invoices/${editId}` : '/invoices')} className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-slate-400 hover:text-gray-800 dark:hover:text-slate-100 mb-4">
+        <button onClick={() => navigate(editId ? `/invoices/${editId}` : '/invoices')} className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 mb-4">
           <ArrowLeft size={15} /> {editId ? t('Back to Invoice') : t('Back to Invoices')}
         </button>
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
           {editId ? `${t('Edit Invoice')} ${editing?.number || ''}` : t('New Sales Invoice')}
         </h1>
         {editId && (
@@ -193,7 +195,7 @@ export default function InvoiceForm() {
         <div className="xl:col-span-2 space-y-5">
           {/* Header */}
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Invoice Details')}</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Invoice Details')}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <Select label="Customer *" value={form.customerId} onChange={(e) => setCustomer(e.target.value)}>
                 <option value="">Select customer…</option>
@@ -209,6 +211,12 @@ export default function InvoiceForm() {
                 <Select label={t('Sales Rep')} value={form.salesRepId} onChange={(e) => setField('salesRepId', e.target.value)}>
                   <option value="">{t('— Unassigned —')}</option>
                   {salesReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </Select>
+              )}
+              {/* Only asked when there is a choice to make. */}
+              {warehouses.length > 1 && (
+                <Select label={t('Stock from')} value={form.warehouseId || warehouses.find((w) => w.isDefault)?.id || ''} onChange={(e) => setField('warehouseId', e.target.value)}>
+                  {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </Select>
               )}
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
@@ -231,12 +239,12 @@ export default function InvoiceForm() {
 
           {/* Line Items */}
           <Card className="p-6">
-            <h2 className="text-sm font-semibold text-gray-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-4">{t('Line Items')}</h2>
             <div className="space-y-3">
               {/* Headers */}
               {/* Column headers belong to the desktop grid; on a phone each field
                   carries its own label instead. */}
-              <div className={`hidden lg:grid gap-2 text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
+              <div className={`hidden lg:grid gap-2 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase px-0 ${taxEnabled ? 'grid-cols-[2fr_58px_84px_60px_120px_88px_26px]' : 'grid-cols-[2fr_70px_90px_66px_90px_30px]'}`}>
                 <span>{t('Description')}</span>
                 <span>Qty</span>
                 <span>{t('Unit Price')}</span>
@@ -266,7 +274,7 @@ export default function InvoiceForm() {
                     >
                       {revenueAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
                     </Select>
-                    {line.itemId && <p className="text-[11px] text-blue-600 dark:text-blue-400 px-1">{t('Issues stock & posts COGS at average cost')}</p>}
+                    {line.itemId && <p className="text-[11px] text-brand-600 dark:text-brand-400 px-1">{t('Issues stock & posts COGS at average cost')}</p>}
                   </div>
                   <Input
                     label="Qty" className={MOBILE_LABEL}
@@ -304,12 +312,12 @@ export default function InvoiceForm() {
                       ))}
                     </Select>
                   )}
-                  <div className="text-sm font-medium text-gray-800 dark:text-slate-100 text-right pt-2 self-center lg:self-start">
-                    <span className="lg:hidden text-xs font-normal text-gray-400 dark:text-slate-500 me-2">{t('Amount')}</span>
+                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100 text-right pt-2 self-center lg:self-start">
+                    <span className="lg:hidden text-xs font-normal text-slate-500 dark:text-slate-400 me-2">{t('Amount')}</span>
                     {fmtMoney(line.subtotal, sym)}
                   </div>
                   <button onClick={() => removeLine(line.id)} aria-label={t('Remove line')}
-                    className="mt-2 justify-self-end self-center lg:self-start text-red-400 hover:text-red-600 dark:hover:text-danger-400 flex-shrink-0">
+                    className="mt-2 justify-self-end self-center lg:self-start text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400 flex-shrink-0">
                     <Trash2 size={15} />
                   </button>
                 </div>
@@ -321,39 +329,39 @@ export default function InvoiceForm() {
             </div>
 
             {/* Totals */}
-            <div className="border-t border-gray-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
+            <div className="border-t border-slate-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
               {discountTotal > 0 && (
-                <div className="flex justify-between text-gray-600 dark:text-slate-300">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300">
                   <span>Subtotal</span>
                   <span>{fmtMoney(grossSubtotal, sym)}</span>
                 </div>
               )}
               {discountTotal > 0 && (
-                <div className="flex justify-between text-success-600 dark:text-success-400">
+                <div className="flex justify-between text-success-700 dark:text-success-400">
                   <span>{t('Discount')}</span>
                   <span>− {fmtMoney(discountTotal, sym)}</span>
                 </div>
               )}
-              <div className="flex justify-between text-gray-600 dark:text-slate-300">
+              <div className="flex justify-between text-slate-600 dark:text-slate-300">
                 <span>{discountTotal > 0 ? t('Net Subtotal') : 'Subtotal'}</span>
                 <span className="font-medium">{fmtMoney(subtotal, sym)}</span>
               </div>
               {/* Whole-invoice discount + shipping */}
-              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-slate-300">
+              <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5">{t('Invoice discount')}
                   <input type="number" min="0" max="100" step="0.1" value={form.docDiscount}
                     onChange={(e) => setField('docDiscount', e.target.value)}
-                    className="w-16 text-end border border-gray-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" /> %
+                    className="w-16 text-end border border-slate-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" /> %
                 </span>
-                <span className="text-success-600 dark:text-success-400">{totals.docDiscountAmount > 0 ? `− ${fmtMoney(totals.docDiscountAmount, sym)}` : '—'}</span>
+                <span className="text-success-700 dark:text-success-400">{totals.docDiscountAmount > 0 ? `− ${fmtMoney(totals.docDiscountAmount, sym)}` : '—'}</span>
               </div>
-              <div className="flex items-center justify-between gap-2 text-gray-600 dark:text-slate-300">
+              <div className="flex items-center justify-between gap-2 text-slate-600 dark:text-slate-300">
                 <span className="flex items-center gap-1.5">{t('Shipping')}
                   <input type="number" min="0" step="0.01" value={form.shipping}
                     onChange={(e) => setField('shipping', e.target.value)}
-                    className="w-20 text-end border border-gray-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" />
+                    className="w-20 text-end border border-slate-300 dark:border-surface-600 bg-white dark:bg-surface-800 rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-brand-500" />
                   {taxEnabled && (
-                    <label className="inline-flex items-center gap-1 text-[11px] text-gray-400 dark:text-slate-500">
+                    <label className="inline-flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
                       <input type="checkbox" checked={form.shippingTaxable} onChange={(e) => setField('shippingTaxable', e.target.checked)} /> {t('taxable')}
                     </label>
                   )}
@@ -361,17 +369,17 @@ export default function InvoiceForm() {
                 <span>{totals.shipping > 0 ? fmtMoney(totals.shipping, sym) : '—'}</span>
               </div>
               {taxEnabled && taxTotal > 0 && (
-                <div className="flex justify-between text-gray-600 dark:text-slate-300">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300">
                   <span>{settings.tax.name}</span>
                   <span>{fmtMoney(taxTotal, sym)}</span>
                 </div>
               )}
-              <div className="flex justify-between font-bold text-gray-900 dark:text-slate-100 text-base border-t border-gray-200 dark:border-surface-700 pt-2 mt-2">
+              <div className="flex justify-between font-bold text-slate-900 dark:text-slate-100 text-base border-t border-slate-200 dark:border-surface-700 pt-2 mt-2">
                 <span>Total</span>
                 <span>{fmtMoney(total, sym)}</span>
               </div>
               {isFC && (
-                <div className="flex justify-between text-xs text-gray-400 dark:text-slate-500">
+                <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
                   <span>≈ {t('in')} {baseCurrency}</span>
                   <span>{fmtMoney(total * (Number(form.exchangeRate) || 1), settings.company.currencySymbol)}</span>
                 </div>
@@ -394,21 +402,21 @@ export default function InvoiceForm() {
         {/* Sidebar */}
         <div className="space-y-4">
           <Card className="p-5">
-            <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-4">Summary</h2>
+            <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Summary</h2>
             <div className="space-y-2 text-sm">
               <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-slate-400">Subtotal</span>
+                <span className="text-slate-500 dark:text-slate-400">Subtotal</span>
                 <span className="font-medium">{fmtMoney(subtotal, sym)}</span>
               </div>
               {taxEnabled && (
                 <div className="flex justify-between">
-                  <span className="text-gray-500 dark:text-slate-400">{settings.tax.name} ({settings.tax.rate}%)</span>
+                  <span className="text-slate-500 dark:text-slate-400">{settings.tax.name} ({settings.tax.rate}%)</span>
                   <span>{fmtMoney(taxTotal, sym)}</span>
                 </div>
               )}
               <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2">
                 <span>Total</span>
-                <span className="text-blue-600 dark:text-blue-400">{fmtMoney(total, sym)}</span>
+                <span className="text-brand-600 dark:text-brand-400">{fmtMoney(total, sym)}</span>
               </div>
             </div>
             <div className="mt-5 space-y-2">
@@ -423,24 +431,24 @@ export default function InvoiceForm() {
 
           {form.customerId && (
             <Card className="p-5">
-              <h2 className="text-sm font-semibold text-gray-700 dark:text-slate-200 mb-3">{t('Customer')}</h2>
+              <h2 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">{t('Customer')}</h2>
               {(() => {
                 const c = customers.find((c) => c.id === form.customerId)
                 if (!c) return null
                 return (
                   <div className="text-sm space-y-1">
-                    <p className="font-medium text-gray-800 dark:text-slate-100">{c.name}</p>
-                    {c.email && <p className="text-gray-500 dark:text-slate-400">{c.email}</p>}
-                    {c.phone && <p className="text-gray-500 dark:text-slate-400">{c.phone}</p>}
-                    {c.address && <p className="text-gray-400 dark:text-slate-500 text-xs mt-1">{c.address}</p>}
+                    <p className="font-medium text-slate-800 dark:text-slate-100">{c.name}</p>
+                    {c.email && <p className="text-slate-500 dark:text-slate-400">{c.email}</p>}
+                    {c.phone && <p className="text-slate-500 dark:text-slate-400">{c.phone}</p>}
+                    {c.address && <p className="text-slate-500 dark:text-slate-400 text-xs mt-1">{c.address}</p>}
                   </div>
                 )
               })()}
               {credit.hasLimit && (
-                <div className={`mt-3 pt-3 border-t text-xs space-y-1 ${credit.willExceed ? 'border-danger-200 dark:border-danger-500/30' : 'border-gray-100 dark:border-surface-700'}`}>
-                  <div className="flex justify-between text-gray-500 dark:text-slate-400"><span>{t('Credit limit')}</span><span className="tabular">{fmtMoney(credit.limit, settings.company.currencySymbol)}</span></div>
-                  <div className="flex justify-between text-gray-500 dark:text-slate-400"><span>{t('Outstanding')}</span><span className="tabular">{fmtMoney(credit.exposure, settings.company.currencySymbol)}</span></div>
-                  <div className={`flex justify-between font-semibold ${credit.willExceed ? 'text-danger-600 dark:text-danger-400' : 'text-success-600 dark:text-success-400'}`}>
+                <div className={`mt-3 pt-3 border-t text-xs space-y-1 ${credit.willExceed ? 'border-danger-200 dark:border-danger-500/30' : 'border-slate-100 dark:border-surface-700'}`}>
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400"><span>{t('Credit limit')}</span><span className="tabular">{fmtMoney(credit.limit, settings.company.currencySymbol)}</span></div>
+                  <div className="flex justify-between text-slate-500 dark:text-slate-400"><span>{t('Outstanding')}</span><span className="tabular">{fmtMoney(credit.exposure, settings.company.currencySymbol)}</span></div>
+                  <div className={`flex justify-between font-semibold ${credit.willExceed ? 'text-danger-600 dark:text-danger-400' : 'text-success-700 dark:text-success-400'}`}>
                     <span>{credit.willExceed ? t('Over limit by') : t('Available')}</span>
                     <span className="tabular">{fmtMoney(Math.abs(credit.willExceed ? credit.projected - credit.limit : credit.limit - credit.projected), settings.company.currencySymbol)}</span>
                   </div>

@@ -8,6 +8,7 @@ import AttachmentButton from '../components/Attachments'
 import { Plus, Ban, Eye, Pencil, Search, Trash2 } from 'lucide-react'
 import { v4 as uuid } from 'uuid'
 import { narrate } from '../utils/jeNarration'
+import { askText } from '../components/Dialogs'
 
 const emptyLine = () => ({ id: uuid(), accountId: '', debit: '', credit: '', description: '' })
 const blankForm = () => ({ date: today(), description: '', reference: '', departmentId: '', lines: [emptyLine(), emptyLine()] })
@@ -121,11 +122,11 @@ export default function JournalEntries() {
   }
 
   // Entries are never deleted — they are voided by posting a reversal (immutable ledger).
-  const handleVoid = (je) => {
+  const handleVoid = async (je) => {
     if (je.type !== 'manual') return alert(t('Auto-generated entries are voided from their source document.'))
     if (je.reversedBy) return alert(t('This entry has already been voided.'))
     if (je.reverses) return alert(t('This is a reversal entry and cannot be voided.'))
-    const reason = window.prompt(t('Reason for voiding {n}? A reversing entry will be posted.').replace('{n}', je.number))
+    const reason = await askText(t('Reason for voiding {n}? A reversing entry will be posted.').replace('{n}', je.number))
     if (reason === null) return
     try { voidJournalEntry(je.id, { reason }) }
     catch (e) { if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.')); throw e }
@@ -156,8 +157,8 @@ export default function JournalEntries() {
       />
 
       <div className="relative mb-4 max-w-sm">
-        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-slate-500 pointer-events-none" />
-        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg text-gray-900 dark:text-slate-100 placeholder-gray-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
+        <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 pointer-events-none" />
+        <input className="w-full ps-9 pe-3 py-2 text-sm bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 shadow-input dark:shadow-none transition-all duration-150 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 dark:focus:ring-brand-400/20"
           placeholder={t('Search entries...')} value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
@@ -171,24 +172,24 @@ export default function JournalEntries() {
               const cr = je.lines?.reduce((s, l) => s + (l.credit || 0), 0) || 0
               return (
                 <Tr key={je.id}>
-                  <Td className="font-mono text-gray-600 dark:text-slate-300 text-xs">{je.number}</Td>
-                  <Td className="text-gray-500 dark:text-slate-400">{fmtDate(je.date)}</Td>
-                  <Td className="font-medium text-gray-800 dark:text-slate-100">
+                  <Td className="font-mono text-slate-600 dark:text-slate-300 text-xs">{je.number}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400">{fmtDate(je.date)}</Td>
+                  <Td className="font-medium text-slate-800 dark:text-slate-100">
                     {narrate(je.description, t)}
                     {je.reversedBy && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">{t('Voided')}</Badge>}
                     {je.reverses && <Badge className="ms-2 bg-warning-50 text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">{t('Reversal')}</Badge>}
                   </Td>
-                  <Td className="text-gray-400 dark:text-slate-500 text-xs">{je.reference || '—'}</Td>
+                  <Td className="text-slate-500 dark:text-slate-400 text-xs">{je.reference || '—'}</Td>
                   <Td><Badge className={typeColors[je.type] || 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300'}>{t(JE_TYPE_LABEL[je.type] || (je.type || '').replace(/_/g, ' '))}</Badge></Td>
-                  <Td right className="font-mono text-gray-700 dark:text-slate-200">{fmtMoney(dr, sym)}</Td>
-                  <Td right className="font-mono text-gray-700 dark:text-slate-200">{fmtMoney(cr, sym)}</Td>
+                  <Td right className="font-mono text-slate-700 dark:text-slate-200">{fmtMoney(dr, sym)}</Td>
+                  <Td right className="font-mono text-slate-700 dark:text-slate-200">{fmtMoney(cr, sym)}</Td>
                   <Td right>
                     <div className="flex justify-end items-center gap-1">
                       <AttachmentButton entityType="journal" entityId={je.id} />
                       <Btn size="sm" variant="ghost" onClick={() => setViewEntry(je)} title={t('View')}><Eye size={13} /></Btn>
                       {je.type === 'manual' && !je.reversedBy && !je.reverses && (
                         <>
-                          <Btn size="sm" variant="ghost" onClick={() => openEdit(je)} title={t('Edit')}><Pencil size={13} className="text-brand-500" /></Btn>
+                          <Btn size="sm" variant="ghost" onClick={() => openEdit(je)} title={t('Edit')}><Pencil size={13} className="text-brand-600 dark:text-brand-400" /></Btn>
                           <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-rose-400" /></Btn>
                         </>
                       )}
@@ -219,7 +220,7 @@ export default function JournalEntries() {
             <Input label="Reference" value={form.reference} onChange={(e) => setField('reference', e.target.value)} placeholder="e.g. ADJ-001" />
           </div>
           {dateLocked && (
-            <div className="flex items-start gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 px-3 py-2 text-xs text-amber-700 dark:text-amber-300">
+            <div className="flex items-start gap-2 rounded-lg bg-warning-50 dark:bg-warning-900/20 border border-warning-200 dark:border-warning-800 px-3 py-2 text-xs text-warning-700 dark:text-warning-300">
               <span>🔒</span>
               <span>{t('This date falls in a closed accounting period (locked through {d}). Choose a later date.').replace('{d}', lockDate)}</span>
             </div>
@@ -236,15 +237,15 @@ export default function JournalEntries() {
             <table className="w-full text-sm">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-start px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Account')}</th>
-                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Debit')}</th>
-                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Credit')}</th>
+                  <th className="text-start px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t('Account')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t('Debit')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t('Credit')}</th>
                   <th className="px-2 py-2 w-8" />
                 </tr>
               </thead>
               <tbody>
                 {form.lines.map((line) => (
-                  <tr key={line.id} className="border-t border-gray-100 dark:border-surface-750">
+                  <tr key={line.id} className="border-t border-slate-100 dark:border-surface-750">
                     <td className="px-2 py-1.5">
                       <Select value={line.accountId} onChange={(e) => updateLine(line.id, 'accountId', e.target.value)}>
                         <option value="">Select account…</option>
@@ -260,40 +261,40 @@ export default function JournalEntries() {
                     <td className="px-2 py-1.5">
                       <input type="number" min="0" step="0.01" value={line.debit}
                         onChange={(e) => updateLine(line.id, 'debit', e.target.value)}
-                        className="w-full border border-gray-300 dark:border-surface-600 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full border border-slate-300 dark:border-surface-600 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
                         placeholder="0.00" />
                     </td>
                     <td className="px-2 py-1.5">
                       <input type="number" min="0" step="0.01" value={line.credit}
                         onChange={(e) => updateLine(line.id, 'credit', e.target.value)}
-                        className="w-full border border-gray-300 dark:border-surface-600 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        className="w-full border border-slate-300 dark:border-surface-600 rounded px-2 py-1.5 text-right text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
                         placeholder="0.00" />
                     </td>
                     <td className="px-1 py-1.5">
-                      <button onClick={() => removeLine(line.id)} className="text-red-400 hover:text-red-600 dark:hover:text-danger-400">
+                      <button onClick={() => removeLine(line.id)} className="text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400">
                         <Trash2 size={13} />
                       </button>
                     </td>
                   </tr>
                 ))}
-                <tr className="border-t-2 border-gray-200 dark:border-surface-700 bg-gray-50 dark:bg-surface-800/60 font-semibold">
-                  <td className="px-3 py-2 text-xs text-gray-600 dark:text-slate-300">Totals</td>
-                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(totalDr, sym)}</td>
-                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>{fmtMoney(totalCr, sym)}</td>
+                <tr className="border-t-2 border-slate-200 dark:border-surface-700 bg-slate-50 dark:bg-surface-800/60 font-semibold">
+                  <td className="px-3 py-2 text-xs text-slate-600 dark:text-slate-300">Totals</td>
+                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(totalDr, sym)}</td>
+                  <td className={`px-3 py-2 text-right text-sm ${balanced ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{fmtMoney(totalCr, sym)}</td>
                   <td />
                 </tr>
               </tbody>
             </table>
           </div>
           {orphanLines > 0 && (
-            <p className="text-xs text-amber-600 dark:text-amber-400">
+            <p className="text-xs text-warning-700 dark:text-warning-400">
               {orphanLines === 1
                 ? t('One line has an amount but no account selected — it will not be posted.')
                 : t('{n} lines have an amount but no account selected — they will not be posted.').replace('{n}', orphanLines)}
             </p>
           )}
           {!balanced && totalDr > 0 && (
-            <p className="text-xs text-red-600 dark:text-red-400">{t('Debits and credits must be equal.')} {t('Difference')}: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
+            <p className="text-xs text-danger-600 dark:text-danger-400">{t('Debits and credits must be equal.')} {t('Difference')}: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
           )}
           <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add Line')}</Btn>
           <div className="flex justify-end gap-2 pt-1">
@@ -308,24 +309,24 @@ export default function JournalEntries() {
         {viewEntry && (
           <div className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-              <div><p className="text-gray-400 dark:text-slate-500">{t('Date')}</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
-              <div><p className="text-gray-400 dark:text-slate-500">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
-              <div className="col-span-2"><p className="text-gray-400 dark:text-slate-500">{t('Description')}</p><p className="font-medium">{narrate(viewEntry.description, t)}</p></div>
+              <div><p className="text-slate-500 dark:text-slate-400">{t('Date')}</p><p className="font-medium">{fmtDate(viewEntry.date)}</p></div>
+              <div><p className="text-slate-500 dark:text-slate-400">{t('Reference')}</p><p className="font-medium">{viewEntry.reference || '—'}</p></div>
+              <div className="col-span-2"><p className="text-slate-500 dark:text-slate-400">{t('Description')}</p><p className="font-medium">{narrate(viewEntry.description, t)}</p></div>
             </div>
             <table className="w-full text-sm border border-slate-200 dark:border-surface-700 rounded-lg overflow-hidden">
               <thead className="bg-slate-50/80 dark:bg-surface-900/40">
                 <tr>
-                  <th className="text-start px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Account')}</th>
-                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Debit')}</th>
-                  <th className="text-end px-3 py-2 text-xs font-semibold text-gray-500 dark:text-slate-400">{t('Credit')}</th>
+                  <th className="text-start px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t('Account')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t('Debit')}</th>
+                  <th className="text-end px-3 py-2 text-xs font-semibold text-slate-500 dark:text-slate-400">{t('Credit')}</th>
                 </tr>
               </thead>
               <tbody>
                 {viewEntry.lines?.map((line, i) => (
-                  <tr key={i} className="border-t border-gray-100 dark:border-surface-750">
-                    <td className="px-3 py-2 text-gray-700 dark:text-slate-200">{accName(line.accountId)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700 dark:text-slate-200">{line.debit > 0 ? fmtMoney(line.debit, sym) : '—'}</td>
-                    <td className="px-3 py-2 text-right font-mono text-gray-700 dark:text-slate-200">{line.credit > 0 ? fmtMoney(line.credit, sym) : '—'}</td>
+                  <tr key={i} className="border-t border-slate-100 dark:border-surface-750">
+                    <td className="px-3 py-2 text-slate-700 dark:text-slate-200">{accName(line.accountId)}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-200">{line.debit > 0 ? fmtMoney(line.debit, sym) : '—'}</td>
+                    <td className="px-3 py-2 text-right font-mono text-slate-700 dark:text-slate-200">{line.credit > 0 ? fmtMoney(line.credit, sym) : '—'}</td>
                   </tr>
                 ))}
               </tbody>

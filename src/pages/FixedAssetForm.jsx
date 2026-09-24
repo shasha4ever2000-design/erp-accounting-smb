@@ -54,7 +54,7 @@ export default function FixedAssetForm() {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         <div className="col-span-2 space-y-5">
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Asset Information')}</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Asset Information')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Asset Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Delivery Truck, MacBook Pro" />
               <Select label="Category" value={form.category} onChange={(e) => setField('category', e.target.value)}>
@@ -65,7 +65,7 @@ export default function FixedAssetForm() {
           </Card>
 
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Purchase Details')}</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Purchase Details')}</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Input label="Purchase Date *" type="date" value={form.purchaseDate} onChange={(e) => setField('purchaseDate', e.target.value)} />
               <Input label={`Purchase Cost (${sym}) *`} type="number" min="0" step="0.01" value={form.purchaseCost} onChange={(e) => setField('purchaseCost', e.target.value)} />
@@ -82,7 +82,7 @@ export default function FixedAssetForm() {
           </Card>
 
           <Card className="p-5 space-y-4">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">Depreciation</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">Depreciation</h3>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <Select label="Method" value={form.depreciationMethod} onChange={(e) => setField('depreciationMethod', e.target.value)}>
                 <option value="straight_line">Straight-Line</option>
@@ -93,7 +93,7 @@ export default function FixedAssetForm() {
             {purchaseCost > 0 && (
               <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm text-brand-700 dark:text-brand-300">
                 <p>Annual depreciation: <strong>{sym}{annualDep.toFixed(2)}</strong> per year</p>
-                <p className="text-xs mt-0.5 text-blue-500">({sym}{(annualDep/12).toFixed(2)} per month · Dr Depreciation Expense / Cr Accumulated Depreciation)</p>
+                <p className="text-xs mt-0.5 text-brand-600 dark:text-brand-400">({sym}{(annualDep/12).toFixed(2)} per month · Dr Depreciation Expense / Cr Accumulated Depreciation)</p>
               </div>
             )}
           </Card>
@@ -115,20 +115,20 @@ export default function FixedAssetForm() {
 
         <div className="space-y-4">
           <Card className="p-5 space-y-3">
-            <h3 className="font-semibold text-gray-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Journal Entry Preview')}</h3>
+            <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Journal Entry Preview')}</h3>
             {purchaseCost > 0 ? (
               <div className="text-sm space-y-1">
-                <div className="flex justify-between text-gray-600 dark:text-slate-300">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300">
                   <span>Dr Fixed Assets – Cost</span>
                   <span className="font-medium">{sym}{purchaseCost.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between text-gray-600 dark:text-slate-300 ml-4">
+                <div className="flex justify-between text-slate-600 dark:text-slate-300 ml-4">
                   <span>Cr {form.paymentType === 'credit' ? 'Accounts Payable' : 'Bank Account'}</span>
                   <span className="font-medium">{sym}{purchaseCost.toFixed(2)}</span>
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-gray-400 dark:text-slate-500">{t('Enter purchase cost to preview')}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t('Enter purchase cost to preview')}</p>
             )}
           </Card>
 

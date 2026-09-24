@@ -91,7 +91,7 @@ describe('the patterns are anchored', () => {
 describe('every pattern has Arabic in the real dictionary', () => {
   it('leaves no narration recognised but untranslated', async () => {
     const { readFileSync } = await import('node:fs')
-    const dict = readFileSync('src/i18n.js', 'utf8')
+    const dict = readFileSync('src/locales/ar.js', 'utf8')
     const src = readFileSync('src/utils/jeNarration.js', 'utf8')
     const keys = [...src.matchAll(/],\s*'((?:[^'\\]|\\.)*)'\],/g)].map((m) => m[1])
       .concat([...src.matchAll(/,\s+'([^']*\{0\}[^']*)'\],/g)].map((m) => m[1]))

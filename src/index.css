@@ -64,6 +64,10 @@
 
 .print-only { display: none; }
 
+/* Compact density: tighter table rows for long lists (Settings → Display). */
+html.density-compact td { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
+html.density-compact th { padding-top: 0.375rem !important; padding-bottom: 0.375rem !important; }
+
 @media print {
   /* Chrome: hide app chrome, print only the document */
   aside, header, nav { display: none !important; }
