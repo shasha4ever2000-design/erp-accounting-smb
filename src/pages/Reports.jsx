@@ -18,7 +18,8 @@ import { narrate } from '../utils/jeNarration'
 import { marginByCustomer, marginByItem, marginSummary } from '../utils/margin'
 import { buildEquityStatement } from '../utils/equityStatement'
 import { BUCKETS as ECL_BUCKETS } from '../utils/ecl'
-import { documentDue } from '../utils/partyBalance'
+import { buildAging, AGING_BUCKETS } from '../utils/aging'
+import { todayISO } from '../utils/localDate'
 
 const REPORTS = [
   { id: 'pl', label: 'Income Statement (P&L)', group: 'Financial Statements' },
@@ -660,154 +661,62 @@ export default function Reports() {
     )
   }
 
-  // ─── AR Aging ─────────────────────────────────────────────────
-  const ARReport = () => {
-    const todayStr = new Date().toISOString().slice(0, 10)
-    // What is still due after payments and returns, in base currency — a
-    // foreign-currency invoice was added in at its face value before, under
-    // the base currency symbol.
-    const dueBase = (i) => Math.round(documentDue(i, creditNotes, 'invoiceId') * (Number(i.exchangeRate) || 1) * 100) / 100
-    const unpaid = invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void' && dueBase(i) > 0.005)
-
-    const buckets = { current: [], days30: [], days60: [], days90: [], over90: [] }
-    unpaid.forEach((inv) => {
-      const due = inv.dueDate || inv.date
-      const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      const amt = dueBase(inv)
-      if (days <= 0) buckets.current.push({ ...inv, days, amt })
-      else if (days <= 30) buckets.days30.push({ ...inv, days, amt })
-      else if (days <= 60) buckets.days60.push({ ...inv, days, amt })
-      else if (days <= 90) buckets.days90.push({ ...inv, days, amt })
-      else buckets.over90.push({ ...inv, days, amt })
-    })
-
-    const bucketTotals = {
-      current: buckets.current.reduce((s, i) => s + i.amt, 0),
-      days30: buckets.days30.reduce((s, i) => s + i.amt, 0),
-      days60: buckets.days60.reduce((s, i) => s + i.amt, 0),
-      days90: buckets.days90.reduce((s, i) => s + i.amt, 0),
-      over90: buckets.over90.reduce((s, i) => s + i.amt, 0),
-    }
-    const grandTotal = Object.values(bucketTotals).reduce((s, v) => s + v, 0)
-
-    const BucketSection = ({ label, items, color }) => (
-      items.length > 0 && (
-        <div className="mb-4">
-          <h4 className={`font-semibold text-sm mb-2 ${color}`}>{label}</h4>
-          {items.map((inv) => (
-            <div key={inv.id} className="flex justify-between items-center text-sm py-1.5 border-b border-gray-50 dark:border-surface-800">
-              <div className="flex gap-4">
-                <span className="font-mono text-gray-400 dark:text-slate-500 text-xs w-20">{inv.number}</span>
-                <span className="text-gray-700 dark:text-slate-200">{inv.customerName}</span>
-                <span className="text-gray-400 dark:text-slate-500 text-xs">{fmtDate(inv.dueDate)}</span>
-              </div>
-              <span className={`font-semibold ${color}`}>{fmtMoney(inv.amt, sym)}</span>
+  // ─── AR / AP Aging ────────────────────────────────────────────
+  // As at the report's end date (see utils/aging.js), in base currency.
+  const AgingReport = ({ side }) => {
+    const ar = side === 'ar'
+    const a = buildAging(ar
+      ? { docs: invoices, notes: creditNotes, key: 'invoiceId', partyField: 'customerName', asAt: endDate }
+      : { docs: purchases, notes: debitNotes, key: 'purchaseId', partyField: 'supplierName', asAt: endDate })
+    const tone = { current: 'text-success-700 dark:text-success-300', days30: 'text-warning-700 dark:text-warning-300', days60: 'text-warning-800 dark:text-warning-300', days90: 'text-danger-600 dark:text-danger-400', over90: 'text-danger-700 dark:text-danger-400' }
+    return (
+      <Card className="overflow-hidden">
+        <div className="p-6 border-b border-slate-100 dark:border-surface-750">
+          <h3 className="font-bold text-slate-800 dark:text-slate-100 text-lg">{company.name}</h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t(ar ? 'Accounts Receivable Aging' : 'Accounts Payable Aging')} · {t('As at')} {fmtDate(endDate)}</p>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-5 divide-x divide-slate-100 dark:divide-surface-800 border-b border-slate-100 dark:border-surface-750">
+          {AGING_BUCKETS.map((b) => (
+            <div key={b.id} className="p-4 text-center">
+              <p className="text-xs text-slate-500 dark:text-slate-400">{t(b.short)}</p>
+              <p className={`font-bold text-base tabular-nums ${tone[b.id]}`}>{fmtMoney(a.totals[b.id], sym)}</p>
             </div>
           ))}
         </div>
-      )
-    )
-
-    return (
-      <Card>
-        <div className="p-6 border-b border-gray-100 dark:border-surface-750">
-          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Accounts Receivable Aging as at {fmtDate(todayStr)}</p>
-        </div>
-        {/* Summary bar */}
-        <div className="grid grid-cols-5 divide-x divide-gray-100 dark:divide-surface-800 border-b border-gray-100 dark:border-surface-750">
-          {[
-            { label: 'Current', val: bucketTotals.current, color: 'text-green-600' },
-            { label: '1–30 Days', val: bucketTotals.days30, color: 'text-yellow-600' },
-            { label: '31–60 Days', val: bucketTotals.days60, color: 'text-orange-600' },
-            { label: '61–90 Days', val: bucketTotals.days90, color: 'text-red-600' },
-            { label: '90+ Days', val: bucketTotals.over90, color: 'text-red-800' },
-          ].map((b) => (
-            <div key={b.label} className="p-4 text-center">
-              <p className="text-xs text-gray-400 dark:text-slate-500">{b.label}</p>
-              <p className={`font-bold text-base ${b.color}`}>{fmtMoney(b.val, sym)}</p>
-            </div>
-          ))}
-        </div>
-        <div className="p-6">
-          {unpaid.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-center py-8">All invoices are paid!</p> : (
-            <>
-              <BucketSection label="Current (not yet due)" items={buckets.current} color="text-green-700" />
-              <BucketSection label="1–30 Days Overdue" items={buckets.days30} color="text-yellow-700" />
-              <BucketSection label="31–60 Days Overdue" items={buckets.days60} color="text-orange-700" />
-              <BucketSection label="61–90 Days Overdue" items={buckets.days90} color="text-red-600" />
-              <BucketSection label="90+ Days Overdue" items={buckets.over90} color="text-red-800" />
-              <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 dark:border-surface-600 pt-3 mt-4">
-                <span>{t('Total Outstanding')}</span>
-                <span className="text-gray-900 dark:text-slate-100">{fmtMoney(grandTotal, sym)}</span>
-              </div>
-            </>
-          )}
-        </div>
+        {a.rows.length === 0 && !a.unapplied ? (
+          <p className="text-slate-500 dark:text-slate-400 text-center py-10">{t(ar ? 'Nothing outstanding from customers on this date.' : 'Nothing owed to suppliers on this date.')}</p>
+        ) : (
+          <Table headers={[ar ? 'Invoice #' : 'Purchase #', ar ? 'Customer' : 'Supplier', 'Due Date', { label: 'Days Overdue', right: true }, { label: 'Balance', right: true }]}>
+            {a.rows.map((r) => (
+              <Tr key={r.id}>
+                <Td className="font-mono text-xs text-brand-600 dark:text-brand-400">{r.number}</Td>
+                <Td>{r.party}</Td>
+                <Td className="text-slate-500 dark:text-slate-400">{fmtDate(r.dueDate)}</Td>
+                <Td right>
+                  <span className={r.days > 0 ? `font-semibold ${tone[r.bucket]}` : tone.current}>
+                    {r.days > 0 ? `${r.days} ${t('days')}` : t('Not due')}
+                  </span>
+                </Td>
+                <Td right className="font-semibold tabular-nums text-slate-800 dark:text-slate-100">{fmtMoney(r.amt, sym)}</Td>
+              </Tr>
+            ))}
+            {a.unapplied > 0 && (
+              <Tr>
+                <Td colSpan={4} className="text-slate-600 dark:text-slate-300">{t(ar ? 'Unapplied credit notes' : 'Unapplied debit notes')}</Td>
+                <Td right className="font-semibold tabular-nums text-accent-700 dark:text-accent-300">−{fmtMoney(a.unapplied, sym)}</Td>
+              </Tr>
+            )}
+            <Tr className="bg-slate-50 dark:bg-surface-800/60 font-bold">
+              <Td colSpan={4} className="text-slate-900 dark:text-slate-100">{t(ar ? 'Total Outstanding' : 'Total Payable')}</Td>
+              <Td right className="tabular-nums text-slate-900 dark:text-slate-100">{fmtMoney(a.net, sym)}</Td>
+            </Tr>
+          </Table>
+        )}
       </Card>
     )
   }
-
-  // ─── AP Aging ─────────────────────────────────────────────────
-  const APReport = () => {
-    const todayStr = new Date().toISOString().slice(0, 10)
-    // After payments and returns, in base currency (see ARReport).
-    const dueBase = (p) => Math.round(documentDue(p, debitNotes, 'purchaseId') * (Number(p.exchangeRate) || 1) * 100) / 100
-    const unpaid = purchases.filter((p) => p.status !== 'paid' && p.status !== 'cancelled' && p.status !== 'void' && dueBase(p) > 0.005)
-
-    const rows = unpaid.map((p) => {
-      const due = p.dueDate || p.date
-      const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      return { ...p, days, amt: dueBase(p) }
-    }).sort((a, b) => b.days - a.days)
-
-    const total = rows.reduce((s, r) => s + r.amt, 0)
-
-    return (
-      <Card>
-        <div className="p-6 border-b border-gray-100 dark:border-surface-750">
-          <h3 className="font-bold text-gray-800 dark:text-slate-100 text-lg">{company.name}</h3>
-          <p className="text-sm text-gray-500 dark:text-slate-400">Accounts Payable Aging as at {fmtDate(todayStr)}</p>
-        </div>
-        <div className="p-6">
-          {rows.length === 0 ? <p className="text-gray-400 dark:text-slate-500 text-center py-8">No outstanding payables!</p> : (
-            <>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-xs font-semibold text-gray-400 dark:text-slate-500 uppercase border-b border-gray-100 dark:border-surface-750">
-                    <th className="text-left pb-2">Purchase #</th>
-                    <th className="text-left pb-2">{t('Supplier')}</th>
-                    <th className="text-left pb-2">{t('Due Date')}</th>
-                    <th className="text-right pb-2">{t('Days Overdue')}</th>
-                    <th className="text-right pb-2">{t('Balance')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((p) => (
-                    <tr key={p.id} className="border-b border-gray-50 dark:border-surface-800">
-                      <td className="py-2 font-mono text-orange-600 dark:text-orange-400 text-xs">{p.number}</td>
-                      <td className="py-2 text-gray-700 dark:text-slate-200">{p.supplierName}</td>
-                      <td className="py-2 text-gray-500 dark:text-slate-400">{fmtDate(p.dueDate)}</td>
-                      <td className="py-2 text-right">
-                        <span className={p.days > 0 ? 'text-red-600 dark:text-red-400 font-semibold' : 'text-green-600 dark:text-green-400'}>
-                          {p.days > 0 ? `${p.days} days` : 'Not due'}
-                        </span>
-                      </td>
-                      <td className="py-2 text-right font-semibold text-gray-800 dark:text-slate-100">{fmtMoney(p.amt, sym)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="flex justify-between font-bold text-base border-t-2 border-gray-300 dark:border-surface-600 pt-3 mt-4">
-                <span>{t('Total Payable')}</span>
-                <span className="text-gray-900 dark:text-slate-100">{fmtMoney(total, sym)}</span>
-              </div>
-            </>
-          )}
-        </div>
-      </Card>
-    )
-  }
+  const ARReport = () => <AgingReport side="ar" />
+  const APReport = () => <AgingReport side="ap" />
 
   // ─── Cash Flow Statement (direct, ledger-accurate) ────────────
   const CFReport = () => {
@@ -948,7 +857,7 @@ export default function Reports() {
     )
 
     const [settleOpen, setSettleOpen] = useState(false)
-    const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10))
+    const [settleDate, setSettleDate] = useState(todayISO())
     const [settleBank, setSettleBank] = useState(bankAccounts.find((b) => b.isDefault)?.accountId || bankAccounts[0]?.accountId || 'acc-bank1')
     const doSettle = () => {
       try {
@@ -1070,7 +979,7 @@ export default function Reports() {
     const taxName = settings.tax?.name || 'Sales Tax'
     const settlement = journalEntries.find((je) => je.type === 'vat_settlement' && je.reference === `VAT ${startDate}..${endDate}`)
     const [settleOpen, setSettleOpen] = useState(false)
-    const [settleDate, setSettleDate] = useState(new Date().toISOString().slice(0, 10))
+    const [settleDate, setSettleDate] = useState(todayISO())
     const [settleBank, setSettleBank] = useState(bankAccounts.find((b) => b.isDefault)?.accountId || bankAccounts[0]?.accountId || 'acc-bank1')
     const doSettle = () => {
       try {
@@ -2118,22 +2027,14 @@ export default function Reports() {
         { key: 'pct', label: '%', right: true, map: (v) => v ? `${v}%` : '' },
       ] }
     }
-    // ar / ap aging
-    const src = report === 'ar'
-      ? invoices.filter((i) => i.status !== 'paid' && i.status !== 'cancelled' && i.status !== 'void')
-      : purchases.filter((p) => p.status !== 'paid' && p.status !== 'void' && p.status !== 'cancelled')
-    const todayStr = new Date().toISOString().slice(0, 10)
-    // Same figures as the on-screen aging: net of returns, in base currency.
-    const dueBase = (d) => Math.round((report === 'ar'
-      ? documentDue(d, creditNotes, 'invoiceId')
-      : documentDue(d, debitNotes, 'purchaseId')) * (Number(d.exchangeRate) || 1) * 100) / 100
-    const rows = src.filter((d) => dueBase(d) > 0.005).map((d) => {
-      const due = d.dueDate || d.date
-      const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      return { number: d.number, party: report === 'ar' ? d.customerName : d.supplierName, due, days: days > 0 ? days : 0, amt: dueBase(d) }
-    }).sort((a, b) => b.days - a.days)
-    return { filename: `${report}-aging-${todayStr}`, rows, columns: [
-      { key: 'number', label: t('Invoice #') },
+    // ar / ap aging — the same figures as the screen
+    const ag = buildAging(report === 'ar'
+      ? { docs: invoices, notes: creditNotes, key: 'invoiceId', partyField: 'customerName', asAt: endDate }
+      : { docs: purchases, notes: debitNotes, key: 'purchaseId', partyField: 'supplierName', asAt: endDate })
+    const rows = ag.rows.map((r) => ({ number: r.number, party: r.party, due: r.dueDate, days: r.days > 0 ? r.days : 0, amt: r.amt }))
+    if (ag.unapplied > 0) rows.push({ number: '', party: t(report === 'ar' ? 'Unapplied credit notes' : 'Unapplied debit notes'), due: '', days: '', amt: -ag.unapplied })
+    return { filename: `${report}-aging-${endDate}`, rows, columns: [
+      { key: 'number', label: t(report === 'ar' ? 'Invoice #' : 'Purchase #') },
       { key: 'party', label: report === 'ar' ? t('Customer') : t('Supplier') },
       { key: 'due', label: t('Due') },
       { key: 'days', label: t('Days Overdue'), right: true },

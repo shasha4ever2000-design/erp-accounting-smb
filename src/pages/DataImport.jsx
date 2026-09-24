@@ -8,6 +8,7 @@ import {
   SCHEMAS, autoMap, planImport, applyPlan, exportColumns, templateRow, EXCLUDED_NOTE,
 } from '../utils/dataImport'
 import { Upload, Download, FileSpreadsheet, CheckCircle2, AlertTriangle, Info, Play, X } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
 export default function DataImport() {
   const t = useT()
@@ -71,7 +72,7 @@ export default function DataImport() {
       return o
     })
     if (!rows.length) return alert(t('There is nothing to export yet.'))
-    exportCSV(`${entity}-${new Date().toISOString().slice(0, 10)}.csv`, rows, cols)
+    exportCSV(`${entity}-${todayISO()}.csv`, rows, cols)
   }
 
   const handleTemplate = () => {

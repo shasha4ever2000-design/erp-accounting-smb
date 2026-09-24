@@ -71,6 +71,7 @@ import {
   CONTROL_KINDS, resolveControl, validateControlAccount, controlAccountsFor,
   reclassLines, fieldFor, defaultFor,
 } from './utils/controlAccounts'
+import { todayISO } from './utils/localDate'
 
 const DEFAULT_ACCOUNTS = [
   // ASSETS – Current
@@ -351,6 +352,20 @@ function stockReceivedBy(pur, items) {
     recv[line.itemId].cost += Math.round((Number(line.subtotal) || 0) * rate * 100) / 100
   })
   return recv
+}
+
+// Fields of a sales invoice or bill that went into the ledger or the stock
+// ledger when it posted.
+const POSTED_FIELDS = new Set([
+  'items', 'subtotal', 'taxAmount', 'total', 'baseTotal', 'docDiscount', 'docDiscountAmount', 'shipping',
+  'amountPaid', 'payments', 'status', 'exchangeRate', 'currency', 'date',
+  'customerId', 'supplierId', 'warehouseId', 'departmentId',
+  'journalEntryId', 'cogsJournalEntryId', 'cogsTotal', 'cogsByItem', 'stockIssued', 'stockReceived', 'number',
+])
+
+function assertNoPostedFields(patch) {
+  const bad = Object.keys(patch || {}).filter((k) => POSTED_FIELDS.has(k))
+  if (bad.length) throw new Error(`DOC_FIELD_POSTED:${bad.join(',')}`)
 }
 
 /** The default warehouse's id. */
@@ -758,7 +773,7 @@ export const useStore = create(
           // terms, so it is passed through unchanged; negating it here would
           // move payables the wrong way.
           entry = get().addJournalEntry({
-            date: date || new Date().toISOString().slice(0, 10),
+            date: date || todayISO(),
             description: `Reclassified ${record.name || cfg.noun} to a different control account`,
             type: 'reclass',
             ...(kind === 'customers' ? { customerId: recordId } : {}),
@@ -1788,8 +1803,14 @@ export const useStore = create(
         return { amount, number, journalEntryId: je.id }
       },
 
-      updateInvoice: (id, patch) =>
-        set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) })),
+      // Notes, custom fields, references — anything that did not post. A field
+      // that did (amounts, lines, party, date, rate, payments, the entries it
+      // points at) is corrected by reviseInvoice or a void, never patched here:
+      // a patch would leave the document and the ledger telling two stories.
+      updateInvoice: (id, patch) => {
+        assertNoPostedFields(patch)
+        set((s) => ({ invoices: s.invoices.map((i) => (i.id === id ? { ...i, ...patch } : i)) }))
+      },
 
       /**
        * Why this invoice cannot be edited, or null when it can. See utils/docEdit.
@@ -1833,7 +1854,7 @@ export const useStore = create(
       voidInvoice: (id, { date, reason } = {}) => {
         const inv = get().invoices.find((i) => i.id === id)
         if (!inv || inv.status === 'void') return
-        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const voidDate = date || todayISO()
         // Returns raised against the invoice go first. Voiding the sale reverses
         // all of it and puts every unit it issued back; a return left standing
         // would then count the returned units — and their credit — twice.
@@ -1945,7 +1966,7 @@ export const useStore = create(
         const bank = bankAccountId || adv.bankAccountId
         if (!bank) throw new Error('EMPADV_NO_BANK')
 
-        const when = date || new Date().toISOString().slice(0, 10)
+        const when = date || todayISO()
         const ref = `Advance repayment – ${adv.employeeName || ''}`.trim()
         const je = get().addJournalEntry({
           date: when, description: ref, type: 'employee_advance', lines: empRepayLines(take, bank, ref),
@@ -1960,7 +1981,7 @@ export const useStore = create(
         if (!adv) return
         const owed = empAdvanceBalance(adv)
         if (owed <= 0.005) throw new Error('EMPADV_NOTHING_OWED')
-        const when = date || new Date().toISOString().slice(0, 10)
+        const when = date || todayISO()
         const ref = `Advance written off – ${adv.employeeName || ''}${reason ? ` (${reason})` : ''}`
         const je = get().addJournalEntry({
           date: when, description: ref, type: 'employee_advance',
@@ -2058,7 +2079,7 @@ export const useStore = create(
         const apply = Math.min(most, want)
         if (apply <= 0) return
 
-        const when = date || new Date().toISOString().slice(0, 10)
+        const when = date || todayISO()
         const res = get().recordInvoicePayment(invoiceId, {
           amount: apply, date: when, fromAccountId: ADVANCE_ACCOUNT,
           source: 'advance', advanceId, method: 'Advance applied',
@@ -2090,7 +2111,7 @@ export const useStore = create(
         const bank = bankAccountId || advance.bankAccountId
         if (!bank) throw new Error('ADVANCE_NO_BANK')
 
-        const when = date || new Date().toISOString().slice(0, 10)
+        const when = date || todayISO()
         const ref = `Refund of advance to ${advance.customerName || ''}`.trim()
         const je = get().addJournalEntry({
           date: when, description: ref, type: 'advance_refund',
@@ -2181,7 +2202,7 @@ export const useStore = create(
         if (!canTransition(cheque.direction, cheque.status, to))
           throw new Error(`CHEQUE_BAD_TRANSITION:${cheque.status}->${to}`)
 
-        const when = date || new Date().toISOString().slice(0, 10)
+        const when = date || todayISO()
         let jeId = null
 
         if (to === 'cleared' || to === 'bounced' || to === 'cancelled') {
@@ -2269,8 +2290,8 @@ export const useStore = create(
         if (items.length === 0) return null
         const invoice = get().addInvoice({
           customerId: q.customerId, customerName: q.customerName,
-          date: new Date().toISOString().slice(0, 10),
-          dueDate: q.expiryDate || new Date().toISOString().slice(0, 10),
+          date: todayISO(),
+          dueDate: q.expiryDate || todayISO(),
           departmentId: q.departmentId || null,
           currency: q.currency, exchangeRate: q.exchangeRate,
           items, subtotal, taxAmount, total, notes: q.notes || '',
@@ -2414,7 +2435,7 @@ export const useStore = create(
         if (!lines.length) throw new Error('COUNT_NO_ITEMS')
         const count = {
           id: uuid(), number,
-          date: date || new Date().toISOString().slice(0, 10),
+          date: date || todayISO(),
           warehouseId, notes,
           status: COUNT_STATUS.open,
           lines,
@@ -2546,7 +2567,7 @@ export const useStore = create(
         const order = get().addSalesOrder({
           customerId: q.customerId, customerName: q.customerName,
           quotationId: q.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayISO(),
           expectedDate: q.expiryDate || '',
           departmentId: q.departmentId || null,
           currency: q.currency, exchangeRate: q.exchangeRate,
@@ -2569,8 +2590,8 @@ export const useStore = create(
         const invoice = get().addInvoice({
           customerId: o.customerId, customerName: o.customerName,
           salesOrderId: o.id,
-          date: new Date().toISOString().slice(0, 10),
-          dueDate: o.expectedDate || new Date().toISOString().slice(0, 10),
+          date: todayISO(),
+          dueDate: o.expectedDate || todayISO(),
           departmentId: o.departmentId || null,
           currency: o.currency, exchangeRate: o.exchangeRate,
           items, subtotal, taxAmount, total, notes: o.notes || '',
@@ -2595,7 +2616,7 @@ export const useStore = create(
         const dn = get().addDeliveryNote({
           customerId: o.customerId, customerName: o.customerName,
           salesOrderId: o.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayISO(),
           items, notes: o.notes || '',
         })
         const newItems = (o.items || []).map((l) => (applied[l.id] ? { ...l, deliveredQty: (Number(l.deliveredQty) || 0) + applied[l.id] } : l))
@@ -2644,7 +2665,7 @@ export const useStore = create(
         const po = get().addPurchaseOrder({
           supplierId: q.supplierId, supplierName: q.supplierName,
           purchaseQuoteId: q.id,
-          date: new Date().toISOString().slice(0, 10),
+          date: todayISO(),
           expectedDate: q.validUntil || '',
           currency: q.currency, exchangeRate: q.exchangeRate,
           items, subtotal, taxAmount, total, notes: q.notes || '',
@@ -2695,7 +2716,7 @@ export const useStore = create(
         if (items.length === 0) return null
         const rate = Number(inv.exchangeRate) || 1
         const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
-        const rDate = date || new Date().toISOString().slice(0, 10)
+        const rDate = date || todayISO()
         const { prefix, next } = get().settings.creditNote
         const number = nextNum(prefix, next)
 
@@ -2781,7 +2802,7 @@ export const useStore = create(
         if (items.length === 0) return null
         const rate = Number(pur.exchangeRate) || 1
         const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
-        const rDate = date || new Date().toISOString().slice(0, 10)
+        const rDate = date || todayISO()
         const { prefix, next } = get().settings.debitNote
         const number = nextNum(prefix, next)
 
@@ -2883,7 +2904,7 @@ export const useStore = create(
       voidCreditNote: (id, { date, reason } = {}) => {
         const cn = get().creditNotes.find((c) => c.id === id)
         if (!cn || cn.status === 'void') return
-        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const voidDate = date || todayISO()
         ;[cn.journalEntryId, cn.cogsJournalEntryId].filter(Boolean).forEach((jeId) => {
           const je = get().journalEntries.find((j) => j.id === jeId)
           if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void ${cn.number}` })
@@ -2953,8 +2974,8 @@ export const useStore = create(
         if (items.length === 0) return null
         const purchase = get().addPurchase({
           supplierId: po.supplierId, supplierName: po.supplierName,
-          date: new Date().toISOString().slice(0, 10),
-          dueDate: po.deliveryDate || new Date().toISOString().slice(0, 10),
+          date: todayISO(),
+          dueDate: po.deliveryDate || todayISO(),
           departmentId: po.departmentId || null,
           currency: po.currency, exchangeRate: po.exchangeRate,
           items, subtotal, taxAmount, total, notes: po.notes || '',
@@ -2982,7 +3003,7 @@ export const useStore = create(
         if (items.length === 0) return null
         const rate = Number(po.exchangeRate) || 1
         const toBase = (v) => Math.round((Number(v) || 0) * rate * 100) / 100
-        const recvDate = date || new Date().toISOString().slice(0, 10)
+        const recvDate = date || todayISO()
         const { prefix, next } = get().settings.goodsReceipt
 
         // JE: Dr inventory (stock) / expense (non-stock) at cost, Cr GRNI accrual.
@@ -3065,7 +3086,7 @@ export const useStore = create(
 
         const { prefix, next } = get().settings.purchase
         const number = nextNum(prefix, next)
-        const billDate = date || new Date().toISOString().slice(0, 10)
+        const billDate = date || todayISO()
         const je = get().addJournalEntry({ date: billDate, description: `Purchase Invoice ${number} – ${po.supplierName || ''}`, reference: number, type: 'purchase', departmentId: po.departmentId || null, lines })
 
         const newPurchase = {
@@ -3233,8 +3254,11 @@ export const useStore = create(
         }))
       },
 
-      updatePurchase: (id, patch) =>
-        set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) })),
+      // See updateInvoice.
+      updatePurchase: (id, patch) => {
+        assertNoPostedFields(patch)
+        set((s) => ({ purchases: s.purchases.map((p) => (p.id === id ? { ...p, ...patch } : p)) }))
+      },
 
       /** Why this bill cannot be edited, or null when it can. See utils/docEdit. */
       purchaseEditBlock: (id) => {
@@ -3266,7 +3290,7 @@ export const useStore = create(
       voidPurchase: (id, { date, reason } = {}) => {
         const pur = get().purchases.find((p) => p.id === id)
         if (!pur || pur.status === 'void') return
-        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const voidDate = date || todayISO()
         // Returns against the bill first — see voidInvoice.
         ;(get().debitNotes || [])
           .filter((d) => d.purchaseId === id && d.status !== 'void')
@@ -3391,7 +3415,7 @@ export const useStore = create(
       voidDebitNote: (id, { date, reason } = {}) => {
         const dn = get().debitNotes.find((d) => d.id === id)
         if (!dn || dn.status === 'void') return
-        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const voidDate = date || todayISO()
         const je = get().journalEntries.find((j) => j.id === dn.journalEntryId)
         if (je && !je.reversedBy) get().voidJournalEntry(je.id, { date: voidDate, reason: reason || `Void ${dn.number}` })
         const { back, giveBack } = debitNoteStock(dn, get().inventoryItems)
@@ -3489,7 +3513,7 @@ export const useStore = create(
 
       /** The contract in force for someone on a date (today by default). */
       contractFor: (employeeId, asAt) =>
-        contractInForce(employeeId, get().employmentContracts, asAt || new Date().toISOString().slice(0, 10)),
+        contractInForce(employeeId, get().employmentContracts, asAt || todayISO()),
 
       /** When service began — the earliest contract, not the current one. */
       serviceStartFor: (employeeId) => serviceStartOf(employeeId, get().employmentContracts),
@@ -3502,7 +3526,7 @@ export const useStore = create(
       /** What is owed if this person left today (or on a given day). */
       eosbFor: (employeeId, { asAt, reason = 'termination' } = {}) => {
         const cfg = get().eosbSettings()
-        const at = asAt || new Date().toISOString().slice(0, 10)
+        const at = asAt || todayISO()
         const contract = get().contractFor(employeeId, at)
         if (!contract) return null
         return eosbAward(contract, {
@@ -3520,7 +3544,7 @@ export const useStore = create(
       /** The accrual due for a period, per employee — nothing is posted yet. */
       eosbSchedule: (asAt) => {
         const cfg = get().eosbSettings()
-        const at = asAt || new Date().toISOString().slice(0, 10)
+        const at = asAt || todayISO()
         if (cfg.rule === 'none') return { lines: [], total: 0, closing: 0 }
         const rows = get().employees
           .filter((e) => e.status === 'active')
@@ -3539,7 +3563,7 @@ export const useStore = create(
 
       /** Post the accrual: Dr end-of-service expense, Cr the provision. */
       postEosbAccrual: (asAt, { period = '' } = {}) => {
-        const at = asAt || new Date().toISOString().slice(0, 10)
+        const at = asAt || todayISO()
         const schedule = get().eosbSchedule(at)
         if (!schedule.lines.length || Math.abs(schedule.total) < 0.005)
           throw new Error('EOSB_NOTHING_TO_POST')
@@ -3576,7 +3600,7 @@ export const useStore = create(
        * difference, and put what they are owed into salaries payable.
        */
       settleEosb: (employeeId, { asAt, reason = 'termination', endContract = true } = {}) => {
-        const at = asAt || new Date().toISOString().slice(0, 10)
+        const at = asAt || todayISO()
         const award = get().eosbFor(employeeId, { asAt: at, reason })
         if (!award) throw new Error('EOSB_NO_CONTRACT')
         const provided = get().eosbProvidedFor(employeeId)
@@ -3901,9 +3925,38 @@ export const useStore = create(
       // preview only (no posting): how many assets are due for a period + total
       previewDepreciation: (period, date) => get()._depreciationTotals(get().depreciationDue(period, date)),
 
-      disposeAsset: (assetId, { date, proceeds, bankAccountId }) => {
-        const asset = get().fixedAssets.find((a) => a.id === assetId)
+      /**
+       * Straight-line depreciation still owed on an asset up to `date`: what
+       * it should carry by then — one month for every calendar month from its
+       * purchase month to `date`'s month, the same months the monthly run
+       * charges — less what has been charged, never past the depreciable base.
+       */
+      depreciationCatchUp: (assetId, date) => {
+        const a = get().fixedAssets.find((x) => x.id === assetId)
+        if (!a || a.status !== 'active' || !date || !a.purchaseDate) return 0
+        if ((a.depreciationMethod || 'straight_line') !== 'straight_line') return 0
+        const months = (a.usefulLifeYears || 0) * 12
+        if (months <= 0 || date < a.purchaseDate) return 0
+        const [y1, m1] = a.purchaseDate.split('-').map(Number)
+        const [y2, m2] = date.split('-').map(Number)
+        const elapsed = (y2 - y1) * 12 + (m2 - m1) + 1
+        const base = (a.purchaseCost || 0) - (a.salvageValue || 0)
+        const shouldHave = Math.min(base, (base / months) * elapsed)
+        return Math.max(0, Math.round((shouldHave - (a.accumulatedDepreciation || 0)) * 100) / 100)
+      },
+
+      disposeAsset: (assetId, { date, proceeds, bankAccountId, catchUp = true }) => {
+        let asset = get().fixedAssets.find((a) => a.id === assetId)
         if (!asset || asset.status !== 'active') return
+        // Charge the depreciation for the months up to disposal first.
+        // Skipping it overstated the book value on the day it left, and so
+        // understated the gain (or overstated the loss) on disposal.
+        const owed = catchUp ? get().depreciationCatchUp(assetId, date) : 0
+        if (owed > 0.005) {
+          get().recordDepreciation(assetId, { date, amount: owed, period: `To disposal ${date}` })
+          asset = get().fixedAssets.find((a) => a.id === assetId)
+        }
+        proceeds = Number(proceeds) || 0
         const accDep   = asset.accumulatedDepreciation
         const gainLoss = proceeds - asset.currentBookValue
         const lines = [
@@ -4161,7 +4214,7 @@ export const useStore = create(
       /** The current aged book and the allowance it implies, as a working. */
       eclAssessment: (asOf) => {
         const s = get()
-        const at = asOf || new Date().toISOString().slice(0, 10)
+        const at = asOf || todayISO()
         const aged = ageReceivables(s.invoices, { asOf: at, customers: s.customers })
         const ecl = computeEcl(aged, s.settings.ecl?.matrix)
         // The allowance is a contra-asset, so its ledger balance is a credit.
@@ -4210,7 +4263,7 @@ export const useStore = create(
        */
       deferredTaxAssessment: (asOf) => {
         const s = get()
-        const at = asOf || new Date().toISOString().slice(0, 10)
+        const at = asOf || todayISO()
         const cfg = s.settings.deferredTax || {}
         const balances = s.getAllBalances(undefined, at)
         const byId = Object.fromEntries(s.accounts.map((a) => [a.id, a]))
@@ -4311,7 +4364,7 @@ export const useStore = create(
        */
       disclosureNotes: (start, end) => {
         const s = get()
-        const at = end || new Date().toISOString().slice(0, 10)
+        const at = end || todayISO()
         const from = start || `${at.slice(0, 4)}-01-01`
 
         // The aged analysis is only meaningful once a loss allowance policy
@@ -4385,7 +4438,7 @@ export const useStore = create(
         const measured = initialMeasurement(terms)
 
         const je = get().addJournalEntry({
-          date: opts.date || lease.startDate || new Date().toISOString().slice(0, 10),
+          date: opts.date || lease.startDate || todayISO(),
           description: `Lease recognition – ${lease.name}`,
           reference: lease.number, type: 'lease_recognition', lines,
         })
@@ -4420,7 +4473,7 @@ export const useStore = create(
         })
         if (!built) throw new Error('LEASE_PERIOD_OUT_OF_TERM')
 
-        const date = opts.date || new Date().toISOString().slice(0, 10)
+        const date = opts.date || todayISO()
         const je = get().addJournalEntry({
           date, description: `Lease period ${period} – ${lease.name}`,
           reference: lease.number, type: 'lease_period', lines: built.lines,
@@ -4605,7 +4658,7 @@ export const useStore = create(
         const wo = get().workOrders.find((w) => w.id === id)
         if (!wo || wo.status === 'completed') return
         const qty = wo.targetQuantity || 1
-        const compDate = completionDate || new Date().toISOString().slice(0, 10)
+        const compDate = completionDate || todayISO()
         const method = get().costingMethod()
         const items = get().inventoryItems
 
@@ -4831,7 +4884,7 @@ export const useStore = create(
       postScheduledTransfer: (id) => {
         const sc = get().scheduledTransfers.find((x) => x.id === id)
         if (!sc) return null
-        const onDate = sc.nextDate || new Date().toISOString().slice(0, 10)
+        const onDate = sc.nextDate || todayISO()
         const rec = get().addBankTransfer({
           date: onDate, fromAccountId: sc.fromAccountId, toAccountId: sc.toAccountId,
           amount: sc.amount, fee: sc.fee || 0, feeAccountId: sc.feeAccountId,
@@ -4969,7 +5022,7 @@ export const useStore = create(
       // Post every active recurring journal whose nextDate has arrived (catches up
       // multiple missed periods, bounded, and stops on a locked period).
       generateDueRecurringJournals: () => {
-        const today = new Date().toISOString().slice(0, 10)
+        const today = todayISO()
         let count = 0
         get().recurringJournals.filter((r) => r.status === 'active' && r.nextDate <= today).forEach((r) => {
           let guard = 0
@@ -5040,7 +5093,7 @@ export const useStore = create(
       // up missed periods. Bounded, honours endDate, and stops on any posting
       // error (e.g. a locked period) so one bad schedule can't block the rest.
       generateDueRecurringExpenses: () => {
-        const today = new Date().toISOString().slice(0, 10)
+        const today = todayISO()
         let count = 0
         get().recurringExpenses.filter((r) => r.status === 'active' && r.nextDate <= today).forEach((r) => {
           let guard = 0
@@ -5065,7 +5118,7 @@ export const useStore = create(
       // month-end posting). Returns what it posted so the UI can confirm it.
       schedulerLastRun: null,
       runScheduler: () => {
-        const today = new Date().toISOString().slice(0, 10)
+        const today = todayISO()
         if (get().schedulerLastRun === today) return { journals: 0, invoices: 0, expenses: 0, ran: false }
         if (get().settings?.accounting?.autoPostRecurring === false) {
           set({ schedulerLastRun: today })
@@ -5083,7 +5136,7 @@ export const useStore = create(
 
       // Generate real invoices for every active schedule whose nextDate has arrived
       generateDueRecurring: () => {
-        const today = new Date().toISOString().slice(0, 10)
+        const today = todayISO()
         const due = get().recurringInvoices.filter((r) => r.status === 'active' && r.nextDate <= today)
         let created = 0
         due.forEach((r) => {
@@ -5160,7 +5213,7 @@ export const useStore = create(
         const subtotal = items.reduce((s, i) => s + i.subtotal, 0)
         const po = get().addPurchaseOrder({
           supplierId: req.supplierId || null, supplierName: req.supplierName || 'Supplier',
-          date: new Date().toISOString().slice(0, 10), deliveryDate: req.neededBy || '',
+          date: todayISO(), deliveryDate: req.neededBy || '',
           items, subtotal, taxAmount: 0, total: subtotal, notes: `From requisition ${req.number}`,
         })
         set((s) => ({ requisitions: s.requisitions.map((r) => (r.id === id ? { ...r, status: 'ordered', purchaseOrderId: po.id } : r)) }))

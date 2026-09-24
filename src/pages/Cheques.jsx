@@ -8,8 +8,9 @@ import {
   chequeBuckets, chequeTotal,
 } from '../utils/cheques'
 import { Landmark, Plus, Trash2, AlertTriangle, CalendarClock, Banknote, Undo2 } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 // Badge takes classes, not a tone name (see components/UI.jsx).
 const STATUS_CLASS = {

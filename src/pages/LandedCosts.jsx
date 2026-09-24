@@ -5,8 +5,9 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Table, Tr, Td, EmptyState, Badge } from '../components/UI'
 import { allocateLandedCost } from '../utils/landedCost'
 import { Ship, Plus, Trash2, Layers } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 export default function LandedCosts() {
   const t = useT()

@@ -6,6 +6,7 @@ import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../comp
 import { useT } from '../i18n'
 import ExportMenu from '../components/ExportMenu'
 import { Plus, Search, FileText } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
 export default function Invoices() {
   const { invoices, settings } = useStore()
@@ -15,7 +16,7 @@ export default function Invoices() {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
 
   const enriched = invoices.map((inv) => ({
     ...inv,

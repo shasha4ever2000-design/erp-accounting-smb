@@ -4,6 +4,7 @@ import { useStore } from '../store'
 import { PageHeader, Card, Btn, Select, EmptyState } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
 import { Search, ShieldCheck, Lock, AlertTriangle, Pencil, Activity } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
 const SEVERITY = {
   critical: { chip: 'bg-red-50 text-red-700 dark:bg-red-900/25 dark:text-red-300', icon: AlertTriangle, label: 'Critical' },
@@ -91,7 +92,7 @@ export default function AuditLog() {
               </Select>
             )}
             <div className="ms-auto">
-              <ExportMenu filename={`audit-log-${new Date().toISOString().slice(0, 10)}`} rows={rows} columns={exportColumns}
+              <ExportMenu filename={`audit-log-${todayISO()}`} rows={rows} columns={exportColumns}
                 title={t('Audit Log')} subtitle={`${rows.length} ${t('events')}`} size="sm" />
             </div>
           </div>

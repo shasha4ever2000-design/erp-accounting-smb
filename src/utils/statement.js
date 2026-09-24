@@ -1,3 +1,4 @@
+import { todayISO } from './localDate'
 // Customer and supplier statements.
 //
 // A statement is what you send when money is late, so it has one job: leave no
@@ -106,7 +107,7 @@ export function activityStatement(kind, entries = [], { start = '', end = '' } =
  * gets argued with rather than paid.
  */
 export function openItems(kind, docs = {}, entityId, { asAt = '' } = {}) {
-  const at = asAt || new Date().toISOString().slice(0, 10)
+  const at = asAt || todayISO()
   const source = kind === 'customer'
     ? (docs.invoices || []).filter((i) => i.customerId === entityId && isLive(i))
     : (docs.purchases || []).filter((p) => p.supplierId === entityId && isLive(p))

@@ -6,6 +6,7 @@ import { computeFinancialHealth, healthLabel } from '../utils/financialHealth'
 import { groupIdsWithRole, OTHER_INCOME } from '../utils/accountTree'
 import { PageHeader, Card } from '../components/UI'
 import { Activity, Droplets, TrendingUp, Gauge, Scale } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
 const GROUP_ICON = { Liquidity: Droplets, Profitability: TrendingUp, Efficiency: Gauge, Leverage: Scale }
 
@@ -23,8 +24,8 @@ export default function FinancialHealth() {
   const sym = settings.company.currencySymbol
 
   const { result, asOf } = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10)
-    const ttmStart = (() => { const d = new Date(); d.setUTCFullYear(d.getUTCFullYear() - 1); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10) })()
+    const today = todayISO()
+    const ttmStart = (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); d.setDate(d.getDate() + 1); return todayISO(d) })()
     const allBal = getAllBalances()                 // cumulative to date → balance sheet
     const ttmBal = getAllBalances(ttmStart, today)  // trailing 12 months → P&L
 

@@ -5,8 +5,9 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import { advanceBalance, appliedTotal, applicableAmount, customerCredit } from '../utils/advances'
 import { Wallet, Plus, Trash2, Undo2, Link2, Users } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 const emptyForm = () => ({
   customerId: '', customerName: '', amount: '', date: today(),

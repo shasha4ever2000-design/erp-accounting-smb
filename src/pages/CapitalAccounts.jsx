@@ -9,8 +9,9 @@ import {
 import {
   Users, Plus, Pencil, Trash2, ArrowDownLeft, ArrowUpRight, PieChart, AlertTriangle, Wallet,
 } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 const emptyPartner = { name: '', code: '', share: '', notes: '', active: true }
 const emptyMove = { kind: 'contribution', capitalAccountId: '', assetAccountId: '', amount: '', date: today(), description: '' }
 

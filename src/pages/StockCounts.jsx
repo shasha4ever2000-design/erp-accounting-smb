@@ -12,8 +12,9 @@ import {
 import {
   ClipboardCheck, Play, Check, Trash2, AlertTriangle, ScanLine, Undo2, PackageSearch, Repeat,
 } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 export default function StockCounts() {
   const t = useT()

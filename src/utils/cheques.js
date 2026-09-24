@@ -1,3 +1,4 @@
+import { todayISO } from './localDate'
 // Post-dated cheque register.
 //
 // In the Gulf, Egypt and much of the wider region a cheque is not a payment —
@@ -94,7 +95,7 @@ export const isOutstanding = (c) => !isTerminal(c?.status)
  * Cheques grouped by how close their due date is, for the register's summary.
  * `overdue` means past due and still not cleared — the ones worth chasing.
  */
-export function chequeBuckets(cheques = [], asOf = new Date().toISOString().slice(0, 10)) {
+export function chequeBuckets(cheques = [], asOf = todayISO()) {
   const out = { overdue: [], dueSoon: [], later: [], settled: [] }
   const soon = addDays(asOf, 7)
   cheques.forEach((c) => {

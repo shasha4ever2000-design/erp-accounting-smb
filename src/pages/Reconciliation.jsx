@@ -6,6 +6,7 @@ import { PageHeader, Card, Select, Input, Btn, Modal } from '../components/UI'
 import { parseCSV, detectStatementColumns } from '../utils/csv'
 import { matchRule, suggestRules } from '../utils/bankRules'
 import { CheckCircle2, Circle, Landmark, Upload, AlertCircle, Filter, Sparkles, Zap, Plus } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
 export default function Reconciliation() {
   const t = useT()
@@ -111,7 +112,7 @@ export default function Reconciliation() {
       const tx = addBankTransaction({
         type: u.amount >= 0 ? 'money_in' : 'money_out',
         bankAccountId: accId, accountId: u.catAccountId,
-        amount: Math.abs(u.amount), date: u.date || new Date().toISOString().slice(0, 10),
+        amount: Math.abs(u.amount), date: u.date || todayISO(),
         description: u.desc || t('Bank statement line'), reference: 'STMT',
       })
       if (tx?.journalEntryId) toggleReconciled(accId, tx.journalEntryId)
@@ -144,7 +145,7 @@ export default function Reconciliation() {
         const tx = addBankTransaction({
           type: u.amount >= 0 ? 'money_in' : 'money_out',
           bankAccountId: accId, accountId: u.catAccountId,
-          amount: Math.abs(u.amount), date: u.date || new Date().toISOString().slice(0, 10),
+          amount: Math.abs(u.amount), date: u.date || todayISO(),
           description: u.desc || t('Bank statement line'), reference: 'STMT',
         })
         if (tx?.journalEntryId) toggleReconciled(accId, tx.journalEntryId)

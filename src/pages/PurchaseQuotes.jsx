@@ -7,6 +7,7 @@ import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, Modal, Input, 
 import AttachmentButton from '../components/Attachments'
 import ConvertModal from '../components/ConvertModal'
 import { Plus, Trash2, FileQuestion, ArrowRight, Scale, AlertTriangle } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
 const STATUS_COLORS = {
   open:    'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
@@ -14,7 +15,7 @@ const STATUS_COLORS = {
   ordered: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 const emptyLine = () => ({ id: `l${Math.random().toString(16).slice(2)}`, description: '', quantity: 1, unitPrice: 0, taxRate: 0 })
 const emptyForm = () => ({ supplierId: '', date: today(), validUntil: '', reference: '', notes: '', items: [emptyLine()] })
 

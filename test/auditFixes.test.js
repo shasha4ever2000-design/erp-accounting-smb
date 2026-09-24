@@ -7,6 +7,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useStore } from '../src/store.js'
 import { layerQty } from '../src/utils/fifo.js'
+import { buildAging, daysBetween } from '../src/utils/aging.js'
+import { todayISO } from '../src/utils/localDate.js'
 
 const g = () => useStore.getState()
 const byName = (n) => g().inventoryItems.find((i) => i.name === n)
@@ -331,5 +333,67 @@ describe('service items are never stocked', () => {
     g().addInventoryItem({ name: 'Cleaning', type: 'service', quantity: 0, costPrice: 0, salePrice: 0 })
     bill([{ id: 'B1', itemId: byName('Cleaning').id, description: 'x', quantity: 1, unitPrice: 50, subtotal: 50, accountId: 'acc-admin' }])
     expect(byName('Cleaning').quantity).toBe(0)
+  })
+})
+
+
+describe('ageing is as at the report date', () => {
+  const inv = (over) => ({ id: 'i1', number: 'INV-1', customerName: 'A', date: '2026-01-01', dueDate: '2026-01-31', total: 1000, amountPaid: 0, payments: [], status: 'sent', ...over })
+
+  it('a payment made after the date still shows as owed on that date', () => {
+    const doc = inv({ amountPaid: 1000, status: 'paid', payments: [{ amount: 1000, date: '2026-03-15' }] })
+    const a = buildAging({ docs: [doc], notes: [], asAt: '2026-02-28' })
+    expect(a.gross).toBe(1000)
+    expect(a.rows[0].bucket).toBe('days30')
+    expect(buildAging({ docs: [doc], notes: [], asAt: '2026-03-31' }).gross).toBe(0)
+  })
+
+  it('an invoice dated after the report date is not in it', () => {
+    expect(buildAging({ docs: [inv({ date: '2026-05-01' })], notes: [], asAt: '2026-04-30' }).rows).toHaveLength(0)
+  })
+
+  it('converts to base currency and nets unapplied credit notes', () => {
+    const a = buildAging({
+      docs: [inv({ exchangeRate: 3.75 })],
+      notes: [{ id: 'c1', total: 100, status: 'issued', date: '2026-01-10' }],
+      asAt: '2026-01-15',
+    })
+    expect(a.gross).toBe(3750)
+    expect(a.unapplied).toBe(100)
+    expect(a.net).toBe(3650)
+  })
+
+  it('counts calendar days whatever the time zone', () => {
+    expect(daysBetween('2026-03-01', '2026-03-31')).toBe(30)
+    expect(daysBetween('2026-03-29', '2026-03-30')).toBe(1) // across a DST change in many zones
+  })
+})
+
+describe('today is the local calendar date', () => {
+  it('formats a local date without going through UTC', () => {
+    expect(todayISO(new Date(2026, 0, 31, 23, 30))).toBe('2026-01-31')
+    expect(todayISO(new Date(2026, 1, 1, 0, 15))).toBe('2026-02-01')
+  })
+})
+
+describe('asset disposal', () => {
+  it('charges depreciation up to the disposal date first', () => {
+    useStore.setState({ fixedAssets: [], assetDepreciations: [] })
+    const a = g().addFixedAsset({ name: 'PC', purchaseDate: '2026-01-01', purchaseCost: 2400, salvageValue: 0, usefulLifeYears: 2, depreciationMethod: 'straight_line', paymentType: 'cash', bankAccountId: 'acc-bank1' })
+    g().runDepreciation({ period: 'Jan 2026', date: '2026-01-31' })
+    expect(g().depreciationCatchUp(a.id, '2026-06-30')).toBe(500)
+    g().disposeAsset(a.id, { date: '2026-06-30', proceeds: 1500, bankAccountId: 'acc-bank1' })
+    const after = g().fixedAssets.find((x) => x.id === a.id)
+    expect(after.accumulatedDepreciation).toBe(600)
+    // Book value 1,800 sold for 1,500 → a 300 loss (it was reported as 800 before).
+    expect(bal('acc-lossdis')).toBeCloseTo(300, 2)
+  })
+})
+
+describe('posted fields cannot be patched', () => {
+  it('refuses to change an invoice total behind the ledger', () => {
+    const inv = g().addInvoice(invoice([service(100)]))
+    expect(() => g().updateInvoice(inv.id, { total: 50 })).toThrow(/DOC_FIELD_POSTED/)
+    expect(() => g().updateInvoice(inv.id, { notes: 'Thanks' })).not.toThrow()
   })
 })

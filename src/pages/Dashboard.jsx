@@ -12,6 +12,7 @@ import {
   FileText, ShoppingCart, Clock, DollarSign, ArrowRight, Sparkles, ChevronRight,
 } from 'lucide-react'
 import { format, subMonths, parseISO, isValid } from 'date-fns'
+import { todayISO } from '../utils/localDate'
 
 // recharts is 404 KB and this is the one eagerly-loaded page, so it is fetched
 // only when there is actually a chart to draw.
@@ -27,7 +28,7 @@ export default function Dashboard() {
 
   // Click a money tile → its ledger's Statement of Account (same drawer as Reports).
   const [drill, setDrill] = useState(null)
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayISO()
 
   // journalEntries must be a dep: getAllBalances is a stable reference, so
   // without it the KPIs freeze until the page remounts.
@@ -83,7 +84,7 @@ export default function Dashboard() {
 
   const overdueInvoices = invoices.filter((i) => {
     if (i.status === 'paid') return false
-    return i.dueDate && i.dueDate < new Date().toISOString().slice(0, 10)
+    return i.dueDate && i.dueDate < todayISO()
   })
 
   const recentInvoices = [...invoices].sort((a, b) => b.createdAt?.localeCompare(a.createdAt)).slice(0, 5)

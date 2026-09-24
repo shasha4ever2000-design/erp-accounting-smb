@@ -1,3 +1,4 @@
+import { todayISO } from './localDate'
 // Egyptian Tax Authority (ETA) e-invoicing — the document, and what it needs.
 //
 // Egypt requires B2B invoices to be filed with the ETA as a structured JSON
@@ -54,7 +55,7 @@ const str = (v) => (v == null ? '' : String(v).trim())
 export function etaTimestamp(invoice) {
   const d = invoice?.createdAt
     ? new Date(invoice.createdAt)
-    : new Date(`${invoice?.date || new Date().toISOString().slice(0, 10)}T00:00:00Z`)
+    : new Date(`${invoice?.date || todayISO()}T00:00:00Z`)
   return `${d.toISOString().slice(0, 19)}Z`
 }
 

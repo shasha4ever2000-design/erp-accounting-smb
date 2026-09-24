@@ -1,3 +1,4 @@
+import { todayISO } from './localDate'
 // IFRS 9 expected credit losses on trade receivables.
 //
 // The standard replaced the old "incurred loss" model — wait until a customer
@@ -64,7 +65,7 @@ const daysBetween = (from, to) =>
  * allowance the book needs.
  */
 export function ageReceivables(invoices = [], { asOf, customers = [] } = {}) {
-  const at = asOf || new Date().toISOString().slice(0, 10)
+  const at = asOf || todayISO()
   const byCustomer = new Map()
   const totals = Object.fromEntries(BUCKETS.map((b) => [b.key, 0]))
 

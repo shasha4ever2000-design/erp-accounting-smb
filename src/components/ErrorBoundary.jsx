@@ -1,6 +1,7 @@
 import React from 'react'
 import { tr } from '../i18n'
 import { useStore } from '../store'
+import { todayISO } from '../utils/localDate'
 
 function downloadBackup() {
   try {
@@ -9,7 +10,7 @@ function downloadBackup() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `erp-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = `erp-backup-${todayISO()}.json`
     a.click()
     URL.revokeObjectURL(url)
   } catch (e) {

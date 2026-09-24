@@ -3080,6 +3080,23 @@ const AR = {
   'Void credit note': 'إلغاء الإشعار الدائن',
   'Void debit note': 'إلغاء الإشعار المدين',
   'Voiding also voids the returns raised against it.': 'الإلغاء يلغي أيضًا المرتجعات المسجلة عليه.',
+  'Nothing outstanding from customers on this date.': 'لا توجد مبالغ مستحقة على العملاء في هذا التاريخ.',
+  'Nothing owed to suppliers on this date.': 'لا توجد مبالغ مستحقة للموردين في هذا التاريخ.',
+  'Unapplied credit notes': 'إشعارات دائنة غير مخصصة',
+  'Unapplied debit notes': 'إشعارات مدينة غير مخصصة',
+  'Not due': 'غير مستحق بعد',
+  'days': 'يوم',
+  '1–30 Days': '1–30 يومًا',
+  '31–60 Days': '31–60 يومًا',
+  '61–90 Days': '61–90 يومًا',
+  '90+ Days': 'أكثر من 90 يومًا',
+  'Purchase #': 'رقم فاتورة الشراء',
+  'Current book value': 'القيمة الدفترية الحالية',
+  'Depreciation up to the disposal date': 'الإهلاك حتى تاريخ الاستبعاد',
+  'posted first': 'يُرحَّل أولًا',
+  'Gain or loss will be calculated automatically based on disposal proceeds.': 'يُحتسب الربح أو الخسارة تلقائيًا بناءً على متحصلات الاستبعاد.',
+  'Gain on disposal': 'ربح الاستبعاد',
+  'Loss on disposal': 'خسارة الاستبعاد',
 }
 
 export const useI18n = create(

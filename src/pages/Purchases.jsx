@@ -11,6 +11,7 @@ import ConvertModal from '../components/ConvertModal'
 import { lineRemaining } from '../utils/fulfillment'
 import { Plus, Search, DollarSign, Ban, Pencil, RotateCcw } from 'lucide-react'
 import { today } from '../utils/formatters'
+import { todayISO } from '../utils/localDate'
 
 export default function Purchases() {
   const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings } = useStore()
@@ -34,7 +35,7 @@ export default function Purchases() {
 
   const bankAccounts = accounts.filter((a) => ['acc-cash', 'acc-bank1'].includes(a.id))
 
-  const todayStr = new Date().toISOString().slice(0, 10)
+  const todayStr = todayISO()
   const enriched = purchases.map((p) => ({
     ...p,
     isOverdue: p.status !== 'paid' && p.dueDate && p.dueDate < todayStr,

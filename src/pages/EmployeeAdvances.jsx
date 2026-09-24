@@ -5,8 +5,9 @@ import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import { advanceBalance, repaidTotal, runsRemaining, owedBy } from '../utils/employeeAdvances'
 import { HandCoins, Plus, Trash2, Undo2, XCircle, Users } from 'lucide-react'
+import { todayISO } from '../utils/localDate'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => todayISO()
 
 const STATUS_CLASS = {
   open: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',

@@ -17,6 +17,7 @@ import CustomFieldsManager from '../components/CustomFieldsManager'
 import HrSettingsCard from '../components/HrSettingsCard'
 import DurabilityStatus from '../components/DurabilityStatus'
 import DeferredTaxCard from '../components/DeferredTaxCard'
+import { todayISO } from '../utils/localDate'
 
 const CURRENCIES = [
   { code: 'USD', symbol: '$', name: 'US Dollar' },
@@ -128,10 +129,10 @@ export default function Settings() {
       let payload, filename
       if (encryptExport && exportPass) {
         payload = await encryptBackup(data, exportPass)
-        filename = `erp-backup-${new Date().toISOString().slice(0, 10)}-encrypted.json`
+        filename = `erp-backup-${todayISO()}-encrypted.json`
       } else {
         payload = data
-        filename = `erp-backup-${new Date().toISOString().slice(0, 10)}.json`
+        filename = `erp-backup-${todayISO()}.json`
       }
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)

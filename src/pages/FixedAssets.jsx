@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { todayISO } from '../utils/localDate'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -13,7 +14,7 @@ export default function FixedAssets() {
   const t = useT()
   const navigate = useNavigate()
   const { fixedAssets, assetDepreciations, bankAccounts, settings,
-          recordDepreciation, runDepreciation, previewDepreciation, disposeAsset, deleteFixedAsset } = useStore()
+          recordDepreciation, runDepreciation, previewDepreciation, disposeAsset, deleteFixedAsset, depreciationCatchUp } = useStore()
   const sym = settings.company.currencySymbol
 
   const [deprModal, setDeprModal] = useState(null)   // asset to depreciate
@@ -21,7 +22,9 @@ export default function FixedAssets() {
   const [filter, setFilter]       = useState('active')
 
   // batch depreciation scheduler
-  const monthEnd = (() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().slice(0, 10) })()
+  // Local month end. toISOString() turned local midnight into UTC, which east of
+  // Greenwich is the day before — the 30th instead of the 31st.
+  const monthEnd = (() => { const d = new Date(); return todayISO(new Date(d.getFullYear(), d.getMonth() + 1, 0)) })()
   const monthLabel = new Date().toLocaleString('en', { month: 'short', year: 'numeric' })
   const [schedModal, setSchedModal] = useState(false)
   const [schedForm, setSchedForm] = useState({ period: monthLabel, date: monthEnd })
@@ -71,7 +74,8 @@ export default function FixedAssets() {
   const handleDispose = () => {
     const proceeds = parseFloat(dispForm.proceeds) || 0
     if (!dispForm.bankAccountId && proceeds > 0) return alert('Select a bank account for proceeds.')
-    disposeAsset(dispModal.id, { date: dispForm.date, proceeds, bankAccountId: dispForm.bankAccountId })
+    try { disposeAsset(dispModal.id, { date: dispForm.date, proceeds, bankAccountId: dispForm.bankAccountId }) }
+    catch (e) { return alert(String(e.message).startsWith('PERIOD_LOCKED') ? t('This date falls in a closed accounting period. Choose a later date.') : String(e.message)) }
     setDispModal(null)
   }
 
@@ -202,8 +206,11 @@ export default function FixedAssets() {
       <Modal open={!!dispModal} onClose={() => setDispModal(null)} title={`Dispose Asset – ${dispModal?.name}`}>
         <div className="space-y-4">
           <div className="bg-warning-50 dark:bg-warning-500/10 border border-warning-200 dark:border-warning-400/20 rounded-lg p-3 text-sm text-warning-700 dark:text-warning-300">
-            <p>Current book value: <strong>{fmtMoney(dispModal?.currentBookValue || 0, sym)}</strong></p>
-            <p className="text-xs mt-1">Gain or loss will be calculated automatically based on disposal proceeds.</p>
+            <p>{t('Current book value')}: <strong>{fmtMoney(dispModal?.currentBookValue || 0, sym)}</strong></p>
+            {dispModal && depreciationCatchUp(dispModal.id, dispForm.date) > 0 && (
+              <p className="mt-1">{t('Depreciation up to the disposal date')}: <strong>{fmtMoney(depreciationCatchUp(dispModal.id, dispForm.date), sym)}</strong> — {t('posted first')}</p>
+            )}
+            <p className="text-xs mt-1">{t('Gain or loss will be calculated automatically based on disposal proceeds.')}</p>
           </div>
           <Input label="Disposal Date" type="date" value={dispForm.date} onChange={(e) => setDispForm((f)=>({...f,date:e.target.value}))} />
           <Input label={`Proceeds from Sale (${sym})`} type="number" min="0" step="0.01" value={dispForm.proceeds} onChange={(e) => setDispForm((f)=>({...f,proceeds:e.target.value}))} placeholder="0 if scrapped / donated" />
@@ -217,10 +224,10 @@ export default function FixedAssets() {
             <div className="bg-slate-50 dark:bg-surface-800/60 rounded-lg p-3 text-sm">
               {(() => {
                 const proceeds = parseFloat(dispForm.proceeds) || 0
-                const gl = proceeds - (dispModal.currentBookValue || 0)
+                const gl = proceeds - ((dispModal.currentBookValue || 0) - depreciationCatchUp(dispModal.id, dispForm.date))
                 return gl >= 0
-                  ? <p className="text-green-700 dark:text-green-400">Gain on disposal: <strong>{fmtMoney(gl, sym)}</strong></p>
-                  : <p className="text-red-600 dark:text-red-400">Loss on disposal: <strong>({fmtMoney(Math.abs(gl), sym)})</strong></p>
+                  ? <p className="text-success-700 dark:text-success-300">{t('Gain on disposal')}: <strong>{fmtMoney(gl, sym)}</strong></p>
+                  : <p className="text-danger-600 dark:text-danger-400">{t('Loss on disposal')}: <strong>({fmtMoney(Math.abs(gl), sym)})</strong></p>
               })()}
             </div>
           )}

@@ -1,3 +1,4 @@
+import { todayISO } from './localDate'
 // A 13-week rolling cash forecast, built from what the books already know.
 //
 // Every input here is already in the ledger: invoices carry a due date, bills
@@ -276,7 +277,7 @@ export function forecastEvents(data = {}, opts = {}) {
  * @param {boolean} opts.collectOverdue  fold overdue into week 1 (default false)
  */
 export function buildForecast(data = {}, opts = {}) {
-  const from = opts.from || new Date().toISOString().slice(0, 10)
+  const from = opts.from || todayISO()
   const weekCount = Math.max(1, Number(opts.weeks) || 13)
   const openingCash = r2(opts.openingCash)
   const until = shiftDays(from, weekCount * 7 - 1)
