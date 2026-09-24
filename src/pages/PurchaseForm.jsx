@@ -24,7 +24,7 @@ export default function PurchaseForm() {
   // With an :id in the path this form is correcting a bill that is already
   // posted, rather than entering a new one.
   const { id: editId } = useParams()
-  const { suppliers, purchases, accounts, inventoryItems, departments, currencies, settings, addPurchase, revisePurchase, purchaseEditBlock, customFieldsFor } = useStore()
+  const { suppliers, purchases, accounts, inventoryItems, departments, currencies, warehouses = [], settings, addPurchase, revisePurchase, purchaseEditBlock, customFieldsFor } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const taxEnabled = settings.tax.enabled
@@ -50,6 +50,7 @@ export default function PurchaseForm() {
     dueDate: addDays(today(), 30),
     notes: '',
     departmentId: '',
+    warehouseId: '',
     docDiscount: 0,
     shipping: 0,
     shippingTaxable: false,
@@ -171,6 +172,11 @@ export default function PurchaseForm() {
                 {suppliers.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>
               <Input label="Supplier Invoice Ref" value={form.supplierRef} onChange={(e) => setField('supplierRef', e.target.value)} placeholder="Supplier's invoice number" />
+              {warehouses.length > 1 && (
+                <Select label={t('Stock into')} value={form.warehouseId || warehouses.find((w) => w.isDefault)?.id || ''} onChange={(e) => setField('warehouseId', e.target.value)}>
+                  {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
+                </Select>
+              )}
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
               <Input label="Due Date" type="date" value={form.dueDate} onChange={(e) => setField('dueDate', e.target.value)} />
               {departments.length > 0 && (

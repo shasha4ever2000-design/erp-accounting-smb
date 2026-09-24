@@ -47,7 +47,7 @@ export default function Reconciliation() {
   const isRec = (jeId) => reconciliations.includes(`${accId}::${jeId}`)
 
   // ─── CSV statement import + auto-match ─────────────────────────────
-  const parseAmount = (s) => parseFloat(String(s || '').replace(/[^0-9.\-]/g, '')) || 0
+  const parseAmount = (s) => parseFloat(String(s || '').replace(/[^0-9.-]/g, '')) || 0
   const normalizeDate = (s) => {
     const v = String(s || '').trim()
     let m = v.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)

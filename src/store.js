@@ -268,17 +268,33 @@ function keepEntries(entries, keep) {
  * @param {number} value   what they cost in total (base currency)
  * @param {object} ctx     { method, date, ref, warehouseId }
  */
-function restockAtCost(it, qty, value, { method, date, ref, warehouseId }) {
+function restockAtCost(it, qty, value, { method, date, ref, warehouseId, defaultWarehouseId }) {
   const oldQty = Number(it.quantity) || 0
   const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
   const wacCost = weightedAverageCost({ onHand: oldQty, unitCost: it.costPrice, receivedQty: qty, receivedValue: value })
   const patch = { quantity: oldQty + qty, ...receiveInto(seeded, { qty, value, date, ref, method, wacCost }) }
-  if (it.stockByWarehouse) {
-    const map = { ...it.stockByWarehouse }
-    map[warehouseId] = (map[warehouseId] || 0) + qty
-    patch.stockByWarehouse = map
-  }
-  return { ...it, ...patch }
+  return { ...it, ...patch, ...whPatch(it, warehouseId, qty, defaultWarehouseId) }
+}
+
+/**
+ * The per-warehouse side of a stock movement.
+ *
+ * An item that has only ever lived in the default warehouse carries no map at
+ * all — its whole quantity is implicitly there. The first movement into or out
+ * of any other warehouse creates the map from that implicit balance, so the
+ * warehouses still add up to the item's quantity afterwards.
+ */
+function whPatch(it, warehouseId, delta, defaultWarehouseId = 'wh-main') {
+  const wh = warehouseId || defaultWarehouseId
+  if (!it.stockByWarehouse && wh === defaultWarehouseId) return {}
+  const map = { ...(it.stockByWarehouse || { [defaultWarehouseId]: Number(it.quantity) || 0 }) }
+  map[wh] = Math.round(((map[wh] || 0) + delta) * 1e6) / 1e6
+  return { stockByWarehouse: map }
+}
+
+/** Whether an item is physically stocked: not a kit, not a service. */
+function isStocked(item) {
+  return !!item && !isKit(item) && item.type !== 'service'
 }
 
 /**
@@ -286,24 +302,67 @@ function restockAtCost(it, qty, value, { method, date, ref, warehouseId }) {
  * that brought it in. The layer that return pushed is removed by its `ref`;
  * the weighted average is unblended by the same value.
  */
-function unstockAtCost(it, qty, value, { method, ref, warehouseId }) {
+function unstockAtCost(it, qty, value, { method, ref, warehouseId, defaultWarehouseId }) {
   const oldQty = Number(it.quantity) || 0
   const carried = Number(it.costPrice) || 0
   const newQty = oldQty - qty
-  let layers = Array.isArray(it.costLayers) ? [...it.costLayers] : layersFromBalance(oldQty, carried)
-  const at = layers.findIndex((l) => l.ref === ref && Math.abs((Number(l.qty) || 0) - qty) < 1e-6)
-  if (at >= 0) layers.splice(at, 1)
-  else layers = consume(layers, qty, carried).layers
+  let layers = Array.isArray(it.costLayers) ? it.costLayers.map((l) => ({ ...l })) : layersFromBalance(oldQty, carried)
+  // Take the units from the layer the receipt being undone pushed, when it is
+  // still there; otherwise off the front of the queue.
+  const at = ref ? layers.findIndex((l) => l.ref === ref && (Number(l.qty) || 0) >= qty - 1e-6) : -1
+  if (at >= 0) {
+    const left = Math.round(((Number(layers[at].qty) || 0) - qty) * 1e6) / 1e6
+    if (left > 1e-9) layers[at] = { ...layers[at], qty: left }
+    else layers.splice(at, 1)
+  } else layers = consume(layers, qty, carried).layers
   const costPrice = method === FIFO
     ? unitCostOf(layers, carried)
     : (newQty > 1e-9 ? Math.max(0, Math.round(((oldQty * carried - (Number(value) || 0)) / newQty) * 10000) / 10000) : carried)
   const patch = { quantity: newQty, costLayers: layers, costPrice }
-  if (it.stockByWarehouse) {
-    const map = { ...it.stockByWarehouse }
-    map[warehouseId] = (map[warehouseId] || 0) - qty
-    patch.stockByWarehouse = map
-  }
-  return { ...it, ...patch }
+  return { ...it, ...patch, ...whPatch(it, warehouseId, -qty, defaultWarehouseId) }
+}
+
+/** What a purchase return took off the shelf, and which bill lines it marked returned. */
+function debitNoteStock(dn, items) {
+  const back = {}, giveBack = {}
+  if (!dn?.purchaseId) return { back, giveBack }
+  ;(dn.items || []).forEach((l) => {
+    const item = l.itemId ? items.find((i) => i.id === l.itemId) : null
+    if (isStocked(item)) back[l.itemId] = (back[l.itemId] || 0) + (Number(l.quantity) || 0)
+    if (l.sourceLineId) giveBack[l.sourceLineId] = (giveBack[l.sourceLineId] || 0) + (Number(l.quantity) || 0)
+  })
+  return { back, giveBack }
+}
+
+/**
+ * What a bill put on the shelf: { itemId: { qty, cost } } in base currency.
+ * Stored on the bill when it posts; worked out from its lines for older bills.
+ */
+function stockReceivedBy(pur, items) {
+  if (pur?.stockReceived) return pur.stockReceived
+  const rate = Number(pur?.exchangeRate) || 1
+  const recv = {}
+  ;(pur?.items || []).forEach((line) => {
+    if (!line.itemId || !isStocked(items.find((i) => i.id === line.itemId))) return
+    const q = parseFloat(line.quantity) || 0
+    if (q <= 0) return
+    recv[line.itemId] = recv[line.itemId] || { qty: 0, cost: 0 }
+    recv[line.itemId].qty += q
+    recv[line.itemId].cost += Math.round((Number(line.subtotal) || 0) * rate * 100) / 100
+  })
+  return recv
+}
+
+/** The default warehouse's id. */
+function defaultWh(state) {
+  return state.warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+}
+
+/** The warehouse a document moves stock in: its own, if it still exists, else the default. */
+function whOf(state, doc) {
+  const id = doc?.warehouseId
+  if (id && (state.warehouses || []).some((w) => w.id === id)) return id
+  return defaultWh(state)
 }
 
 /**
@@ -1650,21 +1709,18 @@ export const useStore = create(
           // Exactly what left the shelf, so a void or an edit puts back the
           // same units even if a kit's recipe has changed since.
           stockIssued: issue,
+          warehouseId: whOf(get(), invoice),
           createdAt: reissue?.createdAt || new Date().toISOString(),
           ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = newInvoice.warehouseId
         set((st) => ({
           invoices: [...st.invoices, newInvoice],
           inventoryItems: st.inventoryItems.map((it) => {
             const q = issue[it.id]
             if (!q) return it
-            const patch = { quantity: (it.quantity || 0) - q, ...(costPatch[it.id] || {}) }
-            if (it.stockByWarehouse) {
-              const map = { ...it.stockByWarehouse }
-              map[defWh] = (map[defWh] || 0) - q
-              patch.stockByWarehouse = map
-            }
+            const patch = { quantity: (it.quantity || 0) - q, ...(costPatch[it.id] || {}), ...whPatch(it, wh, -q, defWh) }
             return { ...it, ...patch }
           }),
           // A reissue reuses its own number, so the sequence must not advance.
@@ -1778,13 +1834,20 @@ export const useStore = create(
         const inv = get().invoices.find((i) => i.id === id)
         if (!inv || inv.status === 'void') return
         const voidDate = date || new Date().toISOString().slice(0, 10)
+        // Returns raised against the invoice go first. Voiding the sale reverses
+        // all of it and puts every unit it issued back; a return left standing
+        // would then count the returned units — and their credit — twice.
+        ;(get().creditNotes || [])
+          .filter((c) => c.invoiceId === id && c.status !== 'void')
+          .forEach((c) => get().voidCreditNote(c.id, { date: voidDate, reason: reason || `Void invoice ${inv.number}` }))
         const jeIds = [inv.journalEntryId, inv.cogsJournalEntryId, ...(inv.payments || []).map((p) => p.journalEntryId)].filter(Boolean)
         jeIds.forEach((jeId) => {
           const je = get().journalEntries.find((j) => j.id === jeId)
           if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void invoice ${inv.number}` })
         })
         const restore = stockIssuedBy(inv, get().inventoryItems)
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), inv)
         const method = get().costingMethod()
         set((s) => ({
           invoices: s.invoices.map((i) => (i.id === id ? { ...i, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString(), amountPaid: 0 } : i)),
@@ -1794,7 +1857,7 @@ export const useStore = create(
             // The COGS reversal debits inventory with what the sale cost, so
             // the units come back at that same value.
             const value = inv.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
-            return restockAtCost(it, q, value, { method, date: voidDate, ref: `Void ${inv.number}`, warehouseId: defWh })
+            return restockAtCost(it, q, value, { method, date: voidDate, ref: `Void ${inv.number}`, warehouseId: wh, defaultWarehouseId: defWh })
           }),
         }))
         Object.entries(restore).forEach(([itemId, q]) => {
@@ -1805,6 +1868,12 @@ export const useStore = create(
       },
 
       deleteInvoice: (id, opts = {}) => {
+        const inv0 = get().invoices.find((i) => i.id === id)
+        // Returns raised against it are deleted with it (each fully undone), so
+        // no credit note is left pointing at an invoice that no longer exists.
+        const linked = (get().creditNotes || []).filter((c) => c.invoiceId === id)
+        get().assertJEsUnlocked(...linked.flatMap((c) => [c.journalEntryId, c.cogsJournalEntryId]))
+        if (inv0) linked.forEach((c) => get().deleteCreditNote(c.id))
         const inv = get().invoices.find((i) => i.id === id)
         // every JE this invoice produced: the sale, its COGS, and every receipt
         const payJEs = (inv?.payments || []).map((p) => p.journalEntryId)
@@ -1815,7 +1884,8 @@ export const useStore = create(
         if (!opts.silent) get().logActivity('Deleted invoice', inv?.number || id)
         // Restore the stock this invoice issued — components, for a kit.
         const restore = inv ? stockIssuedBy(inv, get().inventoryItems) : {}
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), inv)
         const method = get().costingMethod()
         set((s) => ({
           invoices: s.invoices.filter((i) => i.id !== id),
@@ -1827,7 +1897,7 @@ export const useStore = create(
             // The COGS entry is removed with the invoice, so the units go
             // back at exactly what that entry had taken out of inventory.
             const value = inv.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
-            return restockAtCost(it, q, value, { method, date: inv.date, ref: inv.number, warehouseId: defWh })
+            return restockAtCost(it, q, value, { method, date: inv.date, ref: inv.number, warehouseId: wh, defaultWarehouseId: defWh })
           }),
         }))
       },
@@ -2668,13 +2738,14 @@ export const useStore = create(
           })
           cogsJeId = cje.id
         }
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), inv)
         const method = get().costingMethod()
         set((st) => ({ inventoryItems: st.inventoryItems.map((it) => {
           const q = restock[it.id]; if (!q) return it
           // Joins the back of the FIFO queue at the value just debited to
           // inventory, so layers and quantity stay in step.
-          return restockAtCost(it, q, cogsByItem[it.id] || 0, { method, date: rDate, ref: number, warehouseId: defWh })
+          return restockAtCost(it, q, cogsByItem[it.id] || 0, { method, date: rDate, ref: number, warehouseId: wh, defaultWarehouseId: defWh })
         }) }))
         Object.entries(restock).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
@@ -2714,11 +2785,18 @@ export const useStore = create(
         const { prefix, next } = get().settings.debitNote
         const number = nextNum(prefix, next)
 
-        const creditByAcc = {}, remove = {}
+        const creditByAcc = {}, remove = {}, valueByItem = {}
         items.forEach((l) => {
-          const acc = l.itemId ? (get().inventoryItems.find((i) => i.id === l.itemId)?.inventoryAccountId || 'acc-inv') : (l.accountId || 'acc-admin')
+          const item = l.itemId ? get().inventoryItems.find((i) => i.id === l.itemId) : null
+          // A stocked line was debited to inventory on the bill, so the return
+          // credits inventory; a service line was an expense, so it credits that.
+          const stocked = isStocked(item)
+          const acc = stocked ? (item.inventoryAccountId || 'acc-inv') : (l.accountId || 'acc-admin')
           creditByAcc[acc] = (creditByAcc[acc] || 0) + toBase(l.subtotal)
-          if (l.itemId) remove[l.itemId] = (remove[l.itemId] || 0) + l.quantity
+          if (stocked) {
+            remove[l.itemId] = (remove[l.itemId] || 0) + (Number(l.quantity) || 0)
+            valueByItem[l.itemId] = Math.round(((valueByItem[l.itemId] || 0) + toBase(l.subtotal)) * 100) / 100
+          }
         })
         const netBase = Object.values(creditByAcc).reduce((s, v) => s + v, 0)
         const vatBase = items.reduce((s, l) => s + toBase(l.taxAmount), 0)
@@ -2728,12 +2806,15 @@ export const useStore = create(
         Object.entries(creditByAcc).forEach(([a, amt]) => lines.push({ accountId: a, debit: 0, credit: amt, description: 'Goods returned' }))
         const je = get().addJournalEntry({ date: rDate, description: `Purchase Return ${number} – ${pur.supplierName || ''}`, reference: number, type: 'debit_note', departmentId: pur.departmentId || null, lines })
 
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), pur)
+        const method = get().costingMethod()
+        // The units go back out at what the bill put them in at: off the
+        // bill's own FIFO layer, and out of the weighted average by the same
+        // value just credited to inventory.
         set((st) => ({ inventoryItems: st.inventoryItems.map((it) => {
           const q = remove[it.id]; if (!q) return it
-          const patch = { quantity: (it.quantity || 0) - q }
-          if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) - q; patch.stockByWarehouse = m }
-          return { ...it, ...patch }
+          return unstockAtCost(it, q, valueByItem[it.id] || 0, { method, ref: pur.number, warehouseId: wh, defaultWarehouseId: defWh })
         }) }))
         Object.entries(remove).forEach(([itemId, q]) => {
           const it = get().inventoryItems.find((i) => i.id === itemId)
@@ -2744,7 +2825,7 @@ export const useStore = create(
           id: uuid(), number, purchaseId, purchaseNumber: pur.number,
           supplierId: pur.supplierId, supplierName: pur.supplierName, date: rDate, reason: reason || '',
           currency: pur.currency, exchangeRate: rate, items, subtotal, taxAmount, total,
-          status: 'issued', journalEntryId: je.id, createdAt: new Date().toISOString(),
+          status: 'issued', journalEntryId: je.id, createdAt: new Date().toISOString(), valueByItem,
         }
         const newItems = (pur.items || []).map((l) => (applied[l.id] ? { ...l, returnedQty: (Number(l.returnedQty) || 0) + applied[l.id] } : l))
         set((st) => ({
@@ -2770,7 +2851,8 @@ export const useStore = create(
         ;(cn.items || []).forEach((l) => {
           if (l.sourceLineId) giveBack[l.sourceLineId] = (giveBack[l.sourceLineId] || 0) + (Number(l.quantity) || 0)
         })
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), get().invoices.find((i) => i.id === cn.invoiceId))
         const method = get().costingMethod()
         set((s) => ({
           creditNotes: s.creditNotes.filter((c) => c.id !== id),
@@ -2780,7 +2862,7 @@ export const useStore = create(
             const q = back[it.id]
             if (!q) return it
             const value = cn.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
-            return unstockAtCost(it, q, value, { method, ref: cn.number, warehouseId: defWh })
+            return unstockAtCost(it, q, value, { method, ref: cn.number, warehouseId: wh, defaultWarehouseId: defWh })
           }),
           invoices: cn.invoiceId ? s.invoices.map((i) => (i.id !== cn.invoiceId ? i : {
             ...i,
@@ -2791,6 +2873,49 @@ export const useStore = create(
           })) : s.invoices,
         }))
         get().logActivity('Deleted credit note', `${cn.number}${cn.invoiceNumber ? ' · ' + cn.invoiceNumber : ''}`)
+      },
+
+      /**
+       * Void a credit note the audit-safe way: reverse its entries on an open
+       * date, take any restocked goods back off the shelf, reopen the invoice
+       * lines it returned, and keep the note itself marked void.
+       */
+      voidCreditNote: (id, { date, reason } = {}) => {
+        const cn = get().creditNotes.find((c) => c.id === id)
+        if (!cn || cn.status === 'void') return
+        const voidDate = date || new Date().toISOString().slice(0, 10)
+        ;[cn.journalEntryId, cn.cogsJournalEntryId].filter(Boolean).forEach((jeId) => {
+          const je = get().journalEntries.find((j) => j.id === jeId)
+          if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void ${cn.number}` })
+        })
+        const back = cn.invoiceId ? explodeLines(cn.items || [], get().inventoryItems) : {}
+        const giveBack = {}
+        ;(cn.items || []).forEach((l) => {
+          if (l.sourceLineId) giveBack[l.sourceLineId] = (giveBack[l.sourceLineId] || 0) + (Number(l.quantity) || 0)
+        })
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), get().invoices.find((i) => i.id === cn.invoiceId))
+        const method = get().costingMethod()
+        set((s) => ({
+          creditNotes: s.creditNotes.map((c) => (c.id === id ? { ...c, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString() } : c)),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = back[it.id]
+            if (!q) return it
+            const value = cn.cogsByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
+            return unstockAtCost(it, q, value, { method, ref: cn.number, warehouseId: wh, defaultWarehouseId: defWh })
+          }),
+          invoices: cn.invoiceId ? s.invoices.map((i) => (i.id !== cn.invoiceId ? i : {
+            ...i,
+            items: (i.items || []).map((l) => (giveBack[l.id]
+              ? { ...l, returnedQty: Math.max(0, Math.round(((Number(l.returnedQty) || 0) - giveBack[l.id]) * 1e6) / 1e6) }
+              : l)),
+          })) : s.invoices,
+        }))
+        Object.entries(back).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: voidDate, type: 'void', qtyChange: -q, ref: cn.number, note: 'Credit note voided' })
+        })
+        get().logActivity('Voided credit note', `${cn.number}${reason ? ' · ' + reason : ''}`)
       },
 
       // ─── PURCHASE ORDERS ───────────────────────────────────────────
@@ -2864,10 +2989,12 @@ export const useStore = create(
         const debitByAcc = {}
         const recv = {} // itemId -> { qty, cost(base) }
         items.forEach((l) => {
-          const acc = l.itemId ? (get().inventoryItems.find((i) => i.id === l.itemId)?.inventoryAccountId || 'acc-inv') : (l.accountId || 'acc-admin')
+          const item = l.itemId ? get().inventoryItems.find((i) => i.id === l.itemId) : null
+          const stocked = isStocked(item)
+          const acc = stocked ? (item.inventoryAccountId || 'acc-inv') : (l.accountId || 'acc-admin')
           const amt = toBase(l.subtotal)
           debitByAcc[acc] = (debitByAcc[acc] || 0) + amt
-          if (l.itemId) { recv[l.itemId] = recv[l.itemId] || { qty: 0, cost: 0 }; recv[l.itemId].qty += l.quantity; recv[l.itemId].cost += amt }
+          if (stocked) { recv[l.itemId] = recv[l.itemId] || { qty: 0, cost: 0 }; recv[l.itemId].qty += l.quantity; recv[l.itemId].cost += amt }
         })
         const netBase = Object.values(debitByAcc).reduce((s, v) => s + v, 0)
         const lines = [
@@ -2878,7 +3005,8 @@ export const useStore = create(
         const je = get().addJournalEntry({ date: recvDate, description: `Goods Receipt ${number} – ${po.supplierName || ''}`, reference: number, type: 'goods_receipt', lines })
 
         // Perpetual receipt into stock (weighted-average, base cost).
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), po)
         set((st) => ({
           inventoryItems: st.inventoryItems.map((it) => {
             const u = recv[it.id]; if (!u) return it
@@ -2888,10 +3016,9 @@ export const useStore = create(
             })
             const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
             const patch = { quantity: oldQty + u.qty, ...receiveInto(seeded, {
-              qty: u.qty, value: u.cost, date: recvDate, ref: 'Goods receipt',
+              qty: u.qty, value: u.cost, date: recvDate, ref: number,
               method: get().costingMethod(), wacCost: newCost,
-            }) }
-            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + u.qty; patch.stockByWarehouse = m }
+            }), ...whPatch(it, wh, u.qty, defWh) }
             return { ...it, ...patch }
           }),
           settings: { ...st.settings, goodsReceipt: { ...st.settings.goodsReceipt, next: next + 1 } },
@@ -3004,6 +3131,7 @@ export const useStore = create(
           ...purchase, id: reissue?.id || uuid(), number, status: 'received', amountPaid: 0, payments: [],
           exchangeRate: rate, baseTotal: apBase,
           journalEntryId: je.id,
+          warehouseId: whOf(get(), purchase),
           createdAt: reissue?.createdAt || new Date().toISOString(),
           ...(reissue ? { revisedAt: new Date().toISOString(), revision: (reissue.revision || 0) + 1 } : {}),
         }
@@ -3012,6 +3140,8 @@ export const useStore = create(
         const recv = {} // itemId -> { qty, cost }
         purchase.items.forEach((line) => {
           if (!line.itemId) return
+          // Services and kits are bought but never shelved.
+          if (!isStocked(get().inventoryItems.find((i) => i.id === line.itemId))) return
           const q = parseFloat(line.quantity) || 0
           if (q <= 0) return
           recv[line.itemId] = recv[line.itemId] || { qty: 0, cost: 0 }
@@ -3019,7 +3149,11 @@ export const useStore = create(
           // Weighted-average cost is held in base currency, so convert FC line costs.
           recv[line.itemId].cost += toBase(line.subtotal || 0)
         })
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        // Exactly what this bill put on the shelf and at what value, so a void
+        // or an edit takes back the same units at the same cost.
+        newPurchase.stockReceived = recv
+        const defWh = defaultWh(get())
+        const wh = newPurchase.warehouseId
         set((st) => ({
           purchases: [...st.purchases, newPurchase],
           inventoryItems: st.inventoryItems.map((it) => {
@@ -3031,14 +3165,9 @@ export const useStore = create(
             })
             const seeded = { ...it, costLayers: it.costLayers || layersFromBalance(oldQty, it.costPrice) }
             const patch = { quantity: oldQty + u.qty, ...receiveInto(seeded, {
-              qty: u.qty, value: u.cost, date: purchase.date, ref: 'Supplier bill',
+              qty: u.qty, value: u.cost, date: purchase.date, ref: number,
               method: get().costingMethod(), wacCost: newCost,
-            }) }
-            if (it.stockByWarehouse) {
-              const map = { ...it.stockByWarehouse }
-              map[defWh] = (map[defWh] || 0) + u.qty
-              patch.stockByWarehouse = map
-            }
+            }), ...whPatch(it, wh, u.qty, defWh) }
             return { ...it, ...patch }
           }),
           // A reissue reuses its own number, so the sequence must not advance.
@@ -3138,26 +3267,31 @@ export const useStore = create(
         const pur = get().purchases.find((p) => p.id === id)
         if (!pur || pur.status === 'void') return
         const voidDate = date || new Date().toISOString().slice(0, 10)
+        // Returns against the bill first — see voidInvoice.
+        ;(get().debitNotes || [])
+          .filter((d) => d.purchaseId === id && d.status !== 'void')
+          .forEach((d) => get().voidDebitNote(d.id, { date: voidDate, reason: reason || `Void bill ${pur.number}` }))
         const jeIds = [pur.journalEntryId, ...(pur.payments || []).map((p) => p.journalEntryId)].filter(Boolean)
         jeIds.forEach((jeId) => {
           const je = get().journalEntries.find((j) => j.id === jeId)
           if (je && !je.reversedBy) get().voidJournalEntry(jeId, { date: voidDate, reason: reason || `Void bill ${pur.number}` })
         })
-        const back = {}
-        ;(pur.items || []).forEach((line) => {
-          if (!line.itemId) return
-          const q = parseFloat(line.quantity) || 0
-          if (q > 0) back[line.itemId] = (back[line.itemId] || 0) + q
-        })
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const recv = stockReceivedBy(pur, get().inventoryItems)
+        const back = Object.fromEntries(Object.entries(recv).map(([k, u]) => [k, u.qty]))
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), pur)
+        const method = get().costingMethod()
         set((s) => ({
           purchases: s.purchases.map((p) => (p.id === id ? { ...p, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString(), amountPaid: 0 } : p)),
+          // The reversal credits inventory with what the bill debited, so the
+          // units leave at that value: off the bill's own FIFO layer and out
+          // of the weighted average. (Stock is allowed to go negative, as
+          // everywhere else; flooring it at zero here put quantity and the
+          // inventory account out of step.)
           inventoryItems: s.inventoryItems.map((it) => {
-            const q = back[it.id]
-            if (!q) return it
-            const patch = { quantity: Math.max(0, (it.quantity || 0) - q) }
-            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) - q; patch.stockByWarehouse = m }
-            return { ...it, ...patch }
+            const u = recv[it.id]
+            if (!u) return it
+            return unstockAtCost(it, u.qty, u.cost, { method, ref: pur.number, warehouseId: wh, defaultWarehouseId: defWh })
           }),
         }))
         Object.entries(back).forEach(([itemId, q]) => {
@@ -3168,6 +3302,11 @@ export const useStore = create(
       },
 
       deletePurchase: (id, opts = {}) => {
+        const pur0 = get().purchases.find((p) => p.id === id)
+        // Returns against the bill are deleted with it — see deleteInvoice.
+        const linked = (get().debitNotes || []).filter((d) => d.purchaseId === id)
+        get().assertJEsUnlocked(...linked.map((d) => d.journalEntryId))
+        if (pur0) linked.forEach((d) => get().deleteDebitNote(d.id))
         const pur = get().purchases.find((p) => p.id === id)
         const payJEs = (pur?.payments || []).map((p) => p.journalEntryId)
         const jeIds = new Set([pur?.journalEntryId, ...payJEs].filter(Boolean))
@@ -3175,27 +3314,18 @@ export const useStore = create(
         // See deleteInvoice: revisePurchase unposts through here before re-posting.
         if (!opts.silent) get().logActivity('Deleted purchase', pur?.number || id)
         // Reverse any perpetual stock received by this purchase.
-        const recv = {}
-        ;(pur?.items || []).forEach((line) => {
-          if (!line.itemId) return
-          const q = parseFloat(line.quantity) || 0
-          if (q > 0) recv[line.itemId] = (recv[line.itemId] || 0) + q
-        })
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const recv = pur ? stockReceivedBy(pur, get().inventoryItems) : {}
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), pur)
+        const method = get().costingMethod()
         set((s) => ({
           purchases: s.purchases.filter((p) => p.id !== id),
           journalEntries: keepEntries(s.journalEntries, (j) => !jeIds.has(j.id)),
           stockMovements: s.stockMovements.filter((m) => m.ref !== pur?.number),
           inventoryItems: s.inventoryItems.map((it) => {
-            const q = recv[it.id]
-            if (!q) return it
-            const patch = { quantity: (it.quantity || 0) - q }
-            if (it.stockByWarehouse) {
-              const map = { ...it.stockByWarehouse }
-              map[defWh] = (map[defWh] || 0) - q
-              patch.stockByWarehouse = map
-            }
-            return { ...it, ...patch }
+            const u = recv[it.id]
+            if (!u) return it
+            return unstockAtCost(it, u.qty, u.cost, { method, ref: pur.number, warehouseId: wh, defaultWarehouseId: defWh })
           }),
         }))
       },
@@ -3232,14 +3362,10 @@ export const useStore = create(
         const dn = get().debitNotes.find((d) => d.id === id)
         if (!dn) return
         get().assertJEsUnlocked(dn.journalEntryId)
-        const back = {}, giveBack = {}
-        if (dn.purchaseId) {
-          ;(dn.items || []).forEach((l) => {
-            if (l.itemId) back[l.itemId] = (back[l.itemId] || 0) + (Number(l.quantity) || 0)
-            if (l.sourceLineId) giveBack[l.sourceLineId] = (giveBack[l.sourceLineId] || 0) + (Number(l.quantity) || 0)
-          })
-        }
-        const defWh = get().warehouses?.find((w) => w.isDefault)?.id || 'wh-main'
+        const { back, giveBack } = debitNoteStock(dn, get().inventoryItems)
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), get().purchases.find((p) => p.id === dn.purchaseId))
+        const method = get().costingMethod()
         set((s) => ({
           debitNotes: s.debitNotes.filter((d) => d.id !== id),
           journalEntries: keepEntries(s.journalEntries, (j) => j.id !== dn.journalEntryId),
@@ -3247,9 +3373,8 @@ export const useStore = create(
           inventoryItems: s.inventoryItems.map((it) => {
             const q = back[it.id]
             if (!q) return it
-            const patch = { quantity: (Number(it.quantity) || 0) + q }
-            if (it.stockByWarehouse) { const m = { ...it.stockByWarehouse }; m[defWh] = (m[defWh] || 0) + q; patch.stockByWarehouse = m }
-            return { ...it, ...patch }
+            const value = dn.valueByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
+            return restockAtCost(it, q, value, { method, date: dn.date, ref: dn.purchaseNumber, warehouseId: wh, defaultWarehouseId: defWh })
           }),
           purchases: dn.purchaseId ? s.purchases.map((p) => (p.id !== dn.purchaseId ? p : {
             ...p,
@@ -3260,6 +3385,39 @@ export const useStore = create(
           })) : s.purchases,
         }))
         get().logActivity('Deleted debit note', `${dn.number}${dn.purchaseNumber ? ' · ' + dn.purchaseNumber : ''}`)
+      },
+
+      /** The mirror of voidCreditNote for a purchase return. */
+      voidDebitNote: (id, { date, reason } = {}) => {
+        const dn = get().debitNotes.find((d) => d.id === id)
+        if (!dn || dn.status === 'void') return
+        const voidDate = date || new Date().toISOString().slice(0, 10)
+        const je = get().journalEntries.find((j) => j.id === dn.journalEntryId)
+        if (je && !je.reversedBy) get().voidJournalEntry(je.id, { date: voidDate, reason: reason || `Void ${dn.number}` })
+        const { back, giveBack } = debitNoteStock(dn, get().inventoryItems)
+        const defWh = defaultWh(get())
+        const wh = whOf(get(), get().purchases.find((p) => p.id === dn.purchaseId))
+        const method = get().costingMethod()
+        set((s) => ({
+          debitNotes: s.debitNotes.map((d) => (d.id === id ? { ...d, status: 'void', voidReason: reason || '', voidedAt: new Date().toISOString() } : d)),
+          inventoryItems: s.inventoryItems.map((it) => {
+            const q = back[it.id]
+            if (!q) return it
+            const value = dn.valueByItem?.[it.id] ?? q * (Number(it.costPrice) || 0)
+            return restockAtCost(it, q, value, { method, date: voidDate, ref: dn.purchaseNumber, warehouseId: wh, defaultWarehouseId: defWh })
+          }),
+          purchases: dn.purchaseId ? s.purchases.map((p) => (p.id !== dn.purchaseId ? p : {
+            ...p,
+            items: (p.items || []).map((l) => (giveBack[l.id]
+              ? { ...l, returnedQty: Math.max(0, Math.round(((Number(l.returnedQty) || 0) - giveBack[l.id]) * 1e6) / 1e6) }
+              : l)),
+          })) : s.purchases,
+        }))
+        Object.entries(back).forEach(([itemId, q]) => {
+          const it = get().inventoryItems.find((i) => i.id === itemId)
+          get().logStockMovement({ itemId, itemName: it?.name || '', date: voidDate, type: 'void', qtyChange: q, ref: dn.number, note: 'Debit note voided' })
+        })
+        get().logActivity('Voided debit note', `${dn.number}${reason ? ' · ' + reason : ''}`)
       },
 
       // ─── DEPARTMENTS ───────────────────────────────────────────────

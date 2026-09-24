@@ -4,7 +4,7 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Ban } from 'lucide-react'
 
 const emptyForm = () => ({
   customerId: '', customerName: '', date: today(),
@@ -13,7 +13,7 @@ const emptyForm = () => ({
 
 export default function CreditNotes() {
   const t = useT()
-  const { creditNotes, customers, invoices, settings, addCreditNote, deleteCreditNote } = useStore()
+  const { creditNotes, customers, invoices, settings, addCreditNote, deleteCreditNote, voidCreditNote } = useStore()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
   const taxRate    = settings.tax.rate
@@ -58,7 +58,7 @@ export default function CreditNotes() {
           <Table headers={['Number', 'Customer', 'Date', 'Invoice Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((cn) => (
               <Tr key={cn.id}>
-                <Td><span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400">{cn.number}</span></Td>
+                <Td><span className="font-mono text-sm font-medium text-purple-600 dark:text-purple-400">{cn.number}</span>{cn.status === 'void' && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 line-through">Void</Badge>}</Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{cn.customerName}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(cn.date)}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{cn.invoiceRef || cn.invoiceNumber || '—'}</Td>
@@ -68,6 +68,14 @@ export default function CreditNotes() {
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="creditnote" entityId={cn.id} />
+                  {cn.status !== 'void' && (
+                    <Btn size="sm" variant="ghost" title="Void credit note" onClick={() => {
+                      if (!confirm(`${t('Void credit note')} ${cn.number}?`)) return
+                      try { voidCreditNote(cn.id, { date: today() }) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
+                    }}>
+                      <Ban size={13} className="text-slate-500" />
+                    </Btn>
+                  )}
                   <Btn size="sm" variant="ghost" onClick={() => { if (!confirm(`Delete ${cn.number}?`)) return; try { deleteCreditNote(cn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>

@@ -24,7 +24,7 @@ export default function InvoiceForm() {
   // With an :id in the path this form is correcting an invoice that is already
   // posted, rather than raising a new one.
   const { id: editId } = useParams()
-  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
+  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, warehouses = [], settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []
@@ -50,6 +50,7 @@ export default function InvoiceForm() {
     dueDate: addDays(today(), settings.invoice.dueDays || 30),
     notes: settings.invoice.notes || '',
     departmentId: '',
+    warehouseId: '',
     salesRepId: '',
     docDiscount: 0,
     shipping: 0,
@@ -209,6 +210,12 @@ export default function InvoiceForm() {
                 <Select label={t('Sales Rep')} value={form.salesRepId} onChange={(e) => setField('salesRepId', e.target.value)}>
                   <option value="">{t('— Unassigned —')}</option>
                   {salesReps.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+                </Select>
+              )}
+              {/* Only asked when there is a choice to make. */}
+              {warehouses.length > 1 && (
+                <Select label={t('Stock from')} value={form.warehouseId || warehouses.find((w) => w.isDefault)?.id || ''} onChange={(e) => setField('warehouseId', e.target.value)}>
+                  {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
                 </Select>
               )}
               <Input label="Invoice Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />

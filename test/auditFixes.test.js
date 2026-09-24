@@ -217,3 +217,119 @@ describe('backups and cloud sync', () => {
     expect(g().accounts.some((a) => a.id === 'acc-dtl')).toBe(true)
   })
 })
+
+// ── Second round ──────────────────────────────────────────────────────────
+
+const invValue = () => g().inventoryItems.reduce((s, i) => s + (Number(i.quantity) || 0) * (Number(i.costPrice) || 0), 0)
+const bill = (lines, over = {}) => {
+  const total = lines.reduce((s, l) => s + l.subtotal, 0)
+  return g().addPurchase({
+    supplierId: 's1', supplierName: 'S', date: '2026-04-01', dueDate: '2026-05-01',
+    items: lines, subtotal: total, taxAmount: 0, total, ...over,
+  }, { approved: true })
+}
+const billLine = (itemId, qty, cost, id = 'B1') =>
+  ({ id, itemId, description: 'x', quantity: qty, unitPrice: cost, subtotal: qty * cost, accountId: 'acc-inv' })
+
+describe('voiding a document with returns voids the returns too', () => {
+  it('invoice: stock and the inventory account come back exactly once', () => {
+    const inv = g().addInvoice(invoice([line(byName('Drill').id, 4, 200)]))
+    g().createSalesReturn(inv.id, { L1: 1 }, { date: '2026-04-02' })
+    g().voidInvoice(inv.id, { date: '2026-04-03' })
+    expect(byName('Drill').quantity).toBe(10)
+    expect(g().creditNotes[0].status).toBe('void')
+    // Everything reversed: nothing left in AR, and inventory back where it started.
+    expect(bal('acc-ar')).toBeCloseTo(0, 2)
+    expect(bal('acc-cogs')).toBeCloseTo(0, 2)
+    expect(g().verifyLedger().ok).toBe(true)
+  })
+
+  it('bill: the debit note is voided and stock nets out', () => {
+    const b = bill([billLine(byName('Drill').id, 5, 100)])
+    g().createPurchaseReturn(b.id, { B1: 2 }, { date: '2026-04-02' })
+    g().voidPurchase(b.id, { date: '2026-04-03' })
+    expect(byName('Drill').quantity).toBe(10)
+    expect(g().debitNotes[0].status).toBe('void')
+    expect(bal('acc-ap')).toBeCloseTo(0, 2)
+  })
+
+  it('deleting an invoice deletes its returns with it', () => {
+    const inv = g().addInvoice(invoice([line(byName('Drill').id, 4, 200)]))
+    g().createSalesReturn(inv.id, { L1: 1 }, { date: '2026-04-02' })
+    g().deleteInvoice(inv.id)
+    expect(g().creditNotes).toHaveLength(0)
+    expect(byName('Drill').quantity).toBe(10)
+    expect(g().journalEntries).toHaveLength(0)
+  })
+})
+
+describe('voiding a bill unwinds its cost', () => {
+  it('weighted average returns to what it was', () => {
+    bill([billLine(byName('Drill').id, 10, 200)]) // 10 @ 100 + 10 @ 200 → 150
+    const b2 = g().purchases[0]
+    expect(byName('Drill').costPrice).toBeCloseTo(150, 4)
+    g().voidPurchase(b2.id, { date: '2026-04-05' })
+    expect(byName('Drill').quantity).toBe(10)
+    expect(byName('Drill').costPrice).toBeCloseTo(100, 4)
+  })
+
+  it("FIFO removes the bill's own layer", () => {
+    g().updateInventorySettings({ costingMethod: 'fifo' })
+    const b = bill([billLine(byName('Drill').id, 10, 200)])
+    g().voidPurchase(b.id, { date: '2026-04-05' })
+    const d = byName('Drill')
+    expect(layerQty(d.costLayers)).toBe(10)
+    expect(d.costPrice).toBeCloseTo(100, 4)
+  })
+
+  it("a purchase return takes stock out at the bill's cost", () => {
+    const b = bill([billLine(byName('Drill').id, 10, 200)])
+    g().createPurchaseReturn(b.id, { B1: 10 }, { date: '2026-04-02' })
+    expect(byName('Drill').quantity).toBe(10)
+    expect(byName('Drill').costPrice).toBeCloseTo(100, 4)
+    // The bill's 2,000 went in and the same 2,000 came back out.
+    expect(bal('acc-inv')).toBeCloseTo(0, 2)
+    expect(invValue()).toBeCloseTo(10 * 100 + 50 * 20, 2)
+  })
+})
+
+describe('documents move stock in their own warehouse', () => {
+  beforeEach(() => {
+    useStore.setState({ warehouses: [{ id: 'wh-main', name: 'Main', isDefault: true }, { id: 'wh-2', name: 'Branch' }] })
+  })
+
+  it('an invoice from the branch takes stock from the branch', () => {
+    const inv = g().addInvoice(invoice([line(byName('Drill').id, 3, 200)], { warehouseId: 'wh-2' }))
+    const d = byName('Drill')
+    expect(d.quantity).toBe(7)
+    expect(d.stockByWarehouse).toEqual({ 'wh-main': 10, 'wh-2': -3 })
+    g().voidInvoice(inv.id)
+    expect(byName('Drill').stockByWarehouse).toEqual({ 'wh-main': 10, 'wh-2': 0 })
+  })
+
+  it('a bill into the branch lands in the branch', () => {
+    bill([billLine(byName('Drill').id, 4, 100)], { warehouseId: 'wh-2' })
+    expect(byName('Drill').stockByWarehouse).toEqual({ 'wh-main': 10, 'wh-2': 4 })
+  })
+
+  it('an unknown warehouse falls back to the default', () => {
+    g().addInvoice(invoice([line(byName('Drill').id, 1, 200)], { warehouseId: 'gone' }))
+    expect(byName('Drill').stockByWarehouse).toBeUndefined()
+    expect(byName('Drill').quantity).toBe(9)
+  })
+})
+
+describe('service items are never stocked', () => {
+  it('selling one moves no stock and posts no cost of sales', () => {
+    g().addInventoryItem({ name: 'Consulting', type: 'service', quantity: 0, costPrice: 0, salePrice: 100 })
+    const inv = g().addInvoice(invoice([line(byName('Consulting').id, 3, 100)]))
+    expect(byName('Consulting').quantity).toBe(0)
+    expect(inv.cogsJournalEntryId).toBeNull()
+  })
+
+  it('buying one moves no stock', () => {
+    g().addInventoryItem({ name: 'Cleaning', type: 'service', quantity: 0, costPrice: 0, salePrice: 0 })
+    bill([{ id: 'B1', itemId: byName('Cleaning').id, description: 'x', quantity: 1, unitPrice: 50, subtotal: 50, accountId: 'acc-admin' }])
+    expect(byName('Cleaning').quantity).toBe(0)
+  })
+})

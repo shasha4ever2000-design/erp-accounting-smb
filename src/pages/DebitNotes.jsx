@@ -2,9 +2,9 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
-import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td } from '../components/UI'
+import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Ban } from 'lucide-react'
 
 const emptyForm = () => ({
   supplierId: '', supplierName: '', date: today(),
@@ -13,7 +13,7 @@ const emptyForm = () => ({
 
 export default function DebitNotes() {
   const t = useT()
-  const { debitNotes, suppliers, settings, addDebitNote, deleteDebitNote } = useStore()
+  const { debitNotes, suppliers, settings, addDebitNote, deleteDebitNote, voidDebitNote } = useStore()
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
   const taxRate    = settings.tax.rate
@@ -58,7 +58,7 @@ export default function DebitNotes() {
           <Table headers={['Number', 'Supplier', 'Date', 'Purchase Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((dn) => (
               <Tr key={dn.id}>
-                <Td><span className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">{dn.number}</span></Td>
+                <Td><span className="font-mono text-sm font-medium text-orange-600 dark:text-orange-400">{dn.number}</span>{dn.status === 'void' && <Badge className="ms-2 bg-danger-50 text-danger-700 dark:bg-danger-500/10 dark:text-danger-300 line-through">Void</Badge>}</Td>
                 <Td className="font-medium text-gray-800 dark:text-slate-100">{dn.supplierName}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm">{fmtDate(dn.date)}</Td>
                 <Td className="text-gray-500 dark:text-slate-400 text-sm font-mono">{dn.purchaseRef || dn.purchaseNumber || '—'}</Td>
@@ -68,6 +68,14 @@ export default function DebitNotes() {
                 </Td>
                 <Td right>
                   <AttachmentButton entityType="debitnote" entityId={dn.id} />
+                  {dn.status !== 'void' && (
+                    <Btn size="sm" variant="ghost" title="Void debit note" onClick={() => {
+                      if (!confirm(`${t('Void debit note')} ${dn.number}?`)) return
+                      try { voidDebitNote(dn.id, { date: today() }) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
+                    }}>
+                      <Ban size={13} className="text-slate-500" />
+                    </Btn>
+                  )}
                   <Btn size="sm" variant="ghost" onClick={() => { if (!confirm(`Delete ${dn.number}?`)) return; try { deleteDebitNote(dn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
                     <Trash2 size={13} className="text-red-400" />
                   </Btn>

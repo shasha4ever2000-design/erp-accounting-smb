@@ -42,7 +42,7 @@ export const CLASS_LABELS = {
  * the attention of one machine worth 40,000.
  */
 export function classifyABC(items = []) {
-  const stocked = items.filter((i) => i && !isKit(i))
+  const stocked = items.filter((i) => i && !isKit(i) && i.type !== 'service')
   const valued = stocked.map((i) => ({
     id: i.id, code: i.code || '', name: i.name || '',
     quantity: num(i.quantity),

@@ -47,6 +47,15 @@ export default function InvoiceView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, zatcaOn, zatca.vatNumber])
 
+  // What the customer would pay if they settled on the chosen date, and what
+  // the early-settlement discount is worth. Kept above the "not found" return:
+  // a hook below it would change the hook count the moment the invoice is
+  // deleted or voided away from under this screen, and React would crash.
+  const offer = useMemo(
+    () => (payModal && invoice ? settlementOffer(invoice.id, payForm.date) : null),
+    [payModal, payForm.date, invoice?.id, invoice?.amountPaid, settlementOffer]
+  )
+
   if (!invoice) return (
     <div className="text-center py-20">
       <p className="text-gray-500 dark:text-slate-400 mb-4">{t('Invoice not found.')}</p>
@@ -88,13 +97,6 @@ export default function InvoiceView() {
   const invIsFC = invoice.currency && invoice.currency !== settings.company.currency
   const invSym = invIsFC ? `${invoice.currency} ` : baseSym
   const invRate = Number(invoice.exchangeRate) || 1
-  // What the customer would pay if they settled on the chosen date, and what
-  // the early-settlement discount is worth. Recomputed as the date changes,
-  // because the whole point is that the offer expires.
-  const offer = useMemo(
-    () => (payModal ? settlementOffer(invoice.id, payForm.date) : null),
-    [payModal, payForm.date, invoice.id, invoice.amountPaid, settlementOffer]
-  )
 
   const takeDiscount = () => {
     try {

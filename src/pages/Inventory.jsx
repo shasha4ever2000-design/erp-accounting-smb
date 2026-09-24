@@ -17,7 +17,7 @@ const emptyForm = {
   name: '', code: '', description: '', unit: 'pcs', category: '', barcode: '',
   costPrice: '', salePrice: '', quantity: '', reorderLevel: '', maxLevel: '',
   inventoryAccountId: 'acc-inv', cogsAccountId: 'acc-cogs', revenueAccountId: 'acc-sales',
-  taxRate: 0, isKit: false, components: [],
+  type: 'product', taxRate: 0, isKit: false, components: [],
   // Egyptian e-invoicing: ETA rejects an invoice line whose item carries no
   // EGS or GS1 code. Only asked for when ETA filing is switched on.
   etaItemCode: '', etaItemCodeType: '',
@@ -58,7 +58,9 @@ export default function Inventory() {
       ...form,
       costPrice: parseFloat(form.costPrice) || 0,
       salePrice: parseFloat(form.salePrice) || 0,
-      quantity: parseFloat(form.quantity) || 0,
+      // A service holds no stock, so it can't carry a quantity either.
+      quantity: form.type === 'service' ? 0 : (parseFloat(form.quantity) || 0),
+      type: form.type === 'service' ? 'service' : 'product',
       reorderLevel: parseFloat(form.reorderLevel) || 0,
       maxLevel: parseFloat(form.maxLevel) || 0,
       taxRate: parseFloat(form.taxRate) || 0,
@@ -225,16 +227,24 @@ export default function Inventory() {
               the first thing a new user does and the last thing they would
               guess was wrong, so it is said here rather than left to the
               integrity check to report weeks later. */}
-          {!editing && (parseFloat(form.quantity) || 0) > 0 && (
+          <div>
+            <Select label={t('Item type')} value={form.type === 'service' ? 'service' : 'product'} onChange={(e) => setField('type', e.target.value)}
+              disabled={!!form.isKit}>
+              <option value="product">{t('Product (stocked)')}</option>
+              <option value="service">{t('Service (not stocked)')}</option>
+            </Select>
+            {form.type === 'service' && <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t('A service is sold and bought but never held in stock: no quantity, no cost of sales.')}</p>}
+          </div>
+          {form.type !== 'service' && !editing && (parseFloat(form.quantity) || 0) > 0 && (
             <div className="text-xs rounded-lg px-3 py-2 bg-warning-50 dark:bg-warning-500/10 text-warning-700 dark:text-warning-300 border border-warning-200 dark:border-warning-500/20">
               {t('This opening quantity is not an accounting entry — the goods appear in stock but their value will not appear on your balance sheet. For stock you already own, use Opening Balances instead.')}
             </div>
           )}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {form.type !== 'service' && <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label="Qty on Hand" type="number" min="0" step="0.01" value={form.quantity} onChange={(e) => setField('quantity', e.target.value)} />
             <Input label="Reorder Level" type="number" min="0" step="0.01" value={form.reorderLevel} onChange={(e) => setField('reorderLevel', e.target.value)} />
             <Input label="Max Level" type="number" min="0" step="0.01" value={form.maxLevel} onChange={(e) => setField('maxLevel', e.target.value)} placeholder="optional" />
-          </div>
+          </div>}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Select label="Inventory Account" value={form.inventoryAccountId} onChange={(e) => setField('inventoryAccountId', e.target.value)}>
               {assetAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
