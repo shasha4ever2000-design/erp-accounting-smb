@@ -6,9 +6,9 @@ import { statusColor, tone } from '../src/utils/formatters.js'
 describe('status colours mean one thing everywhere', () => {
   it('groups statuses by meaning', () => {
     for (const s of ['sent', 'open', 'received', 'approved']) expect(statusColor(s)).toBe(tone.brand)
-    for (const s of ['partial', 'pending', 'paused', 'on_hold', 'expired']) expect(statusColor(s)).toBe(tone.warning)
+    for (const s of ['partial', 'pending', 'paused', 'on_hold', 'expiring']) expect(statusColor(s)).toBe(tone.warning)
     for (const s of ['paid', 'accepted', 'active', 'completed']) expect(statusColor(s)).toBe(tone.success)
-    for (const s of ['overdue', 'rejected', 'bounced']) expect(statusColor(s)).toBe(tone.danger)
+    for (const s of ['overdue', 'rejected', 'bounced', 'expired']) expect(statusColor(s)).toBe(tone.danger)
     for (const s of ['invoiced', 'posted', 'cancelled', 'disposed', 'inactive']) expect(statusColor(s)).toBe(tone.muted)
     expect(statusColor('draft')).toBe(tone.neutral)
   })

@@ -73,15 +73,16 @@ const STATUS_TONE = {
   inactive: 'muted', disposed: 'muted', terminated: 'muted',
   // under way
   sent: 'brand', open: 'brand', received: 'brand', issued: 'brand', approved: 'brand',
-  in_progress: 'brand', counting: 'brand', processed: 'brand',
+  in_progress: 'brand', counting: 'brand', processed: 'brand', probation: 'brand',
   // needs someone
   partial: 'warning', pending: 'warning', paused: 'warning', awaiting: 'warning', on_hold: 'warning',
-  expired: 'warning', low_stock: 'warning',
+  expiring: 'warning', low_stock: 'warning',
   // good outcome
   paid: 'success', accepted: 'success', active: 'success', completed: 'success', cleared: 'success',
   money_in: 'success', won: 'success', in_stock: 'success',
   // problem
   overdue: 'danger', rejected: 'danger', bounced: 'danger', money_out: 'danger', lost: 'danger', out_of_stock: 'danger',
+  expired: 'danger',   // a contract or lease that has lapsed but is still on the books
   // other
   manual: 'accent', overstock: 'accent',
 }
