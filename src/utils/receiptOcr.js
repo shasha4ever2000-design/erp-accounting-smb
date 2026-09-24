@@ -246,12 +246,29 @@ export function fileToDataUrl(file) {
  * Full round trip: image in, sanitised fields out.
  * @returns { ok: true, fields } | { ok: false, reason }
  */
-export async function scanReceipt(dataUrl, { apiKey, model, todayISO, currency, fetchImpl } = {}) {
-  if (!apiKey) return { ok: false, reason: 'Add your Claude API key in Settings → AI Assistant first.' }
+export async function scanReceipt(dataUrl, { apiKey, model, todayISO, currency, fetchImpl, serverInvoke } = {}) {
+  if (!apiKey && !serverInvoke) return { ok: false, reason: 'Add your Claude API key in Settings → AI Assistant first.' }
   const doFetch = fetchImpl || fetch
   let body
   try { body = buildOcrRequest(dataUrl, { model, todayISO, currency }) }
   catch { return { ok: false, reason: 'That file is not an image.' } }
+
+  // Through the company's server function (supabase/functions/ai-chat, task
+  // "receipt"): no key in this browser. The same request goes up and the
+  // same API message comes back, so parsing is shared with the direct path.
+  if (serverInvoke) {
+    let out
+    try {
+      out = await serverInvoke({
+        task: 'receipt', model: body.model, system: body.system,
+        messages: body.messages, outputFormat: body.output_config.format,
+      })
+    } catch (e) {
+      return { ok: false, reason: e?.message || 'Could not reach the server.' }
+    }
+    if (out?.error) return { ok: false, reason: out.error }
+    return parseOcrResponse(out?.message || null)
+  }
 
   let res
   try {

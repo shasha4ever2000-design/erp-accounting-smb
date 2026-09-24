@@ -34,6 +34,10 @@ jobs:
       - name: Run tests
         run: npm test
 
+      # The Supabase Edge Function is Deno TypeScript; nothing else compiles it.
+      - name: Type-check server functions
+        run: npx -y deno@2 check supabase/functions/ai-chat/index.ts
+
       - name: Production build
         run: npm run build
 

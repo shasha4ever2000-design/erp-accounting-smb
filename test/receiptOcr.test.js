@@ -257,3 +257,30 @@ describe('scanReceipt', () => {
     expect(r.reason).toMatch(/not an image/i)
   })
 })
+
+describe('scanReceipt through the company server', () => {
+  it('sends the same request and never touches the direct API', async () => {
+    let sent, fetched = false
+    const r = await scanReceipt(PNG, {
+      apiKey: '',
+      fetchImpl: async () => { fetched = true },
+      serverInvoke: async (body) => { sent = body; return { message: ok(FULL) } },
+    })
+    expect(fetched).toBe(false)
+    expect(sent.task).toBe('receipt')
+    expect(sent.messages[0].content[0].type).toBe('image')
+    expect(sent.outputFormat).toEqual({ type: 'json_schema', schema: RECEIPT_SCHEMA })
+    expect(r.ok).toBe(true)
+    expect(r.fields.amount).toBe(250.5)
+  })
+
+  it("passes the server's error through", async () => {
+    const r = await scanReceipt(PNG, { serverInvoke: async () => ({ error: 'That image is too large.' }) })
+    expect(r).toEqual({ ok: false, reason: 'That image is too large.' })
+  })
+
+  it('reports a network failure rather than throwing', async () => {
+    const r = await scanReceipt(PNG, { serverInvoke: async () => { throw new Error('offline') } })
+    expect(r.ok).toBe(false)
+  })
+})

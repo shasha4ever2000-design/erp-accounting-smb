@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
+import { aiServerInvoker } from '../utils/aiServer'
 import { Bot, X, Send, Sparkles, Trash2, AlertCircle, Minimize2 } from 'lucide-react'
 
 export default function AIAssistant() {
@@ -104,18 +105,11 @@ You are an expert in double-entry bookkeeping, IFRS/GAAP, and financial manageme
     try {
       let reply
       if (viaServer) {
-        const { getSupabase } = await import('../lib/supabase')
-        const { data, error: fnErr } = await getSupabase().functions.invoke('ai-chat', {
-          body: {
-            companyId: cloudCompanyId, model, system: buildSystemPrompt(),
-            messages: history.map(m => ({ role: m.role, content: m.content })),
-          },
+        const data = await aiServerInvoker(settings)({
+          model, system: buildSystemPrompt(),
+          messages: history.map(m => ({ role: m.role, content: m.content })),
         })
-        if (fnErr) {
-          let msg = fnErr.message
-          try { msg = (await fnErr.context?.json())?.error || msg } catch { /* keep the generic message */ }
-          throw new Error(msg)
-        }
+        if (data?.error) throw new Error(data.error)
         reply = data?.reply || 'No response received.'
       } else {
         // Official SDK, loaded only when someone actually uses the assistant.

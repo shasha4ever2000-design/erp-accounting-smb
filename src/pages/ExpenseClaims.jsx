@@ -7,6 +7,7 @@ import AttachmentButton from '../components/Attachments'
 import { Plus, Trash2, CheckCircle, DollarSign, Clock, AlertCircle, ScanLine, Loader2 } from 'lucide-react'
 import { scanReceipt, applyToForm, currencyWarning, downscaleImage, fileToDataUrl } from '../utils/receiptOcr'
 import { ask } from '../components/Dialogs'
+import { aiServerInvoker } from '../utils/aiServer'
 
 const EXPENSE_CATEGORIES = [
   'Travel & Transport', 'Meals & Entertainment', 'Office Supplies',
@@ -49,6 +50,8 @@ export default function ExpenseClaims() {
       const small = await downscaleImage(await fileToDataUrl(file))
       const res = await scanReceipt(small, {
         apiKey: settings.ai?.apiKey || '',
+        // Through the company's server when that is switched on — no key here.
+        serverInvoke: aiServerInvoker(settings),
         model: settings.ai?.model || 'claude-haiku-4-5',
         todayISO: today(),
         currency: settings.company.currency,
@@ -213,7 +216,7 @@ export default function ExpenseClaims() {
                 {scanNote.text}
               </p>
             )}
-            {!settings.ai?.apiKey && (
+            {!settings.ai?.apiKey && !aiServerInvoker(settings) && (
               <p className="text-xs mt-2 text-slate-500 dark:text-slate-400">
                 {t('Needs a Claude API key — add one in Settings → AI Assistant.')}
               </p>
