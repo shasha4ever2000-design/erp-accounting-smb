@@ -139,7 +139,7 @@ export default function Contracts() {
         action={
           <>
             {employmentContracts.length > 0 && <ExportMenu filename="contracts" title={t('Employment Contracts')} rows={rows} columns={exportCols} size="sm" />}
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Contract')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New contract')}</Btn>
           </>
         }
       />
@@ -197,7 +197,7 @@ export default function Contracts() {
             icon={<FileSignature size={20} />}
             title={t('No contracts yet')}
             desc={t('A contract records what someone is paid and from when. A pay rise is a new contract, not an edit — which is what lets you answer what somebody was on last year.')}
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('New Contract')}</Btn>}
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('New contract')}</Btn>}
           />
         ) : (
           <Table headers={[

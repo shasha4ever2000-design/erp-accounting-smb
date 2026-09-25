@@ -61,7 +61,7 @@ export default function CompanyScreen() {
                 onClick={() => setCreating(true)}
                 className="inline-flex items-center justify-center gap-2 bg-brand-600 hover:bg-brand-700 active:bg-brand-800 text-white rounded-xl px-4 py-2.5 text-sm font-semibold shadow-btn-primary transition-all duration-150 active:scale-[.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 flex-shrink-0"
               >
-                <Plus size={16} /> {t('New Company')}
+                <Plus size={16} /> {t('New company')}
               </button>
             )}
           </div>
@@ -122,7 +122,7 @@ export default function CompanyScreen() {
                 <span className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                   <Plus size={18} />
                 </span>
-                {t('New Company')}
+                {t('New company')}
               </button>
             )}
           </div>

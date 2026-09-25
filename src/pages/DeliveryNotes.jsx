@@ -53,7 +53,7 @@ export default function DeliveryNotes() {
           <button onClick={() => setViewing(null)} className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400"><ArrowLeft size={15} /> {t('Back')}</button>
           <div className="flex items-center gap-2">
             <AttachmentButton entityType="deliverynote" entityId={dn.id} />
-            {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> {t('Mark Delivered')}</Btn>}
+            {dn.status !== 'delivered' && <Btn size="sm" variant="success" onClick={() => updateDeliveryNote(dn.id, { status: 'delivered' })}><Check size={14} /> {t('Mark delivered')}</Btn>}
             <Btn size="sm" variant="secondary" onClick={() => window.print()}><Printer size={14} /> {t('Download PDF')}</Btn>
           </div>
         </div>
@@ -114,12 +114,12 @@ export default function DeliveryNotes() {
       <PageHeader
         title="Delivery notes"
         subtitle="Bilingual delivery / dispatch notes (سند تسليم)"
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Delivery Note')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New delivery note')}</Btn>}
       />
       <Card>
         {deliveryNotes.length === 0 ? (
           <EmptyState icon="🚚" title="No delivery notes" desc="Create a delivery note to accompany goods you dispatch to customers."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('New Delivery Note')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('New delivery note')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Customer', 'Date', 'Items', 'Reference', 'Status', { label: 'Actions', right: true }]}>
             {deliveryNotes.slice().reverse().map((dn) => (
@@ -139,7 +139,7 @@ export default function DeliveryNotes() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Delivery Note" width="max-w-xl">
+      <Modal open={modal} onClose={() => setModal(false)} title="New delivery note" width="max-w-xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Customer" value={form.customerId} onChange={(e) => setF('customerId', e.target.value)}>

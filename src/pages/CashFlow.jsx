@@ -127,7 +127,7 @@ export default function CashFlow() {
       <PageHeader
         title={t('Cash flow')}
         subtitle={t('Cash position, internal transfers and money movements')}
-        action={<Btn onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer Funds')}</Btn>}
+        action={<Btn onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer funds')}</Btn>}
       />
 
       {/* Cash position */}
@@ -164,10 +164,10 @@ export default function CashFlow() {
       <Card className="mb-6">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2"><ArrowLeftRight size={15} className="text-slate-500 dark:text-slate-400" /> {t('Internal Transfers')}</h3>
-          <Btn size="sm" variant="secondary" onClick={openTransfer}><ArrowLeftRight size={13} /> {t('New Transfer')}</Btn>
+          <Btn size="sm" variant="secondary" onClick={openTransfer}><ArrowLeftRight size={13} /> {t('New transfer')}</Btn>
         </div>
         {sortedTransfers.length === 0 ? (
-          <EmptyState icon="🔄" title={t('No transfers yet')} desc={t('Move money between your own bank and cash accounts.')} action={<Btn onClick={openTransfer}><ArrowLeftRight size={14} /> {t('Transfer Funds')}</Btn>} />
+          <EmptyState icon="🔄" title={t('No transfers yet')} desc={t('Move money between your own bank and cash accounts.')} action={<Btn onClick={openTransfer}><ArrowLeftRight size={14} /> {t('Transfer funds')}</Btn>} />
         ) : (
           <Table headers={[t('Date'), t('From'), '', t('To'), { label: t('Amount'), right: true }, { label: t('Fee'), right: true }, t('Ref'), { label: '', right: true }]}>
             {sortedTransfers.map((tf) => (
@@ -190,10 +190,10 @@ export default function CashFlow() {
       <Card className="mb-6">
         <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-700 flex items-center justify-between">
           <h3 className="font-semibold text-sm text-slate-700 dark:text-slate-200 flex items-center gap-2"><CalendarClock size={15} className="text-slate-500 dark:text-slate-400" /> {t('Scheduled Transfers')}</h3>
-          <Btn size="sm" variant="secondary" onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={13} /> {t('New Scheduled Transfer')}</Btn>
+          <Btn size="sm" variant="secondary" onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={13} /> {t('New scheduled transfer')}</Btn>
         </div>
         {sortedSchedules.length === 0 ? (
-          <EmptyState icon="📅" title={t('No scheduled transfers')} desc={t('Automate recurring sweeps — e.g. a monthly transfer to savings or a card payment.')} action={<Btn onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={14} /> {t('New Scheduled Transfer')}</Btn>} />
+          <EmptyState icon="📅" title={t('No scheduled transfers')} desc={t('Automate recurring sweeps — e.g. a monthly transfer to savings or a card payment.')} action={<Btn onClick={() => { setSchedForm(emptySched()); setSchedModal(true) }}><CalendarClock size={14} /> {t('New scheduled transfer')}</Btn>} />
         ) : (
           <Table headers={[t('From'), '', t('To'), { label: t('Amount'), right: true }, t('Frequency'), t('Next Date'), { label: '', right: true }]}>
             {sortedSchedules.map((sc) => {
@@ -257,7 +257,7 @@ export default function CashFlow() {
       </Card>
 
       {/* Transfer modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title={t('Transfer Between Accounts')}>
+      <Modal open={modal} onClose={() => setModal(false)} title={t('Transfer between accounts')}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('From Account')} value={form.fromAccountId} onChange={(e) => setField('fromAccountId', e.target.value)}>
@@ -294,13 +294,13 @@ export default function CashFlow() {
           )}
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleTransfer}><ArrowLeftRight size={15} /> {t('Transfer Funds')}</Btn>
+            <Btn onClick={handleTransfer}><ArrowLeftRight size={15} /> {t('Transfer funds')}</Btn>
           </div>
         </div>
       </Modal>
 
       {/* Scheduled transfer modal */}
-      <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('New Scheduled Transfer')}>
+      <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('New scheduled transfer')}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('From Account')} value={schedForm.fromAccountId} onChange={(e) => setSched('fromAccountId', e.target.value)}>
@@ -325,7 +325,7 @@ export default function CashFlow() {
           <p className="text-xs text-slate-500 dark:text-slate-400">{t('Nothing posts automatically — due transfers appear here with a “Post now” button.')}</p>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setSchedModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSaveSchedule}><CalendarClock size={15} /> {t('Save Schedule')}</Btn>
+            <Btn onClick={handleSaveSchedule}><CalendarClock size={15} /> {t('Save schedule')}</Btn>
           </div>
         </div>
       </Modal>

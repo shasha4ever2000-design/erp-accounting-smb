@@ -178,7 +178,7 @@ export default function InvoiceForm() {
     <div>
       <div className="mb-6">
         <button onClick={() => navigate(editId ? `/invoices/${editId}` : '/invoices')} className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 mb-4">
-          <ArrowLeft size={15} /> {editId ? t('Back to Invoice') : t('Back to Invoices')}
+          <ArrowLeft size={15} /> {editId ? t('Back to invoice') : t('Back to invoices')}
         </button>
         <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
           {editId ? `${t('Edit Invoice')} ${editing?.number || ''}` : t('New Sales Invoice')}
@@ -324,7 +324,7 @@ export default function InvoiceForm() {
               ))}
 
               <Btn variant="ghost" onClick={addLine} size="sm">
-                <Plus size={14} /> {t('Add Line')}
+                <Plus size={14} /> {t('Add line')}
               </Btn>
             </div>
 
@@ -421,7 +421,7 @@ export default function InvoiceForm() {
             </div>
             <div className="mt-5 space-y-2">
               <Btn className="w-full justify-center" onClick={handleSave}>
-                {editId ? t('Save Changes') : t('Save Invoice')}
+                {editId ? t('Save changes') : t('Save invoice')}
               </Btn>
               <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate(editId ? `/invoices/${editId}` : '/invoices')}>
                 {t('Cancel')}

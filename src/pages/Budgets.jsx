@@ -114,7 +114,7 @@ export default function Budgets() {
             <Select value={year} onChange={(e) => setYear(e.target.value)} className="w-32">
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </Select>
-            <Btn onClick={handleSave}><Save size={15} /> {saved ? 'Saved!' : 'Save Budget'}</Btn>
+            <Btn onClick={handleSave}><Save size={15} /> {saved ? 'Saved!' : 'Save budget'}</Btn>
           </div>
         }
       />

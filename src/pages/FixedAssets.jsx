@@ -90,8 +90,8 @@ export default function FixedAssets() {
         subtitle="Asset register — properties, equipment, vehicles, and more"
         action={
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={() => { setSchedForm({ period: monthLabel, date: monthEnd }); setSchedModal(true) }}><Calculator size={15} /> {t('Run Depreciation')}</Btn>
-            <Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={15} /> {t('Add Asset')}</Btn>
+            <Btn variant="secondary" onClick={() => { setSchedForm({ period: monthLabel, date: monthEnd }); setSchedModal(true) }}><Calculator size={15} /> {t('Run depreciation')}</Btn>
+            <Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={15} /> {t('Add asset')}</Btn>
           </div>
         }
       />
@@ -114,7 +114,7 @@ export default function FixedAssets() {
       <Card>
         {fixedAssets.length === 0 ? (
           <EmptyState icon="🏗️" title="No fixed assets" desc="Add equipment, vehicles, buildings, and other long-term assets. Depreciation is tracked automatically."
-            action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={14} /> {t('Add Asset')}</Btn>} />
+            action={<Btn onClick={() => navigate('/fixed-assets/new')}><Plus size={14} /> {t('Add asset')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No {filter} assets</div>
         ) : (
@@ -161,7 +161,7 @@ export default function FixedAssets() {
       </Card>
 
       {/* Batch Depreciation Scheduler */}
-      <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('Run Monthly Depreciation')}>
+      <Modal open={schedModal} onClose={() => setSchedModal(false)} title={t('Run monthly depreciation')}>
         <div className="space-y-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">{t('Posts one month of straight-line depreciation for every active asset that has not been depreciated for this period.')}</p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -175,7 +175,7 @@ export default function FixedAssets() {
           </div>
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setSchedModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={runSchedule} disabled={schedPreview.count === 0}><Calculator size={14} /> {t('Post Depreciation')}</Btn>
+            <Btn onClick={runSchedule} disabled={schedPreview.count === 0}><Calculator size={14} /> {t('Post depreciation')}</Btn>
           </div>
         </div>
       </Modal>
@@ -197,7 +197,7 @@ export default function FixedAssets() {
           </p>
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setDeprModal(null)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleDepr}>{t('Record Depreciation')}</Btn>
+            <Btn onClick={handleDepr}>{t('Record depreciation')}</Btn>
           </div>
         </div>
       </Modal>
@@ -233,7 +233,7 @@ export default function FixedAssets() {
           )}
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setDispModal(null)}>{t('Cancel')}</Btn>
-            <Btn variant="danger" onClick={handleDispose}>{t('Dispose Asset')}</Btn>
+            <Btn variant="danger" onClick={handleDispose}>{t('Dispose asset')}</Btn>
           </div>
         </div>
       </Modal>

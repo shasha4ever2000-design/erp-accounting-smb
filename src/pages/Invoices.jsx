@@ -64,8 +64,8 @@ export default function Invoices() {
         action={
           <div className="flex items-center gap-2">
             {invoices.length > 0 && <ExportMenu filename="sales-invoices" title={t('Sales Invoices')} rows={sorted} columns={exportCols} />}
-            <Btn onClick={() => navigate('/invoices/new')} title={t('New Invoice') + shortcutHint('/invoices/new')}>
-              <Plus size={15} /> {t('New Invoice')}
+            <Btn onClick={() => navigate('/invoices/new')} title={t('New invoice') + shortcutHint('/invoices/new')}>
+              <Plus size={15} /> {t('New invoice')}
             </Btn>
           </div>
         }
@@ -116,7 +116,7 @@ export default function Invoices() {
             icon="📄"
             title={t('No invoices yet')}
             desc={t('Create your first sales invoice to start tracking receivables.')}
-            action={<Btn onClick={() => navigate('/invoices/new')}><Plus size={14} /> {t('Create Invoice')}</Btn>}
+            action={<Btn onClick={() => navigate('/invoices/new')}><Plus size={14} /> {t('Create invoice')}</Btn>}
           />
         ) : sorted.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No invoices match your filter')}</div>

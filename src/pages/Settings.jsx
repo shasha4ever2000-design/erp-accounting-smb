@@ -272,7 +272,7 @@ export default function Settings() {
         subtitle="Configure your company and accounting preferences"
         action={
           <Btn onClick={handleSave}>
-            <Save size={15} /> {saved ? 'Saved!' : 'Save Settings'}
+            <Save size={15} /> {saved ? 'Saved!' : 'Save settings'}
           </Btn>
         }
       />
@@ -489,7 +489,7 @@ export default function Settings() {
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-success-600 to-success-700 flex items-center justify-center text-white text-xs font-bold">KSA</div>
               <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Saudi Arabia · ZATCA E-Invoicing')}</h2>
             </div>
-            <Btn size="sm" variant="secondary" onClick={() => applyTaxRegion('SA')}>{t('Apply Saudi preset')}</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => applyTaxRegion('SA')}>{t('Apply saudi preset')}</Btn>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {t('Generate ZATCA (Fatoorah) compliant simplified tax invoices with a scannable QR code and a bilingual Arabic/English layout. Only relevant if you file VAT in Saudi Arabia — every other tax region above ignores this section.')}
@@ -541,7 +541,7 @@ export default function Settings() {
               <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-warning-500 to-danger-600 flex items-center justify-center text-white text-[10px] font-bold">EG</div>
               <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100">{t('Egypt · ETA E-Invoicing')}</h2>
             </div>
-            <Btn size="sm" variant="secondary" onClick={() => applyTaxRegion('EG')}>{t('Apply Egypt preset')}</Btn>
+            <Btn size="sm" variant="secondary" onClick={() => applyTaxRegion('EG')}>{t('Apply egypt preset')}</Btn>
           </div>
           <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
             {t('Build the JSON document the Egyptian Tax Authority expects, and check it before you file. Signing needs your e-signature token and submission happens on the ETA portal, so this prepares the document rather than sending it.')}
@@ -636,10 +636,10 @@ export default function Settings() {
             <div className="flex flex-wrap items-end gap-3">
               <Input label={t('Lock date (inclusive)')} type="date" value={lockInput} onChange={(e) => setLockInput(e.target.value)} className="w-48" />
               <Btn onClick={async () => { if (!lockInput) return alert(t('Choose a lock date first.')); if (await ask(t('Lock all periods through {d}? Entries on or before this date will be read-only.').replace('{d}', lockInput))) { setPeriodLock({ lockDate: lockInput, lockedBy: useAuth.getState().currentUser()?.name || '' }); setSaved(true); setTimeout(() => setSaved(false), 1500) } }}>
-                <Lock size={14} /> {t('Lock Period')}
+                <Lock size={14} /> {t('Lock period')}
               </Btn>
               {settings.accounting?.lockDate && (
-                <Btn variant="secondary" onClick={async () => { if (await ask(t('Unlock all periods? Closed entries will become editable again.'))) { setPeriodLock({ lockDate: '' }); setLockInput('') } }}>
+                <Btn variant="secondary" onClick={async () => { if (await ask(t('Unlock all periods? closed entries will become editable again.'))) { setPeriodLock({ lockDate: '' }); setLockInput('') } }}>
                   <Unlock size={14} /> {t('Unlock')}
                 </Btn>
               )}
@@ -765,9 +765,9 @@ export default function Settings() {
           <div className="flex flex-wrap gap-3">
             <Btn variant="success" onClick={handleExport} disabled={exportBusy || (encryptExport && !exportPass)}>
               {encryptExport ? <ShieldCheck size={15} /> : <Download size={15} />}
-              {exportBusy ? t('Encrypting…') : encryptExport ? t('Download Encrypted Backup') : t('Download Backup')}
+              {exportBusy ? t('Encrypting…') : encryptExport ? t('Download encrypted backup') : t('Download backup')}
             </Btn>
-            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Restore from File')}</Btn>
+            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Restore from file')}</Btn>
             <input ref={fileRef} type="file" accept="application/json,.json" onChange={handleImportFile} className="hidden" />
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-3">{t('Backup files contain all data in one portable file. Encrypted backups use AES-256-GCM.')}</p>
@@ -785,7 +785,7 @@ export default function Settings() {
                   the most expensive misunderstanding this page can cause. */}
               <div className="flex gap-2">
                 <Btn size="sm" variant="secondary" onClick={handleSnapshot} disabled={snapBusy}>
-                  <RotateCcw size={13} /> {snapBusy ? t('Saving…') : t('Snapshot Now')}
+                  <RotateCcw size={13} /> {snapBusy ? t('Saving…') : t('Snapshot now')}
                 </Btn>
                 <Btn size="sm" variant="secondary" onClick={() => setSnapshotsOpen(!snapshotsOpen)}>
                   {snapshotsOpen ? t('Hide') : t('Show')} ({snapshots.length || '…'})
@@ -849,7 +849,7 @@ export default function Settings() {
               <div className="flex justify-end gap-2 mt-5">
                 <Btn variant="secondary" onClick={() => { setImportModal(null); setImportPass(''); setImportErr('') }}>{t('Cancel')}</Btn>
                 <Btn onClick={handleDecryptImport} disabled={importBusy || !importPass}>
-                  {importBusy ? t('Decrypting…') : t('Unlock & Restore')}
+                  {importBusy ? t('Decrypting…') : t('Unlock & restore')}
                 </Btn>
               </div>
             </div>
@@ -875,7 +875,7 @@ export default function Settings() {
                 <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{t('Reset All Data')}</p>
                 <p className="text-xs text-slate-500 dark:text-slate-400">Erase all invoices, transactions, customers, and settings. Keeps the app.</p>
               </div>
-              {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>{t('Reset Data')}</Btn> : <span className="text-xs text-slate-500 dark:text-slate-400">Owners / Admins only</span>}
+              {isManager ? <Btn variant="danger" size="sm" onClick={handleReset}>{t('Reset data')}</Btn> : <span className="text-xs text-slate-500 dark:text-slate-400">Owners / Admins only</span>}
             </div>
           </div>
         </Card>

@@ -82,7 +82,7 @@ export default function Leases() {
       <PageHeader
         title="Leases & rent"
         subtitle="Track operating leases, office rent, and other recurring rental obligations"
-        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Lease')}</Btn>}
+        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add lease')}</Btn>}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -103,7 +103,7 @@ export default function Leases() {
       <Card>
         {leases.length === 0 ? (
           <EmptyState icon="🏢" title="No leases recorded" desc="Add office space, equipment, or vehicle leases. Each rent payment automatically posts a journal entry (Dr Rent Expense / Cr Bank)."
-            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Lease')}</Btn>} />
+            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add lease')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-10 text-center text-slate-500 dark:text-slate-400 text-sm">No {filter} leases</div>
         ) : (
@@ -169,7 +169,7 @@ export default function Leases() {
       </Card>
 
       {/* Add Lease Modal */}
-      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Lease" width="max-w-lg">
+      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add lease" width="max-w-lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Lease Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Office – Level 3, Suite A" />
@@ -221,7 +221,7 @@ export default function Leases() {
           <Textarea label="Notes" value={form.notes} onChange={(e) => setField('notes', e.target.value)} rows={2} placeholder="Property address, lease reference, contact details..." />
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setAddModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleAdd}>{t('Save Lease')}</Btn>
+            <Btn onClick={handleAdd}>{t('Save lease')}</Btn>
           </div>
         </div>
       </Modal>
@@ -345,7 +345,7 @@ export default function Leases() {
           </Select>
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
-            <Btn onClick={handlePay}>{t('Record Payment')}</Btn>
+            <Btn onClick={handlePay}>{t('Record payment')}</Btn>
           </div>
         </div>
       </Modal>

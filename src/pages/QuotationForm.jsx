@@ -103,7 +103,7 @@ export default function QuotationForm() {
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
-              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add Line')}</Btn>
+              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add line')}</Btn>
             </div>
             <div className="space-y-3">
               {lines.map((line) => (
@@ -174,7 +174,7 @@ export default function QuotationForm() {
             </div>
           </Card>
 
-          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Quotation')}</Btn>
+          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save quotation')}</Btn>
           <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/quotations')}>{t('Cancel')}</Btn>
         </div>
       </div>

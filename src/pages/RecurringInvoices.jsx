@@ -89,8 +89,8 @@ export default function RecurringInvoices() {
         subtitle={`${activeCount} ${t('active')} · ${fmtMoney(mrr, sym)} ${t('monthly recurring')}`}
         action={
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={runNow}><RefreshCw size={15} /> {t('Generate Due')}</Btn>
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Subscription')}</Btn>
+            <Btn variant="secondary" onClick={runNow}><RefreshCw size={15} /> {t('Generate due')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New subscription')}</Btn>
           </div>
         }
       />
@@ -99,7 +99,7 @@ export default function RecurringInvoices() {
         {recurringInvoices.length === 0 ? (
           <EmptyState icon="🔁" title="No subscriptions yet"
             desc="Set up a schedule once and invoices are generated automatically each cycle — perfect for retainers, memberships and rent."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Create Subscription')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Create subscription')}</Btn>} />
         ) : (
           <Table headers={['Ref', 'Customer', 'Amount', 'Frequency', 'Next Invoice', 'Generated', 'Status', { label: 'Actions', right: true }]}>
             {recurringInvoices.map((r) => (
@@ -127,7 +127,7 @@ export default function RecurringInvoices() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Subscription" width="max-w-2xl">
+      <Modal open={modal} onClose={() => setModal(false)} title="New subscription" width="max-w-2xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Customer *" value={form.customerId} onChange={(e) => setField('customerId', e.target.value)}>
@@ -177,7 +177,7 @@ export default function RecurringInvoices() {
 
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={save}><Repeat size={15} /> {t('Create Subscription')}</Btn>
+            <Btn onClick={save}><Repeat size={15} /> {t('Create subscription')}</Btn>
           </div>
         </div>
       </Modal>

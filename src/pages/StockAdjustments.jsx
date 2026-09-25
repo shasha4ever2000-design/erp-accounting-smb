@@ -71,7 +71,7 @@ export default function StockAdjustments() {
       <PageHeader
         title="Stock adjustments"
         subtitle="Record inventory increases, decreases, and write-offs — approved by a second manager"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Adjustment')}</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New adjustment')}</Btn>}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
@@ -83,7 +83,7 @@ export default function StockAdjustments() {
       <Card>
         {stockAdjustments.length === 0 ? (
           <EmptyState icon="📊" title="No stock adjustments" desc="Record stock counts, damaged goods write-offs, or inventory corrections. Each adjustment posts a journal entry once approved."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('New Adjustment')}</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('New adjustment')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Date', 'Item', 'Type', { label: 'Qty', right: true }, { label: 'Total', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {sorted.map((adj) => {
@@ -134,7 +134,7 @@ export default function StockAdjustments() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Stock Adjustment" width="max-w-lg">
+      <Modal open={modal} onClose={() => setModal(false)} title="New stock adjustment" width="max-w-lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Date" type="date" value={form.date} onChange={(e) => setField('date', e.target.value)} />
@@ -172,7 +172,7 @@ export default function StockAdjustments() {
 
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{t('Submit for Approval')}</Btn>
+            <Btn onClick={handleSave}>{t('Submit for approval')}</Btn>
           </div>
         </div>
       </Modal>

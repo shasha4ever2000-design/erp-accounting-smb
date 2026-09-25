@@ -628,7 +628,7 @@ export default function Reports() {
               </Select>
             </div>
             <Btn variant="secondary" onClick={() => selectedAcc && openDrill(selectedAcc, 'period')} className="print:hidden whitespace-nowrap">
-              <ChevronRight size={14} /> {t('Statement of Account')}
+              <ChevronRight size={14} /> {t('Statement of account')}
             </Btn>
           </div>
         </div>
@@ -2077,7 +2077,7 @@ export default function Reports() {
             </div>
           )}
           {rx && <ExportMenu filename={rx.filename} title={t(reportTitle)} subtitle={`${fmtDate(startDate)} — ${fmtDate(endDate)}`} rows={rx.rows} columns={rx.columns} />}
-          <Btn variant="secondary" onClick={() => window.print()}>{t('Print / Export')}</Btn>
+          <Btn variant="secondary" onClick={() => window.print()}>{t('Print / export')}</Btn>
         </div>
       </Card>
 

@@ -68,7 +68,7 @@ export default function PrepaidExpenses() {
       <PageHeader
         title="Prepaid expenses"
         subtitle="Track insurance, rent, subscriptions and other prepaid costs"
-        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add Prepaid')}</Btn>}
+        action={<Btn onClick={() => setAddModal(true)}><Plus size={15} /> {t('Add prepaid')}</Btn>}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -80,7 +80,7 @@ export default function PrepaidExpenses() {
       <Card>
         {prepaidExpenses.length === 0 ? (
           <EmptyState icon="📋" title="No prepaid expenses" desc="Record insurance premiums, advance rent, or subscriptions paid upfront. Monthly amortization reduces the prepaid balance and recognizes the expense."
-            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add Prepaid')}</Btn>} />
+            action={<Btn onClick={() => setAddModal(true)}><Plus size={14} /> {t('Add prepaid')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Name', 'Category', 'Start', 'End', { label: 'Total Paid', right: true }, { label: 'Amortized', right: true }, { label: 'Remaining', right: true }, 'Status', { label: '', right: true }]}>
             {sorted.map((pre) => {
@@ -126,7 +126,7 @@ export default function PrepaidExpenses() {
       </Card>
 
       {/* Add Modal */}
-      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add Prepaid Expense" width="max-w-lg">
+      <Modal open={addModal} onClose={() => setAddModal(false)} title="Add prepaid expense" width="max-w-lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Annual Insurance Premium" />
@@ -153,7 +153,7 @@ export default function PrepaidExpenses() {
           </div>
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setAddModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleAdd}>{t('Save Prepaid')}</Btn>
+            <Btn onClick={handleAdd}>{t('Save prepaid')}</Btn>
           </div>
         </div>
       </Modal>
@@ -177,7 +177,7 @@ export default function PrepaidExpenses() {
           </p>
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setAmortModal(null)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleAmortize}>{t('Record Amortization')}</Btn>
+            <Btn onClick={handleAmortize}>{t('Record amortization')}</Btn>
           </div>
         </div>
       </Modal>

@@ -150,7 +150,7 @@ export default function PurchaseForm() {
   return (
     <div>
       <button onClick={() => navigate(editId ? `/purchases/${editId}` : '/purchases')} className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100 mb-4">
-        <ArrowLeft size={15} /> {editId ? t('Back to Bill') : t('Back to Purchases')}
+        <ArrowLeft size={15} /> {editId ? t('Back to bill') : t('Back to purchases')}
       </button>
       <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">
         {editId ? `${t('Edit Purchase Invoice')} ${editing?.number || ''}` : t('New Purchase Invoice')}
@@ -248,7 +248,7 @@ export default function PurchaseForm() {
                   <button onClick={() => removeLine(line.id)} aria-label={t('Remove line')} className="mt-2 justify-self-end self-center lg:self-start text-danger-600 dark:text-danger-400 hover:text-danger-600 dark:hover:text-danger-400"><Trash2 size={15} /></button>
                 </div>
               ))}
-              <Btn variant="ghost" onClick={addLine} size="sm"><Plus size={14} /> {t('Add Line')}</Btn>
+              <Btn variant="ghost" onClick={addLine} size="sm"><Plus size={14} /> {t('Add line')}</Btn>
             </div>
 
             <div className="border-t border-slate-100 dark:border-surface-750 mt-6 pt-4 space-y-2 text-sm">
@@ -294,7 +294,7 @@ export default function PurchaseForm() {
               <div className="flex justify-between font-bold text-lg border-t border-slate-200 dark:border-surface-700 pt-2 mt-2"><span>Total</span><span className="text-warning-700 dark:text-warning-400">{fmtMoney(total, sym)}</span></div>
             </div>
             <div className="mt-5 space-y-2">
-              <Btn className="w-full justify-center" onClick={handleSave}>{editId ? t('Save Changes') : t('Save Purchase Invoice')}</Btn>
+              <Btn className="w-full justify-center" onClick={handleSave}>{editId ? t('Save changes') : t('Save purchase invoice')}</Btn>
               <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate(editId ? `/purchases/${editId}` : '/purchases')}>{t('Cancel')}</Btn>
             </div>
           </Card>

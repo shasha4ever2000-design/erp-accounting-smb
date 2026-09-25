@@ -37,13 +37,13 @@ export default function Departments() {
       <PageHeader
         title="Departments"
         subtitle={`${departments.length} ${t('departments')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Department')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New department')}</Btn>}
       />
 
       <Card>
         {departments.length === 0 ? (
           <EmptyState icon="🏢" title="No departments" desc="Create departments to organize your employees and track payroll by department."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Department')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add department')}</Btn>} />
         ) : (
           <Table headers={['Department Name', 'Description', 'Cost Center', 'Employees', { label: 'Actions', right: true }]}>
             {departments.map((d) => {
@@ -78,14 +78,14 @@ export default function Departments() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Department' : 'New Department'}>
+      <Modal open={modal} onClose={close} title={editing ? 'Edit department' : 'New department'}>
         <div className="space-y-4">
           <Input label="Department Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Sales, Finance, Operations" />
           <Textarea label="Description" value={form.description} onChange={(e) => setField('description', e.target.value)} rows={2} placeholder="Department purpose or scope" />
           <Input label="Cost Center Code" value={form.costCenter} onChange={(e) => setField('costCenter', e.target.value)} placeholder="e.g. CC-001" />
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Department'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Add department'}</Btn>
           </div>
         </div>
       </Modal>

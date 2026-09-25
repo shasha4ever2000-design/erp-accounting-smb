@@ -116,7 +116,7 @@ export default function LandedCosts() {
               </Table>
               <div className="flex items-center justify-between px-6 py-4 border-t border-slate-100 dark:border-surface-750">
                 <span className="text-sm text-slate-500 dark:text-slate-400">{t('Dr Inventory')} {money(Number(amount) || 0)} · {t('Cr')} {accName(creditAccountId)}</span>
-                <Btn onClick={handlePost} disabled={!canPost}><Plus size={15} /> {t('Post Landed Cost')}</Btn>
+                <Btn onClick={handlePost} disabled={!canPost}><Plus size={15} /> {t('Post landed cost')}</Btn>
               </div>
             </Card>
           )}

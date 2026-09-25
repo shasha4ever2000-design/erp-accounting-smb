@@ -71,7 +71,7 @@ export default function BankAccounts() {
       <PageHeader
         title="Cash & cash equivalents"
         subtitle={`${t('Total balance:')} ${fmtMoney(totalCash, sym)} · ${bankAccounts.length} ${t('accounts')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Account')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New account')}</Btn>}
       />
 
       {/* Account cards */}
@@ -114,7 +114,7 @@ export default function BankAccounts() {
         })}
         {bankAccounts.length === 0 && (
           <div className="col-span-3">
-            <EmptyState icon="🏦" title="No bank accounts" desc="Add your bank and cash accounts to track balances." action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Account')}</Btn>} />
+            <EmptyState icon="🏦" title="No bank accounts" desc="Add your bank and cash accounts to track balances." action={<Btn onClick={openNew}><Plus size={14} /> {t('Add account')}</Btn>} />
           </div>
         )}
       </div>
@@ -153,7 +153,7 @@ export default function BankAccounts() {
       )}
 
       {/* Add / Edit Modal */}
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Account' : 'New Bank / Cash Account'}>
+      <Modal open={modal} onClose={close} title={editing ? 'Edit account' : 'New bank / cash account'}>
         <div className="space-y-4">
           <Input label="Account Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Operating Account, Petty Cash" />
           <Select label="Account Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
@@ -181,7 +181,7 @@ export default function BankAccounts() {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Account'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Add account'}</Btn>
           </div>
         </div>
       </Modal>

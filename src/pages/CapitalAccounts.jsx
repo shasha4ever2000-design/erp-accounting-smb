@@ -312,7 +312,7 @@ export default function CapitalAccounts() {
       )}
 
       {/* Partner modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Capital Account' : 'New Capital Account'}>
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit capital account' : 'New capital account'}>
         <div className="space-y-4">
           <Input label="Name *" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder={t('e.g. Ahmed Al-Rashid')} />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -331,7 +331,7 @@ export default function CapitalAccounts() {
           {error && <p className="text-sm text-danger-600 dark:text-danger-400 flex items-start gap-2"><AlertTriangle size={15} className="flex-shrink-0 mt-0.5" /> {error}</p>}
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={savePartner}>{editing ? 'Save Changes' : 'Create'}</Btn>
+            <Btn onClick={savePartner}>{editing ? 'Save changes' : 'Create'}</Btn>
           </div>
         </div>
       </Modal>
@@ -368,7 +368,7 @@ export default function CapitalAccounts() {
       </Modal>
 
       {/* Profit allocation modal */}
-      <Modal open={allocModal} onClose={() => setAllocModal(false)} title="Allocate Profit to Owners">
+      <Modal open={allocModal} onClose={() => setAllocModal(false)} title="Allocate profit to owners">
         <div className="space-y-4">
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {t('This moves profit out of retained earnings and into each owner\'s account. Total equity does not change — the profit simply stops being "kept in the business" and becomes "owed to a named owner".')}
