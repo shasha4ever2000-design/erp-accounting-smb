@@ -7,6 +7,7 @@ import { idbKvStorage, flushNow } from '../utils/idbKvStorage'
 import { ledgerAnchor, matchesAnchor } from '../utils/ledgerChain'
 import { isPersisted, storageEstimate, assessDurability } from '../utils/durability'
 import { useStore } from '../store'
+import { asSystem } from './guard'
 
 export const createDataSlice = (set, get) => ({
   // ─── BACKUP / RESTORE ──────────────────────────────────────────
@@ -197,7 +198,7 @@ export const createDataSlice = (set, get) => ({
       const store = await s._readBackups()
       const last = store.lastAutoAt ? new Date(store.lastAutoAt).getTime() : 0
       if (Date.now() - last < 24 * 60 * 60 * 1000) return { ran: false }
-      const e = await s.snapshotNow('Auto')
+      const e = await asSystem(() => s.snapshotNow('Auto'))
       return { ran: true, at: e.at }
     } catch { return { ran: false } }
   },
@@ -243,7 +244,7 @@ export const createDataSlice = (set, get) => ({
         client, companyId: company.cloudCompanyId, userId: sessionData.session.user.id, entities,
         localSnapshot, lastSyncedSnapshot: meta.snapshot, lastPulledAt: meta.pulledAt,
       })
-      get().importData(merged)
+      asSystem(() => get().importData(merged))
       await get()._writeSyncMeta({ snapshot: merged, pulledAt: newPulledAt })
       const now = new Date().toISOString()
       set({ syncStatus: 'idle', lastSyncAt: now, lastSyncError: null })

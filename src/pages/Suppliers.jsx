@@ -86,7 +86,7 @@ export default function Suppliers() {
         action={
           <div className="flex items-center gap-2">
             {suppliers.length > 0 && <ExportMenu filename="suppliers" title={t('Suppliers')} rows={suppliers} columns={exportCols} />}
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Supplier')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New supplier')}</Btn>
           </div>
         }
       />
@@ -107,7 +107,7 @@ export default function Suppliers() {
             icon="🏭"
             title={t('No suppliers yet')}
             desc={t('Add your first supplier to start creating purchase invoices.')}
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Supplier')}</Btn>}
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add supplier')}</Btn>}
           />
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No suppliers match your search')}</div>
@@ -142,7 +142,7 @@ export default function Suppliers() {
                     <div className="flex items-center justify-end gap-1">
                       <AttachmentButton entityType="supplier" entityId={s.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(s)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(s)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
+                      <Btn need={['purchases', 'delete']} size="sm" variant="ghost" onClick={() => handleDelete(s)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -152,7 +152,7 @@ export default function Suppliers() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Supplier' : 'New Supplier'}>
+      <Modal open={modal} onClose={close} title={editing ? 'Edit supplier' : 'New supplier'}>
         <div className="space-y-4">
           <Input label="Supplier Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Supplier company name" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -181,7 +181,7 @@ export default function Suppliers() {
           />
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Supplier'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Add supplier'}</Btn>
           </div>
         </div>
       </Modal>

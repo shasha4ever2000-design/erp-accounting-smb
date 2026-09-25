@@ -50,7 +50,7 @@ export default function Quotations() {
       <PageHeader
         title="Quotations / estimates"
         subtitle={`${quotations.length} ${t('total quotations')}`}
-        action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> {t('New Quotation')}</Btn>}
+        action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={15} /> {t('New quotation')}</Btn>}
       />
 
       {/* Status tabs */}
@@ -67,7 +67,7 @@ export default function Quotations() {
       <Card>
         {quotations.length === 0 ? (
           <EmptyState icon="📋" title="No quotations yet" desc="Create quotations and estimates for your customers. Convert them to invoices with one click."
-            action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> {t('New Quotation')}</Btn>} />
+            action={<Btn onClick={() => navigate('/quotations/new')}><Plus size={14} /> {t('New quotation')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">No quotations with status "{filter}"</div>
         ) : (
@@ -120,7 +120,7 @@ export default function Quotations() {
                       {q.status === 'invoiced' && (
                         <span className="text-xs text-slate-500 dark:text-slate-400 px-2">{t('Converted')}</span>
                       )}
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(q)}>
+                      <Btn need={['sales', 'delete']} size="sm" variant="ghost" onClick={() => handleDelete(q)}>
                         <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                       </Btn>
                     </div>

@@ -48,13 +48,13 @@ export default function CreditNotes() {
       <PageHeader
         title="Credit notes"
         subtitle="Sales returns and credit adjustments to customers"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Credit Note')}</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New credit note')}</Btn>}
       />
 
       <Card>
         {creditNotes.length === 0 ? (
           <EmptyState icon="📄" title="No credit notes" desc="Issue credit notes for sales returns, overpayments, or price adjustments."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Issue Credit Note')}</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Issue credit note')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Customer', 'Date', 'Invoice Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((cn) => (
@@ -70,14 +70,14 @@ export default function CreditNotes() {
                 <Td right>
                   <AttachmentButton entityType="creditnote" entityId={cn.id} />
                   {cn.status !== 'void' && (
-                    <Btn size="sm" variant="ghost" title="Void credit note" onClick={async () => {
+                    <Btn need={['sales', 'delete']} size="sm" variant="ghost" title="Void credit note" onClick={async () => {
                       if (!await ask(`${t('Void credit note')} ${cn.number}?`)) return
                       try { voidCreditNote(cn.id, { date: today() }) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
                     }}>
                       <Ban size={13} className="text-slate-500" />
                     </Btn>
                   )}
-                  <Btn size="sm" variant="ghost" onClick={async () => { if (!await ask(`Delete ${cn.number}?`)) return; try { deleteCreditNote(cn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
+                  <Btn need={['sales', 'delete']} size="sm" variant="ghost" onClick={async () => { if (!await ask(`Delete ${cn.number}?`)) return; try { deleteCreditNote(cn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
                     <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                   </Btn>
                 </Td>
@@ -87,7 +87,7 @@ export default function CreditNotes() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Credit Note" width="max-w-lg">
+      <Modal open={modal} onClose={() => setModal(false)} title="New credit note" width="max-w-lg">
         <div className="space-y-4">
           <Select label="Customer *" value={form.customerId} onChange={(e) => handleCustomer(e.target.value)}>
             <option value="">— Select customer —</option>
@@ -117,7 +117,7 @@ export default function CreditNotes() {
           </p>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{t('Issue Credit Note')}</Btn>
+            <Btn onClick={handleSave}>{t('Issue credit note')}</Btn>
           </div>
         </div>
       </Modal>
