@@ -9,7 +9,8 @@ import { useT } from '../i18n'
 import { CustomFieldInputs } from '../components/CustomFields'
 import { validateValues, exportColumns } from '../utils/customFields'
 import ExportMenu from '../components/ExportMenu'
-import { Plus, Pencil, Trash2, Users, Search } from 'lucide-react'
+import { Plus, Pencil, Trash2, Users, Search, Link2 } from 'lucide-react'
+import PortalLinkModal from '../components/PortalLinkModal'
 import { ETA_RECEIVER_TYPES } from '../utils/etaEinvoice'
 import { customerBalance } from '../utils/partyBalance'
 import { ask } from '../components/Dialogs'
@@ -24,6 +25,7 @@ export default function Customers() {
   const controlOptions = controlAccountsFor(accounts, 'customers')
   const sym = settings.company.currencySymbol
   const t = useT()
+  const [portalFor, setPortalFor] = useState(null)
   const [modal, setModal] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -92,7 +94,7 @@ export default function Customers() {
         action={
           <div className="flex items-center gap-2">
             {customers.length > 0 && <ExportMenu filename="customers" title={t('Customers')} rows={customers} columns={exportCols} />}
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Customer')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New customer')}</Btn>
           </div>
         }
       />
@@ -114,7 +116,7 @@ export default function Customers() {
             icon="👥"
             title={t('No customers yet')}
             desc={t('Add your first customer to start creating invoices.')}
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Customer')}</Btn>}
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add customer')}</Btn>}
           />
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No customers match your search')}</div>
@@ -148,8 +150,9 @@ export default function Customers() {
                   <Td right>
                     <div className="flex items-center justify-end gap-1">
                       <AttachmentButton entityType="customer" entityId={c.id} />
+                      <Btn need={['sales', 'edit']} size="sm" variant="ghost" onClick={() => setPortalFor(c)} title={t('Customer portal link')}><Link2 size={13} /></Btn>
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(c)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(c)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
+                      <Btn need={['sales', 'delete']} size="sm" variant="ghost" onClick={() => handleDelete(c)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -159,7 +162,7 @@ export default function Customers() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Customer' : 'New Customer'}>
+      <Modal open={modal} onClose={close} title={editing ? 'Edit customer' : 'New customer'}>
         <div className="space-y-4">
           <Input label="Customer Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Full name or company name" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -198,10 +201,11 @@ export default function Customers() {
           />
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Customer'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Add customer'}</Btn>
           </div>
         </div>
       </Modal>
+      {portalFor && <PortalLinkModal customer={portalFor} onClose={() => setPortalFor(null)} />}
     </div>
   )
 }
