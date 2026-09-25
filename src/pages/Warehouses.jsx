@@ -63,8 +63,8 @@ export default function Warehouses() {
         subtitle={`${warehouses.length} ${t('locations')} · ${inventoryItems.length} ${t('items tracked')}`}
         action={
           <div className="flex gap-2">
-            <Btn variant="secondary" onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer Stock')}</Btn>
-            <Btn onClick={openNewWh}><Plus size={15} /> {t('New Warehouse')}</Btn>
+            <Btn variant="secondary" onClick={openTransfer}><ArrowLeftRight size={15} /> {t('Transfer stock')}</Btn>
+            <Btn onClick={openNewWh}><Plus size={15} /> {t('New warehouse')}</Btn>
           </div>
         }
       />
@@ -162,19 +162,19 @@ export default function Warehouses() {
       )}
 
       {/* Warehouse modal */}
-      <Modal open={whModal} onClose={() => setWhModal(false)} title={editing ? 'Edit Warehouse' : 'New Warehouse'}>
+      <Modal open={whModal} onClose={() => setWhModal(false)} title={editing ? 'Edit warehouse' : 'New warehouse'}>
         <div className="space-y-4">
           <Input label="Warehouse Name *" value={whForm.name} onChange={(e) => setW('name', e.target.value)} placeholder="e.g. North Depot" />
           <Input label="Location / Address" value={whForm.location} onChange={(e) => setW('location', e.target.value)} />
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setWhModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={saveWh}>{editing ? 'Save Changes' : 'Add Warehouse'}</Btn>
+            <Btn onClick={saveWh}>{editing ? 'Save changes' : 'Add warehouse'}</Btn>
           </div>
         </div>
       </Modal>
 
       {/* Transfer modal */}
-      <Modal open={trModal} onClose={() => setTrModal(false)} title="Transfer Stock">
+      <Modal open={trModal} onClose={() => setTrModal(false)} title="Transfer stock">
         <div className="space-y-4">
           <Select label="Item" value={trForm.itemId} onChange={(e) => setT('itemId', e.target.value)}>
             {inventoryItems.map((i) => <option key={i.id} value={i.id}>{i.name}</option>)}

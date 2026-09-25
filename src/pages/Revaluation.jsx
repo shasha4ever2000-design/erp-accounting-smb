@@ -86,7 +86,7 @@ export default function Revaluation() {
             {totalDelta >= 0 ? '+' : ''}{fmtMoney(totalDelta, sym)}
           </p>
         </div>
-        <Btn onClick={post} disabled={!hasChanges}><RefreshCw size={15} /> {t('Post Revaluation')}</Btn>
+        <Btn onClick={post} disabled={!hasChanges}><RefreshCw size={15} /> {t('Post revaluation')}</Btn>
       </Card>
 
       <Card className="p-4 mb-6 flex items-start gap-3 bg-brand-50/50 dark:bg-brand-500/[0.07] ring-1 ring-inset ring-brand-500/15">

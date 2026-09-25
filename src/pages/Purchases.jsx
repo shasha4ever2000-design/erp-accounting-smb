@@ -110,7 +110,7 @@ export default function Purchases() {
         action={
           <div className="flex items-center gap-2">
             {purchases.length > 0 && <ExportMenu filename="purchase-invoices" title={t('Purchase Invoices')} rows={sorted} columns={exportCols} />}
-            <Btn onClick={() => navigate('/purchases/new')} title={t('New Purchase') + shortcutHint('/purchases/new')}><Plus size={15} /> {t('New Purchase')}</Btn>
+            <Btn onClick={() => navigate('/purchases/new')} title={t('New purchase') + shortcutHint('/purchases/new')}><Plus size={15} /> {t('New purchase')}</Btn>
           </div>
         }
       />
@@ -147,7 +147,7 @@ export default function Purchases() {
       <Card>
         {purchases.length === 0 ? (
           <EmptyState icon="🛒" title={t('No purchase invoices yet')} desc={t('Record your first purchase to track payables.')}
-            action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> {t('New Purchase')}</Btn>} />
+            action={<Btn onClick={() => navigate('/purchases/new')}><Plus size={14} /> {t('New purchase')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No purchases match your filter')}</div>
         ) : (
@@ -186,7 +186,7 @@ export default function Purchases() {
                         </Btn>
                       )}
                       {p.status !== 'void' && (
-                        <Btn size="sm" variant="ghost" onClick={() => handleVoid(p)} title={t('Void')}>
+                        <Btn need={['purchases', 'delete']} size="sm" variant="ghost" onClick={() => handleVoid(p)} title={t('Void')}>
                           <Ban size={13} className="text-danger-400" />
                         </Btn>
                       )}
@@ -199,7 +199,7 @@ export default function Purchases() {
         )}
       </Card>
 
-      <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Record Payment to Supplier">
+      <Modal open={!!payModal} onClose={() => setPayModal(null)} title="Record payment to supplier">
         {payModal && (
           <div className="space-y-4">
             <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-100 dark:border-warning-800/50 rounded-lg p-3 text-sm text-warning-700 dark:text-warning-300">
@@ -231,7 +231,7 @@ export default function Purchases() {
             <Input label="Reference / Notes" value={payForm.notes} onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Cheque #, transfer ref..." />
             <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
               <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
-              <Btn onClick={handleRecord}>{t('Record Payment')}</Btn>
+              <Btn onClick={handleRecord}>{t('Record payment')}</Btn>
             </div>
           </div>
         )}

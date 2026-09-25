@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
 import { tr, useT } from '../i18n'
 import { Btn } from './UI'
+import { refusalMessage } from '../utils/permissions'
 
 const useDialogs = create((set) => ({ queue: [], push: (d) => set((s) => ({ queue: [...s.queue, d] })), shift: () => set((s) => ({ queue: s.queue.slice(1) })) }))
 
@@ -77,7 +78,20 @@ export function DialogHost() {
     const prev = window.alert
     window.__nativeAlert = window.__nativeAlert || prev
     window.alert = (msg) => { notify(msg) }
-    return () => { mounted = false; window.alert = prev }
+    // An action the user's role doesn't allow is refused by the store with a
+    // PermissionError. Most buttons don't catch it, so say it here in words
+    // rather than letting the click silently do nothing.
+    const refused = (err) => err && (err.code === 'PERMISSION_DENIED' || err.name === 'PermissionError')
+    const say = (err) => notify(err.area ? refusalMessage(err, tr) : err.message)
+    const onError = (e) => { if (refused(e.error)) { e.preventDefault(); say(e.error) } }
+    const onRejection = (e) => { if (refused(e.reason)) { e.preventDefault(); say(e.reason) } }
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onRejection)
+    return () => {
+      mounted = false; window.alert = prev
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onRejection)
+    }
   }, [])
 
   // Focus the confirming button so Enter answers and Escape cancels.

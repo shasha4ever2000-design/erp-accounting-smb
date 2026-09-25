@@ -1,12 +1,14 @@
 import { useEffect, useState, lazy, Suspense } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useStore } from './store'
+import { asSystem } from './store/guard'
 import { useShortcuts, ShortcutsHelp } from './components/Shortcuts'
 import { useAuth } from './auth'
 import { useT } from './i18n'
 import { requestPersistence } from './utils/durability'
 import { CalendarClock, X } from 'lucide-react'
 import Layout from './components/Layout'
+import { RouteGuard } from './components/Access'
 import Dashboard from './pages/Dashboard' // eager: default landing route
 import SetupWizard from './components/SetupWizard'
 
@@ -168,7 +170,7 @@ export default function App() {
     const auth = useAuth.getState()
     const comp = auth.companies.find((c) => c.id === auth.currentCompanyId)
     if (comp && comp.name && (!companyName || companyName === 'My Company') && comp.name !== companyName) {
-      updateCompany({ name: comp.name })
+      asSystem(() => updateCompany({ name: comp.name }))
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -195,6 +197,7 @@ export default function App() {
           is only discovered when a return is due. */}
       {setupPending && <SetupWizard onClose={() => {}} />}
       <Suspense fallback={<PageLoader />}>
+      <RouteGuard>
       <Routes>
         <Route path="/" element={<Dashboard />} />
         <Route path="/accounts" element={<ChartOfAccounts />} />
@@ -292,6 +295,7 @@ export default function App() {
         <Route path="/team" element={<Team />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
+      </RouteGuard>
       </Suspense>
 
       {schedulerResult?.ran && (

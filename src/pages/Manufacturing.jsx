@@ -102,7 +102,7 @@ export default function Manufacturing() {
         action={
           tab === 'bom'
             ? <Btn onClick={() => { setEditBOM(null); setBomForm({ name: '', description: '', outputItemId: '', outputQuantity: 1, components: [] }); setBomModal(true) }}><Plus size={15} /> New BOM</Btn>
-            : <Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={15} /> {t('New Work Order')}</Btn>
+            : <Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={15} /> {t('New work order')}</Btn>
         }
       />
 
@@ -169,7 +169,7 @@ export default function Manufacturing() {
         <Card>
           {workOrders.length === 0 ? (
             <EmptyState icon="🏭" title="No Work Orders" desc="Create work orders to produce goods. On completion, raw material costs are transferred to Finished Goods automatically."
-              action={<Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={14} /> {t('New Work Order')}</Btn>} />
+              action={<Btn onClick={() => { setWoForm(emptyWO()); setWoModal(true) }}><Plus size={14} /> {t('New work order')}</Btn>} />
           ) : (
             <Table headers={['Number', 'Product', 'Qty', 'Scheduled', { label: 'Material Cost', right: true }, 'Status', { label: 'Actions', right: true }]}>
               {woSorted.map((wo) => (
@@ -234,7 +234,7 @@ export default function Manufacturing() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-200">Components / Raw Materials</label>
-              <Btn size="sm" variant="secondary" onClick={addComp}><Plus size={13} /> {t('Add Component')}</Btn>
+              <Btn size="sm" variant="secondary" onClick={addComp}><Plus size={13} /> {t('Add component')}</Btn>
             </div>
             {bomForm.components.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4 border border-dashed border-slate-200 dark:border-surface-700 rounded-lg">No components yet — click Add Component</p>
@@ -286,7 +286,7 @@ export default function Manufacturing() {
       </Modal>
 
       {/* Work Order Modal */}
-      <Modal open={woModal} onClose={() => setWoModal(false)} title="New Work Order" width="max-w-lg">
+      <Modal open={woModal} onClose={() => setWoModal(false)} title="New work order" width="max-w-lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="From BOM" value={woForm.bomId} onChange={(e) => pickBOM(e.target.value)}>
@@ -330,7 +330,7 @@ export default function Manufacturing() {
           </div>
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setWoModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSaveWO}>{t('Create Work Order')}</Btn>
+            <Btn onClick={handleSaveWO}>{t('Create work order')}</Btn>
           </div>
         </div>
       </Modal>
@@ -353,7 +353,7 @@ export default function Manufacturing() {
           )}
           <div className="flex justify-end gap-2">
             <Btn variant="secondary" onClick={() => setCompleteModal(null)}>{t('Cancel')}</Btn>
-            <Btn onClick={() => { completeWorkOrder(completeModal.id, completeDate); setCompleteModal(null) }}>{t('Complete & Post JE')}</Btn>
+            <Btn onClick={() => { completeWorkOrder(completeModal.id, completeDate); setCompleteModal(null) }}>{t('Complete & post JE')}</Btn>
           </div>
         </div>
       </Modal>

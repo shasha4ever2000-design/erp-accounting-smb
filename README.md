@@ -10,14 +10,16 @@ app, works offline, and speaks English and Arabic (right-to-left). Inspired by
 | Area | Highlights |
 |------|------------|
 | **Ledger** | Chart of accounts with groups, journal entries, recurring journals, period lock, year-end close, month-end close checklist, tamper-evident hash chain on every entry |
-| **Sales** | Quotations → sales orders → invoices, receipts, early-settlement discounts, returns (credit notes), customer advances, recurring invoices, payment reminders, POS, CRM pipeline |
+| **Sales** | Quotations → sales orders → invoices, receipts, early-settlement discounts, returns (credit notes), customer advances, recurring invoices, payment reminders, POS, CRM pipeline, emailing invoices / statements / reminders, a customer portal |
 | **Purchases** | Requisitions, purchase quotes and orders, goods receipts with 3-way match, bills, payments with withholding tax, returns (debit notes), recurring bills, landed costs |
 | **Inventory** | Products and services, kits, weighted-average or FIFO costing, multiple warehouses, stock counts and cycle counts, manufacturing (BOMs and work orders) |
-| **Banking** | Bank and cash accounts, cheques, transfers, bank-feed rules, reconciliation, foreign currencies and FX revaluation |
+| **Banking** | Bank and cash accounts, cheques, transfers, bank-feed rules, reconciliation with statement import (OFX/QFX, CAMT.053, MT940, CSV) that suggests the invoice or bill each payment settles, foreign currencies and FX revaluation |
 | **HR & payroll** | Employees, contracts, attendance, payroll with GOSI, end-of-service benefits, salary advances, expense claims |
 | **Assets** | Fixed assets with depreciation and disposal, prepaid expenses, IFRS 16 leases |
 | **Reporting** | P&L, balance sheet, cash flow, trial balance, general ledger, AR/AP ageing, VAT return (ZATCA layout), IFRS 9 expected credit losses, IAS 12 deferred tax, notes to the accounts, budgets, margins, custom reports |
 | **Compliance** | ZATCA QR codes (Saudi Arabia), ETA e-invoice export (Egypt), sales-tax returns for other regions |
+| **Team** | Roles (owner, admin, accountant, sales clerk, purchasing clerk, HR officer, viewer) with a permission grid owners can adjust; the rules are checked on every change, not just by hiding buttons |
+| **Everyday use** | Notifications bell (overdue invoices, bills due, low stock, approvals, month not closed), works fully offline and installs like an app, Arabic and English |
 
 ## Tech stack
 
@@ -55,8 +57,9 @@ CI runs lint, the unit tests, the build and the end-to-end tests on every push.
   tables, the `Money` component, in-app dialogs) are in `components/UI.jsx`
   and `components/Dialogs.jsx`.
 - `src/locales/ar.js` — the Arabic dictionary, loaded only when Arabic is used.
-- `supabase/` — the database schema for optional cloud sync, and the `ai-chat`
-  Edge Function for the AI assistant.
+- `supabase/` — the database schema for optional cloud sync, and three Edge
+  Functions: `ai-chat` (AI assistant), `send-email` (emailing documents) and
+  `portal` (the customer portal). Setup: `docs/EMAIL-AND-PORTAL.md`.
 
 ## Accounting principles
 
@@ -91,6 +94,10 @@ supabase functions deploy ai-chat
 ```
 
 then tick **Use the company's cloud assistant** in Settings → AI Assistant.
+
+Emailing from the app and the customer portal also run on the cloud; see
+[docs/EMAIL-AND-PORTAL.md](docs/EMAIL-AND-PORTAL.md) for the one-time setup.
+Without it, **Email** opens the message in your own email app instead.
 
 ## Keyboard shortcuts
 

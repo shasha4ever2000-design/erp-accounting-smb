@@ -209,8 +209,8 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2.5">
-            <button onClick={() => navigate('/invoices/new')} title={t('New Invoice') + shortcutHint('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-surface-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-50 active:scale-[.98] transition-all shadow-elevated">
-              <FileText size={16} /> {t('New Invoice')}
+            <button onClick={() => navigate('/invoices/new')} title={t('New invoice') + shortcutHint('/invoices/new')} className="inline-flex items-center gap-2 bg-white text-surface-900 font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-brand-50 active:scale-[.98] transition-all shadow-elevated">
+              <FileText size={16} /> {t('New invoice')}
             </button>
             <button onClick={() => navigate('/reports')} className="group inline-flex items-center gap-2 bg-white/[0.08] text-white font-semibold text-sm px-4 py-2.5 rounded-lg hover:bg-white/[0.14] active:scale-[.98] transition-all ring-1 ring-inset ring-white/[0.14] backdrop-blur-sm">
               {t('Reports')} <ArrowRight size={15} className="transition-transform duration-150 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5 rtl:rotate-180" />

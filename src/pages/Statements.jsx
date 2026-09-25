@@ -4,7 +4,8 @@ import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
-import { buildStatementMessage, mailtoLink, whatsappLink, resolveRegion } from '../utils/shareStatement'
+import { buildStatementMessage, whatsappLink, resolveRegion } from '../utils/shareStatement'
+import EmailDialog from '../components/EmailDialog'
 import { buildStatement } from '../utils/statement'
 import { DocumentHeader, DocumentFooter } from '../components/DocumentBrand'
 import { format } from 'date-fns'
@@ -41,6 +42,7 @@ export default function Statements() {
 
   // ── Sharing ────────────────────────────────────────────────────────
   const [copied, setCopied] = useState(false)
+  const [emailDraft, setEmailDraft] = useState(null)
   const shareMessage = useMemo(() => (entity ? buildStatementMessage({
     entityName: entity.name,
     companyName: company.name,
@@ -84,11 +86,12 @@ export default function Statements() {
           subtitle="Printable customer & supplier account statements"
           action={entity && (
             <div className="flex flex-wrap items-center gap-2">
-              {entity.email && (
-                <Btn variant="secondary" size="sm" onClick={() => openLink(mailtoLink({ email: entity.email, subject: shareSubject, body: shareMessage }))}>
-                  <Mail size={14} /> {t('Email')}
-                </Btn>
-              )}
+              <Btn need={['sales', 'edit']} variant="secondary" size="sm" onClick={() => setEmailDraft({
+                to: entity.email || '', subject: shareSubject, message: shareMessage,
+                customer: type === 'customer' ? entity : null, docKind: 'statement', docRef: `${startDate}..${endDate}`,
+              })}>
+                <Mail size={14} /> {t('Email')}
+              </Btn>
               {entity.phone && (
                 <Btn variant="secondary" size="sm" onClick={() => openLink(whatsappLink({ phone: entity.phone, body: shareMessage, countryId: resolveRegion(settings.tax?.country, company.currency) }))}>
                   <MessageCircle size={14} /> {t('WhatsApp')}
@@ -286,6 +289,7 @@ export default function Statements() {
           <DocumentFooter docType="statement" bankDetails={settings.invoice?.bankDetails} />
         </Card>
       )}
+      <EmailDialog open={!!emailDraft} onClose={() => setEmailDraft(null)} draft={emailDraft} />
     </div>
   )
 }

@@ -100,7 +100,7 @@ export default function PurchaseOrderForm() {
           <Card className="p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold text-slate-700 dark:text-slate-200 text-sm uppercase tracking-wide">{t('Line Items')}</h3>
-              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add Line')}</Btn>
+              <Btn size="sm" variant="secondary" onClick={addLine}><Plus size={13} /> {t('Add line')}</Btn>
             </div>
             {lines.map((line) => (
               <div key={line.id} className="border border-slate-200/70 dark:border-surface-700 rounded-xl p-3 space-y-2 bg-slate-50 dark:bg-surface-800/60">
@@ -156,7 +156,7 @@ export default function PurchaseOrderForm() {
             <div className="border-t border-slate-200 dark:border-surface-700 pt-2 flex justify-between font-bold text-slate-900 dark:text-slate-100"><span>Total</span><span>{sym}{total.toFixed(2)}</span></div>
           </Card>
 
-          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Purchase Order')}</Btn>
+          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save purchase order')}</Btn>
           <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/purchase-orders')}>{t('Cancel')}</Btn>
         </div>
       </div>

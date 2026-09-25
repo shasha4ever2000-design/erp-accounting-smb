@@ -3,24 +3,30 @@ import { useT } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, EmptyState } from '../components/UI'
-import { BellRing, Copy, Printer, Clock } from 'lucide-react'
+import { BellRing, Copy, Printer, Clock, Mail } from 'lucide-react'
+import { documentDue } from '../utils/partyBalance'
+import EmailDialog from '../components/EmailDialog'
 
 // Payment reminders: surfaces overdue customer invoices, groups them by customer,
 // and generates a ready-to-send reminder message with an aging breakdown.
 export default function PaymentReminders() {
   const t = useT()
-  const { invoices, customers, settings } = useStore()
+  const { invoices, customers, creditNotes, settings } = useStore()
   const sym = settings.company.currencySymbol
   const company = settings.company
   const todayStr = today()
 
   const [minDays, setMinDays] = useState('1')
   const [copied, setCopied] = useState('')
+  const [emailDraft, setEmailDraft] = useState(null)
 
   const groups = useMemo(() => {
+    // What is still owed after payments and returns, in base currency —
+    // a customer who returned goods must not be chased for them.
+    const balanceOf = (i) => documentDue(i, creditNotes, 'invoiceId') * (Number(i.exchangeRate) || 1)
     const overdue = invoices.filter((i) => {
-      if (i.status === 'paid' || i.status === 'cancelled' || i.status === 'void') return false
-      const bal = (i.total || 0) - (i.amountPaid || 0)
+      if (['paid', 'cancelled', 'void', 'draft'].includes(i.status)) return false
+      const bal = balanceOf(i)
       if (bal <= 0.005) return false
       const due = i.dueDate || i.date
       const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
@@ -28,7 +34,7 @@ export default function PaymentReminders() {
     }).map((i) => {
       const due = i.dueDate || i.date
       const days = Math.floor((new Date(todayStr) - new Date(due)) / 86400000)
-      return { ...i, balance: (i.total || 0) - (i.amountPaid || 0), daysOverdue: days, due }
+      return { ...i, balance: balanceOf(i), daysOverdue: days, due }
     })
     const byCust = {}
     overdue.forEach((i) => {
@@ -37,7 +43,7 @@ export default function PaymentReminders() {
       g.invoices.push(i); g.total += i.balance; g.maxDays = Math.max(g.maxDays, i.daysOverdue)
     })
     return Object.values(byCust).sort((a, b) => b.total - a.total)
-  }, [invoices, minDays, todayStr, t])
+  }, [invoices, creditNotes, minDays, todayStr, t])
 
   const grandTotal = groups.reduce((s, g) => s + g.total, 0)
 
@@ -67,6 +73,17 @@ export default function PaymentReminders() {
     const msg = buildMessage(g)
     try { await navigator.clipboard.writeText(msg); setCopied(g.customerId || g.name); setTimeout(() => setCopied(''), 1500) }
     catch { window.prompt(t('Copy the reminder message:'), msg) }
+  }
+
+  const openEmail = (g) => {
+    const cust = customers.find((c) => c.id === g.customerId) || { id: g.customerId, name: g.name }
+    setEmailDraft({
+      to: cust.email || '', customer: cust.id ? cust : null,
+      subject: `${t('Payment reminder')} — ${company.name}`,
+      message: buildMessage(g),
+      summary: [{ label: t('Total outstanding'), value: fmtMoney(g.total, sym) }],
+      docKind: 'reminder', docRef: g.invoices.map((i) => i.number).join(', ').slice(0, 80),
+    })
   }
 
   const printMsg = (g) => {
@@ -115,6 +132,7 @@ export default function PaymentReminders() {
                   <span className="text-lg font-bold text-danger-600 dark:text-danger-400">{fmtMoney(g.total, sym)}</span>
                   <Btn size="sm" variant="secondary" onClick={() => copyMsg(g)}><Copy size={13} /> {copied === (g.customerId || g.name) ? t('Copied!') : t('Copy reminder')}</Btn>
                   <Btn size="sm" variant="secondary" onClick={() => printMsg(g)}><Printer size={13} /> {t('Print')}</Btn>
+                  <Btn need={['sales', 'edit']} size="sm" onClick={() => openEmail(g)}><Mail size={13} /> {t('Email reminder')}</Btn>
                 </div>
               </div>
               <table className="w-full text-sm">
@@ -136,6 +154,7 @@ export default function PaymentReminders() {
           ))}
         </div>
       )}
+      <EmailDialog open={!!emailDraft} onClose={() => setEmailDraft(null)} draft={emailDraft} />
     </div>
   )
 }

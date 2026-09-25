@@ -60,7 +60,7 @@ export default function Currencies() {
       <PageHeader
         title="Currencies & exchange rates"
         subtitle={`${t('Base currency:')} ${base} · ${t('maintain rates for foreign-currency reporting')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('Add Currency')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('Add currency')}</Btn>}
       />
 
       {/* Converter */}
@@ -132,7 +132,7 @@ export default function Currencies() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Currency' : 'Add Currency'}>
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit currency' : 'Add currency'}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Code *" value={form.code} onChange={(e) => setF('code', e.target.value)} placeholder="USD" maxLength={3} />

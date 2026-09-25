@@ -3,7 +3,8 @@ import { useT, tr } from '../i18n'
 import { useStore } from '../store'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Select, Input, Btn, Modal } from '../components/UI'
-import { parseCSV, detectStatementColumns } from '../utils/csv'
+import { parseStatement, matchToLedger, suggestDocument } from '../utils/bankStatement'
+import { documentDue } from '../utils/partyBalance'
 import { matchRule, suggestRules } from '../utils/bankRules'
 import { CheckCircle2, Circle, Landmark, Upload, AlertCircle, Filter, Sparkles, Zap, Plus } from 'lucide-react'
 import { todayISO } from '../utils/localDate'
@@ -12,7 +13,8 @@ import { ask } from '../components/Dialogs'
 export default function Reconciliation() {
   const t = useT()
   const { bankAccounts, accounts, journalEntries, reconciliations, toggleReconciled, getAccountBalance,
-    matchRules, addMatchRule, deleteMatchRule, addBankTransaction, bankTransactions, settings } = useStore()
+    matchRules, addMatchRule, deleteMatchRule, addBankTransaction, bankTransactions, settings,
+    invoices, purchases, customers, suppliers, creditNotes, debitNotes, recordInvoicePayment, recordPurchasePayment } = useStore()
   const sym = settings.company.currencySymbol
 
   const [accId, setAccId] = useState(bankAccounts[0]?.accountId || '')
@@ -48,16 +50,9 @@ export default function Reconciliation() {
 
   const isRec = (jeId) => reconciliations.includes(`${accId}::${jeId}`)
 
-  // ─── CSV statement import + auto-match ─────────────────────────────
-  const parseAmount = (s) => parseFloat(String(s || '').replace(/[^0-9.-]/g, '')) || 0
-  const normalizeDate = (s) => {
-    const v = String(s || '').trim()
-    let m = v.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/)
-    if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
-    m = v.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{2,4})/) // dd/mm/yyyy
-    if (m) { const y = m[3].length === 2 ? '20' + m[3] : m[3]; return `${y}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}` }
-    return v
-  }
+  // ─── Statement import (OFX, CAMT.053, MT940 or CSV) + auto-match ───
+  const due = (doc, kind) => kind === 'invoice' ? documentDue(doc, creditNotes, 'invoiceId') : documentDue(doc, debitNotes, 'purchaseId')
+  const books = { invoices, purchases, customers, suppliers, due }
 
   const handleImportFile = (e) => {
     const file = e.target.files?.[0]
@@ -66,35 +61,55 @@ export default function Reconciliation() {
     const reader = new FileReader()
     reader.onload = (ev) => {
       try {
-        const { headers, rows } = parseCSV(ev.target.result)
-        const col = detectStatementColumns(headers)
-        if (col.date < 0 || (col.amount < 0 && col.debit < 0 && col.credit < 0)) {
-          setImportResult({ error: t('Could not detect Date and Amount columns. Expected headers like Date, Description, Amount (or Debit/Credit).') })
-          return
-        }
-        const stmtLines = rows.map((r) => {
-          const amount = col.amount >= 0 ? parseAmount(r[col.amount]) : parseAmount(r[col.credit]) - parseAmount(r[col.debit])
-          return { date: normalizeDate(r[col.date]), desc: (col.description >= 0 ? r[col.description] : '').trim(), amount }
-        }).filter((l) => l.amount !== 0 || l.desc)
-
-        // Auto-match each statement line to an unreconciled ledger movement
-        // (same amount within 0.01, date within ±5 days), each used once.
-        const used = new Set()
-        const matched = []
-        const unmatched = []
-        stmtLines.forEach((sl) => {
-          const hit = movements.find((m) => !used.has(m.id) && !isRec(m.id)
-            && Math.abs(m.amount - sl.amount) < 0.01
-            && Math.abs((new Date(m.date) - new Date(sl.date)) / 86400000) <= 5)
-          if (hit) { used.add(hit.id); matched.push({ ...sl, jeId: hit.id }) }
-          else unmatched.push({ ...sl, catAccountId: ruleFor(sl.desc, sl.amount)?.accountId || '' })
+        const stmt = parseStatement(ev.target.result, file.name)
+        const { matched, unmatched } = matchToLedger(stmt.lines, movements, { isCleared: isRec })
+        setImportResult({
+          format: stmt.format,
+          currency: stmt.currency,
+          matched,
+          unmatched: unmatched.map((sl) => ({
+            ...sl,
+            catAccountId: ruleFor(sl.desc, sl.amount)?.accountId || '',
+            suggestion: suggestDocument(sl, books),
+          })),
         })
-        setImportResult({ matched, unmatched })
+        // The file already knows the closing balance; don't make the user retype it.
+        if (stmt.closingBalance != null) setStmtBalance(String(stmt.closingBalance))
       } catch (err) {
-        setImportResult({ error: t('Could not read this file.') + ' ' + err.message })
+        const msg = err.message === 'CSV_COLUMNS'
+          ? t('Could not detect Date and Amount columns. Expected headers like Date, Description, Amount (or Debit/Credit).')
+          : err.message === 'NO_LINES' ? t('No transactions were found in this file.')
+            : t('Could not read this file.') + ' ' + err.message
+        setImportResult({ error: msg })
       }
     }
     reader.readAsText(file)
+  }
+
+  // Record the statement line as a payment on the invoice or bill it pays,
+  // then clear it — the receipt's journal entry is the bank movement.
+  const recordSuggested = (u, idx) => {
+    const s = u.suggestion
+    try {
+      const payment = { amount: s.amount, date: u.date || todayISO(), bankAccountId: accId, method: 'Bank transfer', reference: u.ref || '' }
+      const res = s.kind === 'invoice' ? recordInvoicePayment(s.doc.id, payment) : recordPurchasePayment(s.doc.id, payment)
+      if (res?.pendingApproval) {
+        return alert(t('This payment needs approval first. It is waiting in Approvals.'))
+      }
+      const paid = useStore.getState()[s.kind === 'invoice' ? 'invoices' : 'purchases'].find((d) => d.id === s.doc.id)
+      const last = paid?.payments?.[paid.payments.length - 1]
+      if (last?.journalEntryId) toggleReconciled(accId, last.journalEntryId)
+      setImportResult((r) => {
+        const rest = r.unmatched.filter((_, i) => i !== idx)
+        // What's left of a part-paid line still needs booking.
+        const left = Math.round((Math.abs(u.amount) - s.amount) * 100) / 100
+        if (left > 0.005) rest.splice(idx, 0, { ...u, amount: Math.sign(u.amount) * left, suggestion: null })
+        return { ...r, unmatched: rest }
+      })
+    } catch (e) {
+      if (String(e.message).startsWith('PERIOD_LOCKED')) return alert(t('This date falls in a closed accounting period. Choose a later date.'))
+      throw e
+    }
   }
 
   const clearMatched = () => {
@@ -177,11 +192,11 @@ export default function Reconciliation() {
           </Select>
           <Input label="Statement Ending Balance" type="number" step="0.01" value={stmtBalance} onChange={(e) => setStmtBalance(e.target.value)} className="w-48" placeholder="From your bank" />
           <div className="ml-auto">
-            <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={handleImportFile} />
-            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Import Statement (CSV)')}</Btn>
+            <input ref={fileRef} type="file" accept=".csv,.ofx,.qfx,.xml,.sta,.mt940,.940,.txt,text/csv,text/xml,application/xml" className="hidden" onChange={handleImportFile} />
+            <Btn variant="secondary" onClick={() => fileRef.current?.click()}><Upload size={15} /> {t('Import bank statement')}</Btn>
           </div>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('Upload a bank statement CSV to auto-match and clear transactions. Expected columns: Date, Description, Amount (or Debit/Credit).')}</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{t('Upload the statement file from your bank: OFX/QFX, CAMT.053 (XML), MT940 or CSV. Lines are matched to your books, and payments that match an open invoice or bill can be recorded in one click.')}</p>
       </Card>
 
       {/* Matching rules: auto-categorize statement lines by keyword */}
@@ -197,7 +212,7 @@ export default function Reconciliation() {
             <option value="">{t('Select account…')}</option>
             {categoryAccounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}
           </Select>
-          <Btn onClick={saveRule}>{t('Add Rule')}</Btn>
+          <Btn onClick={saveRule}>{t('Add rule')}</Btn>
         </div>
 
         {/* Rules learned from how past bank lines were actually categorised. */}
@@ -238,7 +253,7 @@ export default function Reconciliation() {
         )}
       </Card>
 
-      <Modal open={!!importResult} onClose={() => setImportResult(null)} title={t('Import Bank Statement')} width="max-w-2xl">
+      <Modal open={!!importResult} onClose={() => setImportResult(null)} title={t('Import bank statement')} width="max-w-2xl">
         {importResult?.error ? (
           <div className="flex items-start gap-2 text-sm text-danger-600 dark:text-danger-400">
             <AlertCircle size={18} className="flex-shrink-0 mt-0.5" /><span>{importResult.error}</span>
@@ -268,7 +283,8 @@ export default function Reconciliation() {
                 </div>
                 <div className="max-h-64 overflow-y-auto border border-slate-100 dark:border-slate-700 rounded-lg divide-y divide-slate-50 dark:divide-slate-700/50">
                   {importResult.unmatched.map((u, i) => (
-                    <div key={i} className="flex items-center gap-2 px-3 py-2 text-sm">
+                    <div key={i} className="px-3 py-2 text-sm">
+                    <div className="flex items-center gap-2">
                       <span className="text-slate-500 dark:text-slate-400 whitespace-nowrap">{fmtDate(u.date)}</span>
                       <span className="flex-1 min-w-0 truncate text-slate-700 dark:text-slate-200" title={u.desc}>{u.desc || '—'}</span>
                       <span className={`whitespace-nowrap ${u.amount >= 0 ? 'text-success-700 dark:text-success-400' : 'text-danger-600 dark:text-danger-400'}`}>{u.amount >= 0 ? '+' : '−'}{fmtMoney(Math.abs(u.amount), sym)}</span>
@@ -279,9 +295,21 @@ export default function Reconciliation() {
                       </select>
                       <Btn size="sm" onClick={() => bookLine(u, i)} title={t('Book & clear')}>{t('Book')}</Btn>
                     </div>
+                    {u.suggestion && (
+                      <div className="mt-1.5 flex items-center gap-2 rounded-lg bg-brand-50 dark:bg-brand-500/10 px-2.5 py-1.5 text-xs text-brand-800 dark:text-brand-200">
+                        <Sparkles size={12} className="flex-shrink-0" />
+                        <span className="flex-1 min-w-0 truncate">
+                          {t(u.suggestion.kind === 'invoice' ? 'Looks like payment for invoice' : 'Looks like payment of bill')}{' '}
+                          <span className="font-semibold">{u.suggestion.doc.number}</span>
+                          {u.suggestion.party?.name ? ` · ${u.suggestion.party.name}` : ''} · {fmtMoney(u.suggestion.amount, sym)}
+                        </span>
+                        <Btn size="sm" onClick={() => recordSuggested(u, i)}>{t('Record payment')}</Btn>
+                      </div>
+                    )}
+                    </div>
                   ))}
                 </div>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t('Pick a category (auto-filled from your rules) and click Book to record and clear each line.')}</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1.5">{t('Record a suggested payment, or pick a category (auto-filled from your rules) and click Book to record and clear each line.')}</p>
               </div>
             )}
 

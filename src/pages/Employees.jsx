@@ -86,7 +86,7 @@ export default function Employees() {
       <PageHeader
         title="Employees"
         subtitle={`${activeCount} ${t('active')} · ${t('Monthly payroll:')} ${fmtMoney(totalSalary, sym)}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Employee')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New employee')}</Btn>}
       />
 
       <div className="relative mb-4 max-w-sm">
@@ -98,7 +98,7 @@ export default function Employees() {
       <Card>
         {employees.length === 0 ? (
           <EmptyState icon="👥" title="No employees" desc="Add employees to manage payroll, departments, and HR records."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Employee')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add employee')}</Btn>} />
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No employees match your search')}</div>
         ) : (
@@ -126,7 +126,7 @@ export default function Employees() {
                   <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="employee" entityId={emp.id} />
                     <Btn size="sm" variant="ghost" onClick={() => openEdit(emp)}><Pencil size={13} /></Btn>
-                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(emp)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
+                    <Btn need={['hr', 'delete']} size="sm" variant="ghost" onClick={() => handleDelete(emp)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                   </div>
                 </Td>
               </Tr>
@@ -135,7 +135,7 @@ export default function Employees() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Employee' : 'New Employee'} width="max-w-2xl">
+      <Modal open={modal} onClose={close} title={editing ? 'Edit employee' : 'New employee'} width="max-w-2xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Full Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} />
@@ -225,7 +225,7 @@ export default function Employees() {
           />
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Employee'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Add employee'}</Btn>
           </div>
         </div>
       </Modal>

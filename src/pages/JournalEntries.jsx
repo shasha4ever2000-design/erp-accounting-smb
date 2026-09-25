@@ -153,7 +153,7 @@ export default function JournalEntries() {
       <PageHeader
         title="Journal entries"
         subtitle={`${journalEntries.length} ${t('entries')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('Manual Entry')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('Manual entry')}</Btn>}
       />
 
       <div className="relative mb-4 max-w-sm">
@@ -190,7 +190,7 @@ export default function JournalEntries() {
                       {je.type === 'manual' && !je.reversedBy && !je.reverses && (
                         <>
                           <Btn size="sm" variant="ghost" onClick={() => openEdit(je)} title={t('Edit')}><Pencil size={13} className="text-brand-600 dark:text-brand-400" /></Btn>
-                          <Btn size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-danger-400" /></Btn>
+                          <Btn need={['accounting', 'delete']} size="sm" variant="ghost" onClick={() => handleVoid(je)} title={t('Void')}><Ban size={13} className="text-danger-400" /></Btn>
                         </>
                       )}
                     </div>
@@ -296,10 +296,10 @@ export default function JournalEntries() {
           {!balanced && totalDr > 0 && (
             <p className="text-xs text-danger-600 dark:text-danger-400">{t('Debits and credits must be equal.')} {t('Difference')}: {fmtMoney(Math.abs(totalDr - totalCr), sym)}</p>
           )}
-          <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add Line')}</Btn>
+          <Btn variant="ghost" size="sm" onClick={addLine}><Plus size={14} /> {t('Add line')}</Btn>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => { setModal(false); setEditId(null) }}>{t('Cancel')}</Btn>
-            <Btn disabled={!balanced} onClick={handleSave}>{editId ? t('Save Changes') : t('Post Entry')}</Btn>
+            <Btn disabled={!balanced} onClick={handleSave}>{editId ? t('Save changes') : t('Post entry')}</Btn>
           </div>
         </div>
       </Modal>

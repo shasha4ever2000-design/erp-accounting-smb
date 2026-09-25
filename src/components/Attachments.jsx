@@ -68,7 +68,7 @@ export default function AttachmentButton({ entityType, entityId, size = 'sm', la
         )}
       </button>
 
-      <Modal open={open} onClose={() => setOpen(false)} title={t('Supporting Documents')}>
+      <Modal open={open} onClose={() => setOpen(false)} title={t('Supporting documents')}>
         <div className="space-y-4">
           <input ref={fileRef} type="file" multiple className="hidden" onChange={onFiles} />
           <button

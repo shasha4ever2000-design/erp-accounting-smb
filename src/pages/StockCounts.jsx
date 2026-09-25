@@ -202,7 +202,7 @@ export default function StockCounts() {
           )}
         </Card>
 
-        <Modal open={newModal} onClose={() => setNewModal(false)} title="Start a Stock Count">
+        <Modal open={newModal} onClose={() => setNewModal(false)} title="Start a stock count">
           <div className="space-y-4">
             <Input label={t('Count date')} type="date" value={form.date} onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))} />
             <Select label={t('Warehouse')} value={form.warehouseId} onChange={(e) => setForm((f) => ({ ...f, warehouseId: e.target.value }))}>

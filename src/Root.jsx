@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, lazy, Suspense } from 'react'
 import { BrowserRouter, HashRouter } from 'react-router-dom'
 import { useAuth } from './auth'
 import { useStore } from './store'
@@ -6,6 +6,12 @@ import { useI18n, dictionaryReady } from './i18n'
 import App from './App'
 import AuthScreen from './components/AuthScreen'
 import CompanyScreen from './components/CompanyScreen'
+import { portalTokenFromLocation } from './utils/portal'
+
+// A customer opening their portal link: no sign-in, no company data on this
+// device, just their own account fetched from the server.
+const Portal = lazy(() => import('./pages/Portal'))
+const portalToken = typeof window !== 'undefined' ? portalTokenFromLocation() : ''
 
 const isDesktop = !!(typeof window !== 'undefined' && window.erpDesktop && window.erpDesktop.isDesktop) ||
   (typeof window !== 'undefined' && (window.location.protocol === 'file:' || window.location.protocol === 'app:'))
@@ -27,6 +33,7 @@ export default function Root() {
   useI18n((s) => s.dictVersion)
   if (!dictionaryReady()) return null
 
+  if (portalToken) return <Suspense fallback={null}><Portal token={portalToken} /></Suspense>
   if (!currentUserId) return <AuthScreen />
   if (!currentCompanyId) return <CompanyScreen />
 

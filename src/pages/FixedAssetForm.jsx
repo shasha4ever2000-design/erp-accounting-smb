@@ -132,7 +132,7 @@ export default function FixedAssetForm() {
             )}
           </Card>
 
-          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save Asset')}</Btn>
+          <Btn className="w-full justify-center" onClick={handleSave}>{t('Save asset')}</Btn>
           <Btn variant="secondary" className="w-full justify-center" onClick={() => navigate('/fixed-assets')}>{t('Cancel')}</Btn>
         </div>
       </div>

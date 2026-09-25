@@ -106,7 +106,7 @@ export default function RecurringExpenses() {
         action={
           <div className="flex gap-2">
             {dueNow.length > 0 && <Btn variant="secondary" onClick={runDue}><CalendarClock size={15} /> {t('Post {n} due').replace('{n}', dueNow.length)}</Btn>}
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Recurring Expense')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New recurring expense')}</Btn>
           </div>
         }
       />
@@ -121,7 +121,7 @@ export default function RecurringExpenses() {
         {recurringExpenses.length === 0 ? (
           <EmptyState icon="🔁" title="No recurring expenses"
             desc="Set up rent, utilities, insurance or software subscriptions once and they post themselves as supplier bills on schedule."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('New Recurring Expense')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('New recurring expense')}</Btn>} />
         ) : (
           <Table headers={['Name', 'Supplier', 'Frequency', 'Next due', { label: 'Amount', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {[...recurringExpenses].sort((a, b) => (a.nextDate || '').localeCompare(b.nextDate || '')).map((r) => {
@@ -160,7 +160,7 @@ export default function RecurringExpenses() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Recurring Expense' : 'New Recurring Expense'} width="max-w-xl">
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit recurring expense' : 'New recurring expense'} width="max-w-xl">
         <div className="space-y-4">
           <Input label="Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="e.g. Office rent" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -200,7 +200,7 @@ export default function RecurringExpenses() {
 
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={save}>{editing ? t('Save Changes') : t('Create Schedule')}</Btn>
+            <Btn onClick={save}>{editing ? t('Save changes') : t('Create schedule')}</Btn>
           </div>
         </div>
       </Modal>

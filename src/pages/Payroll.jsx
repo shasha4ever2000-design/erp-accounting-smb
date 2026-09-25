@@ -151,7 +151,7 @@ export default function Payroll() {
       <PageHeader
         title="Payroll"
         subtitle={`${activeEmps.length} ${t('active employees')} · ${fmtMoney(estGross, sym)} ${t('monthly payroll')}`}
-        action={<Btn onClick={openNewRun}><Plus size={15} /> {t('Run Payroll')}</Btn>}
+        action={<Btn onClick={openNewRun}><Plus size={15} /> {t('Run payroll')}</Btn>}
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -164,7 +164,7 @@ export default function Payroll() {
       <Card>
         {payrollRuns.length === 0 ? (
           <EmptyState icon="💰" title="No payroll runs" desc="Run payroll from each employee's contract salary structure. Adjust earnings and deductions per run before posting."
-            action={<Btn onClick={openNewRun}><Plus size={14} /> {t('Run Payroll')}</Btn>} />
+            action={<Btn onClick={openNewRun}><Plus size={14} /> {t('Run payroll')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Period', 'Pay Date', 'Employees', { label: 'Gross', right: true }, { label: 'Deductions', right: true }, { label: 'Net Pay', right: true }, 'Status', 'Paid', { label: 'Actions', right: true }]}>
             {sorted.map((run) => {
@@ -186,7 +186,7 @@ export default function Payroll() {
                     <AttachmentButton entityType="payroll" entityId={run.id} />
                     {run.status === 'draft' && <Btn size="sm" variant="secondary" onClick={() => handleProcess(run)}><Play size={12} /> {t('Process')}</Btn>}
                     {run.status === 'processed' && !run.paid && <Btn size="sm" variant="success" onClick={() => { setPayModal(run); setPayBankId(bankOpts[0]?.id || '') }}><DollarSign size={12} /> {t('Pay')}</Btn>}
-                    <Btn size="sm" variant="ghost" onClick={() => handleDelete(run)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
+                    <Btn need={['hr', 'delete']} size="sm" variant="ghost" onClick={() => handleDelete(run)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                   </div>
                 </Td>
               </Tr>
@@ -196,7 +196,7 @@ export default function Payroll() {
       </Card>
 
       {/* Run Payroll — editable grid */}
-      <Modal open={newModal} onClose={() => setNewModal(false)} title="Run Payroll" width="max-w-6xl">
+      <Modal open={newModal} onClose={() => setNewModal(false)} title="Run payroll" width="max-w-6xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl">
             <Input label="Pay Month" type="month" value={periodMonth} onChange={(e) => changeMonth(e.target.value)} />
@@ -282,7 +282,7 @@ export default function Payroll() {
 
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setNewModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleCreateRun} disabled={runLines.length === 0}>{t('Create Payroll Run')}</Btn>
+            <Btn onClick={handleCreateRun} disabled={runLines.length === 0}>{t('Create payroll run')}</Btn>
           </div>
         </div>
       </Modal>
@@ -301,7 +301,7 @@ export default function Payroll() {
           <p className="text-xs text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-900/20 rounded p-2">{t('Posts: Dr Salaries Payable → Cr Bank Account')}</p>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
-            <Btn variant="success" onClick={handlePay}>{t('Confirm Payment')}</Btn>
+            <Btn variant="success" onClick={handlePay}>{t('Confirm payment')}</Btn>
           </div>
         </div>
       </Modal>

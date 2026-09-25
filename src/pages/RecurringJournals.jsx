@@ -70,13 +70,13 @@ export default function RecurringJournals() {
         action={
           <div className="flex gap-2">
             {dueCount > 0 && <Btn variant="secondary" onClick={postAllDue}><CalendarClock size={15} /> {t('Post all due')} ({dueCount})</Btn>}
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Recurring Entry')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New recurring entry')}</Btn>
           </div>
         } />
 
       {recurringJournals.length === 0 ? (
         <EmptyState icon="🔁" title={t('No recurring journals yet')} desc={t('Create a template for entries you post every period, like rent accruals or amortization.')}
-          action={<Btn onClick={openNew}><Plus size={14} />{t('New Recurring Entry')}</Btn>} />
+          action={<Btn onClick={openNew}><Plus size={14} />{t('New recurring entry')}</Btn>} />
       ) : (
         <Card>
           <Table headers={[{ label: 'Name' }, { label: 'Frequency' }, { label: 'Next Date' }, { label: 'Amount', right: true }, { label: 'Posted', right: true }, { label: '', right: true }]}>
@@ -107,7 +107,7 @@ export default function RecurringJournals() {
         </Card>
       )}
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? t('Edit Recurring Entry') : t('New Recurring Entry')} width="max-w-2xl">
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? t('Edit recurring entry') : t('New recurring entry')} width="max-w-2xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Input label={t('Name')} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('e.g. Monthly rent accrual')} />
@@ -154,7 +154,7 @@ export default function RecurringJournals() {
           </div>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={save} disabled={!balanced}>{editing ? t('Save Changes') : t('Create')}</Btn>
+            <Btn onClick={save} disabled={!balanced}>{editing ? t('Save changes') : t('Create')}</Btn>
           </div>
         </div>
       </Modal>

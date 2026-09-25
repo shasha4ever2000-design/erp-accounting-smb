@@ -58,7 +58,7 @@ export default function Requisitions() {
       <PageHeader
         title="Purchase requisitions"
         subtitle={`${pendingCount} ${t('awaiting approval')}${manager ? '' : ' · ' + t('approvals need an Admin/Owner')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Requisition')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New requisition')}</Btn>}
       />
 
       <div className="flex gap-2 mb-4 flex-wrap">
@@ -72,7 +72,7 @@ export default function Requisitions() {
       <Card>
         {filtered.length === 0 ? (
           <EmptyState icon="📝" title="No requisitions" desc="Staff request items they need; an Admin or Owner approves, then it becomes a Purchase Order."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('New Requisition')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('New requisition')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Requested By', 'Dept', 'Needed By', { label: 'Est. Total', right: true }, 'Status', { label: 'Actions', right: true }]}>
             {filtered.map((r) => (
@@ -102,7 +102,7 @@ export default function Requisitions() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Purchase Requisition" width="max-w-xl">
+      <Modal open={modal} onClose={() => setModal(false)} title="New purchase requisition" width="max-w-xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Requested By" value={form.requestedBy} onChange={(e) => setF('requestedBy', e.target.value)} />
@@ -130,7 +130,7 @@ export default function Requisitions() {
           <Textarea label="Justification / Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={save}><ClipboardList size={15} /> {t('Submit Requisition')}</Btn>
+            <Btn onClick={save}><ClipboardList size={15} /> {t('Submit requisition')}</Btn>
           </div>
         </div>
       </Modal>

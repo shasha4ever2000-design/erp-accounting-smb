@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { validatePassword } from './utils/password'
+import { setActorResolver, ROLES, AREAS, ACTIONS, ROLE_PRESETS } from './utils/permissions'
 
 const toHex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('')
 
@@ -70,6 +71,30 @@ export const useAuth = create(
       currentRole: () => get().users.find((u) => u.id === get().currentUserId)?.role || 'viewer',
       isManager: () => ['owner', 'admin'].includes(get().users.find((u) => u.id === get().currentUserId)?.role),
 
+      // What each adjustable role may do, where an owner or admin changed it
+      // from the preset: { [role]: { [area]: ['view', 'create', ...] } }.
+      rolePermissions: {},
+
+      setRolePermission: (role, area, action, allowed) => {
+        if (!get().isManager()) return
+        const def = ROLES.find((r) => r.id === role)
+        if (!def || def.locked || !AREAS.some((a) => a.id === area) || !ACTIONS.some((a) => a.id === action)) return
+        set((s) => {
+          const current = s.rolePermissions?.[role]?.[area] ?? (ROLE_PRESETS[role]?.[area] || [])
+          let next = allowed ? [...new Set([...current, action])] : current.filter((x) => x !== action)
+          // Taking away "view" takes away the rest of the area; granting any
+          // change implies seeing it.
+          if (!allowed && action === 'view') next = []
+          if (allowed && action !== 'view' && !next.includes('view')) next.push('view')
+          return { rolePermissions: { ...s.rolePermissions, [role]: { ...(s.rolePermissions?.[role] || {}), [area]: next } } }
+        })
+      },
+
+      resetRolePermissions: (role) => {
+        if (!get().isManager()) return
+        set((s) => { const next = { ...s.rolePermissions }; delete next[role]; return { rolePermissions: next } })
+      },
+
       signup: async ({ name, email, password }) => {
         name = (name || '').trim()
         email = (email || '').trim().toLowerCase()
@@ -91,6 +116,12 @@ export const useAuth = create(
 
       setUserRole: (id, role) =>
         set((s) => {
+          // Only owners and admins hand out roles, and only an owner makes another owner.
+          const me = s.users.find((u) => u.id === s.currentUserId)
+          if (!me || !['owner', 'admin'].includes(me.role)) return s
+          const tgt = s.users.find((u) => u.id === id)
+          if ((role === 'owner' || tgt?.role === 'owner') && me.role !== 'owner') return s
+          if (!ROLES.some((r) => r.id === role)) return s
           // never remove the last owner
           const owners = s.users.filter((u) => u.role === 'owner')
           const target = s.users.find((u) => u.id === id)
@@ -101,6 +132,8 @@ export const useAuth = create(
       removeUser: (id) =>
         set((s) => {
           if (id === s.currentUserId) return s
+          const me = s.users.find((u) => u.id === s.currentUserId)
+          if (!me || !['owner', 'admin'].includes(me.role)) return s
           const target = s.users.find((u) => u.id === id)
           if (target?.role === 'owner' && s.users.filter((u) => u.role === 'owner').length <= 1) return s
           return { users: s.users.filter((u) => u.id !== id) }
@@ -179,8 +212,9 @@ export const useAuth = create(
     }),
     {
       name: 'erp-auth',
-      version: 2,
+      version: 3,
       migrate: (persisted, version) => {
+        if (version < 3 && persisted && !persisted.rolePermissions) persisted.rolePermissions = {}
         if (version < 2 && persisted?.users) {
           persisted.users = persisted.users.map((u, i) => ({ ...u, role: u.role || (i === 0 ? 'owner' : 'viewer') }))
         }
@@ -189,3 +223,11 @@ export const useAuth = create(
     }
   )
 )
+
+// The store checks permissions without importing this file (see
+// utils/permissions.js); tell it who is signed in.
+setActorResolver(() => {
+  const s = useAuth.getState()
+  const u = s.users.find((x) => x.id === s.currentUserId)
+  return u ? { role: u.role || 'viewer', name: u.name, overrides: s.rolePermissions || {} } : null
+})

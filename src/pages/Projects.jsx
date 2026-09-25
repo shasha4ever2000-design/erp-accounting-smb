@@ -90,14 +90,14 @@ export default function Projects() {
       <PageHeader
         title="Projects & job costing"
         subtitle={`${projects.filter(p => p.status === 'active').length} ${t('active')} · ${t('Net')} ${fmtMoney(totals.income - totals.cost, sym)}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Project')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New project')}</Btn>}
       />
 
       <Card>
         {projects.length === 0 ? (
           <EmptyState icon="📁" title="No projects yet"
             desc="Track income, costs and billable time per project or job, and see profitability instantly."
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Create Project')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Create project')}</Btn>} />
         ) : (
           <div className="divide-y divide-slate-100 dark:divide-slate-700">
             {projects.map((p) => {
@@ -152,9 +152,9 @@ export default function Projects() {
                       )}
 
                       <div className="flex gap-2 mb-4">
-                        <Btn size="sm" onClick={() => openTx(p.id, 'money_in')}><TrendingUp size={13} /> {t('Add Income')}</Btn>
-                        <Btn size="sm" variant="secondary" onClick={() => openTx(p.id, 'money_out')}><TrendingDown size={13} /> {t('Add Cost')}</Btn>
-                        <Btn size="sm" variant="secondary" onClick={() => { setTForm(emptyTime); setTimeModal(p.id) }}><Clock size={13} /> {t('Log Time')}</Btn>
+                        <Btn size="sm" onClick={() => openTx(p.id, 'money_in')}><TrendingUp size={13} /> {t('Add income')}</Btn>
+                        <Btn size="sm" variant="secondary" onClick={() => openTx(p.id, 'money_out')}><TrendingDown size={13} /> {t('Add cost')}</Btn>
+                        <Btn size="sm" variant="secondary" onClick={() => { setTForm(emptyTime); setTimeModal(p.id) }}><Clock size={13} /> {t('Log time')}</Btn>
                       </div>
 
                       {/* Transactions */}
@@ -208,7 +208,7 @@ export default function Projects() {
       </Card>
 
       {/* Project modal */}
-      <Modal open={projModal} onClose={() => setProjModal(false)} title={editing ? 'Edit Project' : 'New Project'}>
+      <Modal open={projModal} onClose={() => setProjModal(false)} title={editing ? 'Edit project' : 'New project'}>
         <div className="space-y-4">
           <Input label="Project Name *" value={pForm.name} onChange={(e) => setP('name', e.target.value)} placeholder="e.g. Website Redesign" />
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -227,7 +227,7 @@ export default function Projects() {
           <Textarea label="Notes" rows={2} value={pForm.notes} onChange={(e) => setP('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setProjModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={saveProject}>{editing ? 'Save Changes' : 'Create Project'}</Btn>
+            <Btn onClick={saveProject}>{editing ? 'Save changes' : 'Create project'}</Btn>
           </div>
         </div>
       </Modal>
@@ -256,7 +256,7 @@ export default function Projects() {
       </Modal>
 
       {/* Time modal */}
-      <Modal open={!!timeModal} onClose={() => setTimeModal(null)} title="Log Billable Time">
+      <Modal open={!!timeModal} onClose={() => setTimeModal(null)} title="Log billable time">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Employee / Staff" value={tForm.employeeName} onChange={(e) => setTime('employeeName', e.target.value)} />
@@ -273,7 +273,7 @@ export default function Projects() {
           </label>
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setTimeModal(null)}>{t('Cancel')}</Btn>
-            <Btn onClick={saveTime}>{t('Log Time')}</Btn>
+            <Btn onClick={saveTime}>{t('Log time')}</Btn>
           </div>
         </div>
       </Modal>

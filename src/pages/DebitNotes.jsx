@@ -48,13 +48,13 @@ export default function DebitNotes() {
       <PageHeader
         title="Debit notes"
         subtitle="Purchase returns and debit adjustments to suppliers"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Debit Note')}</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New debit note')}</Btn>}
       />
 
       <Card>
         {debitNotes.length === 0 ? (
           <EmptyState icon="📑" title="No debit notes" desc="Issue debit notes when returning goods to suppliers or claiming credit for overcharges."
-            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Issue Debit Note')}</Btn>} />
+            action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Issue debit note')}</Btn>} />
         ) : (
           <Table headers={['Number', 'Supplier', 'Date', 'Purchase Ref', 'Reason', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((dn) => (
@@ -70,14 +70,14 @@ export default function DebitNotes() {
                 <Td right>
                   <AttachmentButton entityType="debitnote" entityId={dn.id} />
                   {dn.status !== 'void' && (
-                    <Btn size="sm" variant="ghost" title="Void debit note" onClick={async () => {
+                    <Btn need={['purchases', 'delete']} size="sm" variant="ghost" title="Void debit note" onClick={async () => {
                       if (!await ask(`${t('Void debit note')} ${dn.number}?`)) return
                       try { voidDebitNote(dn.id, { date: today() }) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) }
                     }}>
                       <Ban size={13} className="text-slate-500" />
                     </Btn>
                   )}
-                  <Btn size="sm" variant="ghost" onClick={async () => { if (!await ask(`Delete ${dn.number}?`)) return; try { deleteDebitNote(dn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
+                  <Btn need={['purchases', 'delete']} size="sm" variant="ghost" onClick={async () => { if (!await ask(`Delete ${dn.number}?`)) return; try { deleteDebitNote(dn.id) } catch (e) { alert(String(e.message || e).startsWith('PERIOD_LOCKED') ? t('That date falls in a locked period.') : String(e.message || e)) } }}>
                     <Trash2 size={13} className="text-danger-600 dark:text-danger-400" />
                   </Btn>
                 </Td>
@@ -87,7 +87,7 @@ export default function DebitNotes() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Debit Note" width="max-w-lg">
+      <Modal open={modal} onClose={() => setModal(false)} title="New debit note" width="max-w-lg">
         <div className="space-y-4">
           <Select label="Supplier *" value={form.supplierId} onChange={(e) => handleSupplier(e.target.value)}>
             <option value="">— Select supplier —</option>
@@ -117,7 +117,7 @@ export default function DebitNotes() {
           </p>
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{t('Issue Debit Note')}</Btn>
+            <Btn onClick={handleSave}>{t('Issue debit note')}</Btn>
           </div>
         </div>
       </Modal>

@@ -2,6 +2,7 @@
 import { Fragment, Children, cloneElement, isValidElement, useState, useEffect } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useT } from '../i18n'
+import { useCan } from '../utils/useCan'
 import { fmtMoney } from '../utils/formatters'
 
 // Translate string children of buttons while preserving icons/layout.
@@ -41,8 +42,13 @@ export function PageHeader({ title, subtitle, action }) {
   )
 }
 
-export function Btn({ children, onClick, variant = 'primary', size = 'md', type = 'button', disabled = false, className = '', title }) {
+/**
+ * `need={['sales', 'delete']}` hides the button from roles that may not do
+ * that. The store refuses the action anyway; this just doesn't offer it.
+ */
+export function Btn({ children, onClick, variant = 'primary', size = 'md', type = 'button', disabled = false, className = '', title, need }) {
   const t = useT()
+  const allowed = useCan()
   const base = 'group inline-flex items-center justify-center gap-2 font-semibold rounded-lg whitespace-nowrap select-none transition-all duration-150 ease-spring active:scale-[.97] focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-surface-900 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:brightness-100'
   const sizes = { sm: 'px-3 py-1.5 text-sm', md: 'px-4 py-2 text-sm', lg: 'px-5 py-2.5 text-base' }
   const variants = {
@@ -54,6 +60,7 @@ export function Btn({ children, onClick, variant = 'primary', size = 'md', type 
     ghost:     'text-slate-600 dark:text-slate-300 hover:bg-slate-900/[0.05] hover:text-slate-900 dark:hover:bg-white/[0.06] dark:hover:text-white focus-visible:ring-slate-400',
     success:   'bg-gradient-to-b from-success-700 to-success-800 text-white shadow-sm hover:from-success-800 hover:to-success-900 focus-visible:ring-success-500',
   }
+  if (need && !allowed(need[0], need[1])) return null
   return (
     <button type={type} onClick={onClick} disabled={disabled} title={typeof title === 'string' ? t(title) : title} className={`${base} ${sizes[size]} ${variants[variant]} ${className}`}>
       {translateChildren(children, t)}

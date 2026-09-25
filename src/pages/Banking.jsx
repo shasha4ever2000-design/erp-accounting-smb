@@ -74,7 +74,7 @@ export default function Banking() {
       <PageHeader
         title="Bank & cash"
         subtitle="Direct bank transactions and balances"
-        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New Transaction')}</Btn>}
+        action={<Btn onClick={() => setModal(true)}><Plus size={15} /> {t('New transaction')}</Btn>}
       />
 
       {/* Bank balance cards */}
@@ -93,7 +93,7 @@ export default function Banking() {
       {/* Filter by account */}
       <div className="flex gap-2 mb-4 flex-wrap">
         <button onClick={() => setSelectedBank('all')} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === 'all' ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
-          {t('All Accounts')}
+          {t('All accounts')}
         </button>
         {bankAccounts.map((a) => (
           <button key={a.id} onClick={() => setSelectedBank(a.id)} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-brand-500 focus:ring-offset-1 dark:focus:ring-offset-slate-900 ${selectedBank === a.id ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'}`}>
@@ -104,7 +104,7 @@ export default function Banking() {
 
       <Card>
         {sorted.length === 0 ? (
-          <EmptyState icon="🏦" title="No transactions yet" desc="Record direct bank/cash transactions here." action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Add Transaction')}</Btn>} />
+          <EmptyState icon="🏦" title="No transactions yet" desc="Record direct bank/cash transactions here." action={<Btn onClick={() => setModal(true)}><Plus size={14} /> {t('Add transaction')}</Btn>} />
         ) : (
           <Table headers={['Date', 'Description', 'Account', 'Bank Account', 'Type', { label: 'Amount', right: true }, { label: '', right: true }]}>
             {sorted.map((tx) => (
@@ -141,7 +141,7 @@ export default function Banking() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={() => setModal(false)} title="New Bank Transaction">
+      <Modal open={modal} onClose={() => setModal(false)} title="New bank transaction">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label="Type" value={form.type} onChange={(e) => setField('type', e.target.value)}>
@@ -169,7 +169,7 @@ export default function Banking() {
           )}
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{t('Save Transaction')}</Btn>
+            <Btn onClick={handleSave}>{t('Save transaction')}</Btn>
           </div>
         </div>
       </Modal>

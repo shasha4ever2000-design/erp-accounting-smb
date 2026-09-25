@@ -27,6 +27,8 @@ import { createHrSlice } from './store/hr'
 import { createAssetsSlice } from './store/assets'
 import { createReportingSlice } from './store/reporting'
 import { createDataSlice } from './store/data'
+import { guardActions } from './store/guard'
+import { createNotificationsSlice } from './store/notifications'
 
 // The whole company's books, as one Zustand store persisted to IndexedDB.
 //
@@ -36,7 +38,7 @@ import { createDataSlice } from './store/data'
 // every other slice's state and actions, exactly as before.
 export const useStore = create(
   persist(
-    (set, get) => ({
+    (set, get) => guardActions({
       ...createSettingsSlice(set, get),
       ...createLedgerSlice(set, get),
       ...createBankingSlice(set, get),
@@ -48,6 +50,7 @@ export const useStore = create(
       ...createAssetsSlice(set, get),
       ...createReportingSlice(set, get),
       ...createDataSlice(set, get),
+      ...createNotificationsSlice(set, get),
     }),
     {
       name: currentCompanyKey(),

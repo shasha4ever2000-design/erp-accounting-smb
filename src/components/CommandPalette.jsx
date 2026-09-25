@@ -4,6 +4,7 @@ import { Search, CornerDownLeft } from 'lucide-react'
 import { useStore } from '../store'
 import { fmtMoney } from '../utils/formatters'
 import { useT } from '../i18n'
+import { useCanOpen } from './Access'
 
 const COMMANDS = [
   { label: 'Dashboard', path: '/', group: 'Go to' },
@@ -99,7 +100,7 @@ export default function CommandPalette() {
     [taxReportLabel]
   )
 
-  const results = useMemo(() => {
+  const allResults = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return COMMANDS_LIST
     const nav = COMMANDS_LIST.filter((c) => c.label.toLowerCase().includes(q) || c.group.toLowerCase().includes(q))
@@ -137,6 +138,10 @@ export default function CommandPalette() {
     ]
     return [...docs, ...nav]
   }, [query, invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, sym, COMMANDS_LIST])
+
+  // Leave out what this user's role can't open.
+  const canOpen = useCanOpen()
+  const results = allResults.filter((r) => canOpen(r.path))
 
   useEffect(() => { setActive(0) }, [query])
 

@@ -59,7 +59,7 @@ export default function Pipeline() {
       <PageHeader
         title="Sales pipeline · CRM"
         subtitle={`${leads.filter((l) => !['won','lost'].includes(l.stage)).length} ${t('open')} · ${fmtMoney(openValue, sym)} ${t('weighted')} · ${fmtMoney(wonValue, sym)} ${t('won')}`}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Lead')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New lead')}</Btn>}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-5 gap-4">
@@ -109,7 +109,7 @@ export default function Pipeline() {
         })}
       </div>
 
-      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit Lead' : 'New Lead'} width="max-w-lg">
+      <Modal open={modal} onClose={() => setModal(false)} title={editing ? 'Edit lead' : 'New lead'} width="max-w-lg">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Contact Name *" value={form.name} onChange={(e) => setF('name', e.target.value)} />
@@ -130,7 +130,7 @@ export default function Pipeline() {
           <Textarea label="Notes" rows={2} value={form.notes} onChange={(e) => setF('notes', e.target.value)} />
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={save}>{editing ? 'Save Changes' : 'Add Lead'}</Btn>
+            <Btn onClick={save}>{editing ? 'Save changes' : 'Add lead'}</Btn>
           </div>
         </div>
       </Modal>

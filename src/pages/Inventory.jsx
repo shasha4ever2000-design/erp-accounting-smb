@@ -118,7 +118,7 @@ export default function Inventory() {
         action={
           <div className="flex items-center gap-2">
             {inventoryItems.length > 0 && <ExportMenu filename="inventory" title={t('Inventory Items')} rows={inventoryItems} columns={exportCols} />}
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Item')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New item')}</Btn>
           </div>
         }
       />
@@ -143,7 +143,7 @@ export default function Inventory() {
 
       <Card>
         {inventoryItems.length === 0 ? (
-          <EmptyState icon="📦" title={t('No inventory items')} desc={t('Add products or services to your inventory.')} action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Item')}</Btn>} />
+          <EmptyState icon="📦" title={t('No inventory items')} desc={t('Add products or services to your inventory.')} action={<Btn onClick={openNew}><Plus size={14} /> {t('Add item')}</Btn>} />
         ) : filtered.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">{t('No items match your search')}</div>
         ) : (
@@ -188,7 +188,7 @@ export default function Inventory() {
                     <div className="flex justify-end gap-1">
                       <AttachmentButton entityType="inventory" entityId={item.id} />
                       <Btn size="sm" variant="ghost" onClick={() => openEdit(item)}><Pencil size={13} /></Btn>
-                      <Btn size="sm" variant="ghost" onClick={() => handleDelete(item)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
+                      <Btn need={['inventory', 'delete']} size="sm" variant="ghost" onClick={() => handleDelete(item)}><Trash2 size={13} className="text-danger-600 dark:text-danger-400" /></Btn>
                     </div>
                   </Td>
                 </Tr>
@@ -198,7 +198,7 @@ export default function Inventory() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Item' : 'New Inventory Item'} width="max-w-2xl">
+      <Modal open={modal} onClose={close} title={editing ? 'Edit item' : 'New inventory item'} width="max-w-2xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Item Name *" value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder="Product or service name" />
@@ -318,7 +318,7 @@ export default function Inventory() {
           />
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Add Item'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Add item'}</Btn>
           </div>
         </div>
       </Modal>

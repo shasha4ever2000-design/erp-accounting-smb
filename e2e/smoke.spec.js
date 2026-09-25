@@ -40,7 +40,7 @@ test('create, pay and void an invoice', async ({ page }) => {
   await page.getByPlaceholder('Item or service description').first().fill('Consulting')
   await page.getByLabel('Qty').first().fill('2')
   await page.getByLabel('Unit Price').first().fill('150')
-  await page.getByRole('button', { name: 'Save Invoice' }).click()
+  await page.getByRole('button', { name: 'Save invoice' }).click()
   // stock/credit warnings, if any, are answered in the in-app dialog
   const dlg = page.getByRole('alertdialog')
   if (await dlg.count()) await dlg.getByRole('button').last().click()
@@ -48,10 +48,10 @@ test('create, pay and void an invoice', async ({ page }) => {
   await expect(page).toHaveURL(/invoices$/)
   await page.getByText('INV-0006').click()
   await expect(page).toHaveURL(/invoices\/[^/]+$/)
-  await page.getByRole('button', { name: 'Record Payment' }).first().click()
-  await page.getByRole('dialog').getByRole('button', { name: 'Record Payment' }).click()
+  await page.getByRole('button', { name: 'Record payment' }).first().click()
+  await page.getByRole('dialog').getByRole('button', { name: 'Record payment' }).click()
   // Fully paid: the payment button goes and the amount paid shows.
-  await expect(page.getByRole('button', { name: 'Record Payment' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Record payment' })).toHaveCount(0)
   await expect(page.getByText('Amount Paid')).toBeVisible()
 
   await page.getByRole('button', { name: 'Void' }).click()

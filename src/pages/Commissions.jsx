@@ -51,7 +51,7 @@ export default function Commissions() {
       <PageHeader
         title={t('Sales commissions')}
         subtitle={t('Attribute invoices to reps and track what they have earned')}
-        action={<Btn onClick={openNew}><Plus size={15} /> {t('New Sales Rep')}</Btn>}
+        action={<Btn onClick={openNew}><Plus size={15} /> {t('New sales rep')}</Btn>}
       />
 
       {/* Basis toggle */}
@@ -85,7 +85,7 @@ export default function Commissions() {
         {salesReps.length === 0 ? (
           <EmptyState icon="🏅" title={t('No sales reps yet')}
             desc={t('Add your sales team, then assign a rep on each invoice to track commissions automatically.')}
-            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add Sales Rep')}</Btn>} />
+            action={<Btn onClick={openNew}><Plus size={14} /> {t('Add sales rep')}</Btn>} />
         ) : (
           <Table headers={[t('Sales Rep'), t('Rate'), { label: t('Invoices'), right: true }, { label: t('Commissionable Base'), right: true }, { label: t('Commission'), right: true }, { label: t('Actions'), right: true }]}>
             {report.rows.map((r) => (
@@ -122,14 +122,14 @@ export default function Commissions() {
         )}
       </Card>
 
-      <Modal open={modal} onClose={close} title={editing ? t('Edit Sales Rep') : t('New Sales Rep')}>
+      <Modal open={modal} onClose={close} title={editing ? t('Edit sales rep') : t('New sales rep')}>
         <div className="space-y-4">
           <Input label={t('Name *')} value={form.name} onChange={(e) => setField('name', e.target.value)} placeholder={t('e.g. Sara Al-Otaibi')} />
           <Input label={t('Commission rate (%)')} type="number" min="0" max="100" step="0.1" value={form.rate} onChange={(e) => setField('rate', e.target.value)} placeholder="5" />
           <Input label={t('Email')} type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} placeholder="rep@company.com" />
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? t('Save Changes') : t('Add Sales Rep')}</Btn>
+            <Btn onClick={handleSave}>{editing ? t('Save changes') : t('Add sales rep')}</Btn>
           </div>
         </div>
       </Modal>

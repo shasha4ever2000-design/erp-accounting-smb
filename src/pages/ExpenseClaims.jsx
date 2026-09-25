@@ -116,7 +116,7 @@ export default function ExpenseClaims() {
       <PageHeader
         title="Expense claims"
         subtitle="Employee expense reimbursements — submit, approve, and pay"
-        action={<Btn onClick={openModal}><Plus size={15} /> {t('New Claim')}</Btn>}
+        action={<Btn onClick={openModal}><Plus size={15} /> {t('New claim')}</Btn>}
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
@@ -138,7 +138,7 @@ export default function ExpenseClaims() {
       <Card>
         {expenseClaims.length === 0 ? (
           <EmptyState icon="🧾" title="No expense claims" desc="Employees can submit travel, meals, office supplies and other business expense claims for reimbursement."
-            action={<Btn onClick={openModal}><Plus size={14} /> {t('New Claim')}</Btn>} />
+            action={<Btn onClick={openModal}><Plus size={14} /> {t('New claim')}</Btn>} />
         ) : sorted.length === 0 ? (
           <div className="py-12 text-center text-slate-500 dark:text-slate-400 text-sm">No {filter} claims</div>
         ) : (
@@ -188,7 +188,7 @@ export default function ExpenseClaims() {
       </Card>
 
       {/* New Claim Modal */}
-      <Modal open={modal} onClose={() => setModal(false)} title="New Expense Claim" width="max-w-lg">
+      <Modal open={modal} onClose={() => setModal(false)} title="New expense claim" width="max-w-lg">
         <div className="space-y-4">
           {/* Receipt OCR — fills the blanks below, never overwrites what you typed. */}
           <div className="rounded-xl border border-dashed border-brand-300/70 dark:border-brand-500/30 bg-brand-50/40 dark:bg-brand-500/[0.06] p-3">
@@ -254,7 +254,7 @@ export default function ExpenseClaims() {
           </div>
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleAdd}>{t('Submit Claim')}</Btn>
+            <Btn onClick={handleAdd}>{t('Submit claim')}</Btn>
           </div>
         </div>
       </Modal>
@@ -275,7 +275,7 @@ export default function ExpenseClaims() {
           </div>
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setPayModal(null)}>{t('Cancel')}</Btn>
-            <Btn onClick={() => { payExpenseClaim(payModal.id, payBankAccId, payDate); setPayModal(null) }}>{t('Confirm Payment')}</Btn>
+            <Btn onClick={() => { payExpenseClaim(payModal.id, payBankAccId, payDate); setPayModal(null) }}>{t('Confirm payment')}</Btn>
           </div>
         </div>
       </Modal>

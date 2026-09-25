@@ -1,26 +1,17 @@
+import { useState } from 'react'
 import { useAuth } from '../auth'
 import { useT } from '../i18n'
-import { PageHeader, Card, Select, Badge } from '../components/UI'
-import { Users, ShieldAlert, Trash2, Crown } from 'lucide-react'
+import { PageHeader, Card, Select, Btn } from '../components/UI'
+import { ShieldAlert, Trash2, Crown, Lock, RotateCcw } from 'lucide-react'
 import { ask } from '../components/Dialogs'
-
-const ROLES = [
-  { id: 'owner', label: 'Owner', desc: 'Full control, incl. companies & team' },
-  { id: 'admin', label: 'Admin', desc: 'Manage settings, team & all data' },
-  { id: 'accountant', label: 'Accountant', desc: 'Day-to-day bookkeeping' },
-  { id: 'viewer', label: 'Viewer', desc: 'Read-only access' },
-]
-const ROLE_CLR = {
-  owner: 'bg-accent-50 text-accent-700 dark:bg-accent-500/10 dark:text-accent-300',
-  admin: 'bg-brand-50 text-brand-700 dark:bg-brand-500/10 dark:text-brand-300',
-  accountant: 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-300',
-  viewer: 'bg-slate-100 text-slate-600 dark:bg-white/[0.06] dark:text-slate-300',
-}
+import { ROLES, AREAS, ACTIONS, permissionsFor } from '../utils/permissions'
 
 export default function Team() {
   const t = useT()
-  const { users, currentUserId, isManager, setUserRole, removeUser } = useAuth()
+  const { users, currentUserId, isManager, setUserRole, removeUser, rolePermissions, setRolePermission, resetRolePermissions } = useAuth()
   const manager = isManager()
+  const myRole = users.find((u) => u.id === currentUserId)?.role
+  const [editRole, setEditRole] = useState('accountant')
 
   if (!manager) {
     return (
@@ -67,8 +58,9 @@ export default function Team() {
                 </td>
                 <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{u.email}</td>
                 <td className="px-4 py-3">
-                  <Select value={u.role || 'viewer'} onChange={(e) => setUserRole(u.id, e.target.value)}>
-                    {ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
+                  <Select value={u.role || 'viewer'} onChange={(e) => setUserRole(u.id, e.target.value)}
+                    aria-label={t('Role')} disabled={u.role === 'owner' && myRole !== 'owner'}>
+                    {ROLES.filter((r) => r.id !== 'owner' || myRole === 'owner' || u.role === 'owner').map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
                   </Select>
                 </td>
                 <td className="px-5 py-3 text-right">
@@ -82,21 +74,70 @@ export default function Team() {
         </table>
       </Card>
 
-      <Card className="p-5">
-        <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-3">{t('Role permissions')}</h3>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {ROLES.map((r) => (
-            <div key={r.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
-              <Badge className={ROLE_CLR[r.id]}>{r.label}</Badge>
-              <span className="text-sm text-slate-600 dark:text-slate-300">{t(r.desc)}</span>
-            </div>
-          ))}
-        </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 flex items-start gap-2">
-          <ShieldAlert size={14} className="mt-0.5 flex-shrink-0" />
-          Roles organise access on this device. Server-enforced, tamper-proof permissions arrive with cloud sync.
-        </p>
-      </Card>
+      <RoleMatrix role={editRole} setRole={setEditRole} overrides={rolePermissions}
+        onToggle={setRolePermission} onReset={resetRolePermissions} />
     </div>
+  )
+}
+
+function RoleMatrix({ role, setRole, overrides, onToggle, onReset }) {
+  const t = useT()
+  const def = ROLES.find((r) => r.id === role)
+  const grants = permissionsFor(role, overrides)
+  const changed = !!overrides?.[role]
+  return (
+    <Card className="p-5">
+      <div className="flex flex-wrap items-end gap-3 mb-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200">{t('What each role can do')}</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{t('Tick what the role may do in each area. Changes apply straight away to everyone with that role.')}</p>
+        </div>
+        <div className="flex-1" />
+        <Select value={role} onChange={(e) => setRole(e.target.value)} aria-label={t('Role')} className="w-48">
+          {ROLES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
+        </Select>
+        {changed && !def?.locked && (
+          <Btn variant="secondary" size="sm" onClick={() => onReset(role)}><RotateCcw size={13} /> {t('Reset to default')}</Btn>
+        )}
+      </div>
+      <p className="text-sm text-slate-600 dark:text-slate-300 mb-3">{t(def?.desc || '')}</p>
+      {def?.locked && (
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+          <Lock size={12} /> {t('Owners and admins always have full access, so nobody can be locked out of the books.')}
+        </p>
+      )}
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 dark:bg-slate-800/60">
+            <tr className="text-xs text-slate-500 dark:text-slate-400">
+              <th className="text-start px-4 py-2.5 font-semibold">{t('Area')}</th>
+              {ACTIONS.map((a) => <th key={a.id} className="px-3 py-2.5 font-semibold text-center">{t(a.label)}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {AREAS.map((area) => (
+              <tr key={area.id} className="border-b border-slate-50 dark:border-slate-700/50">
+                <td className="px-4 py-2.5 text-slate-700 dark:text-slate-200">{t(area.label)}</td>
+                {ACTIONS.map((a) => {
+                  const on = (grants[area.id] || []).includes(a.id)
+                  return (
+                    <td key={a.id} className="px-3 py-2.5 text-center">
+                      <input type="checkbox" checked={on} disabled={def?.locked}
+                        aria-label={`${t(area.label)}: ${t(a.label)}`}
+                        onChange={(e) => onToggle(role, area.id, a.id, e.target.checked)}
+                        className="w-4 h-4 rounded accent-brand-600 disabled:opacity-60" />
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-500 dark:text-slate-400 mt-4 flex items-start gap-2">
+        <ShieldAlert size={14} className="mt-0.5 flex-shrink-0" />
+        {t('These rules are checked every time data changes, not just by hiding buttons. They apply to the people who sign in on this device; for a shared cloud company, each person also needs the matching cloud role.')}
+      </p>
+    </Card>
   )
 }

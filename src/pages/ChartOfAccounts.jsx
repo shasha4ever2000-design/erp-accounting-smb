@@ -177,9 +177,9 @@ export default function ChartOfAccounts() {
               <RotateCcw size={15} /> {t('Reset grouping')}
             </Btn>
             <Btn variant="secondary" onClick={() => openNewGroup(filter === 'all' ? 'asset' : filter)}>
-              <FolderTree size={15} /> {t('New Group')}
+              <FolderTree size={15} /> {t('New group')}
             </Btn>
-            <Btn onClick={openNew}><Plus size={15} /> {t('New Account')}</Btn>
+            <Btn onClick={openNew}><Plus size={15} /> {t('New account')}</Btn>
           </>
         }
       />
@@ -194,13 +194,13 @@ export default function ChartOfAccounts() {
               filter === k ? 'bg-gradient-to-b from-brand-600 to-brand-700 text-white shadow-btn-primary' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-brand-300 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
-            {k === 'all' ? t('All Accounts') : accountTypeLabel(k)}
+            {k === 'all' ? t('All accounts') : accountTypeLabel(k)}
           </button>
         ))}
       </div>
 
       {sections.length === 0 && (
-        <EmptyState icon="📒" title="No accounts" desc="Add your first account to get started." action={<Btn onClick={openNew}><Plus size={14} />{t('Add Account')}</Btn>} />
+        <EmptyState icon="📒" title="No accounts" desc="Add your first account to get started." action={<Btn onClick={openNew}><Plus size={14} />{t('Add account')}</Btn>} />
       )}
 
       <div className="space-y-4">
@@ -300,7 +300,7 @@ export default function ChartOfAccounts() {
       </div>
 
       {/* Account modal */}
-      <Modal open={modal} onClose={close} title={editing ? 'Edit Account' : 'New Account'}>
+      <Modal open={modal} onClose={close} title={editing ? 'Edit account' : 'New account'}>
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Input label="Account Code" value={form.code} onChange={(e) => setField('code', e.target.value)} placeholder="e.g. 1001" />
@@ -346,7 +346,7 @@ export default function ChartOfAccounts() {
           <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">{t('Set a foreign currency to include this account in FX revaluation.')}</p>
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={close}>{t('Cancel')}</Btn>
-            <Btn onClick={handleSave}>{editing ? 'Save Changes' : 'Create Account'}</Btn>
+            <Btn onClick={handleSave}>{editing ? 'Save changes' : 'Create account'}</Btn>
           </div>
         </div>
       </Modal>
@@ -393,7 +393,7 @@ export default function ChartOfAccounts() {
           )}
           <div className="flex justify-end gap-2 pt-2">
             <Btn variant="secondary" onClick={() => setGroupModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={saveGroup}>{editingGroup ? 'Save Changes' : 'Create Group'}</Btn>
+            <Btn onClick={saveGroup}>{editingGroup ? 'Save changes' : 'Create group'}</Btn>
           </div>
         </div>
       </Modal>

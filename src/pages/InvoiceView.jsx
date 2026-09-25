@@ -15,13 +15,15 @@ import { documentDue, notesAgainst } from '../utils/partyBalance'
 import AttachmentButton from '../components/Attachments'
 import { useT } from '../i18n'
 import { buildEtaInvoice, validateEtaInvoice, etaFilename } from '../utils/etaEinvoice'
-import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, FileJson } from 'lucide-react'
+import { ArrowLeft, DollarSign, Printer, Ban, Pencil, RotateCcw, FileJson, Mail } from 'lucide-react'
+import EmailDialog from '../components/EmailDialog'
+import { invoiceEmail } from '../utils/email'
 import { ask, askText } from '../components/Dialogs'
 
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings, creditNotes, cashAccountOptions } = useStore()
+  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings, creditNotes, cashAccountOptions, updateInvoice } = useStore()
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -30,6 +32,7 @@ export default function InvoiceView() {
   const [payModal, setPayModal] = useState(false)
   const [payForm, setPayForm] = useState({ date: today(), amount: '', bankAccountId: 'acc-cash', notes: '' })
   const [returnOpen, setReturnOpen] = useState(false)
+  const [emailDraft, setEmailDraft] = useState(null)
   const [qrUrl, setQrUrl] = useState('')
 
   const zatca = settings.zatca || {}
@@ -60,7 +63,7 @@ export default function InvoiceView() {
   if (!invoice) return (
     <div className="text-center py-20">
       <p className="text-slate-500 dark:text-slate-400 mb-4">{t('Invoice not found.')}</p>
-      <Btn variant="secondary" onClick={() => navigate('/invoices')}>{t('Back to Invoices')}</Btn>
+      <Btn variant="secondary" onClick={() => navigate('/invoices')}>{t('Back to invoices')}</Btn>
     </div>
   )
 
@@ -142,6 +145,21 @@ export default function InvoiceView() {
   }
 
   // Deleting is only for drafts with no financial history; issued invoices are voided.
+  const openEmail = () => {
+    const customer = customers.find((c) => c.id === invoice.customerId) || { id: invoice.customerId, name: invoice.customerName }
+    const due = documentDue(invoice, creditNotes, 'invoiceId')
+    setEmailDraft({
+      ...invoiceEmail({
+        invoice, company, customerName: customer.name || invoice.customerName, due,
+        money: (v) => fmtMoney(v, invSym), date: fmtDate, bankDetails: settings.invoice?.bankDetails, t,
+      }),
+      to: customer.email || '', customer, docKind: 'invoice', docRef: invoice.number,
+    })
+  }
+  const logEmail = (to) => {
+    try { updateInvoice(invoice.id, { emailLog: [...(invoice.emailLog || []), { at: new Date().toISOString(), to: to.join(', ') }] }) } catch { /* the email went; the note is a nicety */ }
+  }
+
   const handleDelete = async () => {
     if (await ask('Delete this draft invoice and its journal entries?')) {
       try { deleteInvoice(invoice.id) }
@@ -154,13 +172,18 @@ export default function InvoiceView() {
     <div>
       <div className="flex items-center justify-between mb-6 no-print">
         <button onClick={() => navigate('/invoices')} className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100">
-          <ArrowLeft size={15} /> {t('Back to Invoices')}
+          <ArrowLeft size={15} /> {t('Back to invoices')}
         </button>
         <div className="flex items-center gap-2">
           <AttachmentButton entityType="invoice" entityId={invoice.id} label="Attachments" />
           <Btn variant="secondary" size="sm" onClick={() => window.print()}>
             <Printer size={14} /> {t('Download PDF')}
           </Btn>
+          {invoice.status !== 'void' && (
+            <Btn need={['sales', 'edit']} variant="secondary" size="sm" onClick={openEmail}>
+              <Mail size={14} /> {t('Email')}
+            </Btn>
+          )}
           {/* Editing re-posts the invoice, so it is offered only while nothing
               has been hung off it — the store decides, and says why not. */}
           {!editBlocked && (
@@ -182,7 +205,7 @@ export default function InvoiceView() {
           )}
           {invoice.status !== 'paid' && invoice.status !== 'void' && (
             <Btn size="sm" onClick={openPay}>
-              <DollarSign size={14} /> {t('Record Payment')}
+              <DollarSign size={14} /> {t('Record payment')}
             </Btn>
           )}
           {canReturn && (
@@ -191,7 +214,7 @@ export default function InvoiceView() {
             </Btn>
           )}
           {invoice.status !== 'void' && (
-            <Btn variant="secondary" size="sm" onClick={handleVoid} title={t('Void')}>
+            <Btn need={['sales', 'delete']} variant="secondary" size="sm" onClick={handleVoid} title={t('Void')}>
               <Ban size={14} /> {t('Void')}
             </Btn>
           )}
@@ -400,7 +423,7 @@ export default function InvoiceView() {
       </div>
 
       {/* Payment Modal */}
-      <Modal open={payModal} onClose={() => setPayModal(false)} title="Record Payment">
+      <Modal open={payModal} onClose={() => setPayModal(false)} title="Record payment">
         <div className="space-y-4">
           <div className="bg-brand-50 dark:bg-brand-500/10 rounded-lg p-3 text-sm">
             <span className="text-brand-700 dark:text-brand-400 font-medium">Balance Due: {fmtMoney(amountDue, invSym)}</span>
@@ -442,7 +465,7 @@ export default function InvoiceView() {
           <Input label="Reference / Notes" value={payForm.notes} onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))} placeholder="Cheque #, transfer ref..." />
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setPayModal(false)}>{t('Cancel')}</Btn>
-            <Btn variant="success" onClick={handleRecord}>{t('Record Payment')}</Btn>
+            <Btn variant="success" onClick={handleRecord}>{t('Record payment')}</Btn>
           </div>
         </div>
       </Modal>
@@ -458,6 +481,7 @@ export default function InvoiceView() {
         confirmLabel={t('Create Credit Note')}
         onConfirm={doReturn}
       />
+      <EmailDialog open={!!emailDraft} onClose={() => setEmailDraft(null)} draft={emailDraft} onSent={logEmail} />
     </div>
   )
 }

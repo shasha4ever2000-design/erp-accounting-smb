@@ -36,7 +36,7 @@ export default function PurchaseView() {
   if (!purchase) return (
     <div className="text-center py-20">
       <p className="text-slate-500 dark:text-slate-400 mb-4">{t('Purchase invoice not found.')}</p>
-      <Btn variant="secondary" onClick={() => navigate('/purchases')}>{t('Back to Purchases')}</Btn>
+      <Btn variant="secondary" onClick={() => navigate('/purchases')}>{t('Back to purchases')}</Btn>
     </div>
   )
 
@@ -99,7 +99,7 @@ export default function PurchaseView() {
     <div>
       <div className="flex items-center justify-between mb-6 no-print flex-wrap gap-3">
         <button onClick={() => navigate('/purchases')} className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-100">
-          <ArrowLeft size={15} /> {t('Back to Purchases')}
+          <ArrowLeft size={15} /> {t('Back to purchases')}
         </button>
         <div className="flex items-center gap-2 flex-wrap">
           <AttachmentButton entityType="purchase" entityId={purchase.id} label={t('Attachments')} />
@@ -112,13 +112,13 @@ export default function PurchaseView() {
             </Btn>
           )}
           {purchase.status !== 'paid' && purchase.status !== 'void' && (
-            <Btn size="sm" onClick={openPay}><DollarSign size={14} /> {t('Record Payment')}</Btn>
+            <Btn size="sm" onClick={openPay}><DollarSign size={14} /> {t('Record payment')}</Btn>
           )}
           {canReturn && (
             <Btn variant="secondary" size="sm" onClick={() => setReturnOpen(true)}><RotateCcw size={14} /> {t('Return')}</Btn>
           )}
           {purchase.status !== 'void' && (
-            <Btn variant="secondary" size="sm" onClick={handleVoid}><Ban size={14} /> {t('Void')}</Btn>
+            <Btn need={['purchases', 'delete']} variant="secondary" size="sm" onClick={handleVoid}><Ban size={14} /> {t('Void')}</Btn>
           )}
         </div>
       </div>
@@ -272,7 +272,7 @@ export default function PurchaseView() {
             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-surface-750 no-print">
               <div className="flex items-center justify-between mb-3">
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('Journal Entry')} {je.number}</p>
-                <Btn variant="ghost" size="sm" onClick={() => navigate('/journals')}><BookOpen size={13} /> {t('Journal Entries')}</Btn>
+                <Btn variant="ghost" size="sm" onClick={() => navigate('/journals')}><BookOpen size={13} /> {t('Journal entries')}</Btn>
               </div>
               <table className="w-full text-sm">
                 <thead>
@@ -309,7 +309,7 @@ export default function PurchaseView() {
         </Card>
       </div>
 
-      <Modal open={payModal} onClose={() => setPayModal(false)} title={t('Record Payment to Supplier')}>
+      <Modal open={payModal} onClose={() => setPayModal(false)} title={t('Record payment to supplier')}>
         <div className="space-y-4">
           <div className="bg-warning-50 dark:bg-warning-900/20 border border-warning-100 dark:border-warning-800/50 rounded-lg p-3 text-sm text-warning-700 dark:text-warning-300">
             {t('Balance Due')}: <strong className="tabular-nums">{fmtMoney(amountDue, purSym)}</strong>
@@ -335,7 +335,7 @@ export default function PurchaseView() {
           <Input label={t('Reference / Notes')} value={payForm.notes} onChange={(e) => setPayForm((f) => ({ ...f, notes: e.target.value }))} />
           <div className="flex justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-700">
             <Btn variant="secondary" onClick={() => setPayModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={handleRecord}>{t('Record Payment')}</Btn>
+            <Btn onClick={handleRecord}>{t('Record payment')}</Btn>
           </div>
         </div>
       </Modal>

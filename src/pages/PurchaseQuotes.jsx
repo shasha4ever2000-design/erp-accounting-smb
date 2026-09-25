@@ -121,7 +121,7 @@ export default function PurchaseQuotes() {
               </Btn>
             )}
             <Btn onClick={() => { setForm(emptyForm()); setError(''); setModal(true) }}>
-              <Plus size={15} /> {t('New Quote')}
+              <Plus size={15} /> {t('New quote')}
             </Btn>
           </>
         }
@@ -169,7 +169,7 @@ export default function PurchaseQuotes() {
             icon={<FileQuestion size={28} className="text-slate-500 dark:text-slate-400" />}
             title="No purchase quotes"
             desc="Record what each supplier offered, compare them side by side, then turn the one you want into a purchase order."
-            action={<Btn onClick={() => { setForm(emptyForm()); setModal(true) }}><Plus size={14} /> {t('New Quote')}</Btn>}
+            action={<Btn onClick={() => { setForm(emptyForm()); setModal(true) }}><Plus size={14} /> {t('New quote')}</Btn>}
           />
         ) : (
           <Table headers={['Number', 'Supplier', 'Date', 'Valid until', 'Status', 'Total', '']}>
@@ -201,7 +201,7 @@ export default function PurchaseQuotes() {
       </Card>
 
       {/* New quote */}
-      <Modal open={modal} onClose={() => setModal(false)} title="New Purchase Quote" width="max-w-3xl">
+      <Modal open={modal} onClose={() => setModal(false)} title="New purchase quote" width="max-w-3xl">
         <div className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <Select label={t('Supplier *')} value={form.supplierId} onChange={(e) => { setForm((f) => ({ ...f, supplierId: e.target.value })); setError('') }}>
@@ -258,7 +258,7 @@ export default function PurchaseQuotes() {
 
           <div className="flex justify-end gap-2 pt-1">
             <Btn variant="secondary" onClick={() => setModal(false)}>{t('Cancel')}</Btn>
-            <Btn onClick={save}>{t('Save Quote')}</Btn>
+            <Btn onClick={save}>{t('Save quote')}</Btn>
           </div>
         </div>
       </Modal>

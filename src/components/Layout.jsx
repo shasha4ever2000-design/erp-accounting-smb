@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useStore } from '../store'
 import { useAuth } from '../auth'
+import { useCanOpen } from './Access'
+import NotificationBell from './NotificationBell'
+import ConnectionBanner from './ConnectionBanner'
 import { useI18n, useT } from '../i18n'
 import { actionableFor } from '../utils/approvals'
 import { startTabGuard, shouldWarn, WARNING_TEXT } from '../utils/tabGuard'
@@ -128,6 +131,10 @@ export default function Layout({ children }) {
   const badges = { approvals: actionableFor(approvalRequests, me, approvalSettings, allUsers).length }
   const [storageWarn, setStorageWarn] = useState(false)
   const location = useLocation()
+  // Only what this user's role may open; a section with nothing left goes too.
+  const canOpen = useCanOpen()
+  const visibleNav = NAV.filter((item) => item.divider || canOpen(item.path))
+    .filter((item, i, arr) => !item.divider || (arr[i + 1] && !arr[i + 1].divider))
 
   useEffect(() => {
     const onErr = () => setStorageWarn(true)
@@ -173,7 +180,7 @@ export default function Layout({ children }) {
 
         {/* Nav */}
         <nav className="flex-1 pb-3">
-          {NAV.map((item, i) => {
+          {visibleNav.map((item, i) => {
             if (item.divider) {
               return (
                 <p key={i} className="px-5 pt-5 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -239,6 +246,7 @@ export default function Layout({ children }) {
           </button>
           <CompanySwitcher />
           <div className="flex-1" />
+          <NotificationBell />
           <SyncStatusIndicator />
           <InstallButton />
           <button
@@ -265,6 +273,8 @@ export default function Layout({ children }) {
           </button>
           <UserMenu />
         </header>
+
+        <ConnectionBanner />
 
         {/* Storage-full warning */}
         {storageWarn && (
