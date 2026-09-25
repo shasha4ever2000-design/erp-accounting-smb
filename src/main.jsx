@@ -6,6 +6,7 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { DialogHost } from './components/Dialogs'
 import { installDialogTranslation } from './i18n'
 import './index.css'
+import { registerPwa } from './pwa'
 
 installDialogTranslation()
 
@@ -21,9 +22,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 )
 
-// Register service worker for the offline / installable web edition (not in the native app)
-if (!isDesktop && 'serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/erp-accounting-smb/sw.js').catch(() => {})
-  })
-}
+// Offline / installable web edition (not in the native app). See src/pwa.js.
+registerPwa({ url: `${import.meta.env.BASE_URL}sw.js`, isDesktop })
