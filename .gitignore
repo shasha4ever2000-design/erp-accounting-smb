@@ -14,3 +14,6 @@ Thumbs.db
 # Playwright output
 test-results/
 playwright-report/
+
+# graphify output (generated knowledge graph + cache)
+graphify-out/
