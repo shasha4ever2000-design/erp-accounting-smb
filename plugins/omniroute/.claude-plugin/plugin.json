@@ -1,0 +1,13 @@
+{
+  "name": "omniroute",
+  "version": "1.0.0",
+  "description": "OmniRoute AI gateway for Claude Code: agent skills for its REST API and CLI, plus its MCP server (needs OmniRoute running on localhost:20128).",
+  "author": {
+    "name": "diegosouzapw",
+    "url": "https://github.com/diegosouzapw"
+  },
+  "homepage": "https://omniroute.online",
+  "repository": "https://github.com/diegosouzapw/OmniRoute",
+  "license": "MIT",
+  "keywords": ["ai-gateway", "llm-router", "mcp", "openai-compatible"]
+}

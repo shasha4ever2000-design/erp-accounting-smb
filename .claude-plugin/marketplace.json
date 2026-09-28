@@ -1,0 +1,16 @@
+{
+  "name": "erp-accounting-smb",
+  "owner": {
+    "name": "shasha4ever2000-design"
+  },
+  "metadata": {
+    "description": "Claude Code plugins for the ERP accounting project."
+  },
+  "plugins": [
+    {
+      "name": "omniroute",
+      "source": "./plugins/omniroute",
+      "description": "OmniRoute AI gateway: agent skills plus MCP server connection."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "extraKnownMarketplaces": {
+    "erp-accounting-smb": {
+      "source": {
+        "source": "directory",
+        "path": "."
+      }
+    }
+  },
+  "enabledPlugins": {
+    "omniroute@erp-accounting-smb": true
+  }
+}
