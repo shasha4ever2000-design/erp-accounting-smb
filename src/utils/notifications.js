@@ -11,6 +11,12 @@ import { budgetAlerts } from './budgetAlerts'
 import { can } from './permissions'
 import { fmtMoney } from './formatters'
 import { isTerminal } from './cheques'
+import { duplicateNumbers } from '../store/shared'
+
+const DUP_PATH = {
+  invoices: '/invoices', purchases: '/purchases', creditNotes: '/credit-notes', debitNotes: '/debit-notes',
+  journalEntries: '/journals', quotations: '/quotations', salesOrders: '/sales-orders', purchaseOrders: '/purchase-orders', payrollRuns: '/payroll',
+}
 
 const addDays = (iso, n) => {
   const d = new Date(iso + 'T00:00:00')
@@ -118,6 +124,17 @@ export function buildNotifications(state, { today, user = null, users = [], role
   }
 
   if (allowed('accounting')) {
+    // Two devices working offline can both take the next number before either
+    // syncs. The books still add up, but a duplicate invoice number is a
+    // compliance fault, so it is raised rather than left for an auditor.
+    const dups = duplicateNumbers(state)
+    push('duplicate-numbers', dups.map((d) => ({ id: `${d.collection}:${d.number}` })), (xs) => ({
+      tone: 'danger',
+      title: plural(xs.length, '{n} document number is used twice', '{n} document numbers are used twice'),
+      body: dups.slice(0, 3).map((d) => d.number).join(', ') + (dups.length > 3 ? '…' : ''),
+      path: DUP_PATH[dups[0].collection] || '/audit-log',
+    }))
+
     // Last month still open ten days into this one.
     const [y, m, d] = today.split('-').map(Number)
     const lastMonthEnd = addDays(`${y}-${String(m).padStart(2, '0')}-01`, -1)

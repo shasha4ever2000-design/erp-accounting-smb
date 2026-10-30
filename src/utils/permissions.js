@@ -168,7 +168,7 @@ export const UNGUARDED = new Set([
   'logStockMovement', 'runScheduler', 'generateDueRecurring', 'generateDueRecurringJournals', 'generateDueRecurringExpenses',
   'runBackupScheduler', 'syncNow', 'exportData', 'checkBackupAnchor', '_readBackups', '_writeBackups', '_readSyncMeta',
   '_writeSyncMeta', '_recordAdvanceRepayments', '_depreciationTotals', 'dismissNotification', 'restoreNotifications',
-  'setNotificationPrefs', 'markNotificationsSeen',
+  'setNotificationPrefs', 'markNotificationsSeen', 'normaliseCounters',
 ])
 
 // Questions the store answers without changing anything.

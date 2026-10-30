@@ -4,7 +4,7 @@ import { ETA_DEFAULT_TAX_SUBTYPES } from '../utils/etaEinvoice'
 import { WAC } from '../utils/fifo'
 import { defaultApprovalSettings } from '../utils/approvals'
 import { newField as newCustomField, normaliseField as normaliseCustomField, fieldsFor as customFieldsFor, coerceValues as coerceCustomValues, validateField as validateCustomField } from '../utils/customFields'
-import { DEFAULT_SETTINGS } from './shared'
+import { DEFAULT_SETTINGS, raiseCounters } from './shared'
 
 export const createSettingsSlice = (set, get) => ({
   // ─── SETTINGS ──────────────────────────────────────────────────
@@ -24,6 +24,13 @@ export const createSettingsSlice = (set, get) => ({
 
   updateTax: (patch) =>
     set((s) => ({ settings: { ...s.settings, tax: { ...s.settings.tax, ...patch } } })),
+
+  /** Raise any number-series counter that sits at or below a number already used. See raiseCounters. */
+  normaliseCounters: () =>
+    set((s) => {
+      const settings = raiseCounters(s.settings, s)
+      return settings === s.settings ? s : { settings }
+    }),
 
   updateInvoiceSettings: (patch) =>
     set((s) => ({ settings: { ...s.settings, invoice: { ...s.settings.invoice, ...patch } } })),
