@@ -43,7 +43,9 @@ jobs:
 
   e2e:
     name: End-to-end (Chromium)
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, which Playwright 1.56 can't install
+    # browser dependencies for. Move back once Playwright supports it.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
