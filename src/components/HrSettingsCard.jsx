@@ -7,6 +7,7 @@
 
 import { useStore } from '../store'
 import { EOSB_RULES } from '../utils/endOfService'
+import { DEFAULT_GOSI_WAGE_CAP } from '../utils/contracts'
 import { Card, Input, Select } from './UI'
 import { useT } from '../i18n'
 import { Users } from 'lucide-react'
@@ -73,6 +74,15 @@ export default function HrSettingsCard() {
             </p>
           </div>
         )}
+
+        <div>
+          <Input label={t('GOSI wage ceiling (per month)')} type="number" min="0" step="1"
+            value={hr.gosiWageCap ?? DEFAULT_GOSI_WAGE_CAP}
+            onChange={(e) => updateHrSettings({ gosiWageCap: Math.max(0, parseFloat(e.target.value) || 0) })} />
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {t('GOSI is charged on basic + housing up to this amount (SAR 45,000 in Saudi Arabia). Enter 0 for no ceiling.')}
+          </p>
+        </div>
 
         <div>
           <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">{t('Weekly rest days')}</label>

@@ -9,7 +9,7 @@ import { alertIfLocked } from '../utils/periodLock'
 import {
   emptyContract, CONTRACT_TYPES, CONTRACT_STATUS, PAY_COMPONENTS,
   contractStatus, historyFor, serviceStart, describeService,
-  analyseSalary, employerCost, grossOf, contributoryWage, probationEnd, attentionList,
+  analyseSalary, employerCost, grossOf, contributoryWage, probationEnd, attentionList, DEFAULT_GOSI_WAGE_CAP,
 } from '../utils/contracts'
 import { LEAVE_REASONS, explainAward } from '../utils/endOfService'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -36,6 +36,7 @@ export default function Contracts() {
     customFieldsFor,
   } = useStore()
   const sym = settings.company.currencySymbol
+  const gosiCap = settings.hr?.gosiWageCap ?? DEFAULT_GOSI_WAGE_CAP
   const at = today()
   const eosbRule = settings.hr?.eosb?.rule || 'none'
 
@@ -61,7 +62,7 @@ export default function Contracts() {
   }), [employmentContracts, employees])
 
   const analysis = analyseSalary(form)
-  const cost = employerCost(form)
+  const cost = employerCost(form, { gosiCap })
 
   const openNew = () => { setEditing(null); setForm(emptyContract({ startDate: at })); setModal(true) }
   const openEdit = (c) => { setEditing(c); setForm({ ...emptyContract(), ...c }); setModal(true) }
@@ -129,7 +130,7 @@ export default function Contracts() {
   ]
 
   const activeRows = rows.filter((c) => !['terminated', 'expired'].includes(contractStatus(c, { asAt: at })))
-  const monthlyCost = activeRows.reduce((s, c) => s + employerCost(c).total, 0)
+  const monthlyCost = activeRows.reduce((s, c) => s + employerCost(c, { gosiCap }).total, 0)
 
   return (
     <div>
@@ -220,7 +221,7 @@ export default function Contracts() {
                   <Td className="text-sm text-slate-500 dark:text-slate-400">{c.endDate ? fmtDate(c.endDate) : <span className="text-slate-500 dark:text-slate-400">{t('open')}</span>}</Td>
                   <Td className="text-sm text-slate-600 dark:text-slate-300">{describeService(serviceStart(c.employeeId, employmentContracts), at)}</Td>
                   <Td right className="font-medium">{fmtMoney(grossOf(c), sym)}</Td>
-                  <Td right className="text-slate-600 dark:text-slate-300">{fmtMoney(employerCost(c).total, sym)}</Td>
+                  <Td right className="text-slate-600 dark:text-slate-300">{fmtMoney(employerCost(c, { gosiCap }).total, sym)}</Td>
                   <Td right className="text-slate-600 dark:text-slate-300">{award && award.gross > 0 ? fmtMoney(award.gross, sym) : <span className="text-slate-500 dark:text-slate-400">—</span>}</Td>
                   <Td><Badge className={statusColor(status)}>{t(CONTRACT_STATUS[status] || status)}</Badge></Td>
                   <Td right>

@@ -6,7 +6,7 @@ import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Play, DollarSign, Trash2, Users, MinusCircle, CalendarCheck, FileSignature } from 'lucide-react'
-import { grossOf as contractGross } from '../utils/contracts'
+import { grossOf as contractGross, gosiWage, DEFAULT_GOSI_WAGE_CAP } from '../utils/contracts'
 import { ask } from '../components/Dialogs'
 
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100
@@ -23,7 +23,7 @@ const num = (v) => parseFloat(v) || 0
  * Absence and overtime come from the attendance sheet for that month, so the
  * two modules meet here rather than being reconciled by hand.
  */
-function lineFromEmployee(emp, { contract = null, impact = null } = {}) {
+function lineFromEmployee(emp, { contract = null, impact = null, gosiCap } = {}) {
   const src = contract || emp
   const basic = num(contract ? contract.basic : (emp.basicSalary || emp.salary))
   const housing = num(contract ? contract.housing : emp.housingAllowance)
@@ -35,7 +35,8 @@ function lineFromEmployee(emp, { contract = null, impact = null } = {}) {
 
   // Social insurance is charged on basic plus housing, not on the whole
   // package — see utils/contracts.js. Overtime never enters it.
-  const contributory = basic + housing
+  // ...and only up to the GOSI wage ceiling.
+  const contributory = gosiWage(basic + housing, gosiCap)
   const gosiOn = contract ? contract.gosiApplicable : emp.gosiApplicable
   const gosi = gosiOn ? round2((contributory * num(src.gosiEmployeeRate)) / 100) : 0
   const gosiEmployer = gosiOn ? round2((contributory * num(src.gosiEmployerRate)) / 100) : 0
@@ -66,6 +67,7 @@ export default function Payroll() {
   const { employees, payrollRuns, bankAccounts, settings, employmentContracts, attendance,
           addPayrollRun, processPayrollRun, payPayrollRun, deletePayrollRun,
           contractFor, attendanceImpact, advanceDueFor } = useStore()
+  const gosiCap = settings.hr?.gosiWageCap ?? DEFAULT_GOSI_WAGE_CAP
   const sym = settings.company.currencySymbol
 
   const [newModal, setNewModal]     = useState(false)
@@ -88,6 +90,7 @@ export default function Payroll() {
     const l = lineFromEmployee(e, {
       contract: contractFor(e.id, `${month}-28`),
       impact: attendanceImpact(e.id, month),
+      gosiCap,
     })
     const payable = grossOf(l) - dedOf(l)
     return { ...l, loan: advanceDueFor(e.id, Math.max(0, payable)).total }
@@ -137,7 +140,7 @@ export default function Payroll() {
   // Live payroll estimate for the KPI cards — contract pay only, with no
   // attendance in it, because "what does payroll cost a month" should not
   // wobble with last month's sick days.
-  const estLines = activeEmps.map((e) => lineFromEmployee(e, { contract: contractFor(e.id) }))
+  const estLines = activeEmps.map((e) => lineFromEmployee(e, { contract: contractFor(e.id), gosiCap }))
   const estGross = estLines.reduce((s, l) => s + grossOf(l), 0)
   const estNet   = estLines.reduce((s, l) => s + netOf(l), 0)
 
