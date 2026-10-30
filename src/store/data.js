@@ -8,6 +8,7 @@ import { ledgerAnchor, matchesAnchor } from '../utils/ledgerChain'
 import { isPersisted, storageEstimate, assessDurability } from '../utils/durability'
 import { useStore } from '../store'
 import { asSystem } from './guard'
+import { raiseCounters } from './shared'
 
 export const createDataSlice = (set, get) => ({
   // ─── BACKUP / RESTORE ──────────────────────────────────────────
@@ -60,6 +61,9 @@ export const createDataSlice = (set, get) => ({
       ? migrate(rest, from) : rest
     set((s) => {
       const next = { ...s, ...slices }
+      // A restored backup, a snapshot or another device's settings can carry
+      // counters older than the documents now in the books.
+      next.settings = raiseCounters(next.settings, next)
       // Backups carry no API key (see exportData); keep the one this
       // device already has rather than wiping it on every restore or sync.
       const localKey = s.settings?.ai?.apiKey
@@ -221,37 +225,63 @@ export const createDataSlice = (set, get) => ({
   },
   _writeSyncMeta: async (meta) => { await idbKvStorage.setItem(currentCompanyKey() + '::syncMeta', JSON.stringify(meta)) },
 
-  syncNow: async () => {
-    const { useAuth } = await import('../auth')
-    const auth = useAuth.getState()
-    const company = auth.companies.find((c) => c.id === auth.currentCompanyId)
-    if (!company?.cloudCompanyId) return { skipped: true, reason: 'NOT_LINKED' }
-
-    const { getSupabase, isOnline } = await import('../lib/supabase')
-    if (!isOnline()) return { skipped: true, reason: 'OFFLINE' }
-    const client = getSupabase()
-    const { data: sessionData } = await client.auth.getSession()
-    if (!sessionData?.session) return { skipped: true, reason: 'NOT_SIGNED_IN' }
-
-    const s = get()
-    set({ syncStatus: 'syncing' })
-    try {
-      const { runSync } = await import('../cloudSync')
-      const meta = await s._readSyncMeta()
-      const localSnapshot = s.exportData()
-      const entities = Object.keys(localSnapshot).filter((k) => !k.startsWith('_'))
-      const { merged, newPulledAt, pushed, pulled } = await runSync({
-        client, companyId: company.cloudCompanyId, userId: sessionData.session.user.id, entities,
-        localSnapshot, lastSyncedSnapshot: meta.snapshot, lastPulledAt: meta.pulledAt,
-      })
-      asSystem(() => get().importData(merged))
-      await get()._writeSyncMeta({ snapshot: merged, pulledAt: newPulledAt })
-      const now = new Date().toISOString()
-      set({ syncStatus: 'idle', lastSyncAt: now, lastSyncError: null })
-      return { ok: true, pushed, pulled }
-    } catch (e) {
-      set({ syncStatus: 'error', lastSyncError: e.message })
-      return { error: e.message }
-    }
+  syncNow: () => {
+    // The boot sync, the two-minute timer, coming back online and the Sync
+    // button can all fire together. Two cycles interleaved would each import
+    // a merge built from a stale snapshot, so a second call joins the first.
+    if (syncInFlight) return syncInFlight
+    syncInFlight = (async () => {
+      try { return await runSyncCycle(set, get) } finally { syncInFlight = null }
+    })()
+    return syncInFlight
   },
 })
+
+let syncInFlight = null
+
+async function runSyncCycle(set, get) {
+  const { useAuth } = await import('../auth')
+  const auth = useAuth.getState()
+  const company = auth.companies.find((c) => c.id === auth.currentCompanyId)
+  if (!company?.cloudCompanyId) return { skipped: true, reason: 'NOT_LINKED' }
+
+  const { getSupabase, isOnline } = await import('../lib/supabase')
+  if (!isOnline()) return { skipped: true, reason: 'OFFLINE' }
+  const client = getSupabase()
+  const { data: sessionData } = await client.auth.getSession()
+  if (!sessionData?.session) return { skipped: true, reason: 'NOT_SIGNED_IN' }
+
+  const s = get()
+  set({ syncStatus: 'syncing' })
+  try {
+    const { runSync, reapplyLocalEdits } = await import('../cloudSync')
+    const { repairFork } = await import('../utils/ledgerChain')
+    const meta = await s._readSyncMeta()
+    const localSnapshot = s.exportData()
+    const entities = Object.keys(localSnapshot).filter((k) => !k.startsWith('_'))
+    const { merged, newPulledAt, pushed, pulled } = await runSync({
+      client, companyId: company.cloudCompanyId, userId: sessionData.session.user.id, entities,
+      localSnapshot, lastSyncedSnapshot: meta.snapshot, lastPulledAt: meta.pulledAt,
+    })
+    // Anything entered on this device while the network calls were running.
+    const { snapshot: final, edits } = reapplyLocalEdits(merged, localSnapshot, get().exportData(), entities)
+    // Two devices that both posted since the last sync leave the ledger's
+    // seal forked; join it, unless an entry was altered (see repairFork).
+    const fork = repairFork(final.journalEntries)
+    if (fork.repaired) final.journalEntries = fork.entries
+    asSystem(() => get().importData(final))
+    if (fork.repaired) {
+      get().logActivity('Ledger re-sealed after sync',
+        `${fork.count} entr${fork.count === 1 ? 'y' : 'ies'} from more than one device joined into one chain`, { entity: 'ledger' })
+    }
+    // The baseline is what the server now holds. Local edits made during the
+    // sync (and a re-sealed chain) differ from it, so the next cycle pushes them.
+    await get()._writeSyncMeta({ snapshot: merged, pulledAt: newPulledAt })
+    const now = new Date().toISOString()
+    set({ syncStatus: 'idle', lastSyncAt: now, lastSyncError: null })
+    return { ok: true, pushed, pulled, keptEdits: edits, resealed: fork.repaired ? fork.count : 0 }
+  } catch (e) {
+    set({ syncStatus: 'error', lastSyncError: e.message })
+    return { error: e.message }
+  }
+}

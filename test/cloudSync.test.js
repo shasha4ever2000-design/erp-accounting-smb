@@ -1,12 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { diffSnapshots, pushChanges, pullChanges, applyPulledRows, runSync, isRecordArray } from '../src/cloudSync.js'
+import { diffSnapshots, pushChanges, pullChanges, applyPulledRows, runSync, isRecordArray, reapplyLocalEdits } from '../src/cloudSync.js'
 
 // A minimal in-memory stand-in for the subset of the supabase-js query
 // builder this app uses: .from(t).upsert(rows, {onConflict}) and
 // .from(t).select(cols).eq(k,v).gt(k,v).order(k,{ascending}) — the second
 // chain is a "thenable" exactly like the real client, so `await` on it
 // resolves to { data, error } without a network call.
-function makeFakeSupabase() {
+function makeFakeSupabase({ maxRows = 1000, sameTimestamp = false } = {}) {
+  const upserts = []
   const table = new Map() // key: `${company_id}::${entity}::${record_id}` -> row
   let clock = 0
   const nextTimestamp = () => { clock += 1; return `2026-01-01T00:00:${String(clock).padStart(2, '0')}.000Z` }
@@ -16,23 +17,29 @@ function makeFakeSupabase() {
       if (name !== 'records') throw new Error('unexpected table ' + name)
       return {
         upsert: async (rows) => {
+          upserts.push(rows.length)
+          // One transaction: with sameTimestamp every row gets the same updated_at, as Postgres now() does.
+          const stamp = sameTimestamp ? nextTimestamp() : null
           rows.forEach((r) => {
             const key = `${r.company_id}::${r.entity}::${r.record_id}`
-            table.set(key, { ...r, updated_at: nextTimestamp() }) // server always stamps updated_at
+            table.set(key, { ...r, updated_at: stamp || nextTimestamp() }) // server always stamps updated_at
           })
           return { error: null }
         },
         select: () => {
-          const state = { companyId: null, gtCol: null, gtVal: null }
+          const state = { companyId: null, gtCol: null, gtVal: null, from: 0, to: null }
           const builder = {
             eq: (col, val) => { if (col === 'company_id') state.companyId = val; return builder },
             gt: (col, val) => { if (col === 'updated_at') { state.gtCol = col; state.gtVal = val }; return builder },
             order: () => builder,
+            range: (from, to) => { state.from = from; state.to = to; return builder },
             then: (resolve) => {
               let rows = [...table.values()].filter((r) => r.company_id === state.companyId)
               if (state.gtVal) rows = rows.filter((r) => r.updated_at > state.gtVal)
-              rows.sort((a, b) => a.updated_at.localeCompare(b.updated_at))
-              resolve({ data: rows, error: null })
+              rows.sort((a, b) => a.updated_at.localeCompare(b.updated_at) || a.record_id.localeCompare(b.record_id))
+              // Like PostgREST: never more than maxRows in one response.
+              const end = Math.min(state.to == null ? rows.length - 1 : state.to, state.from + maxRows - 1)
+              resolve({ data: rows.slice(state.from, end + 1), error: null })
             },
           }
           return builder
@@ -40,7 +47,7 @@ function makeFakeSupabase() {
       }
     },
   }
-  return { client, table }
+  return { client, table, upserts }
 }
 
 describe('isRecordArray', () => {
@@ -146,7 +153,7 @@ describe('push / pull / merge against a fake client', () => {
     const firstPull = await pullChanges(client, 'co-1', null)
     const cursor = firstPull[0].updated_at
     await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: [{ id: 'c2', name: 'B' }] }, ['customers']))
-    const rows = await pullChanges(client, 'co-1', cursor)
+    const rows = await pullChanges(client, 'co-1', cursor, { overlapMs: 0 })
     expect(rows).toHaveLength(1)
     expect(rows[0].record_id).toBe('c2')
   })
@@ -216,5 +223,61 @@ describe('runSync — full cycle, two simulated devices', () => {
     const second = await runSync({ client, companyId: 'co-1', userId: 'u', entities: ['customers'], localSnapshot: first.merged, lastSyncedSnapshot: first.merged, lastPulledAt: first.newPulledAt })
     expect(second.pushed).toBe(0)
     expect(second.pulled).toBe(0)
+  })
+})
+
+describe('sync fixes (October 2026 audit)', () => {
+  const many = (n) => Array.from({ length: n }, (_, i) => ({ id: `c${String(i).padStart(5, '0')}`, name: `C${i}` }))
+
+  it('pulls every row of a big company, not just the first 1,000', async () => {
+    const { client } = makeFakeSupabase({ sameTimestamp: true })
+    await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: many(2500) }, ['customers']), { chunk: 5000 })
+    const rows = await pullChanges(client, 'co-1', null)
+    expect(rows).toHaveLength(2500)
+  })
+
+  it('a device that synced before a big import still gets all of it on its next pull', async () => {
+    const { client } = makeFakeSupabase({ sameTimestamp: true })
+    await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: many(1) }, ['customers']))
+    const cursor = (await pullChanges(client, 'co-1', null)).at(-1).updated_at
+    await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: many(1800) }, ['customers']), { chunk: 5000 })
+    const rows = await pullChanges(client, 'co-1', cursor)
+    expect(new Set(rows.map((r) => r.record_id)).size).toBe(1800)
+  })
+
+  it('re-reads a short overlap so a row committed just after the cursor is not skipped', async () => {
+    const { client, table } = makeFakeSupabase()
+    await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: many(1) }, ['customers']))
+    const cursor = (await pullChanges(client, 'co-1', null)).at(-1).updated_at
+    // A write whose transaction started 10s before the cursor but committed after our pull.
+    table.set('co-1::customers::late', { company_id: 'co-1', entity: 'customers', record_id: 'late', data: { id: 'late' }, deleted: false,
+      updated_at: new Date(new Date(cursor).getTime() - 10_000).toISOString() })
+    const rows = await pullChanges(client, 'co-1', cursor)
+    expect(rows.map((r) => r.record_id)).toContain('late')
+  })
+
+  it('pushes a big change in chunks', async () => {
+    const { client, upserts } = makeFakeSupabase()
+    await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: many(1200) }, ['customers']))
+    expect(upserts).toEqual([500, 500, 200])
+  })
+
+  it('the pull cursor never moves backwards', async () => {
+    const { client } = makeFakeSupabase()
+    await pushChanges(client, 'co-1', 'u', diffSnapshots(null, { customers: many(2) }, ['customers']))
+    const first = await runSync({ client, companyId: 'co-1', userId: 'u', entities: ['customers'], localSnapshot: { customers: many(2) }, lastSyncedSnapshot: { customers: many(2) }, lastPulledAt: null })
+    const second = await runSync({ client, companyId: 'co-1', userId: 'u', entities: ['customers'], localSnapshot: first.merged, lastSyncedSnapshot: first.merged, lastPulledAt: first.newPulledAt })
+    expect(second.newPulledAt >= first.newPulledAt).toBe(true)
+  })
+
+  it('keeps what was typed on this device while a sync was running', () => {
+    const before = { customers: [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], settings: { x: 1 } }
+    const merged = { customers: [{ id: 'a', name: 'A (from other device)' }, { id: 'b', name: 'B' }, { id: 'r', name: 'Remote' }], settings: { x: 1 } }
+    const after = { customers: [{ id: 'a', name: 'A' }, { id: 'n', name: 'New during sync' }], settings: { x: 2 } } // b deleted, n added, settings edited
+    const { snapshot, edits } = reapplyLocalEdits(merged, before, after, ['customers', 'settings'])
+    expect(edits).toBe(3)
+    expect(snapshot.customers.map((c) => c.id).sort()).toEqual(['a', 'n', 'r'])
+    expect(snapshot.customers.find((c) => c.id === 'a').name).toBe('A (from other device)')
+    expect(snapshot.settings).toEqual({ x: 2 })
   })
 })

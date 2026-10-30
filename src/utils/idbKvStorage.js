@@ -153,16 +153,60 @@ export function flushNow() {
 /** True when a save is still queued — used by the tests and the UI. */
 export const hasPendingWrites = () => pending.size > 0
 
+// ── The last moment before the page goes ───────────────────────────────
+//
+// flushNow on leaving *starts* the write, but IndexedDB commits in the
+// background, and a page that is being reloaded or closed is not waited for:
+// the transaction can die with the page. On a slow device that lost whatever
+// was done in the last half second — found when a test that loaded the sample
+// books and then reloaded came back to the first-run questions it had already
+// answered.
+//
+// localStorage, unlike IndexedDB, writes synchronously. So on the way out the
+// outstanding values are also put there, under a "::unsaved" key, and the
+// background write clears that copy once it has landed. If the page died
+// first, the next load finds the copy, uses it, and writes it through to
+// IndexedDB. A company too big for localStorage simply gets no copy — no worse
+// than before.
+export const RESCUE_SUFFIX = '::unsaved'
+
+/** Save what is still queued, synchronously, then start the normal write. */
+export function rescuePending() {
+  if (timer != null) { clearTimeout(timer); timer = null }
+  if (pending.size === 0) return inFlight
+  const batch = []
+  for (const [name, produce] of pending.entries()) {
+    let text
+    try { text = produce() } catch (e) {
+      console.error('ERP: could not serialize state for saving.', e)
+      announceFailure()
+      continue
+    }
+    // Without IndexedDB the real write already goes to localStorage.
+    const rescued = idbAvailable && lsSet(name + RESCUE_SUFFIX, text)
+    batch.push([name, text, rescued])
+  }
+  pending.clear()
+  inFlight = inFlight
+    .then(() => Promise.all(batch.map(async ([name, text, rescued]) => {
+      await writeThrough(name, text)
+      // Landed; the copy is no longer needed (unless something newer replaced it).
+      if (rescued && lsGet(name + RESCUE_SUFFIX) === text) lsDel(name + RESCUE_SUFFIX)
+    })))
+    .then(() => {})
+  return inFlight
+}
+
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   // pagehide covers back/forward-cache navigations that beforeunload misses;
   // visibilitychange is the only one iOS reliably fires when an app is
   // backgrounded and later killed.
-  const onLeave = () => { flushNow() }
+  const onLeave = () => { rescuePending() }
   window.addEventListener('pagehide', onLeave)
   window.addEventListener('beforeunload', onLeave)
   if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') flushNow()
+      if (document.visibilityState === 'hidden') rescuePending()
     })
   }
 }
@@ -173,6 +217,19 @@ export const idbKvStorage = {
     // than reading a snapshot we are about to overwrite.
     if (pending.has(name)) return pending.get(name)()
     if (!idbAvailable) return lsGet(name)
+    // A copy saved on the way out of the last session (see rescuePending) is
+    // newer than whatever IndexedDB holds: its background write may never
+    // have landed. Use it, and finish that write now.
+    const rescued = lsGet(name + RESCUE_SUFFIX)
+    if (rescued != null) {
+      try {
+        await run('readwrite', (s) => s.put(rescued, name))
+        lsDel(name + RESCUE_SUFFIX)
+      } catch (e) {
+        console.warn('ERP: could not move the unsaved copy into IndexedDB yet.', e)
+      }
+      return rescued
+    }
     try {
       let v = await run('readonly', (s) => s.get(name))
       if (v == null) {
@@ -194,6 +251,7 @@ export const idbKvStorage = {
     pending.delete(name)
     if (idbAvailable) { try { await run('readwrite', (s) => s.delete(name)) } catch { /* ignore */ } }
     lsDel(name)
+    lsDel(name + RESCUE_SUFFIX)
   },
 }
 
@@ -202,6 +260,7 @@ export const idbKvStorage = {
 export function removeCompanyData(companyId) {
   const key = `erp-co-${companyId}`
   lsDel(key)
+  lsDel(key + RESCUE_SUFFIX)
   if (idbAvailable) run('readwrite', (s) => s.delete(key)).catch(() => {})
 }
 

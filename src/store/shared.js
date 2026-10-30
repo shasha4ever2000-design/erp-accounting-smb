@@ -339,3 +339,72 @@ export function addDaysISO(iso, days) {
   d.setUTCDate(d.getUTCDate() + days)
   return d.toISOString().slice(0, 10)
 }
+
+// ─── Document numbers never go backwards ─────────────────────────────
+// Each number series (INV-, PUR-, JE-, ...) keeps its `next` counter in the
+// settings. Settings sync as one record, last writer wins, so a second device
+// that last synced a week ago can push an older counter over a newer one, and
+// a restored backup or a hand-edited counter can do the same. The next
+// document then reuses a number that is already taken — a duplicate invoice
+// number, which tax authorities treat as a real fault.
+//
+// The fix is cheap: after anything that replaces data wholesale, raise every
+// counter above the highest number already used in its series.
+
+const escapeRe = (s) => String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+/** Every document number in the books: top-level records and their payments/receipts. */
+export function usedNumbers(state) {
+  const out = []
+  Object.values(state || {}).forEach((v) => {
+    if (!Array.isArray(v)) return
+    v.forEach((rec) => {
+      if (!rec || typeof rec !== 'object') return
+      if (typeof rec.number === 'string') out.push(rec.number)
+      Object.values(rec).forEach((inner) => {
+        if (Array.isArray(inner)) inner.forEach((x) => { if (x && typeof x.number === 'string') out.push(x.number) })
+      })
+    })
+  })
+  return out
+}
+
+/**
+ * Settings with every series counter raised above the highest number used.
+ * Returns the same object when nothing needed to move.
+ */
+export function raiseCounters(settings, state) {
+  if (!settings) return settings
+  const numbers = usedNumbers(state)
+  let changed = null
+  for (const [key, series] of Object.entries(settings)) {
+    if (!series || typeof series !== 'object' || typeof series.prefix !== 'string' || !series.prefix || !Number.isFinite(Number(series.next))) continue
+    const re = new RegExp(`^${escapeRe(series.prefix)}(\\d+)$`)
+    let max = 0
+    for (const n of numbers) { const m = n.match(re); if (m) max = Math.max(max, Number(m[1])) }
+    if (max >= Number(series.next)) {
+      changed = changed || { ...settings }
+      changed[key] = { ...series, next: max + 1 }
+    }
+  }
+  return changed || settings
+}
+
+/**
+ * Numbers used by more than one live document of the same kind. Two devices
+ * working offline can both take the next number before either syncs; this is
+ * how the app notices afterwards.
+ * @returns {Array<{ number, collection, count }>}
+ */
+export function duplicateNumbers(state, collections = ['invoices', 'purchases', 'creditNotes', 'debitNotes', 'journalEntries', 'quotations', 'salesOrders', 'purchaseOrders', 'payrollRuns']) {
+  const out = []
+  for (const c of collections) {
+    const seen = new Map()
+    ;(state?.[c] || []).forEach((d) => {
+      if (!d?.number || d.status === 'void' || d.status === 'cancelled') return
+      seen.set(d.number, (seen.get(d.number) || 0) + 1)
+    })
+    seen.forEach((count, number) => { if (count > 1) out.push({ number, collection: c, count }) })
+  }
+  return out
+}

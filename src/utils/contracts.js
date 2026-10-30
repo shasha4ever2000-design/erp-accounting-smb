@@ -106,6 +106,19 @@ export function contributoryWage(contract) {
   return round2(num(contract?.basic) + num(contract?.housing))
 }
 
+// GOSI is charged on the contributory wage only up to a ceiling: SAR 45,000 a
+// month in Saudi Arabia. Above it, neither the employee nor the employer pays
+// more. Without the cap a senior salary is over-deducted every month. The
+// ceiling is a setting (Settings → HR); 0 means no ceiling.
+export const DEFAULT_GOSI_WAGE_CAP = 45000
+
+/** The wage GOSI is actually charged on: basic + housing, capped. */
+export function gosiWage(contributory, cap = DEFAULT_GOSI_WAGE_CAP) {
+  const c = num(cap)
+  const w = num(contributory)
+  return round2(c > 0 ? Math.min(w, c) : w)
+}
+
 export function probationEnd(contract) {
   if (!contract?.startDate || !(num(contract.probationMonths) > 0)) return ''
   return addMonths(contract.startDate, contract.probationMonths)
@@ -231,10 +244,10 @@ export function analyseSalary(contract) {
 }
 
 /** Employer cost per month: gross plus the employer's own contributions. */
-export function employerCost(contract) {
+export function employerCost(contract, { gosiCap = DEFAULT_GOSI_WAGE_CAP } = {}) {
   const gross = grossOf(contract)
   const gosi = contract?.gosiApplicable
-    ? round2((contributoryWage(contract) * num(contract.gosiEmployerRate)) / 100)
+    ? round2((gosiWage(contributoryWage(contract), gosiCap) * num(contract.gosiEmployerRate)) / 100)
     : 0
   return { gross, gosiEmployer: gosi, total: round2(gross + gosi) }
 }

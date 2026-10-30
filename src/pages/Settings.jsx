@@ -246,6 +246,15 @@ export default function Settings() {
     updateCompany({ ...company, currencySymbol: curr?.symbol || company.currencySymbol })
     updateTax(tax)
     updateInvoiceSettings(invoice)
+    // A counter typed below a number already used would hand that number out
+    // again; move it past the last one used instead, and say so.
+    const before = useStore.getState().settings.invoice?.next
+    useStore.getState().normaliseCounters()
+    const after = useStore.getState().settings.invoice?.next
+    if (after !== before) {
+      setInvoice((i) => ({ ...i, next: after }))
+      alert(t('That invoice number is already used. The next invoice will be {n}.').replace('{n}', `${invoice.prefix || ''}${String(after).padStart(4, '0')}`))
+    }
     updateAiSettings(ai)
     updateZatca(zatca)
     updateEta(eta)

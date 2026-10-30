@@ -61,3 +61,14 @@ describe('notifications', () => {
     expect(visibleNotifications(list, { seen: { [list[0].id]: 'x' } }).unseen).toBe(list.length - 1)
   })
 })
+
+describe('duplicate document numbers', () => {
+  it('raises a red notification naming the numbers', () => {
+    const list = buildNotifications({
+      settings: { company: {}, accounting: { lockDate: '2026-12-31' } },
+      invoices: [{ id: '1', number: 'INV-0007', status: 'paid', total: 1, amountPaid: 1 }, { id: '2', number: 'INV-0007', status: 'paid', total: 1, amountPaid: 1 }],
+    }, { today: '2026-09-25' })
+    const n = list.find((x) => x.kind === 'duplicate-numbers')
+    expect(n).toMatchObject({ tone: 'danger', count: 1, body: 'INV-0007', path: '/invoices' })
+  })
+})
