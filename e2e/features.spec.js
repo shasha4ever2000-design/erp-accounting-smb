@@ -100,3 +100,13 @@ test('a viewer cannot open payroll or create invoices', async ({ page }) => {
   await page.goto('invoices/new')
   await expect(page.getByText(/does not have access to Sales & customers/)).toBeVisible()
 })
+
+test('a change made just before a reload is still there afterwards', async ({ page }) => {
+  // freshCompany skipped the setup questions and loaded the sample books;
+  // reload at once, before the background save has had time to finish.
+  await page.getByRole('button', { name: 'Compact rows' }).click()
+  await page.reload()
+  await expect(page.getByText('Acme Trading').first()).toBeVisible()
+  await expect(page.getByText('Where do you trade?')).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Comfortable rows' })).toBeVisible()
+})
