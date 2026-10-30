@@ -345,3 +345,53 @@ export const shortHash = (h) => (typeof h === 'string' && h.length >= 12 ? h.sli
  */
 export const PREV_TAG_LENGTH = 12
 export const prevTag = (h) => (h || GENESIS).slice(0, PREV_TAG_LENGTH)
+
+/**
+ * Join two devices' ledgers after a cloud sync.
+ *
+ * When two people post on different devices between syncs, each seals their
+ * new entries onto the end of the ledger as *they* saw it. Merged, the chain
+ * forks: the first entry from the other device points at a predecessor that
+ * is no longer directly before it, and the integrity check calls that
+ * tampering when nothing was tampered with.
+ *
+ * This repairs a fork, and only a fork. Every entry from the first break
+ * onward must still match the hash its author sealed it with — checked
+ * against the predecessor it names — so an entry whose figures were changed
+ * is never re-sealed into looking genuine; the ledger is left as it is and
+ * the integrity check reports it. When every entry is intact, the entries from
+ * where the two histories split are put in a fixed order (date, then posting time, then
+ * id) and sealed afresh. The order is the same on every device, so two
+ * devices repairing the same merge arrive at the same chain and stop
+ * rewriting each other's copy.
+ *
+ * @returns {{ entries: Array, repaired: boolean, from?: number, count?: number, reason?: string }}
+ */
+export function repairFork(entries) {
+  const list = entries || []
+  const v = verifyChain(list)
+  if (v.ok) return { entries: list, repaired: false }
+  if (v.broken.some((b) => b.kind === 'contents')) return { entries: list, repaired: false, reason: 'altered' }
+
+  // Every sealed hash in the ledger, findable by the tag an entry records for its predecessor.
+  const byTag = new Map([[prevTag(GENESIS), GENESIS]])
+  list.forEach((je) => { if (je?.hash) byTag.set(prevTag(je.hash), je.hash) })
+  for (const b of v.broken) {
+    const je = list[b.index]
+    const before = byTag.get(je.prevHash)
+    if (!before || hashEntry(je, before) !== je.hash) return { entries: list, repaired: false, reason: 'altered' }
+  }
+
+  // Start where the histories split — just after the last entry both devices
+  // shared — not at the first entry that looks out of place. Otherwise each
+  // device keeps its own postings first and the two never agree.
+  const indexOfTag = new Map(list.map((x, i) => [x?.hash ? prevTag(x.hash) : null, i]))
+  const from = Math.min(...v.broken.map((b) => {
+    const tag = list[b.index].prevHash
+    return tag === prevTag(GENESIS) ? 0 : (indexOfTag.get(tag) ?? -1) + 1
+  }))
+  const key = (je) => [je.date || '', je.createdAt || '', je.id || ''].join('\u0000')
+  const tail = list.slice(from).sort((a, b) => (key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0))
+  const prev = verifyChain(list.slice(0, from)).head
+  return { entries: [...list.slice(0, from), ...chainEntries(tail, prev)], repaired: true, from, count: tail.length }
+}
