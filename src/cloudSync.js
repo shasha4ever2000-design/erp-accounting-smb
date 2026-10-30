@@ -80,8 +80,13 @@ export function diffSnapshots(prevSnapshot, nextSnapshot, entities) {
   return changes
 }
 
+// Rows per request. A first sync of a busy company is thousands of records;
+// one request that size risks the gateway's body limit and a timeout that
+// throws the whole batch away.
+export const PUSH_CHUNK = 500
+
 /** Push a changes map (from diffSnapshots) to Supabase. */
-export async function pushChanges(client, companyId, userId, changes) {
+export async function pushChanges(client, companyId, userId, changes, { chunk = PUSH_CHUNK } = {}) {
   for (const [entity, { upserts, deletes, singleton }] of Object.entries(changes)) {
     const rows = [
       ...upserts.map((rec) => ({
@@ -92,23 +97,45 @@ export async function pushChanges(client, companyId, userId, changes) {
         company_id: companyId, entity, record_id: String(id), data: {}, deleted: true, updated_by: userId,
       })),
     ]
-    if (!rows.length) continue
-    const { error } = await client.from('records').upsert(rows, { onConflict: 'company_id,entity,record_id' })
-    if (error) throw new Error(`SYNC_PUSH_FAILED:${entity}:${error.message || error}`)
+    for (let i = 0; i < rows.length; i += chunk) {
+      const { error } = await client.from('records').upsert(rows.slice(i, i + chunk), { onConflict: 'company_id,entity,record_id' })
+      if (error) throw new Error(`SYNC_PUSH_FAILED:${entity}:${error.message || error}`)
+    }
   }
 }
 
-/** Pull every record updated strictly after `sinceIso` (or everything, if
- * this is the first sync). */
-export async function pullChanges(client, companyId, sinceIso) {
-  const { data, error } = await client
-    .from('records')
-    .select('entity, record_id, data, deleted, updated_at')
-    .eq('company_id', companyId)
-    .gt('updated_at', sinceIso || '1970-01-01T00:00:00Z')
-    .order('updated_at', { ascending: true })
-  if (error) throw new Error(`SYNC_PULL_FAILED:${error.message || error}`)
-  return data || []
+// The server returns at most this many rows per request (Supabase's default
+// max-rows is 1000), so a pull pages until a short page comes back.
+export const PULL_PAGE = 1000
+
+// How far back each pull reaches past the last cursor. updated_at is the time
+// the writing transaction *started*: a write that began just before our last
+// pull but committed just after it carries an earlier timestamp than the
+// cursor, and a strict "newer than" would skip it for ever. Re-reading a
+// minute of rows is harmless — the server holds only the latest version of
+// each record, and applying it twice changes nothing.
+export const PULL_OVERLAP_MS = 60_000
+
+const minus = (iso, ms) => new Date(new Date(iso).getTime() - ms).toISOString()
+
+/** Pull every record updated after `sinceIso` (or everything, if this is the first sync). */
+export async function pullChanges(client, companyId, sinceIso, { pageSize = PULL_PAGE, overlapMs = PULL_OVERLAP_MS } = {}) {
+  const since = sinceIso ? minus(sinceIso, overlapMs) : '1970-01-01T00:00:00Z'
+  const all = []
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await client
+      .from('records')
+      .select('entity, record_id, data, deleted, updated_at')
+      .eq('company_id', companyId)
+      .gt('updated_at', since)
+      .order('updated_at', { ascending: true })
+      .order('id', { ascending: true }) // stable paging when timestamps tie
+      .range(from, from + pageSize - 1)
+    if (error) throw new Error(`SYNC_PULL_FAILED:${error.message || error}`)
+    all.push(...(data || []))
+    if (!data || data.length < pageSize) break
+  }
+  return all
 }
 
 /** Merge pulled rows into a local snapshot. Remote always wins for the rows
@@ -147,7 +174,39 @@ export async function runSync({ client, companyId, userId, entities, localSnapsh
 
   const rows = await pullChanges(client, companyId, lastPulledAt)
   const merged = applyPulledRows(localSnapshot, rows)
-  const newPulledAt = rows.length ? rows[rows.length - 1].updated_at : (lastPulledAt || new Date().toISOString())
+  // The cursor only moves forward: an overlap pull of nothing but old rows
+  // must not drag it back.
+  const latest = rows.reduce((m, r) => (r.updated_at > m ? r.updated_at : m), lastPulledAt || '')
+  const newPulledAt = latest || new Date().toISOString()
 
-  return { merged, newPulledAt, pushed: Object.keys(changes).length, pulled: rows.length }
+  // Count only rows that changed something here: the overlap window re-reads
+  // rows this device already has, and those are not news.
+  const pulled = rows.filter((r) => {
+    const cur = localSnapshot[r.entity]
+    if (r.record_id === 'singleton') return JSON.stringify(cur) !== JSON.stringify(r.deleted ? (Array.isArray(cur) ? [] : {}) : r.data)
+    const mine = Array.isArray(cur) ? cur.find((x) => String(x.id) === r.record_id) : undefined
+    return r.deleted ? !!mine : JSON.stringify(mine) !== JSON.stringify(r.data)
+  }).length
+  return { merged, newPulledAt, pushed: Object.keys(changes).length, pulled }
+}
+
+/**
+ * Put back what the user changed on this device while a sync was in flight.
+ *
+ * A sync takes a snapshot, then spends seconds on the network. Anything typed
+ * in that time is in the live store but not in the snapshot, and importing
+ * the merged result would overwrite it without a trace — and because the
+ * merged result also becomes the "last synced" baseline, the next sync would
+ * never notice it had gone. So: diff the snapshot against the store as it is
+ * now, and lay those edits over the merged result. They are pushed on the
+ * next cycle like any other local change.
+ */
+export function reapplyLocalEdits(merged, before, after, entities) {
+  const changes = diffSnapshots(before, after, entities)
+  const rows = []
+  for (const [entity, { upserts, deletes, singleton }] of Object.entries(changes)) {
+    upserts.forEach((rec) => rows.push({ entity, record_id: singleton ? 'singleton' : String(rec.id), data: singleton ? rec.value : rec, deleted: false }))
+    deletes.forEach((id) => rows.push({ entity, record_id: String(id), data: {}, deleted: true }))
+  }
+  return { snapshot: rows.length ? applyPulledRows(merged, rows) : merged, edits: rows.length }
 }
