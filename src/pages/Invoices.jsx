@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, Money } from '../components/UI'
 import { useT } from '../i18n'
@@ -11,7 +12,9 @@ import { shortcutHint } from '../components/Shortcuts'
 import { documentDue } from '../utils/partyBalance'
 
 export default function Invoices() {
-  const { invoices, creditNotes, settings } = useStore()
+  const { invoices, creditNotes, settings } = useStore(useShallow((s) => ({
+      invoices: s.invoices, creditNotes: s.creditNotes, settings: s.settings,
+    })))
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
   // A foreign-currency document shows its own currency code, not the base symbol.

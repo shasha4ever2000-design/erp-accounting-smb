@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { EDIT_BLOCK_MESSAGE } from '../utils/docEdit'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
@@ -24,7 +25,13 @@ export default function PurchaseForm() {
   // With an :id in the path this form is correcting a bill that is already
   // posted, rather than entering a new one.
   const { id: editId } = useParams()
-  const { suppliers, purchases, accounts, inventoryItems, departments, currencies, warehouses = [], settings, addPurchase, revisePurchase, purchaseEditBlock, customFieldsFor } = useStore()
+  const { suppliers, purchases, accounts, inventoryItems, departments, currencies, warehouses = [], settings, addPurchase, revisePurchase, purchaseEditBlock, customFieldsFor } = useStore(useShallow((s) => ({
+      suppliers: s.suppliers, purchases: s.purchases, accounts: s.accounts, inventoryItems: s.inventoryItems,
+      departments: s.departments, currencies: s.currencies, warehouses: s.warehouses, settings: s.settings,
+      addPurchase: s.addPurchase, revisePurchase: s.revisePurchase, purchaseEditBlock: s.purchaseEditBlock,
+      customFieldsFor: s.customFieldsFor,
+    })))
+  useBooksChanged() // figures below come from store reads (purchaseEditBlock, customFieldsFor)
   const t = useT()
   const baseCurrency = settings.company.currency
   const taxEnabled = settings.tax.enabled

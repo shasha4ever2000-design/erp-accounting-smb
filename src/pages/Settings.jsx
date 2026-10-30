@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import BrandingPanel from '../components/BrandingPanel'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Input, Select } from '../components/UI'
 import { useT, useI18n } from '../i18n'
@@ -15,6 +16,7 @@ import CloudSyncCard from '../components/CloudSyncCard'
 import IntegrityCheckCard from '../components/IntegrityCheckCard'
 import CustomFieldsManager from '../components/CustomFieldsManager'
 import HrSettingsCard from '../components/HrSettingsCard'
+import OnlinePaymentsCard from '../components/OnlinePaymentsCard'
 import DurabilityStatus from '../components/DurabilityStatus'
 import DeferredTaxCard from '../components/DeferredTaxCard'
 import { todayISO } from '../utils/localDate'
@@ -35,7 +37,18 @@ const CURRENCIES = [
 ]
 
 export default function Settings() {
-  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, reopenSetup, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot, recordOffDeviceBackup, durabilityReport, checkBackupAnchor } = useStore()
+  const { settings, updateCompany, updateTax, updateInventorySettings, updateInvoiceSettings, updateAiSettings, updateZatca, updateEta, reopenSetup, updateWht, setPeriodLock, setAutoPostRecurring, updateApprovals, exportData, importData, snapshotNow, listSnapshots, restoreSnapshot, deleteSnapshot, recordOffDeviceBackup, durabilityReport, checkBackupAnchor } = useStore(useShallow((s) => ({
+      settings: s.settings, updateCompany: s.updateCompany, updateTax: s.updateTax,
+      updateInventorySettings: s.updateInventorySettings, updateInvoiceSettings: s.updateInvoiceSettings,
+      updateAiSettings: s.updateAiSettings, updateZatca: s.updateZatca, updateEta: s.updateEta,
+      reopenSetup: s.reopenSetup, updateWht: s.updateWht, setPeriodLock: s.setPeriodLock,
+      setAutoPostRecurring: s.setAutoPostRecurring, updateApprovals: s.updateApprovals, exportData: s.exportData,
+      importData: s.importData, snapshotNow: s.snapshotNow, listSnapshots: s.listSnapshots,
+      restoreSnapshot: s.restoreSnapshot, deleteSnapshot: s.deleteSnapshot,
+      recordOffDeviceBackup: s.recordOffDeviceBackup, durabilityReport: s.durabilityReport,
+      checkBackupAnchor: s.checkBackupAnchor,
+    })))
+  useBooksChanged() // figures below come from store reads (listSnapshots, durabilityReport)
   const t = useT()
   const numerals = useI18n((s) => s.numerals)
   const setNumerals = useI18n((s) => s.setNumerals)
@@ -864,6 +877,8 @@ export default function Settings() {
             </div>
           </div>
         )}
+
+        <OnlinePaymentsCard />
 
         <IntegrityCheckCard />
 

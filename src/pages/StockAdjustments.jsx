@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../auth'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -16,7 +17,11 @@ const stat = (adj) => adj.status || 'approved' // legacy rows are already posted
 
 export default function StockAdjustments() {
   const t = useT()
-  const { stockAdjustments, inventoryItems, settings, addStockAdjustment, approveStockAdjustment, rejectStockAdjustment, deleteStockAdjustment } = useStore()
+  const { stockAdjustments, inventoryItems, settings, addStockAdjustment, approveStockAdjustment, rejectStockAdjustment, deleteStockAdjustment } = useStore(useShallow((s) => ({
+      stockAdjustments: s.stockAdjustments, inventoryItems: s.inventoryItems, settings: s.settings,
+      addStockAdjustment: s.addStockAdjustment, approveStockAdjustment: s.approveStockAdjustment,
+      rejectStockAdjustment: s.rejectStockAdjustment, deleteStockAdjustment: s.deleteStockAdjustment,
+    })))
   const sym = settings.company.currencySymbol
   const me = useAuth((s) => s.currentUser())
   const users = useAuth((s) => s.users)

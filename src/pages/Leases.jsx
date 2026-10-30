@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -11,7 +12,13 @@ import { ask } from '../components/Dialogs'
 export default function Leases() {
   const t = useT()
   const { leases, bankAccounts, settings, addLease, recordLeasePayment, terminateLease, deleteLease,
-          recogniseLease, postLeasePeriod, leaseTerms } = useStore()
+          recogniseLease, postLeasePeriod, leaseTerms } = useStore(useShallow((s) => ({
+              leases: s.leases, bankAccounts: s.bankAccounts, settings: s.settings, addLease: s.addLease,
+              recordLeasePayment: s.recordLeasePayment, terminateLease: s.terminateLease,
+              deleteLease: s.deleteLease, recogniseLease: s.recogniseLease, postLeasePeriod: s.postLeasePeriod,
+              leaseTerms: s.leaseTerms,
+            })))
+  useBooksChanged() // figures below come from store reads (leaseTerms)
   const sym = settings.company.currencySymbol
 
   const bankOpts = bankAccounts.map((b) => ({ id: b.accountId, name: b.name }))

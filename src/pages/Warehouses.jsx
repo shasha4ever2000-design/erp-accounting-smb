@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState } from '../components/UI'
 import { Plus, Pencil, Trash2, Warehouse, ArrowLeftRight, MapPin } from 'lucide-react'
@@ -14,7 +15,13 @@ export default function Warehouses() {
   const {
     warehouses, inventoryItems, stockTransfers, getItemStock,
     addWarehouse, updateWarehouse, deleteWarehouse, addStockTransfer, deleteStockTransfer,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      warehouses: s.warehouses, inventoryItems: s.inventoryItems, stockTransfers: s.stockTransfers,
+      getItemStock: s.getItemStock, addWarehouse: s.addWarehouse, updateWarehouse: s.updateWarehouse,
+      deleteWarehouse: s.deleteWarehouse, addStockTransfer: s.addStockTransfer,
+      deleteStockTransfer: s.deleteStockTransfer,
+    })))
+  useBooksChanged() // figures below come from store reads (getItemStock)
 
   const [whModal, setWhModal] = useState(false)
   const [editing, setEditing] = useState(null)

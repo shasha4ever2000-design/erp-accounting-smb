@@ -19,10 +19,17 @@
 // **simple** — a flat number of days' wage per year, for companies outside
 // that régime who just want a provision. No resignation scaling.
 //
-// The wage used is basic plus housing (see contributoryWage), which is the
-// convention the awards were written around. A company that pays everything as
-// "other allowances" will get a smaller award, and analyseSalary says so on
-// the contract itself rather than surprising anyone here.
+// The wage the award is computed on is a setting (`wageBasis`):
+//
+//   gross         every fixed component: basic, housing, transport, other.
+//                 Saudi Labour Law computes the award on the "last wage", and
+//                 article 2 defines the wage as basic plus all allowances, so
+//                 this is the default — and the one the Saudi scheme expects.
+//   contributory  basic + housing only. Older companies were set up this way;
+//                 under the Saudi scheme it understates what is owed, and the
+//                 HR settings say so with the amount.
+//   basic         basic alone, for schemes written that way (the UAE's
+//                 gratuity, for one).
 
 import { contributoryWage, serviceYears } from './contracts'
 
@@ -47,8 +54,21 @@ export const EOSB_RULES = [
   { id: 'none',   label: 'No end-of-service benefit' },
 ]
 
+export const EOSB_WAGE_BASES = [
+  { id: 'gross',        label: 'Full wage (basic + all allowances)' },
+  { id: 'contributory', label: 'Basic + housing' },
+  { id: 'basic',        label: 'Basic only' },
+]
+
 export function defaultEosbSettings() {
-  return { rule: 'none', daysPerYear: 21, wageBasis: 'contributory', accrueMonthly: true }
+  return { rule: 'none', daysPerYear: 21, wageBasis: 'gross', accrueMonthly: true }
+}
+
+/** The monthly wage the award is computed on, for a basis (see the top of this file). */
+export function eosbWage(contract, basis = 'contributory') {
+  if (basis === 'gross') return round2(['basic', 'housing', 'transport', 'other'].reduce((s, k) => s + num(contract?.[k]), 0))
+  if (basis === 'basic') return round2(num(contract?.basic))
+  return contributoryWage(contract)
 }
 
 /**
@@ -92,9 +112,7 @@ export function eosbAward(contract, {
 } = {}) {
   const start = serviceStart || contract?.startDate
   const years = serviceYears(start, asAt)
-  const wage = wageBasis === 'gross'
-    ? round2(['basic', 'housing', 'transport', 'other'].reduce((s, k) => s + num(contract?.[k]), 0))
-    : contributoryWage(contract)
+  const wage = eosbWage(contract, wageBasis)
 
   const months = awardMonths(years, { rule, daysPerYear })
   const gross = round2(months * wage)

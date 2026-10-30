@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -17,7 +18,11 @@ export default function SalesOrders() {
   const {
     salesOrders = [], settings, deleteSalesOrder,
     convertSalesOrderToInvoice, convertSalesOrderToDeliveryNote,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      salesOrders: s.salesOrders, settings: s.settings, deleteSalesOrder: s.deleteSalesOrder,
+      convertSalesOrderToInvoice: s.convertSalesOrderToInvoice,
+      convertSalesOrderToDeliveryNote: s.convertSalesOrderToDeliveryNote,
+    })))
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax?.enabled !== false
 

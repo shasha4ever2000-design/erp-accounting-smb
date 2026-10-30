@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { todayISO } from '../utils/localDate'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -14,7 +15,13 @@ export default function FixedAssets() {
   const t = useT()
   const navigate = useNavigate()
   const { fixedAssets, assetDepreciations, bankAccounts, settings,
-          recordDepreciation, runDepreciation, previewDepreciation, disposeAsset, deleteFixedAsset, depreciationCatchUp } = useStore()
+          recordDepreciation, runDepreciation, previewDepreciation, disposeAsset, deleteFixedAsset, depreciationCatchUp } = useStore(useShallow((s) => ({
+              fixedAssets: s.fixedAssets, assetDepreciations: s.assetDepreciations, bankAccounts: s.bankAccounts,
+              settings: s.settings, recordDepreciation: s.recordDepreciation, runDepreciation: s.runDepreciation,
+              previewDepreciation: s.previewDepreciation, disposeAsset: s.disposeAsset,
+              deleteFixedAsset: s.deleteFixedAsset, depreciationCatchUp: s.depreciationCatchUp,
+            })))
+  useBooksChanged() // figures below come from store reads (previewDepreciation)
   const sym = settings.company.currencySymbol
 
   const [deprModal, setDeprModal] = useState(null)   // asset to depreciate

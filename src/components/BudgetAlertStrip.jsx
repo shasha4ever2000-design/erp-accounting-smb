@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useT } from '../i18n'
 import { fmtMoney } from '../utils/formatters'
 import { budgetAlerts } from '../utils/budgetAlerts'
@@ -19,7 +20,11 @@ const TONE = {
 export default function BudgetAlertStrip({ year, max = 4 }) {
   const t = useT()
   const navigate = useNavigate()
-  const { accounts, budgets, journalEntries, getAccountBalance, settings } = useStore()
+  const { accounts, budgets, journalEntries, getAccountBalance, settings } = useStore(useShallow((s) => ({
+      accounts: s.accounts, budgets: s.budgets, journalEntries: s.journalEntries,
+      getAccountBalance: s.getAccountBalance, settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAccountBalance)
   const sym = settings.company.currencySymbol
   const yr = year || new Date().toISOString().slice(0, 4)
 

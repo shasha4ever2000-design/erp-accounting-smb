@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input } from '../components/UI'
 import { RefreshCw, TrendingUp, TrendingDown, Info } from 'lucide-react'
@@ -11,7 +12,11 @@ import { ask } from '../components/Dialogs'
 // difference posts to "Unrealized FX Gain/(Loss)".
 export default function Revaluation() {
   const t = useT()
-  const { accounts, currencies, settings, journalEntries, getAllBalances, postFxRevaluation, fxRevaluations } = useStore()
+  const { accounts, currencies, settings, journalEntries, getAllBalances, postFxRevaluation, fxRevaluations } = useStore(useShallow((s) => ({
+      accounts: s.accounts, currencies: s.currencies, settings: s.settings, journalEntries: s.journalEntries,
+      getAllBalances: s.getAllBalances, postFxRevaluation: s.postFxRevaluation, fxRevaluations: s.fxRevaluations,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const base = settings.company.currency
   const sym = settings.company.currencySymbol
 

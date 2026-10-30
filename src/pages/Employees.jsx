@@ -3,11 +3,13 @@ import { useT } from '../i18n'
 import { CustomFieldInputs } from '../components/CustomFields'
 import { validateValues } from '../utils/customFields'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Pencil, Trash2, Search, User } from 'lucide-react'
 import { ask } from '../components/Dialogs'
+import GosiFields from '../components/GosiFields'
 
 const emptyForm = {
   name: '', email: '', phone: '', departmentId: '', position: '',
@@ -15,7 +17,7 @@ const emptyForm = {
   bankAccountNumber: '', taxCode: '', nationalId: '', status: 'active',
   // Salary structure (from contract) — no tax by default
   basicSalary: '', housingAllowance: '', transportAllowance: '', otherAllowance: '',
-  gosiApplicable: false, gosiEmployeeRate: 9, gosiEmployerRate: 11,
+  gosiApplicable: false, gosiCategory: 'saudi-legacy', gosiEmployeeRate: 9.75, gosiEmployerRate: 11.75,
   taxApplicable: false, taxRate: 0,
   salary: '',
   customFields: {},
@@ -28,7 +30,10 @@ const PAY_FREQ   = { monthly: 'Monthly', bi_weekly: 'Bi-weekly', weekly: 'Weekly
 
 export default function Employees() {
   const t = useT()
-  const { employees, departments, settings, addEmployee, updateEmployee, deleteEmployee, customFieldsFor } = useStore()
+  const { employees, departments, settings, addEmployee, updateEmployee, deleteEmployee, customFieldsFor } = useStore(useShallow((s) => ({
+      employees: s.employees, departments: s.departments, settings: s.settings, addEmployee: s.addEmployee,
+      updateEmployee: s.updateEmployee, deleteEmployee: s.deleteEmployee, customFieldsFor: s.customFieldsFor,
+    })))
   const sym = settings.company.currencySymbol
 
   const [modal, setModal]   = useState(false)
@@ -42,7 +47,7 @@ export default function Employees() {
     // Back-compat: seed Basic Salary from a legacy single `salary` if no breakdown exists.
     const hasBreakdown = (e.basicSalary || e.housingAllowance || e.transportAllowance || e.otherAllowance)
     setEditing(e)
-    setForm({ ...emptyForm, ...e, basicSalary: hasBreakdown ? (e.basicSalary || '') : (e.salary || '') })
+    setForm({ ...emptyForm, ...e, gosiCategory: e.gosiCategory || 'custom', basicSalary: hasBreakdown ? (e.basicSalary || '') : (e.salary || '') })
     setModal(true)
   }
   const close    = () => setModal(false)
@@ -192,12 +197,7 @@ export default function Employees() {
                 <input type="checkbox" checked={form.gosiApplicable} onChange={(e) => setField('gosiApplicable', e.target.checked)} className="w-4 h-4 rounded text-brand-600 dark:text-brand-400" />
                 {t('GOSI / Social Insurance')}
               </label>
-              {form.gosiApplicable && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  <Input label="Employee %" type="number" min="0" step="0.01" value={form.gosiEmployeeRate} onChange={(e) => setField('gosiEmployeeRate', e.target.value)} />
-                  <Input label="Employer %" type="number" min="0" step="0.01" value={form.gosiEmployerRate} onChange={(e) => setField('gosiEmployerRate', e.target.value)} />
-                </div>
-              )}
+              <GosiFields form={form} setField={setField} />
             </div>
             <div className="border border-slate-100 dark:border-slate-700 rounded-xl p-3 space-y-2">
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">

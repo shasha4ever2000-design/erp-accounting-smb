@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { controlAccountsFor, defaultFor } from '../utils/controlAccounts'
@@ -16,7 +17,12 @@ import { ask } from '../components/Dialogs'
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', notes: '', controlAccountId: '', paymentTerms: '', customFields: {} }
 
 export default function Suppliers() {
-  const { suppliers, purchases, debitNotes = [], addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
+  const { suppliers, purchases, debitNotes = [], addSupplier, updateSupplier, deleteSupplier, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore(useShallow((s) => ({
+      suppliers: s.suppliers, purchases: s.purchases, debitNotes: s.debitNotes, addSupplier: s.addSupplier,
+      updateSupplier: s.updateSupplier, deleteSupplier: s.deleteSupplier, settings: s.settings,
+      accounts: s.accounts, setRecordControlAccount: s.setRecordControlAccount,
+      customFieldsFor: s.customFieldsFor,
+    })))
   const controlOptions = controlAccountsFor(accounts, 'suppliers')
   const sym = settings.company.currencySymbol
   const t = useT()

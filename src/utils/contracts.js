@@ -54,7 +54,7 @@ export function emptyContract(patch = {}) {
     dailyHours: 8,
     annualLeaveDays: 21,
     basic: '', housing: '', transport: '', other: '',
-    gosiApplicable: false, gosiEmployeeRate: 9, gosiEmployerRate: 11,
+    gosiApplicable: false, gosiCategory: 'saudi-legacy', gosiEmployeeRate: 9.75, gosiEmployerRate: 11.75,
     taxApplicable: false, taxRate: 0,
     overtimeMultiplier: 1.5,
     status: 'active',
@@ -96,11 +96,10 @@ export function grossOf(contract) {
 }
 
 /**
- * The wage end-of-service and social insurance are computed on.
+ * The wage social insurance (GOSI) is computed on: basic plus housing.
  *
- * Basic plus housing, which is the GCC convention and the one that matters:
- * computing on basic alone understates the award, computing on the full gross
- * overstates it. Both are wrong in a way somebody eventually notices.
+ * End-of-service has its own setting (see eosbWage in endOfService.js): the
+ * Saudi award is on the full wage, not on this.
  */
 export function contributoryWage(contract) {
   return round2(num(contract?.basic) + num(contract?.housing))
@@ -118,6 +117,49 @@ export function gosiWage(contributory, cap = DEFAULT_GOSI_WAGE_CAP) {
   const w = num(contributory)
   return round2(c > 0 ? Math.min(w, c) : w)
 }
+
+// GOSI rates depend on who the employee is, and for Saudis first registered
+// under the 2024 Social Insurance Law, on the date: the pension (annuity)
+// share steps up half a point a side every July until 2028. A fixed 9% / 11%
+// typed into each contract goes stale, so a contract names its category and
+// the rates follow from it on the payroll month. "custom" keeps the rates
+// typed on the contract — and is what older contracts with no category are
+// read as, so nothing changes until someone picks one.
+//
+// Rates as published by GOSI; check gosi.gov.sa when they change.
+//   Saudi, before 3 July 2024   annuity 9 + 9, SANED 0.75 + 0.75, hazards 2 (employer)
+//   Saudi, from 3 July 2024     as above, annuity stepping 9.5 → 11 a side each July 2025–2028
+//   Non-Saudi                   hazards 2, employer only
+export const GOSI_CATEGORIES = [
+  { id: 'saudi-legacy', label: 'Saudi — registered with GOSI before 3 July 2024' },
+  { id: 'saudi-new',    label: 'Saudi — first registered on or after 3 July 2024' },
+  { id: 'non-saudi',    label: 'Non-Saudi (occupational hazards only)' },
+  { id: 'custom',       label: 'Custom rates' },
+]
+
+const NEW_LAW_ANNUITY = [['2028-07-01', 11], ['2027-07-01', 10.5], ['2026-07-01', 10], ['2025-07-01', 9.5]]
+const SANED = 0.75
+const HAZARDS = 2
+
+/** Employee and employer GOSI percentages for a category on a date. */
+export function gosiRates(category, asAt, custom = {}) {
+  const day = iso(asAt) || new Date().toISOString().slice(0, 10)
+  if (category === 'saudi-legacy') return { employee: 9 + SANED, employer: 9 + SANED + HAZARDS }
+  if (category === 'saudi-new') {
+    const annuity = (NEW_LAW_ANNUITY.find(([from]) => day >= from) || [null, 9])[1]
+    return { employee: annuity + SANED, employer: annuity + SANED + HAZARDS }
+  }
+  if (category === 'non-saudi') return { employee: 0, employer: HAZARDS }
+  return { employee: num(custom.employee), employer: num(custom.employer) }
+}
+
+/** The rates for a contract or employee record, on a date. */
+export function gosiRatesFor(src, asAt) {
+  return gosiRates(src?.gosiCategory || 'custom', asAt, { employee: src?.gosiEmployeeRate, employer: src?.gosiEmployerRate })
+}
+
+/** GOSI is switched on but no category was picked: the rates are whatever was typed. */
+export const gosiNeedsCategory = (src) => !!src?.gosiApplicable && !src?.gosiCategory
 
 export function probationEnd(contract) {
   if (!contract?.startDate || !(num(contract.probationMonths) > 0)) return ''
@@ -216,11 +258,11 @@ export function analyseSalary(contract) {
     findings.push({ level: 'error', text: 'This contract has no pay in it.' })
   } else {
     if (basic <= 0) {
-      findings.push({ level: 'error', text: 'There is no basic salary. End-of-service and social insurance are both computed on basic pay, so leaving it at zero understates them to nil.' })
+      findings.push({ level: 'error', text: 'There is no basic salary. Social insurance is computed on basic plus housing, so leaving basic at zero understates it.' })
     } else if (pct(basic) < 50) {
       findings.push({
         level: 'warning',
-        text: `Basic is only ${pct(basic)}% of gross. End-of-service and social insurance are computed on basic plus housing, so a low basic quietly reduces both — most GCC employers keep basic at or above 50%.`,
+        text: `Basic is only ${pct(basic)}% of gross. Social insurance is computed on basic plus housing, so a low basic quietly reduces it — most GCC employers keep basic at or above 50%.`,
       })
     }
     if (basic > 0 && housing > 0) {
@@ -229,7 +271,7 @@ export function analyseSalary(contract) {
         findings.push({ level: 'info', text: `Housing is ${housingOfBasic}% of basic. The customary figure is 25% — three months' basic a year.` })
     }
     if (basic > 0 && housing === 0)
-      findings.push({ level: 'info', text: 'No housing allowance. That is allowed, but it also means end-of-service is computed on basic alone.' })
+      findings.push({ level: 'info', text: 'No housing allowance. That is allowed, but it also means social insurance is computed on basic alone.' })
   }
 
   return {
@@ -244,10 +286,10 @@ export function analyseSalary(contract) {
 }
 
 /** Employer cost per month: gross plus the employer's own contributions. */
-export function employerCost(contract, { gosiCap = DEFAULT_GOSI_WAGE_CAP } = {}) {
+export function employerCost(contract, { gosiCap = DEFAULT_GOSI_WAGE_CAP, asAt } = {}) {
   const gross = grossOf(contract)
   const gosi = contract?.gosiApplicable
-    ? round2((gosiWage(contributoryWage(contract), gosiCap) * num(contract.gosiEmployerRate)) / 100)
+    ? round2((gosiWage(contributoryWage(contract), gosiCap) * gosiRatesFor(contract, asAt).employer) / 100)
     : 0
   return { gross, gosiEmployer: gosi, total: round2(gross + gosi) }
 }

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select } from '../components/UI'
 import { Plus, Trash2, Pencil, Coins, ArrowRightLeft } from 'lucide-react'
@@ -18,7 +19,10 @@ const emptyForm = { code: '', name: '', rate: '' }
 
 export default function Currencies() {
   const t = useT()
-  const { currencies, addCurrency, updateCurrency, deleteCurrency, settings } = useStore()
+  const { currencies, addCurrency, updateCurrency, deleteCurrency, settings } = useStore(useShallow((s) => ({
+      currencies: s.currencies, addCurrency: s.addCurrency, updateCurrency: s.updateCurrency,
+      deleteCurrency: s.deleteCurrency, settings: s.settings,
+    })))
   const base = settings.company.currency
 
   const [modal, setModal] = useState(false)

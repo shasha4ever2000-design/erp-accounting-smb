@@ -1,18 +1,28 @@
 // The customer portal: what a customer sees when they open the link the
 // company sent them. No sign-in; the link itself is the key (see
-// supabase/functions/portal). Read-only.
+// supabase/functions/portal). Customers can pay an invoice online when the
+// company has set that up (supabase/functions/pay); otherwise it is read-only.
 import { useEffect, useState } from 'react'
-import { Printer, ChevronDown, ChevronUp, AlertTriangle, Languages } from 'lucide-react'
+import { Printer, ChevronDown, ChevronUp, AlertTriangle, Languages, CreditCard, CheckCircle2, Clock } from 'lucide-react'
 import { useT, useI18n } from '../i18n'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { loadPortal } from '../utils/portal'
+import { startCheckout, confirmCheckout } from '../utils/onlinePayments'
+
+const param = (name) => (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get(name) || '' : '')
 
 export default function Portal({ token }) {
   const t = useT()
   const toggleLang = useI18n((s) => s.toggle)
   const [data, setData] = useState(null)
   const [error, setError] = useState('')
-  const [openId, setOpenId] = useState(null)
+  // A link to one invoice (from the invoice email) opens with it expanded.
+  const [openId, setOpenId] = useState(() => param('invoice') || null)
+  // Back from the pay page: { state: 'checking' | 'paid' | 'pending' | 'failed', amount?, currency?, invoiceNumber? }
+  const [payResult, setPayResult] = useState(() => (param('paid') ? { state: 'checking' } : null))
+  const [paying, setPaying] = useState('')
+  const [payError, setPayError] = useState('')
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
     let live = true
@@ -20,7 +30,39 @@ export default function Portal({ token }) {
       .then((res) => { if (!live) return; if (res?.error) setError(res.error); else setData(res) })
       .catch(() => live && setError(t('Could not load your account. Check your connection and try again.')))
     return () => { live = false }
-  }, [token, t])
+  }, [token, t, reloadKey])
+
+  // Ask the provider whether the payment went through, a few times, since
+  // its confirmation can lag the redirect back by a few seconds.
+  useEffect(() => {
+    const paymentId = param('paid')
+    if (!paymentId) return
+    let live = true
+    const check = async (tries) => {
+      const res = await confirmCheckout(token, paymentId).catch(() => null)
+      if (!live) return
+      if (res?.status === 'paid') {
+        setPayResult({ state: 'paid', amount: res.amount, currency: res.currency, invoiceNumber: res.invoiceNumber })
+        setReloadKey((k) => k + 1)
+      } else if (res?.status === 'pending' && tries > 0) {
+        setTimeout(() => check(tries - 1), 3000)
+      } else {
+        setPayResult({ state: res?.status === 'pending' ? 'pending' : 'failed' })
+      }
+    }
+    check(4)
+    return () => { live = false }
+  }, [token])
+
+  const pay = async (invoiceId) => {
+    setPaying(invoiceId)
+    setPayError('')
+    const res = await startCheckout(token, invoiceId).catch(() => null)
+    if (res?.url) { window.location.href = res.url; return }
+    setPaying('')
+    setPayError(res?.error || t('The payment page could not be opened. Try again in a moment.'))
+    if (res?.code === 'PAID') setReloadKey((k) => k + 1)
+  }
 
   useEffect(() => {
     if (data?.company?.name) document.title = `${data.company.name} — ${t('Your account')}`
@@ -55,7 +97,7 @@ export default function Portal({ token }) {
     )
   }
 
-  const { company, customer, invoices = [], creditNotes = [], balance } = data
+  const { company, customer, invoices = [], creditNotes = [], balance, canPayOnline } = data
   const sym = company.currencySymbol || company.currency || ''
   const symFor = (inv) => (inv.currency && inv.currency !== company.currency ? `${inv.currency} ` : sym)
   const open = invoices.filter((i) => i.due > 0.005)
@@ -72,6 +114,22 @@ export default function Portal({ token }) {
           </p>
         </div>
       </header>
+
+      {payResult && (
+        <div role="status" className={`flex items-start gap-3 rounded-2xl p-4 mb-5 text-sm ${payResult.state === 'paid'
+          ? 'bg-success-50 dark:bg-success-500/10 text-success-800 dark:text-success-200'
+          : payResult.state === 'failed' ? 'bg-danger-50 dark:bg-danger-500/10 text-danger-800 dark:text-danger-200'
+          : 'bg-slate-100 dark:bg-surface-800 text-slate-700 dark:text-slate-200'}`}>
+          {payResult.state === 'paid' ? <CheckCircle2 size={18} className="flex-shrink-0" /> : <Clock size={18} className="flex-shrink-0" />}
+          <p>
+            {payResult.state === 'checking' && t('Confirming your payment…')}
+            {payResult.state === 'paid' && t('Thank you — your payment of {amount} for {invoice} was received.')
+              .replace('{amount}', fmtMoney(payResult.amount, `${payResult.currency} `)).replace('{invoice}', payResult.invoiceNumber || '')}
+            {payResult.state === 'pending' && t('Your payment is still being confirmed. This page will show it as paid once it is; there is no need to pay again.')}
+            {payResult.state === 'failed' && t('The payment did not go through and nothing was charged. You can try again below.')}
+          </p>
+        </div>
+      )}
 
       <section className="bg-white dark:bg-surface-900 rounded-2xl p-6 shadow-sm ring-1 ring-black/5 dark:ring-white/10 mb-5">
         <p className="text-sm text-slate-500 dark:text-slate-400">{t('Account of')}</p>
@@ -118,7 +176,11 @@ export default function Portal({ token }) {
                   </div>
                   {expanded ? <ChevronUp size={16} className="text-slate-400 no-print" /> : <ChevronDown size={16} className="text-slate-400 no-print" />}
                 </button>
-                {expanded && <InvoiceDetail inv={inv} sym={symFor(inv)} />}
+                {expanded && (
+                  <InvoiceDetail inv={inv} sym={symFor(inv)}
+                    onPay={canPayOnline && inv.due > 0.005 ? () => pay(inv.id) : null}
+                    paying={paying === inv.id} payError={paying === '' && openId === inv.id ? payError : ''} />
+                )}
               </li>
             )
           })}
@@ -144,7 +206,7 @@ export default function Portal({ token }) {
   )
 }
 
-function InvoiceDetail({ inv, sym }) {
+function InvoiceDetail({ inv, sym, onPay, paying, payError }) {
   const t = useT()
   return (
     <div className="px-6 pb-5">
@@ -182,6 +244,16 @@ function InvoiceDetail({ inv, sym }) {
         </p>
       )}
       {inv.notes && <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line">{inv.notes}</p>}
+      {onPay && (
+        <div className="no-print mt-4">
+          <button onClick={onPay} disabled={paying}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-600 hover:bg-brand-700 disabled:opacity-60 text-white font-semibold px-4 py-2 text-sm">
+            <CreditCard size={15} /> {paying ? t('Opening the payment page…') : t('Pay {amount} now').replace('{amount}', fmtMoney(inv.due, sym))}
+          </button>
+          <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{t('You pay on a secure page run by our payment provider.')}</p>
+          {payError && <p className="mt-1.5 text-sm text-danger-700 dark:text-danger-300">{payError}</p>}
+        </div>
+      )}
       <button onClick={() => window.print()} className="no-print mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-brand-700 dark:text-brand-300 hover:underline">
         <Printer size={14} /> {t('Print or save as PDF')}
       </button>

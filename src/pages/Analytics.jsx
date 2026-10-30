@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, StatCard } from '../components/UI'
 import { TrendingUp, TrendingDown, DollarSign, Wallet, FileText, ShoppingCart } from 'lucide-react'
@@ -14,7 +15,12 @@ const PIE = ['#2563eb', '#7c3aed', '#db2777', '#ea580c', '#16a34a', '#0891b2', '
 
 export default function Analytics() {
   const t = useT()
-  const { invoices, purchases, accounts, customers, bankAccounts, journalEntries, getAllBalances, settings } = useStore()
+  const { invoices, purchases, accounts, customers, bankAccounts, journalEntries, getAllBalances, settings } = useStore(useShallow((s) => ({
+      invoices: s.invoices, purchases: s.purchases, accounts: s.accounts, customers: s.customers,
+      bankAccounts: s.bankAccounts, journalEntries: s.journalEntries, getAllBalances: s.getAllBalances,
+      settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
   const balances = useMemo(() => getAllBalances(), [getAllBalances, journalEntries])
 

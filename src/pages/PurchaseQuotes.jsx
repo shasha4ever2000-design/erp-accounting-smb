@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, Modal, Input, Select } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -21,7 +22,11 @@ export default function PurchaseQuotes() {
   const {
     purchaseQuotes = [], suppliers, settings,
     addPurchaseQuote, deletePurchaseQuote, convertPurchaseQuoteToOrder,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      purchaseQuotes: s.purchaseQuotes, suppliers: s.suppliers, settings: s.settings,
+      addPurchaseQuote: s.addPurchaseQuote, deletePurchaseQuote: s.deletePurchaseQuote,
+      convertPurchaseQuoteToOrder: s.convertPurchaseQuoteToOrder,
+    })))
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax?.enabled !== false
 

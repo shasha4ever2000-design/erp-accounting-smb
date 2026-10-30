@@ -8,6 +8,7 @@ import { useT, useI18n } from '../i18n'
 import { useStore } from '../store'
 import { emailServerInvoker, mailtoFor } from '../utils/email'
 import { getOrCreatePortalLink, portalUrl } from '../utils/portal'
+import { invoicePayUrl } from '../utils/onlinePayments'
 
 /**
  * @param draft { to, subject, message, summary, docKind, docRef, customer }
@@ -17,6 +18,7 @@ export default function EmailDialog({ open, onClose, draft, onSent }) {
   const t = useT()
   const lang = useI18n((s) => s.lang)
   const company = useStore((s) => s.settings.company)
+  const payOnline = useStore((s) => !!s.settings.onlinePayments?.enabled)
   const send = emailServerInvoker()
   const [to, setTo] = useState('')
   const [subject, setSubject] = useState('')
@@ -36,10 +38,17 @@ export default function EmailDialog({ open, onClose, draft, onSent }) {
   const recipients = to.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean)
   const canPortal = !!send && !!draft?.customer?.id
 
+  // An unpaid invoice links straight to itself in the portal, with its Pay
+  // button, when online payments are set up.
+  const payable = payOnline && draft?.docKind === 'invoice' && draft?.invoiceId && draft?.due > 0.005
+
   const portalLink = async () => {
     if (!canPortal || !withPortal) return null
     const link = await getOrCreatePortalLink(draft.customer)
-    return { url: portalUrl(link.token), label: t('View your account online') }
+    const url = portalUrl(link.token)
+    return payable
+      ? { url: invoicePayUrl(url, draft.invoiceId), label: t('View and pay online') }
+      : { url, label: t('View your account online') }
   }
 
   const sendNow = async () => {
@@ -92,7 +101,7 @@ export default function EmailDialog({ open, onClose, draft, onSent }) {
           {canPortal && (
             <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
               <input type="checkbox" className="accent-brand-600" checked={withPortal} onChange={(e) => setWithPortal(e.target.checked)} />
-              {t('Add a link where the customer can see their invoices online')}
+              {payable ? t('Add a link where the customer can see and pay this invoice online') : t('Add a link where the customer can see their invoices online')}
             </label>
           )}
           {!send && (

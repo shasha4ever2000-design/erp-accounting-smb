@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, StatCard, Badge, Select, Input, Table, Tr, Td } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
@@ -17,7 +18,10 @@ const MOVE_LABELS = { sale: 'Sale', adjustment: 'Adjustment', production: 'Produ
 
 export default function InventoryControl() {
   const t = useT()
-  const { inventoryItems, stockMovements, stockAdjustments, settings } = useStore()
+  const { inventoryItems, stockMovements, stockAdjustments, settings } = useStore(useShallow((s) => ({
+      inventoryItems: s.inventoryItems, stockMovements: s.stockMovements, stockAdjustments: s.stockAdjustments,
+      settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
 
   const [tab, setTab] = useState('status')

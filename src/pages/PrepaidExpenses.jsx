@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -12,7 +13,11 @@ const CATEGORIES = ['Prepaid Insurance', 'Prepaid Rent', 'Prepaid Subscription',
 export default function PrepaidExpenses() {
   const t = useT()
   const { prepaidExpenses, accounts, bankAccounts, settings,
-          addPrepaidExpense, amortizePrepaid, deletePrepaidExpense } = useStore()
+          addPrepaidExpense, amortizePrepaid, deletePrepaidExpense } = useStore(useShallow((s) => ({
+              prepaidExpenses: s.prepaidExpenses, accounts: s.accounts, bankAccounts: s.bankAccounts,
+              settings: s.settings, addPrepaidExpense: s.addPrepaidExpense, amortizePrepaid: s.amortizePrepaid,
+              deletePrepaidExpense: s.deletePrepaidExpense,
+            })))
   const sym = settings.company.currencySymbol
 
   const expAccounts = accounts.filter((a) => a.type === 'expense')

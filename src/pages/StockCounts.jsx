@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import Scanner from '../components/Scanner'
@@ -23,7 +24,12 @@ export default function StockCounts() {
     stockCounts = [], inventoryItems, fixedAssets = [], warehouses = [], settings,
     startStockCount, updateStockCount, deleteStockCount, postStockCount,
     startCycleCount, cycleCountBatch,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      stockCounts: s.stockCounts, inventoryItems: s.inventoryItems, fixedAssets: s.fixedAssets,
+      warehouses: s.warehouses, settings: s.settings, startStockCount: s.startStockCount,
+      updateStockCount: s.updateStockCount, deleteStockCount: s.deleteStockCount,
+      postStockCount: s.postStockCount, startCycleCount: s.startCycleCount, cycleCountBatch: s.cycleCountBatch,
+    })))
   const sym = settings.company.currencySymbol
 
   const [openId, setOpenId] = useState(null)

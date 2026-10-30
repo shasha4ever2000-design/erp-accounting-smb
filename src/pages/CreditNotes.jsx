@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -14,7 +15,10 @@ const emptyForm = () => ({
 
 export default function CreditNotes() {
   const t = useT()
-  const { creditNotes, customers, invoices, settings, addCreditNote, deleteCreditNote, voidCreditNote } = useStore()
+  const { creditNotes, customers, invoices, settings, addCreditNote, deleteCreditNote, voidCreditNote } = useStore(useShallow((s) => ({
+      creditNotes: s.creditNotes, customers: s.customers, invoices: s.invoices, settings: s.settings,
+      addCreditNote: s.addCreditNote, deleteCreditNote: s.deleteCreditNote, voidCreditNote: s.voidCreditNote,
+    })))
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
   const taxRate    = settings.tax.rate

@@ -35,6 +35,12 @@ export const createSettingsSlice = (set, get) => ({
   updateInvoiceSettings: (patch) =>
     set((s) => ({ settings: { ...s.settings, invoice: { ...s.settings.invoice, ...patch } } })),
 
+  // Online payments: whether the portal offers "Pay now", and which bank or
+  // clearing account receives the money. The provider's secret key is not
+  // here — it lives on the server (see utils/onlinePayments.js).
+  updateOnlinePayments: (patch) =>
+    set((s) => ({ settings: { ...s.settings, onlinePayments: { ...(s.settings.onlinePayments || {}), ...patch } } })),
+
   updateAiSettings: (patch) =>
     set((s) => ({ settings: { ...s.settings, ai: { ...(s.settings.ai || {}), ...patch } } })),
 

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, Modal, Input, Select, EmptyState, Table, Tr, Td, Money } from '../components/UI'
 import { useT } from '../i18n'
@@ -17,7 +18,13 @@ import { documentDue } from '../utils/partyBalance'
 import { askText } from '../components/Dialogs'
 
 export default function Purchases() {
-  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings, debitNotes, cashAccountOptions } = useStore()
+  const { purchases, suppliers, accounts, voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock, settings, debitNotes, cashAccountOptions } = useStore(useShallow((s) => ({
+      purchases: s.purchases, suppliers: s.suppliers, accounts: s.accounts, voidPurchase: s.voidPurchase,
+      createPurchaseReturn: s.createPurchaseReturn, recordPurchasePayment: s.recordPurchasePayment,
+      purchaseEditBlock: s.purchaseEditBlock, settings: s.settings, debitNotes: s.debitNotes,
+      cashAccountOptions: s.cashAccountOptions,
+    })))
+  useBooksChanged() // figures below come from store reads (purchaseEditBlock, cashAccountOptions)
   const navigate = useNavigate()
   const sym = settings.company.currencySymbol
   const docSym = (d) => (d.currency && d.currency !== settings.company.currency ? `${d.currency} ` : sym)

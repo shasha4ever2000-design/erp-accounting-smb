@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { isKit, kitCost, kitAvailability, describeKit } from '../utils/kits'
@@ -26,7 +27,11 @@ const emptyForm = {
 }
 
 export default function Inventory() {
-  const { inventoryItems, accounts, addInventoryItem, updateInventoryItem, deleteInventoryItem, settings, customFieldsFor } = useStore()
+  const { inventoryItems, accounts, addInventoryItem, updateInventoryItem, deleteInventoryItem, settings, customFieldsFor } = useStore(useShallow((s) => ({
+      inventoryItems: s.inventoryItems, accounts: s.accounts, addInventoryItem: s.addInventoryItem,
+      updateInventoryItem: s.updateInventoryItem, deleteInventoryItem: s.deleteInventoryItem,
+      settings: s.settings, customFieldsFor: s.customFieldsFor,
+    })))
   const sym = settings.company.currencySymbol
   const t = useT()
   const [modal, setModal] = useState(false)

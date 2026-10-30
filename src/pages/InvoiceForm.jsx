@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { EDIT_BLOCK_MESSAGE } from '../utils/docEdit'
 import { today, addDays, fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
@@ -25,7 +26,13 @@ export default function InvoiceForm() {
   // With an :id in the path this form is correcting an invoice that is already
   // posted, rather than raising a new one.
   const { id: editId } = useParams()
-  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, warehouses = [], settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore()
+  const { customers, invoices, creditNotes = [], accounts, inventoryItems, departments, currencies, warehouses = [], settings, addInvoice, reviseInvoice, invoiceEditBlock, customFieldsFor, stockShortfall } = useStore(useShallow((s) => ({
+      customers: s.customers, invoices: s.invoices, creditNotes: s.creditNotes, accounts: s.accounts,
+      inventoryItems: s.inventoryItems, departments: s.departments, currencies: s.currencies,
+      warehouses: s.warehouses, settings: s.settings, addInvoice: s.addInvoice, reviseInvoice: s.reviseInvoice,
+      invoiceEditBlock: s.invoiceEditBlock, customFieldsFor: s.customFieldsFor, stockShortfall: s.stockShortfall,
+    })))
+  useBooksChanged() // figures below come from store reads (invoiceEditBlock, customFieldsFor, stockShortfall)
   const t = useT()
   const baseCurrency = settings.company.currency
   const salesReps = settings.salesReps || []

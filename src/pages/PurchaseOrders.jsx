@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -21,7 +22,10 @@ const MATCH_BADGE = {
 export default function PurchaseOrders() {
   const t = useT()
   const navigate = useNavigate()
-  const { purchaseOrders, settings, deletePurchaseOrder, updatePurchaseOrder, receiveGoods, billReceivedPO } = useStore()
+  const { purchaseOrders, settings, deletePurchaseOrder, updatePurchaseOrder, receiveGoods, billReceivedPO } = useStore(useShallow((s) => ({
+      purchaseOrders: s.purchaseOrders, settings: s.settings, deletePurchaseOrder: s.deletePurchaseOrder,
+      updatePurchaseOrder: s.updatePurchaseOrder, receiveGoods: s.receiveGoods, billReceivedPO: s.billReceivedPO,
+    })))
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax?.enabled !== false
   const [filter, setFilter] = useState('all')

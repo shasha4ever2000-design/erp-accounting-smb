@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT, tr } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
 import BudgetAlertStrip from '../components/BudgetAlertStrip'
@@ -9,7 +10,11 @@ import { Target, Save } from 'lucide-react'
 
 export default function Budgets() {
   const t = useT()
-  const { accounts, budgets, setBudget, getAccountBalance, settings } = useStore()
+  const { accounts, budgets, setBudget, getAccountBalance, settings } = useStore(useShallow((s) => ({
+      accounts: s.accounts, budgets: s.budgets, setBudget: s.setBudget, getAccountBalance: s.getAccountBalance,
+      settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAccountBalance)
   const sym = settings.company.currencySymbol
 
   const thisYear = format(new Date(), 'yyyy')

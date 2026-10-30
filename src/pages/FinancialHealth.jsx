@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useT } from '../i18n'
 import { fmtMoney } from '../utils/formatters'
 import { computeFinancialHealth, healthLabel } from '../utils/financialHealth'
@@ -20,7 +21,11 @@ const RATING = {
 
 export default function FinancialHealth() {
   const t = useT()
-  const { accounts, accountGroups = [], getAllBalances, settings } = useStore()
+  const { accounts, accountGroups = [], getAllBalances, settings } = useStore(useShallow((s) => ({
+      accounts: s.accounts, accountGroups: s.accountGroups, getAllBalances: s.getAllBalances,
+      settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
 
   const { result, asOf } = useMemo(() => {

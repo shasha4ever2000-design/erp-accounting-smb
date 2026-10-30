@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { accountTypeLabel, accountTypeColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState } from '../components/UI'
 import { buildTree, flattenGroups, groupUsage, TYPE_ORDER, COST_OF_SALES } from '../utils/accountTree'
@@ -29,7 +30,12 @@ export default function ChartOfAccounts() {
     accounts, accountGroups = [], addAccount, updateAccount, deleteAccount,
     addAccountGroup, updateAccountGroup, deleteAccountGroup, restoreDefaultGroups,
     currencies, settings,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      accounts: s.accounts, accountGroups: s.accountGroups, addAccount: s.addAccount,
+      updateAccount: s.updateAccount, deleteAccount: s.deleteAccount, addAccountGroup: s.addAccountGroup,
+      updateAccountGroup: s.updateAccountGroup, deleteAccountGroup: s.deleteAccountGroup,
+      restoreDefaultGroups: s.restoreDefaultGroups, currencies: s.currencies, settings: s.settings,
+    })))
   const base = settings.company.currency
 
   const [modal, setModal] = useState(false)

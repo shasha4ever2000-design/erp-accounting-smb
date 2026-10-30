@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
 import { CustomFieldInputs, useCustomFields } from '../components/CustomFields'
@@ -12,7 +13,10 @@ const CATEGORIES = ['Building', 'Land', 'Machinery & Equipment', 'Motor Vehicles
 export default function FixedAssetForm() {
   const t = useT()
   const navigate = useNavigate()
-  const { bankAccounts, settings, addFixedAsset, customFieldsFor } = useStore()
+  const { bankAccounts, settings, addFixedAsset, customFieldsFor } = useStore(useShallow((s) => ({
+      bankAccounts: s.bankAccounts, settings: s.settings, addFixedAsset: s.addFixedAsset,
+      customFieldsFor: s.customFieldsFor,
+    })))
   const sym = settings.company.currencySymbol
 
   const bankOpts = bankAccounts.map((ba) => ({ id: ba.accountId, name: ba.name }))

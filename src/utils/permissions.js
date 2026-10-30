@@ -150,7 +150,7 @@ export const ACTION_PERMISSIONS = {
   }),
   ...A('settings', {
     create: ['importData', 'snapshotNow', 'addCustomField'],
-    edit: ['updateSettings', 'updateCompany', 'updateInventorySettings', 'updateTax', 'updateInvoiceSettings', 'updateAiSettings',
+    edit: ['updateSettings', 'updateCompany', 'updateInventorySettings', 'updateTax', 'updateInvoiceSettings', 'updateAiSettings', 'updateOnlinePayments',
       'updateZatca', 'reopenSetup', 'updateEta', 'updateCustomFields', 'updateCustomField', 'moveCustomField', 'updateWht',
       'updateApprovals', 'setPeriodLock', 'closeFiscalYear', 'reopenFiscalYear', 'setAutoPostRecurring', 'updateEclSettings',
       'updateDeferredTaxSettings', 'updatePaymentTerms', 'updateBranding', 'updateDocBranding', 'clearLegacyLogo',

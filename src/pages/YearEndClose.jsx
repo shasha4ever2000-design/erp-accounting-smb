@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../auth'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
 import { useT } from '../i18n'
@@ -10,7 +11,11 @@ import { Link } from 'react-router-dom'
 import { ask } from '../components/Dialogs'
 
 export default function YearEndClose() {
-  const { settings, journalEntries, accounts, stockAdjustments, expenseClaims, payrollRuns, workOrders, closeFiscalYear, reopenFiscalYear } = useStore()
+  const { settings, journalEntries, accounts, stockAdjustments, expenseClaims, payrollRuns, workOrders, closeFiscalYear, reopenFiscalYear } = useStore(useShallow((s) => ({
+      settings: s.settings, journalEntries: s.journalEntries, accounts: s.accounts,
+      stockAdjustments: s.stockAdjustments, expenseClaims: s.expenseClaims, payrollRuns: s.payrollRuns,
+      workOrders: s.workOrders, closeFiscalYear: s.closeFiscalYear, reopenFiscalYear: s.reopenFiscalYear,
+    })))
   const t = useT()
   const isManager = useAuth((s) => s.isManager())
   const sym = settings.company.currencySymbol

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { alertIfLocked } from '../utils/periodLock'
 import { EDIT_BLOCK_MESSAGE } from '../utils/docEdit'
@@ -26,7 +27,13 @@ export default function PurchaseView() {
   const {
     purchases, suppliers, accounts, journalEntries, settings, debitNotes, cashAccountOptions,
     voidPurchase, createPurchaseReturn, recordPurchasePayment, purchaseEditBlock,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      purchases: s.purchases, suppliers: s.suppliers, accounts: s.accounts, journalEntries: s.journalEntries,
+      settings: s.settings, debitNotes: s.debitNotes, cashAccountOptions: s.cashAccountOptions,
+      voidPurchase: s.voidPurchase, createPurchaseReturn: s.createPurchaseReturn,
+      recordPurchasePayment: s.recordPurchasePayment, purchaseEditBlock: s.purchaseEditBlock,
+    })))
+  useBooksChanged() // figures below come from store reads (cashAccountOptions, purchaseEditBlock)
 
   const purchase = purchases.find((p) => p.id === id)
   const [payModal, setPayModal] = useState(false)

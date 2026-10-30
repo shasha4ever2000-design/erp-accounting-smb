@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, EmptyState } from '../components/UI'
 import { BellRing, Copy, Printer, Clock, Mail } from 'lucide-react'
@@ -11,7 +12,9 @@ import EmailDialog from '../components/EmailDialog'
 // and generates a ready-to-send reminder message with an aging breakdown.
 export default function PaymentReminders() {
   const t = useT()
-  const { invoices, customers, creditNotes, settings } = useStore()
+  const { invoices, customers, creditNotes, settings } = useStore(useShallow((s) => ({
+      invoices: s.invoices, customers: s.customers, creditNotes: s.creditNotes, settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
   const company = settings.company
   const todayStr = today()
