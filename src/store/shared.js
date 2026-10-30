@@ -131,6 +131,7 @@ export const DEFAULT_SETTINGS = {
   creditNote:    { prefix: 'CN-',   next: 1 },
   debitNote:     { prefix: 'DN-',   next: 1 },
   ai:            { apiKey: '', model: 'claude-haiku-4-5-20251001' },
+  onlinePayments: { enabled: false, provider: '', depositAccountId: '' },
   accounting:    { lockDate: '', lockedBy: '', lockedAt: '', autoPostRecurring: true }, // period close + auto-post scheduler
   approvals:     defaultApprovalSettings(), // threshold-based maker-checker
   opening:       { date: '', posted: false, journalEntryId: null, postedAt: '', counts: null }, // migration cutover

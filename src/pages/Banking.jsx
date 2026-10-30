@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -23,7 +24,13 @@ const emptyForm = () => ({
 
 export default function Banking() {
   const t = useT()
-  const { accounts, departments, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore()
+  const { accounts, departments, bankTransactions, journalEntries, getAllBalances, deleteBankTransaction, addBankTransaction, settings } = useStore(useShallow((s) => ({
+      accounts: s.accounts, departments: s.departments, bankTransactions: s.bankTransactions,
+      journalEntries: s.journalEntries, getAllBalances: s.getAllBalances,
+      deleteBankTransaction: s.deleteBankTransaction, addBankTransaction: s.addBankTransaction,
+      settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
 
   const [modal, setModal] = useState(false)

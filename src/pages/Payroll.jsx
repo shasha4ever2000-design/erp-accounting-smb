@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useT } from '../i18n'
 import { alertIfLocked } from '../utils/periodLock'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
 import { Plus, Play, DollarSign, Trash2, Users, MinusCircle, CalendarCheck, FileSignature } from 'lucide-react'
-import { grossOf as contractGross, gosiWage, DEFAULT_GOSI_WAGE_CAP } from '../utils/contracts'
+import { grossOf as contractGross, gosiWage, gosiRatesFor, gosiNeedsCategory, DEFAULT_GOSI_WAGE_CAP } from '../utils/contracts'
 import { ask } from '../components/Dialogs'
 
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100
@@ -23,7 +25,7 @@ const num = (v) => parseFloat(v) || 0
  * Absence and overtime come from the attendance sheet for that month, so the
  * two modules meet here rather than being reconciled by hand.
  */
-function lineFromEmployee(emp, { contract = null, impact = null, gosiCap } = {}) {
+function lineFromEmployee(emp, { contract = null, impact = null, gosiCap, asAt } = {}) {
   const src = contract || emp
   const basic = num(contract ? contract.basic : (emp.basicSalary || emp.salary))
   const housing = num(contract ? contract.housing : emp.housingAllowance)
@@ -38,8 +40,10 @@ function lineFromEmployee(emp, { contract = null, impact = null, gosiCap } = {})
   // ...and only up to the GOSI wage ceiling.
   const contributory = gosiWage(basic + housing, gosiCap)
   const gosiOn = contract ? contract.gosiApplicable : emp.gosiApplicable
-  const gosi = gosiOn ? round2((contributory * num(src.gosiEmployeeRate)) / 100) : 0
-  const gosiEmployer = gosiOn ? round2((contributory * num(src.gosiEmployerRate)) / 100) : 0
+  // Rates follow the employee's GOSI category on the pay month.
+  const rates = gosiRatesFor(src, asAt)
+  const gosi = gosiOn ? round2((contributory * rates.employee) / 100) : 0
+  const gosiEmployer = gosiOn ? round2((contributory * rates.employer) / 100) : 0
   const taxOn = contract ? contract.taxApplicable : emp.taxApplicable
   const tax = taxOn ? round2(((basic + housing + transport + other + overtime) * num(src.taxRate)) / 100) : 0
 
@@ -66,7 +70,14 @@ export default function Payroll() {
   const t = useT()
   const { employees, payrollRuns, bankAccounts, settings, employmentContracts, attendance,
           addPayrollRun, processPayrollRun, payPayrollRun, deletePayrollRun,
-          contractFor, attendanceImpact, advanceDueFor } = useStore()
+          contractFor, attendanceImpact, advanceDueFor } = useStore(useShallow((s) => ({
+              employees: s.employees, payrollRuns: s.payrollRuns, bankAccounts: s.bankAccounts,
+              settings: s.settings, employmentContracts: s.employmentContracts, attendance: s.attendance,
+              addPayrollRun: s.addPayrollRun, processPayrollRun: s.processPayrollRun,
+              payPayrollRun: s.payPayrollRun, deletePayrollRun: s.deletePayrollRun, contractFor: s.contractFor,
+              attendanceImpact: s.attendanceImpact, advanceDueFor: s.advanceDueFor,
+            })))
+  useBooksChanged() // figures below come from store reads (contractFor, attendanceImpact, advanceDueFor)
   const gosiCap = settings.hr?.gosiWageCap ?? DEFAULT_GOSI_WAGE_CAP
   const sym = settings.company.currencySymbol
 
@@ -91,6 +102,7 @@ export default function Payroll() {
       contract: contractFor(e.id, `${month}-28`),
       impact: attendanceImpact(e.id, month),
       gosiCap,
+      asAt: `${month}-28`,
     })
     const payable = grossOf(l) - dedOf(l)
     return { ...l, loan: advanceDueFor(e.id, Math.max(0, payable)).total }
@@ -141,6 +153,11 @@ export default function Payroll() {
   // attendance in it, because "what does payroll cost a month" should not
   // wobble with last month's sick days.
   const estLines = activeEmps.map((e) => lineFromEmployee(e, { contract: contractFor(e.id), gosiCap }))
+
+  // People on GOSI whose contract (or, without one, employee record) still
+  // carries hand-typed rates rather than a category, so they don't follow
+  // the law's changes on their own.
+  const needCategory = activeEmps.filter((e) => gosiNeedsCategory(contractFor(e.id) || e))
   const estGross = estLines.reduce((s, l) => s + grossOf(l), 0)
   const estNet   = estLines.reduce((s, l) => s + netOf(l), 0)
 
@@ -163,6 +180,17 @@ export default function Payroll() {
         <StatCard label="Deductions"        value={fmtMoney(estGross - estNet, sym)} color="orange" icon={<MinusCircle size={18} />} />
         <StatCard label="Net Pay"           value={fmtMoney(estNet, sym)}   color="purple" icon={<DollarSign size={18} />} />
       </div>
+
+      {needCategory.length > 0 && (
+        <div className="mb-6 rounded-xl bg-warning-50 dark:bg-warning-500/10 border border-warning-200 dark:border-warning-500/30 p-4 text-sm text-warning-800 dark:text-warning-200">
+          <p className="font-semibold">{t('GOSI rates need checking for {n} employee(s)').replace('{n}', needCategory.length)}</p>
+          <p className="mt-1">
+            {t('Their GOSI rates were typed in by hand. Pick each person\'s GOSI category on their contract (or employee record) and the rates will follow the law, including the yearly steps for Saudis registered from July 2024.')}
+            {' '}<span className="opacity-80">{needCategory.slice(0, 5).map((e) => e.name).join(', ')}{needCategory.length > 5 ? '…' : ''}</span>
+          </p>
+          <Link to="/contracts" className="inline-block mt-2 font-semibold underline">{t('Open contracts')}</Link>
+        </div>
+      )}
 
       <Card>
         {payrollRuns.length === 0 ? (

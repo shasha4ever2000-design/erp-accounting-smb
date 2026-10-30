@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -14,7 +15,11 @@ import { ask } from '../components/Dialogs'
 export default function Quotations() {
   const t = useT()
   const navigate = useNavigate()
-  const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice, convertQuotationToSalesOrder } = useStore()
+  const { quotations, settings, deleteQuotation, updateQuotation, convertQuotationToInvoice, convertQuotationToSalesOrder } = useStore(useShallow((s) => ({
+      quotations: s.quotations, settings: s.settings, deleteQuotation: s.deleteQuotation,
+      updateQuotation: s.updateQuotation, convertQuotationToInvoice: s.convertQuotationToInvoice,
+      convertQuotationToSalesOrder: s.convertQuotationToSalesOrder,
+    })))
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax?.enabled !== false
   const [filter, setFilter] = useState('all')

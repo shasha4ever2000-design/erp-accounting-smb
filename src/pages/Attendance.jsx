@@ -5,7 +5,8 @@
 // with a click-to-cycle cell and a fill-the-rest button.
 
 import { useState, useMemo, useEffect } from 'react'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useT } from '../i18n'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import {
@@ -49,7 +50,13 @@ export default function Attendance() {
     employees, attendance, settings, employmentContracts,
     attendanceSheet, saveAttendanceSheet, clearAttendanceMonth,
     attendanceImpact, contractFor,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      employees: s.employees, attendance: s.attendance, settings: s.settings,
+      employmentContracts: s.employmentContracts, attendanceSheet: s.attendanceSheet,
+      saveAttendanceSheet: s.saveAttendanceSheet, clearAttendanceMonth: s.clearAttendanceMonth,
+      attendanceImpact: s.attendanceImpact, contractFor: s.contractFor,
+    })))
+  useBooksChanged() // figures below come from store reads (attendanceSheet, attendanceImpact, contractFor)
   const sym = settings.company.currencySymbol
 
   const activeEmps = useMemo(() => employees.filter((e) => e.status === 'active'), [employees])

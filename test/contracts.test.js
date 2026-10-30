@@ -150,7 +150,7 @@ describe('analyseSalary', () => {
 
 describe('costs and rates', () => {
   it('adds the employer contribution to the cost of employing someone', () => {
-    const e = employerCost(c({ gosiApplicable: true, gosiEmployerRate: 11 }))
+    const e = employerCost(c({ gosiApplicable: true, gosiCategory: 'custom', gosiEmployerRate: 11 }))
     expect(e.gross).toBe(8000)
     expect(e.gosiEmployer).toBe(825)      // 11% of 7,500
     expect(e.total).toBe(8825)

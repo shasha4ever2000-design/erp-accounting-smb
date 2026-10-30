@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Table, Tr, Td, Badge, EmptyState, StatCard } from '../components/UI'
 import { alertIfLocked } from '../utils/periodLock'
@@ -19,7 +20,12 @@ export default function RecurringExpenses() {
     recurringExpenses, suppliers, accounts, settings,
     addRecurringExpense, updateRecurringExpense, deleteRecurringExpense,
     postRecurringExpense, generateDueRecurringExpenses,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      recurringExpenses: s.recurringExpenses, suppliers: s.suppliers, accounts: s.accounts, settings: s.settings,
+      addRecurringExpense: s.addRecurringExpense, updateRecurringExpense: s.updateRecurringExpense,
+      deleteRecurringExpense: s.deleteRecurringExpense, postRecurringExpense: s.postRecurringExpense,
+      generateDueRecurringExpenses: s.generateDueRecurringExpenses,
+    })))
   const sym = settings.company.currencySymbol
   const todayStr = today()
   const expenseAccounts = accounts.filter((a) => a.type === 'expense')

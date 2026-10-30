@@ -6,7 +6,8 @@
 // component's state is a field that appears to exist and does not.
 
 import { useState } from 'react'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { CF_ENTITIES, CF_TYPES, newField, entityMeta } from '../utils/customFields'
 import { Card, Btn, Modal, Input, Select, EmptyState } from './UI'
 import { useT } from '../i18n'
@@ -15,7 +16,12 @@ import { ask } from './Dialogs'
 
 export default function CustomFieldsManager() {
   const settings = useStore((s) => s.settings)
-  const { addCustomField, updateCustomField, deleteCustomField, moveCustomField, customFieldsFor } = useStore()
+  const { addCustomField, updateCustomField, deleteCustomField, moveCustomField, customFieldsFor } = useStore(useShallow((s) => ({
+      addCustomField: s.addCustomField, updateCustomField: s.updateCustomField,
+      deleteCustomField: s.deleteCustomField, moveCustomField: s.moveCustomField,
+      customFieldsFor: s.customFieldsFor,
+    })))
+  useBooksChanged() // figures below come from store reads (customFieldsFor)
   const t = useT()
 
   const [entity, setEntity] = useState('customer')

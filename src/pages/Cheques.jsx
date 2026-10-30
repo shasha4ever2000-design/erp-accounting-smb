@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import {
@@ -32,7 +33,11 @@ export default function Cheques() {
   const {
     cheques = [], customers = [], suppliers = [], bankAccounts = [], settings,
     addCheque, setChequeStatus, deleteCheque,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      cheques: s.cheques, customers: s.customers, suppliers: s.suppliers, bankAccounts: s.bankAccounts,
+      settings: s.settings, addCheque: s.addCheque, setChequeStatus: s.setChequeStatus,
+      deleteCheque: s.deleteCheque,
+    })))
   const sym = settings.company.currencySymbol
 
   const [direction, setDirection] = useState(CHEQUE_IN)

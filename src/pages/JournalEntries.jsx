@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -36,7 +37,12 @@ const JE_BLOCK_MESSAGE = {
 export default function JournalEntries() {
   const t = useT()
   const navigate = useNavigate()
-  const { journalEntries, accounts, departments, addJournalEntry, updateJournalEntry, journalEditBlock, voidJournalEntry, settings } = useStore()
+  const { journalEntries, accounts, departments, addJournalEntry, updateJournalEntry, journalEditBlock, voidJournalEntry, settings } = useStore(useShallow((s) => ({
+      journalEntries: s.journalEntries, accounts: s.accounts, departments: s.departments,
+      addJournalEntry: s.addJournalEntry, updateJournalEntry: s.updateJournalEntry,
+      journalEditBlock: s.journalEditBlock, voidJournalEntry: s.voidJournalEntry, settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (journalEditBlock)
   const sym = settings.company.currencySymbol
   const [modal, setModal] = useState(false)
   // The id being edited, or null when the modal is raising a new entry. The two

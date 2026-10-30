@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { vatBreakdown } from '../utils/vat'
 import { buildVatReturn, yearQuarters } from '../utils/vatReturn'
@@ -47,7 +48,17 @@ const REPORTS = [
 ]
 
 export default function Reports() {
-  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision, deferredTaxAssessment, postDeferredTax, taxRateReconciliation, disclosureNotes } = useStore()
+  const { accounts, accountGroups = [], journalEntries, invoices, purchases, creditNotes, debitNotes, bankAccounts, customers, suppliers, inventoryItems, budgets, departments, getAllBalances, settleVat, settings, eclAssessment, postEclProvision, deferredTaxAssessment, postDeferredTax, taxRateReconciliation, disclosureNotes } = useStore(useShallow((s) => ({
+      accounts: s.accounts, accountGroups: s.accountGroups, journalEntries: s.journalEntries,
+      invoices: s.invoices, purchases: s.purchases, creditNotes: s.creditNotes, debitNotes: s.debitNotes,
+      bankAccounts: s.bankAccounts, customers: s.customers, suppliers: s.suppliers,
+      inventoryItems: s.inventoryItems, budgets: s.budgets, departments: s.departments,
+      getAllBalances: s.getAllBalances, settleVat: s.settleVat, settings: s.settings,
+      eclAssessment: s.eclAssessment, postEclProvision: s.postEclProvision,
+      deferredTaxAssessment: s.deferredTaxAssessment, postDeferredTax: s.postDeferredTax,
+      taxRateReconciliation: s.taxRateReconciliation, disclosureNotes: s.disclosureNotes,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances, eclAssessment, deferredTaxAssessment…)
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company

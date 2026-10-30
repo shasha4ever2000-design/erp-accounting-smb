@@ -2,7 +2,8 @@
 // accrued in end-of-service.
 
 import { useState, useMemo } from 'react'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useT } from '../i18n'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { alertIfLocked } from '../utils/periodLock'
@@ -20,6 +21,7 @@ import {
   TrendingUp, Wallet, LogOut, Info,
 } from 'lucide-react'
 import { ask } from '../components/Dialogs'
+import GosiFields from '../components/GosiFields'
 
 const FINDING_CLR = {
   error:   'text-danger-600 dark:text-danger-400',
@@ -34,7 +36,14 @@ export default function Contracts() {
     addContract, updateContract, deleteContract,
     eosbFor, eosbProvidedFor, eosbSchedule, postEosbAccrual, settleEosb,
     customFieldsFor,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      employees: s.employees, employmentContracts: s.employmentContracts, settings: s.settings,
+      accounts: s.accounts, addContract: s.addContract, updateContract: s.updateContract,
+      deleteContract: s.deleteContract, eosbFor: s.eosbFor, eosbProvidedFor: s.eosbProvidedFor,
+      eosbSchedule: s.eosbSchedule, postEosbAccrual: s.postEosbAccrual, settleEosb: s.settleEosb,
+      customFieldsFor: s.customFieldsFor,
+    })))
+  useBooksChanged() // figures below come from store reads (eosbFor, eosbProvidedFor, eosbSchedule…)
   const sym = settings.company.currencySymbol
   const gosiCap = settings.hr?.gosiWageCap ?? DEFAULT_GOSI_WAGE_CAP
   const at = today()
@@ -65,7 +74,9 @@ export default function Contracts() {
   const cost = employerCost(form, { gosiCap })
 
   const openNew = () => { setEditing(null); setForm(emptyContract({ startDate: at })); setModal(true) }
-  const openEdit = (c) => { setEditing(c); setForm({ ...emptyContract(), ...c }); setModal(true) }
+  // An older contract with no GOSI category keeps its typed rates ("custom")
+  // rather than picking up the new default category.
+  const openEdit = (c) => { setEditing(c); setForm({ ...emptyContract(), ...c, gosiCategory: c.gosiCategory || 'custom' }); setModal(true) }
 
   const save = () => {
     const payload = {
@@ -74,6 +85,8 @@ export default function Contracts() {
       housing: parseFloat(form.housing) || 0,
       transport: parseFloat(form.transport) || 0,
       other: parseFloat(form.other) || 0,
+      gosiEmployeeRate: parseFloat(form.gosiEmployeeRate) || 0,
+      gosiEmployerRate: parseFloat(form.gosiEmployerRate) || 0,
     }
     try {
       if (editing) updateContract(editing.id, payload)
@@ -282,12 +295,7 @@ export default function Contracts() {
                     className="rounded border-slate-300 dark:border-surface-700 text-brand-600 dark:text-brand-400 focus:ring-brand-500" />
                   {t('Social insurance (GOSI) applies')}
                 </label>
-                {form.gosiApplicable && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <Input label={`${t('Employee')} %`} type="number" step="0.5" value={form.gosiEmployeeRate} onChange={(e) => setField('gosiEmployeeRate', e.target.value)} />
-                    <Input label={`${t('Employer')} %`} type="number" step="0.5" value={form.gosiEmployerRate} onChange={(e) => setField('gosiEmployerRate', e.target.value)} />
-                  </div>
-                )}
+                <GosiFields form={form} setField={setField} asAt={at} />
               </div>
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">

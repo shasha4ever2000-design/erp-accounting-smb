@@ -1,6 +1,7 @@
 import { useMemo, useState , lazy, Suspense } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor } from '../utils/formatters'
 import { StatCard, Card, Badge } from '../components/UI'
 import AccountLedgerModal from '../components/AccountLedgerModal'
@@ -23,7 +24,12 @@ const ChartSkeleton = () => (
 )
 
 export default function Dashboard() {
-  const { invoices, purchases, accounts, journalEntries, getAllBalances, settings, recurringInvoices, leases } = useStore()
+  const { invoices, purchases, accounts, journalEntries, getAllBalances, settings, recurringInvoices, leases } = useStore(useShallow((s) => ({
+      invoices: s.invoices, purchases: s.purchases, accounts: s.accounts, journalEntries: s.journalEntries,
+      getAllBalances: s.getAllBalances, settings: s.settings, recurringInvoices: s.recurringInvoices,
+      leases: s.leases,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
   const t = useT()
 

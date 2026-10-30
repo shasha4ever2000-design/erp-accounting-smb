@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -17,7 +18,12 @@ const EXPENSE_CATEGORIES = [
 export default function ExpenseClaims() {
   const t = useT()
   const { expenseClaims, employees, accounts, bankAccounts, settings,
-          addExpenseClaim, approveExpenseClaim, payExpenseClaim, deleteExpenseClaim } = useStore()
+          addExpenseClaim, approveExpenseClaim, payExpenseClaim, deleteExpenseClaim } = useStore(useShallow((s) => ({
+              expenseClaims: s.expenseClaims, employees: s.employees, accounts: s.accounts,
+              bankAccounts: s.bankAccounts, settings: s.settings, addExpenseClaim: s.addExpenseClaim,
+              approveExpenseClaim: s.approveExpenseClaim, payExpenseClaim: s.payExpenseClaim,
+              deleteExpenseClaim: s.deleteExpenseClaim,
+            })))
   const sym = settings.company.currencySymbol
 
   const expAccounts = accounts.filter((a) => a.type === 'expense')

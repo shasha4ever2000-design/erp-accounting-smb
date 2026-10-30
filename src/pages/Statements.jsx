@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
@@ -13,7 +14,10 @@ import { Printer, FileText, Mail, MessageCircle, Copy, Check, AlertTriangle } fr
 
 export default function Statements() {
   const t = useT()
-  const { customers, suppliers, invoices, purchases, creditNotes, debitNotes, settings } = useStore()
+  const { customers, suppliers, invoices, purchases, creditNotes, debitNotes, settings } = useStore(useShallow((s) => ({
+      customers: s.customers, suppliers: s.suppliers, invoices: s.invoices, purchases: s.purchases,
+      creditNotes: s.creditNotes, debitNotes: s.debitNotes, settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
   const company = settings.company
 

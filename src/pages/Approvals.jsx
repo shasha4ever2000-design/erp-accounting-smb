@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../auth'
 import { fmtMoney, fmtDate, tone } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
@@ -18,7 +19,10 @@ const STATUS = {
 
 export default function Approvals() {
   const t = useT()
-  const { approvalRequests, settings, approveRequest, rejectRequest, withdrawRequest } = useStore()
+  const { approvalRequests, settings, approveRequest, rejectRequest, withdrawRequest } = useStore(useShallow((s) => ({
+      approvalRequests: s.approvalRequests, settings: s.settings, approveRequest: s.approveRequest,
+      rejectRequest: s.rejectRequest, withdrawRequest: s.withdrawRequest,
+    })))
   const sym = settings.company.currencySymbol
   const approvals = settings.approvals || {}
   const me = useAuth((s) => s.currentUser())

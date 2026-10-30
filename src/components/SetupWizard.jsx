@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useT } from '../i18n'
 import { Btn, Input, Select } from './UI'
 import { TAX_REGIONS, findTaxRegion } from '../utils/taxRegions'
@@ -24,7 +25,10 @@ const CURRENCY_SYMBOLS = {
 
 export default function SetupWizard({ onClose }) {
   const t = useT()
-  const { settings, updateCompany, updateTax, updateZatca, updateEta, markSetupDone } = useStore()
+  const { settings, updateCompany, updateTax, updateZatca, updateEta, markSetupDone } = useStore(useShallow((s) => ({
+      settings: s.settings, updateCompany: s.updateCompany, updateTax: s.updateTax, updateZatca: s.updateZatca,
+      updateEta: s.updateEta, markSetupDone: s.markSetupDone,
+    })))
   const [step, setStep] = useState(0)
   const [region, setRegion] = useState(settings.tax?.country || '')
   const [company, setCompany] = useState({

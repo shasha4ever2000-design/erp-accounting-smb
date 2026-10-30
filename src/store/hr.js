@@ -216,8 +216,10 @@ export const createHrSlice = (set, get) => ({
       .reduce((s, a) => s + ((a.lines || []).find((l) => l.employeeId === employeeId)?.movement || 0), 0) * 100) / 100,
 
   /** The accrual due for a period, per employee — nothing is posted yet. */
-  eosbSchedule: (asAt) => {
-    const cfg = get().eosbSettings()
+  // `override` previews the schedule under other settings (the HR card uses it
+  // to show what switching the wage basis would change) without saving them.
+  eosbSchedule: (asAt, override = {}) => {
+    const cfg = { ...get().eosbSettings(), ...override }
     const at = asAt || todayISO()
     if (cfg.rule === 'none') return { lines: [], total: 0, closing: 0 }
     const rows = get().employees

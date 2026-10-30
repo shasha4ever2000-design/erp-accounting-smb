@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, StatCard } from '../components/UI'
 import { salesAnalytics, quotationStats, purchaseAnalytics, poStats, monthlyTrend } from '../utils/tradeAnalytics'
@@ -33,7 +34,12 @@ function TopList({ title, icon, rows, sym, valueKey = 'value' }) {
 
 export default function TradeAnalytics() {
   const t = useT()
-  const { invoices, purchases, quotations, purchaseOrders, creditNotes, debitNotes, accounts, getAllBalances, settings } = useStore()
+  const { invoices, purchases, quotations, purchaseOrders, creditNotes, debitNotes, accounts, getAllBalances, settings } = useStore(useShallow((s) => ({
+      invoices: s.invoices, purchases: s.purchases, quotations: s.quotations, purchaseOrders: s.purchaseOrders,
+      creditNotes: s.creditNotes, debitNotes: s.debitNotes, accounts: s.accounts,
+      getAllBalances: s.getAllBalances, settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
 
   const a = useMemo(() => {

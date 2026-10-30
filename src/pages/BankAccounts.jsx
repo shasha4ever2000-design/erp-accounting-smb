@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
 import { Plus, Pencil, Trash2, Landmark, Wallet, CreditCard, ArrowDownLeft, ArrowUpRight } from 'lucide-react'
@@ -14,7 +15,13 @@ const emptyForm = { name: '', type: 'bank', bankName: '', accountNumber: '', cod
 export default function BankAccounts() {
   const t = useT()
   const { bankAccounts, accounts, bankTransactions, invoices, purchases, getAllBalances, settings,
-          addBankAccount, updateBankAccount, deleteBankAccount, currencies = [] } = useStore()
+          addBankAccount, updateBankAccount, deleteBankAccount, currencies = [] } = useStore(useShallow((s) => ({
+              bankAccounts: s.bankAccounts, accounts: s.accounts, bankTransactions: s.bankTransactions,
+              invoices: s.invoices, purchases: s.purchases, getAllBalances: s.getAllBalances,
+              settings: s.settings, addBankAccount: s.addBankAccount, updateBankAccount: s.updateBankAccount,
+              deleteBankAccount: s.deleteBankAccount, currencies: s.currencies,
+            })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
 
   const [modal, setModal]   = useState(false)

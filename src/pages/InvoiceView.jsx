@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import QRCode from 'qrcode'
 import { alertIfLocked } from '../utils/periodLock'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, statusColor, today } from '../utils/formatters'
 import { zatcaTlvBase64, invoiceTimestamp } from '../utils/zatca'
 import { numberToWords } from '../utils/numberToWords'
@@ -23,7 +24,14 @@ import { ask, askText } from '../components/Dialogs'
 export default function InvoiceView() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings, creditNotes, cashAccountOptions, updateInvoice } = useStore()
+  const { settlementOffer, postSettlementDiscount, invoices, customers, accounts, inventoryItems, deleteInvoice, voidInvoice, invoiceEditBlock, createSalesReturn, recordInvoicePayment, settings, creditNotes, cashAccountOptions, updateInvoice } = useStore(useShallow((s) => ({
+      settlementOffer: s.settlementOffer, postSettlementDiscount: s.postSettlementDiscount, invoices: s.invoices,
+      customers: s.customers, accounts: s.accounts, inventoryItems: s.inventoryItems,
+      deleteInvoice: s.deleteInvoice, voidInvoice: s.voidInvoice, invoiceEditBlock: s.invoiceEditBlock,
+      createSalesReturn: s.createSalesReturn, recordInvoicePayment: s.recordInvoicePayment, settings: s.settings,
+      creditNotes: s.creditNotes, cashAccountOptions: s.cashAccountOptions, updateInvoice: s.updateInvoice,
+    })))
+  useBooksChanged() // figures below come from store reads (settlementOffer, invoiceEditBlock, cashAccountOptions)
   const t = useT()
   const sym = settings.company.currencySymbol
   const company = settings.company
@@ -154,6 +162,8 @@ export default function InvoiceView() {
         money: (v) => fmtMoney(v, invSym), date: fmtDate, bankDetails: settings.invoice?.bankDetails, t,
       }),
       to: customer.email || '', customer, docKind: 'invoice', docRef: invoice.number,
+      // Lets the email offer "pay online" for what is still due.
+      invoiceId: invoice.id, due,
     })
   }
   const logEmail = (to) => {

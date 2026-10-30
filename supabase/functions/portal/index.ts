@@ -49,12 +49,15 @@ Deno.serve(async (req) => {
 
   await db.from("portal_links").update({ last_opened_at: new Date().toISOString() }).eq("token", token);
 
+  // Online payment: offered when the company has a provider set up (pay function).
+  const { data: pay } = await db.from("payment_settings").select("provider").eq("company_id", link.company_id).maybeSingle();
+
   const today = new Date().toISOString().slice(0, 10);
-  return json(shapePortal({
+  return json({ ...shapePortal({
     settings: settingsRes.data?.data ?? {},
     customer: customerRes.data?.data ?? { id: link.customer_id, name: link.customer_name },
     invoices: (invoicesRes.data ?? []).map((r) => r.data),
     creditNotes: (notesRes.data ?? []).map((r) => r.data),
     today,
-  }));
+  }), canPayOnline: !!pay });
 });

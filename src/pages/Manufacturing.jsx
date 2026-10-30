@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td, StatCard } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -10,7 +11,12 @@ import { ask } from '../components/Dialogs'
 export default function Manufacturing() {
   const t = useT()
   const { billsOfMaterials, workOrders, inventoryItems, accounts, settings,
-          addBOM, updateBOM, deleteBOM, addWorkOrder, startWorkOrder, completeWorkOrder, deleteWorkOrder } = useStore()
+          addBOM, updateBOM, deleteBOM, addWorkOrder, startWorkOrder, completeWorkOrder, deleteWorkOrder } = useStore(useShallow((s) => ({
+              billsOfMaterials: s.billsOfMaterials, workOrders: s.workOrders, inventoryItems: s.inventoryItems,
+              accounts: s.accounts, settings: s.settings, addBOM: s.addBOM, updateBOM: s.updateBOM,
+              deleteBOM: s.deleteBOM, addWorkOrder: s.addWorkOrder, startWorkOrder: s.startWorkOrder,
+              completeWorkOrder: s.completeWorkOrder, deleteWorkOrder: s.deleteWorkOrder,
+            })))
   const sym = settings.company.currencySymbol
 
   const [tab, setTab] = useState('bom')

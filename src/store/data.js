@@ -10,26 +10,29 @@ import { useStore } from '../store'
 import { asSystem } from './guard'
 import { raiseCounters } from './shared'
 
+// Everything that is the company's books: the backup file, the local
+// snapshot and the cloud sync payload are all made of exactly these.
+export const DATA_SLICES = [
+  'settings', 'accounts', 'bankAccounts', 'customers', 'suppliers', 'inventoryItems',
+  'journalEntries', 'invoices', 'quotations', 'creditNotes', 'purchaseOrders', 'purchases',
+  'debitNotes', 'departments', 'employees', 'payrollRuns', 'fixedAssets', 'assetDepreciations',
+  'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
+  'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
+  'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
+  'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
+  'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
+  'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
+  'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
+  'salesOrders', 'purchaseQuotes', 'stockCounts',
+  'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
+]
+
 export const createDataSlice = (set, get) => ({
   // ─── BACKUP / RESTORE ──────────────────────────────────────────
   exportData: () => {
     const s = get()
-    const slices = [
-      'settings', 'accounts', 'bankAccounts', 'customers', 'suppliers', 'inventoryItems',
-      'journalEntries', 'invoices', 'quotations', 'creditNotes', 'purchaseOrders', 'purchases',
-      'debitNotes', 'departments', 'employees', 'payrollRuns', 'fixedAssets', 'assetDepreciations',
-      'stockAdjustments', 'prepaidExpenses', 'leases', 'expenseClaims', 'billsOfMaterials',
-      'workOrders', 'bankTransactions', 'projects', 'timeEntries', 'budgets', 'reconciliations',
-      'warehouses', 'stockTransfers', 'recurringInvoices', 'leads',
-      'deliveryNotes', 'currencies', 'auditLog', 'requisitions',
-      'stockMovements', 'bankTransfers', 'scheduledTransfers', 'matchRules', 'fxRevaluations',
-      'recurringJournals', 'goodsReceipts', 'landedCosts', 'recurringExpenses',
-      'approvalRequests', 'recycleBin', 'accountGroups', 'capitalAccounts', 'capitalSubaccounts',
-      'salesOrders', 'purchaseQuotes', 'stockCounts',
-      'employmentContracts', 'eosbAccruals', 'attendance', 'cheques', 'customerAdvances', 'employeeAdvances',
-    ]
     const out = { _app: 'erp-accounting-smb', _version: 43, _exportedAt: new Date().toISOString() }
-    slices.forEach((k) => { out[k] = s[k] })
+    DATA_SLICES.forEach((k) => { out[k] = s[k] })
     // The AI assistant's API key is a personal secret, not company data.
     // This object is the backup file, the local snapshot and the cloud
     // sync payload, so leaving the key in it handed it to whoever received
@@ -279,7 +282,14 @@ async function runSyncCycle(set, get) {
     await get()._writeSyncMeta({ snapshot: merged, pulledAt: newPulledAt })
     const now = new Date().toISOString()
     set({ syncStatus: 'idle', lastSyncAt: now, lastSyncError: null })
-    return { ok: true, pushed, pulled, keptEdits: edits, resealed: fork.repaired ? fork.count : 0 }
+    // Invoices customers paid online since the last sync, recorded now and
+    // pushed with the next cycle. A failure here never fails the sync.
+    let online = null
+    try {
+      const { onlinePaymentsAfterSync } = await import('../utils/onlinePayments')
+      online = await onlinePaymentsAfterSync(get)
+    } catch { /* tried again next sync */ }
+    return { ok: true, pushed, pulled, keptEdits: edits, resealed: fork.repaired ? fork.count : 0, onlineRecorded: online?.applied || 0 }
   } catch (e) {
     set({ syncStatus: 'error', lastSyncError: e.message })
     return { error: e.message }

@@ -5,10 +5,11 @@
 // computes, so a half-saved policy sitting in local state would mean the
 // figures on screen disagree with the ones about to be posted.
 
-import { useStore } from '../store'
-import { EOSB_RULES } from '../utils/endOfService'
+import { useStore, useBooksChanged } from '../store'
+import { EOSB_RULES, EOSB_WAGE_BASES } from '../utils/endOfService'
 import { DEFAULT_GOSI_WAGE_CAP } from '../utils/contracts'
-import { Card, Input, Select } from './UI'
+import { Card, Input, Select, Btn } from './UI'
+import { fmtMoney } from '../utils/formatters'
 import { useT } from '../i18n'
 import { Users } from 'lucide-react'
 
@@ -21,11 +22,26 @@ const WEEKDAYS = [
 export default function HrSettingsCard() {
   const settings = useStore((s) => s.settings)
   const updateHrSettings = useStore((s) => s.updateHrSettings)
+  const eosbSchedule = useStore((s) => s.eosbSchedule)
+  // The shortfall below is worked out through eosbSchedule while drawing.
+  useBooksChanged()
   const t = useT()
 
   const hr = settings.hr || {}
   const eosb = hr.eosb || {}
   const restDays = Array.isArray(hr.restDays) ? hr.restDays : [5, 6]
+  const basis = eosb.wageBasis || 'gross'
+  const sym = settings.company?.currencySymbol || ''
+
+  // Saudi law computes the award on the full wage. A company still on a
+  // narrower basis is told how much its provision falls short today.
+  const shortfall = eosb.rule === 'saudi' && basis !== 'gross'
+    ? Math.round((eosbSchedule(undefined, { wageBasis: 'gross' }).closing - eosbSchedule().closing) * 100) / 100
+    : 0
+
+  // Choosing the Saudi scheme also picks the wage the law uses; it can still
+  // be changed below.
+  const setRule = (rule) => updateHrSettings({ eosb: rule === 'saudi' ? { rule, wageBasis: 'gross' } : { rule } })
 
   const toggleRest = (d) => {
     const next = restDays.includes(d) ? restDays.filter((x) => x !== d) : [...restDays, d].sort()
@@ -46,7 +62,7 @@ export default function HrSettingsCard() {
 
       <div className="space-y-4">
         <div>
-          <Select label={t('End-of-service scheme')} value={eosb.rule || 'none'} onChange={(e) => updateHrSettings({ eosb: { rule: e.target.value } })}>
+          <Select label={t('End-of-service scheme')} value={eosb.rule || 'none'} onChange={(e) => setRule(e.target.value)}>
             {EOSB_RULES.map((r) => <option key={r.id} value={r.id}>{t(r.label)}</option>)}
           </Select>
           <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
@@ -64,14 +80,30 @@ export default function HrSettingsCard() {
 
         {eosb.rule && eosb.rule !== 'none' && (
           <div>
-            <Select label={t('Computed on')} value={eosb.wageBasis || 'contributory'}
+            <Select label={t('Computed on')} value={basis}
               onChange={(e) => updateHrSettings({ eosb: { wageBasis: e.target.value } })}>
-              <option value="contributory">{t('Basic + housing')}</option>
-              <option value="gross">{t('Full gross pay')}</option>
+              {EOSB_WAGE_BASES.map((b) => <option key={b.id} value={b.id}>{t(b.label)}</option>)}
             </Select>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-              {t('Basic plus housing is the GCC convention. Computing on basic alone understates the award; on full gross it overstates it.')}
+              {eosb.rule === 'saudi'
+                ? t('Saudi Labour Law computes the award on the last full wage: basic plus all allowances (articles 2 and 84).')
+                : t('Use the wage your scheme names. The UAE gratuity, for example, uses basic only.')}
             </p>
+            {eosb.rule === 'saudi' && basis !== 'gross' && (
+              <div className="mt-2 rounded-lg bg-warning-50 dark:bg-warning-500/10 border border-warning-200 dark:border-warning-500/30 p-3 text-sm text-warning-800 dark:text-warning-200">
+                <p>
+                  {shortfall > 0.005
+                    ? t('On this basis your end-of-service provision is {amount} lower than Saudi law requires today.').replace('{amount}', fmtMoney(shortfall, sym))
+                    : t('Saudi law uses the full wage, including allowances. This basis can understate what you owe.')}
+                </p>
+                <Btn size="sm" className="mt-2" need={['hr', 'edit']} onClick={() => updateHrSettings({ eosb: { wageBasis: 'gross' } })}>
+                  {t('Use the full wage')}
+                </Btn>
+                {shortfall > 0.005 && (
+                  <p className="text-xs mt-2 opacity-80">{t('The difference is booked with the next end-of-service accrual you post.')}</p>
+                )}
+              </div>
+            )}
           </div>
         )}
 

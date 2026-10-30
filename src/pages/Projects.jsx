@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT, tr } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -17,7 +18,13 @@ export default function Projects() {
   const {
     projects, bankTransactions, timeEntries, accounts, bankAccounts, settings,
     addProject, updateProject, deleteProject, recordProjectTransaction, addTimeEntry, deleteTimeEntry,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      projects: s.projects, bankTransactions: s.bankTransactions, timeEntries: s.timeEntries,
+      accounts: s.accounts, bankAccounts: s.bankAccounts, settings: s.settings, addProject: s.addProject,
+      updateProject: s.updateProject, deleteProject: s.deleteProject,
+      recordProjectTransaction: s.recordProjectTransaction, addTimeEntry: s.addTimeEntry,
+      deleteTimeEntry: s.deleteTimeEntry,
+    })))
   const sym = settings.company.currencySymbol
 
   const [expanded, setExpanded] = useState(null)

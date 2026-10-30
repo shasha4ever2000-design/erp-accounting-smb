@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Badge, Table, Tr, Td } from '../components/UI'
 import {
@@ -23,7 +24,11 @@ export default function OpeningBalances() {
   const {
     accounts, customers, suppliers, inventoryItems, settings, journalEntries,
     postOpeningBalances, reverseOpeningBalances,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      accounts: s.accounts, customers: s.customers, suppliers: s.suppliers, inventoryItems: s.inventoryItems,
+      settings: s.settings, journalEntries: s.journalEntries, postOpeningBalances: s.postOpeningBalances,
+      reverseOpeningBalances: s.reverseOpeningBalances,
+    })))
   const sym = settings.company.currencySymbol
   const opening = settings.opening || {}
   const posted = !!opening.posted

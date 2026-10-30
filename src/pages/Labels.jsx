@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect } from 'react'
 import QRCode from 'qrcode'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select, Input, EmptyState } from '../components/UI'
 import { LABEL_PRESETS, KINDS, buildSheet, perPage } from '../utils/labels'
@@ -9,7 +10,9 @@ import { Printer, Tag, Search, CheckSquare, Square, QrCode } from 'lucide-react'
 
 export default function Labels() {
   const t = useT()
-  const { fixedAssets = [], inventoryItems = [], settings } = useStore()
+  const { fixedAssets = [], inventoryItems = [], settings } = useStore(useShallow((s) => ({
+      fixedAssets: s.fixedAssets, inventoryItems: s.inventoryItems, settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
   const company = settings.company.name
 

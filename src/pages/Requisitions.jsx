@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { useAuth } from '../auth'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
@@ -21,7 +22,11 @@ const TABS = ['all', 'pending', 'approved', 'ordered', 'rejected']
 
 export default function Requisitions() {
   const t = useT()
-  const { requisitions, addRequisition, approveRequisition, rejectRequisition, deleteRequisition, convertRequisitionToPO, settings } = useStore()
+  const { requisitions, addRequisition, approveRequisition, rejectRequisition, deleteRequisition, convertRequisitionToPO, settings } = useStore(useShallow((s) => ({
+      requisitions: s.requisitions, addRequisition: s.addRequisition, approveRequisition: s.approveRequisition,
+      rejectRequisition: s.rejectRequisition, deleteRequisition: s.deleteRequisition,
+      convertRequisitionToPO: s.convertRequisitionToPO, settings: s.settings,
+    })))
   const { currentUser, isManager } = useAuth()
   const manager = isManager()
   const me = currentUser()

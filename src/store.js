@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { useShallow } from 'zustand/react/shallow'
 import { persist } from 'zustand/middleware'
 import { currentCompanyKey } from './boot'
 import { deferredJSONStorage } from './utils/idbKvStorage'
@@ -26,7 +27,7 @@ import { createPurchasesSlice } from './store/purchases'
 import { createHrSlice } from './store/hr'
 import { createAssetsSlice } from './store/assets'
 import { createReportingSlice } from './store/reporting'
-import { createDataSlice } from './store/data'
+import { createDataSlice, DATA_SLICES } from './store/data'
 import { guardActions } from './store/guard'
 import { createNotificationsSlice } from './store/notifications'
 
@@ -500,3 +501,13 @@ export const useStore = create(
   )
 )
 
+/**
+ * Re-render when anything in the books changes, but not on sync status and
+ * other screen-only state.
+ *
+ * Screens subscribe only to the slices they show (useShallow). A screen that
+ * works figures out *while drawing* through a store read — getAllBalances,
+ * contractFor, eosbSchedule — depends on slices it never names, so it calls
+ * this as well to stay current.
+ */
+export const useBooksChanged = () => useStore(useShallow((s) => DATA_SLICES.map((k) => s[k])))

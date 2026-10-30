@@ -38,3 +38,44 @@ test('a cancelled link says so plainly', async ({ page }) => {
   await page.goto(`./?portal=${TOKEN}`)
   await expect(page.getByText('This link is not valid any more. Ask the company for a new one.')).toBeVisible()
 })
+
+const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }
+const routePortal = (page, body) => page.route('**/functions/v1/portal', (route) => route.request().method() === 'OPTIONS'
+  ? route.fulfill({ status: 200, headers: cors })
+  : route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify(body) }))
+
+test('a customer pays an invoice online from the link in its email', async ({ page }) => {
+  page.on('pageerror', (e) => { throw e })
+  await routePortal(page, { ...reply, canPayOnline: true })
+  let asked = null
+  await page.route('**/functions/v1/pay', async (route) => {
+    if (route.request().method() === 'OPTIONS') return route.fulfill({ status: 200, headers: cors })
+    asked = route.request().postDataJSON()
+    await route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ url: 'https://checkout.example.test/pay/1', paymentId: 'p1' }) })
+  })
+  await page.route('https://checkout.example.test/**', (route) => route.fulfill({ status: 200, contentType: 'text/html', body: '<h1>Provider checkout</h1>' }))
+
+  // The email links straight to the invoice, which opens with its Pay button.
+  await page.goto(`./?portal=${TOKEN}&invoice=i1`)
+  await expect(page.getByText('Widget')).toBeVisible()
+  await page.getByRole('button', { name: /Pay SAR\s?80\.00 now/ }).click()
+  await expect(page.getByRole('heading', { name: 'Provider checkout' })).toBeVisible()
+  expect(asked).toMatchObject({ action: 'checkout', token: TOKEN, invoiceId: 'i1' })
+  expect(asked.returnUrl).toMatch(/^http/)
+})
+
+test('no Pay button when the company has not set up online payments', async ({ page }) => {
+  await routePortal(page, reply)
+  await page.goto(`./?portal=${TOKEN}&invoice=i1`)
+  await expect(page.getByText('Widget')).toBeVisible()
+  await expect(page.getByRole('button', { name: /Pay .* now/ })).toHaveCount(0)
+})
+
+test('back from paying, the customer is told it went through', async ({ page }) => {
+  await routePortal(page, { ...reply, canPayOnline: true })
+  await page.route('**/functions/v1/pay', (route) => route.request().method() === 'OPTIONS'
+    ? route.fulfill({ status: 200, headers: cors })
+    : route.fulfill({ status: 200, contentType: 'application/json', headers: cors, body: JSON.stringify({ status: 'paid', amount: 80, currency: 'SAR', invoiceNumber: 'INV-0001' }) }))
+  await page.goto(`./?portal=${TOKEN}&paid=5a1a6bb3-168e-41ef-9829-22280bff72e4`)
+  await expect(page.getByText(/your payment of SAR\s?80\.00 for INV-0001 was received/)).toBeVisible()
+})

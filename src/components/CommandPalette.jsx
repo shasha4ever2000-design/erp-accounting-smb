@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Search, CornerDownLeft } from 'lucide-react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { useT } from '../i18n'
 import { useCanOpen } from './Access'
@@ -86,7 +87,10 @@ export default function CommandPalette() {
     }
   }, [open])
 
-  const { invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, settings } = useStore()
+  const { invoices, purchases, quotations, creditNotes, customers, suppliers, inventoryItems, settings } = useStore(useShallow((s) => ({
+      invoices: s.invoices, purchases: s.purchases, quotations: s.quotations, creditNotes: s.creditNotes,
+      customers: s.customers, suppliers: s.suppliers, inventoryItems: s.inventoryItems, settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
 
   // The tax-return entry's wording follows the company's configured tax

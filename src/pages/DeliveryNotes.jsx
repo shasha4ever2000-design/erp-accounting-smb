@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -17,7 +18,11 @@ const STATUS = {
 
 export default function DeliveryNotes() {
   const t = useT()
-  const { deliveryNotes, customers, settings, addDeliveryNote, updateDeliveryNote, deleteDeliveryNote } = useStore()
+  const { deliveryNotes, customers, settings, addDeliveryNote, updateDeliveryNote, deleteDeliveryNote } = useStore(useShallow((s) => ({
+      deliveryNotes: s.deliveryNotes, customers: s.customers, settings: s.settings,
+      addDeliveryNote: s.addDeliveryNote, updateDeliveryNote: s.updateDeliveryNote,
+      deleteDeliveryNote: s.deleteDeliveryNote,
+    })))
   const company = settings.company
 
   const [modal, setModal] = useState(false)

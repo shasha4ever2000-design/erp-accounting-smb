@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Table, Tr, Td, Badge, EmptyState } from '../components/UI'
 import { Plus, Trash2, Repeat, Play, CalendarClock, Pencil } from 'lucide-react'
@@ -13,7 +14,12 @@ const emptyForm = () => ({ name: '', frequency: 'monthly', nextDate: today(), li
 export default function RecurringJournals() {
   const t = useT()
   const { recurringJournals, accounts, addRecurringJournal, updateRecurringJournal, deleteRecurringJournal,
-    postRecurringJournal, generateDueRecurringJournals, settings } = useStore()
+    postRecurringJournal, generateDueRecurringJournals, settings } = useStore(useShallow((s) => ({
+        recurringJournals: s.recurringJournals, accounts: s.accounts, addRecurringJournal: s.addRecurringJournal,
+        updateRecurringJournal: s.updateRecurringJournal, deleteRecurringJournal: s.deleteRecurringJournal,
+        postRecurringJournal: s.postRecurringJournal,
+        generateDueRecurringJournals: s.generateDueRecurringJournals, settings: s.settings,
+      })))
   const sym = settings.company.currencySymbol
   const todayStr = today()
 

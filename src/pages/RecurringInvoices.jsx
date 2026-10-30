@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today, statusColor } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, Select, Badge, EmptyState, Table, Tr, Td } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -16,7 +17,11 @@ export default function RecurringInvoices() {
   const {
     recurringInvoices, customers, accounts, settings,
     addRecurringInvoice, updateRecurringInvoice, deleteRecurringInvoice, generateDueRecurring,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      recurringInvoices: s.recurringInvoices, customers: s.customers, accounts: s.accounts, settings: s.settings,
+      addRecurringInvoice: s.addRecurringInvoice, updateRecurringInvoice: s.updateRecurringInvoice,
+      deleteRecurringInvoice: s.deleteRecurringInvoice, generateDueRecurring: s.generateDueRecurring,
+    })))
   const sym = settings.company.currencySymbol
   const revenueAccs = accounts.filter((a) => a.type === 'revenue')
 

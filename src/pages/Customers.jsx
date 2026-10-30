@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { controlAccountsFor, defaultFor } from '../utils/controlAccounts'
 import { TERM_PRESETS, describeTerms, resolveTerms } from '../utils/paymentTerms'
 import { fmtMoney, fmtDate } from '../utils/formatters'
@@ -21,7 +22,12 @@ import { ask } from '../components/Dialogs'
 const emptyForm = { name: '', email: '', phone: '', address: '', taxId: '', creditLimit: '', priceListPct: '', notes: '', controlAccountId: '', paymentTerms: '', etaReceiverType: 'B', customFields: {} }
 
 export default function Customers() {
-  const { customers, invoices, creditNotes = [], addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore()
+  const { customers, invoices, creditNotes = [], addCustomer, updateCustomer, deleteCustomer, settings, accounts, setRecordControlAccount, customFieldsFor } = useStore(useShallow((s) => ({
+      customers: s.customers, invoices: s.invoices, creditNotes: s.creditNotes, addCustomer: s.addCustomer,
+      updateCustomer: s.updateCustomer, deleteCustomer: s.deleteCustomer, settings: s.settings,
+      accounts: s.accounts, setRecordControlAccount: s.setRecordControlAccount,
+      customFieldsFor: s.customFieldsFor,
+    })))
   const controlOptions = controlAccountsFor(accounts, 'customers')
   const sym = settings.company.currencySymbol
   const t = useT()

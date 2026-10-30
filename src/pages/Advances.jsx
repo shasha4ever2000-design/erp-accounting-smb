@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Badge, EmptyState, Table, Tr, Td, StatCard, Modal, Input, Select } from '../components/UI'
 import { advanceBalance, appliedTotal, applicableAmount, customerCredit } from '../utils/advances'
@@ -20,7 +21,11 @@ export default function Advances() {
   const {
     customerAdvances = [], customers = [], invoices = [], bankAccounts = [], settings,
     receiveAdvance, applyAdvance, refundAdvance, deleteAdvance,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      customerAdvances: s.customerAdvances, customers: s.customers, invoices: s.invoices,
+      bankAccounts: s.bankAccounts, settings: s.settings, receiveAdvance: s.receiveAdvance,
+      applyAdvance: s.applyAdvance, refundAdvance: s.refundAdvance, deleteAdvance: s.deleteAdvance,
+    })))
   const sym = settings.company.currencySymbol
 
   const [form, setForm] = useState(emptyForm())

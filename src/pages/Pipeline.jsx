@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import { PageHeader, Btn, Modal, Input, Select, Textarea } from '../components/UI'
 import AttachmentButton from '../components/Attachments'
@@ -19,7 +20,10 @@ const empty = { name: '', company: '', email: '', phone: '', value: '', source: 
 
 export default function Pipeline() {
   const t = useT()
-  const { leads, addLead, updateLead, deleteLead, convertLeadToCustomer, settings } = useStore()
+  const { leads, addLead, updateLead, deleteLead, convertLeadToCustomer, settings } = useStore(useShallow((s) => ({
+      leads: s.leads, addLead: s.addLead, updateLead: s.updateLead, deleteLead: s.deleteLead,
+      convertLeadToCustomer: s.convertLeadToCustomer, settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
 
   const [modal, setModal] = useState(false)

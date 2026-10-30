@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { today, addDays } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Textarea } from '../components/UI'
 import { computeLine } from '../utils/lineMath'
@@ -12,7 +13,10 @@ const emptyLine = () => ({ id: crypto.randomUUID(), description: '', quantity: 1
 export default function PurchaseOrderForm() {
   const t = useT()
   const navigate = useNavigate()
-  const { suppliers, accounts, inventoryItems, settings, addPurchaseOrder } = useStore()
+  const { suppliers, accounts, inventoryItems, settings, addPurchaseOrder } = useStore(useShallow((s) => ({
+      suppliers: s.suppliers, accounts: s.accounts, inventoryItems: s.inventoryItems, settings: s.settings,
+      addPurchaseOrder: s.addPurchaseOrder,
+    })))
   const sym = settings.company.currencySymbol
   const taxEnabled = settings.tax.enabled
   const taxRate    = settings.tax.rate

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { Btn, Input, Select } from './UI'
 import { LAYOUTS, DOC_TYPES, DOC_TYPE_LIST, resolveDocBrand, contrastOn } from '../utils/branding'
 import { saveBrandAsset, getBrandAsset, deleteBrandAsset } from '../utils/brandAssets'
@@ -80,7 +81,9 @@ function AssetSlot({ kind, label, hint, height = 'h-20' }) {
 export default function BrandingPanel() {
   const t = useT()
   const branding = useStore((s) => s.settings.branding)
-  const { updateBranding, updateDocBranding } = useStore()
+  const { updateBranding, updateDocBranding } = useStore(useShallow((s) => ({
+      updateBranding: s.updateBranding, updateDocBranding: s.updateDocBranding,
+    })))
   const [docType, setDocType] = useState('invoice')
   const [error, setError] = useState('')
 

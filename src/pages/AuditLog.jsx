@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { PageHeader, Card, Btn, Select, EmptyState } from '../components/UI'
 import ExportMenu from '../components/ExportMenu'
 import { Search, ShieldCheck, Lock, AlertTriangle, Pencil, Activity } from 'lucide-react'
@@ -18,7 +19,7 @@ function fmtTs(ts) {
 
 export default function AuditLog() {
   const t = useT()
-  const { auditLog } = useStore()
+  const { auditLog } = useStore(useShallow((s) => ({ auditLog: s.auditLog })))
   const [search, setSearch] = useState('')
   const [severity, setSeverity] = useState('all')
   const [who, setWho] = useState('all')

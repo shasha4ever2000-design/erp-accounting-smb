@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney } from '../utils/formatters'
 import { PageHeader, Card, Btn, Modal, Input, StatCard, Table, Tr, Td, EmptyState } from '../components/UI'
 import { commissionReport } from '../utils/commissions'
@@ -11,7 +12,9 @@ const uid = () => 'rep-' + Math.random().toString(36).slice(2, 9)
 
 export default function Commissions() {
   const t = useT()
-  const { invoices, settings, updateSettings } = useStore()
+  const { invoices, settings, updateSettings } = useStore(useShallow((s) => ({
+      invoices: s.invoices, settings: s.settings, updateSettings: s.updateSettings,
+    })))
   const sym = settings.company.currencySymbol
   const salesReps = settings.salesReps || []
 

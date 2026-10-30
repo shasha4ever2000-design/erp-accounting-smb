@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useT } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate, today } from '../utils/formatters'
 import ExportMenu from '../components/ExportMenu'
 import { PageHeader, Card, Btn, Modal, Input, Select, Textarea, StatCard, EmptyState, Table, Tr, Td, Badge } from '../components/UI'
@@ -15,7 +16,15 @@ export default function CashFlow() {
   const {
     bankAccounts, accounts, journalEntries, bankTransfers, getAllBalances, addBankTransfer, deleteBankTransfer,
     scheduledTransfers, addScheduledTransfer, updateScheduledTransfer, deleteScheduledTransfer, postScheduledTransfer, settings,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      bankAccounts: s.bankAccounts, accounts: s.accounts, journalEntries: s.journalEntries,
+      bankTransfers: s.bankTransfers, getAllBalances: s.getAllBalances, addBankTransfer: s.addBankTransfer,
+      deleteBankTransfer: s.deleteBankTransfer, scheduledTransfers: s.scheduledTransfers,
+      addScheduledTransfer: s.addScheduledTransfer, updateScheduledTransfer: s.updateScheduledTransfer,
+      deleteScheduledTransfer: s.deleteScheduledTransfer, postScheduledTransfer: s.postScheduledTransfer,
+      settings: s.settings,
+    })))
+  useBooksChanged() // figures below come from store reads (getAllBalances)
   const sym = settings.company.currencySymbol
   const todayStr = today()
 

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import { useT, tr } from '../i18n'
-import { useStore } from '../store'
+import { useStore, useBooksChanged } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Select, Input, Btn, Modal } from '../components/UI'
 import { parseStatement, matchToLedger, suggestDocument } from '../utils/bankStatement'
@@ -14,7 +15,16 @@ export default function Reconciliation() {
   const t = useT()
   const { bankAccounts, accounts, journalEntries, reconciliations, toggleReconciled, getAccountBalance,
     matchRules, addMatchRule, deleteMatchRule, addBankTransaction, bankTransactions, settings,
-    invoices, purchases, customers, suppliers, creditNotes, debitNotes, recordInvoicePayment, recordPurchasePayment } = useStore()
+    invoices, purchases, customers, suppliers, creditNotes, debitNotes, recordInvoicePayment, recordPurchasePayment } = useStore(useShallow((s) => ({
+        bankAccounts: s.bankAccounts, accounts: s.accounts, journalEntries: s.journalEntries,
+        reconciliations: s.reconciliations, toggleReconciled: s.toggleReconciled,
+        getAccountBalance: s.getAccountBalance, matchRules: s.matchRules, addMatchRule: s.addMatchRule,
+        deleteMatchRule: s.deleteMatchRule, addBankTransaction: s.addBankTransaction,
+        bankTransactions: s.bankTransactions, settings: s.settings, invoices: s.invoices, purchases: s.purchases,
+        customers: s.customers, suppliers: s.suppliers, creditNotes: s.creditNotes, debitNotes: s.debitNotes,
+        recordInvoicePayment: s.recordInvoicePayment, recordPurchasePayment: s.recordPurchasePayment,
+      })))
+  useBooksChanged() // figures below come from store reads (getAccountBalance)
   const sym = settings.company.currencySymbol
 
   const [accId, setAccId] = useState(bankAccounts[0]?.accountId || '')

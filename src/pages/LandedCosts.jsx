@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, fmtDate } from '../utils/formatters'
 import { PageHeader, Card, Btn, Input, Select, Table, Tr, Td, EmptyState, Badge } from '../components/UI'
 import { allocateLandedCost } from '../utils/landedCost'
@@ -11,7 +12,10 @@ const today = () => todayISO()
 
 export default function LandedCosts() {
   const t = useT()
-  const { inventoryItems, accounts, landedCosts, postLandedCost, settings } = useStore()
+  const { inventoryItems, accounts, landedCosts, postLandedCost, settings } = useStore(useShallow((s) => ({
+      inventoryItems: s.inventoryItems, accounts: s.accounts, landedCosts: s.landedCosts,
+      postLandedCost: s.postLandedCost, settings: s.settings,
+    })))
   const sym = settings.company.currencySymbol
   const money = (v) => fmtMoney(v, sym)
 

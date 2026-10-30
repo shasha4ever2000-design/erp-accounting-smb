@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useT } from '../i18n'
 import { useNavigate } from 'react-router-dom'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { fmtMoney, today } from '../utils/formatters'
 import { PageHeader, Card, Btn, Select } from '../components/UI'
 import { alertIfLocked } from '../utils/periodLock'
@@ -13,7 +14,11 @@ export default function POS() {
   const {
     inventoryItems, customers, bankAccounts, settings,
     addInvoice, recordInvoicePayment, logStockMovement,
-  } = useStore()
+  } = useStore(useShallow((s) => ({
+      inventoryItems: s.inventoryItems, customers: s.customers, bankAccounts: s.bankAccounts,
+      settings: s.settings, addInvoice: s.addInvoice, recordInvoicePayment: s.recordInvoicePayment,
+      logStockMovement: s.logStockMovement,
+    })))
   const sym = settings.company.currencySymbol
   const taxOn = settings.tax.enabled
   const rate = settings.tax.rate || 0

@@ -7,8 +7,9 @@ import { Bot, X, Send, Sparkles, Trash2, AlertCircle, Minimize2 } from 'lucide-r
 
 export default function AIAssistant() {
   const t = useT()
-  const store     = useStore()
-  const { settings, invoices, purchases, employees, journalEntries, expenseClaims, leases, getAccountBalance } = store
+  // The panel lives in every page's layout, so it only subscribes to settings;
+  // the figures for the prompt are read when a message is sent.
+  const settings  = useStore((s) => s.settings)
 
   const [open,     setOpen]     = useState(false)
   const [loading,  setLoading]  = useState(false)
@@ -44,6 +45,7 @@ export default function AIAssistant() {
   }, [open, messages, loading])
 
   const buildSystemPrompt = () => {
+    const { invoices, purchases, employees, journalEntries, expenseClaims, leases, getAccountBalance } = useStore.getState()
     const sym       = settings.company.currencySymbol
     const arBal     = getAccountBalance('acc-ar')
     const apBal     = getAccountBalance('acc-ap')

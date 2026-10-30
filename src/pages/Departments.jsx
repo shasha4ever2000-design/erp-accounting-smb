@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useT } from '../i18n'
 import { useStore } from '../store'
+import { useShallow } from 'zustand/react/shallow'
 import { PageHeader, Card, Btn, Modal, Input, Textarea, EmptyState, Table, Tr, Td } from '../components/UI'
 import { Plus, Pencil, Trash2, Building2 } from 'lucide-react'
 import { ask } from '../components/Dialogs'
@@ -9,7 +10,10 @@ const emptyForm = { name: '', description: '', costCenter: '' }
 
 export default function Departments() {
   const t = useT()
-  const { departments, employees, addDepartment, updateDepartment, deleteDepartment } = useStore()
+  const { departments, employees, addDepartment, updateDepartment, deleteDepartment } = useStore(useShallow((s) => ({
+      departments: s.departments, employees: s.employees, addDepartment: s.addDepartment,
+      updateDepartment: s.updateDepartment, deleteDepartment: s.deleteDepartment,
+    })))
   const [modal, setModal]   = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm]     = useState(emptyForm)
