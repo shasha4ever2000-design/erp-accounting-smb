@@ -3493,6 +3493,12 @@ const AR = {
   'Edit supplier': 'تعديل المورد',
   'Edit currency': 'تعديل العملة',
   'Edit department': 'تعديل القسم',
+  'That invoice number is already used. The next invoice will be {n}.': 'رقم الفاتورة هذا مستخدم بالفعل. ستكون الفاتورة التالية {n}.',
+  '{n} document number is used twice': 'رقم مستند واحد مستخدم مرتين',
+  '{n} document numbers are used twice': '{n} أرقام مستندات مستخدمة مرتين',
+  'GOSI wage ceiling (per month)': 'الحد الأعلى لأجر التأمينات (شهرياً)',
+  'GOSI is charged on basic + housing up to this amount (SAR 45,000 in Saudi Arabia). Enter 0 for no ceiling.': 'تُحسب التأمينات الاجتماعية على الأساسي + السكن حتى هذا المبلغ (45,000 ريال في السعودية). أدخل 0 لعدم وجود حد.',
+  'Ledger re-sealed after sync': 'أُعيد ختم دفتر القيود بعد المزامنة',
 }
 
 export default AR
