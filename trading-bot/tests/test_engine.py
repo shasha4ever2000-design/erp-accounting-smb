@@ -220,3 +220,42 @@ def test_stop_price_is_rounded_to_the_markets_decimals(env):
     b.add_market("AAA", bid=12.4, ask=12.5, bars=bars, price_decimals=2)
     run(b, cfg(), env)
     assert b.opened[0][2] == 10.08      # 12.5 - 2 * 1.2117 = 10.0766 -> 10.08
+
+
+def test_price_read_failure_for_one_instrument_does_not_stop_the_others(env):
+    state, _ = env
+    b = buy_broker()
+    b.add_market("BBB", bid=12.4, ask=12.5, bars=BUY_BARS)
+    b.fail_bars_for = {"AAA"}
+    decisions = {d.symbol: d for d in run(b, cfg(("AAA", "BBB")), env)}
+    assert decisions["AAA"].action == "failed" and "prices" in decisions["AAA"].reason
+    assert decisions["BBB"].action == "buy" and [o[0] for o in b.opened] == ["BBB"]
+    assert not state.decisions_done(dt.date(2026, 11, 13))   # AAA is tried again at the next check
+    b.fail_bars_for = set()
+    run(b, cfg(("AAA", "BBB")), env)
+    assert [o[0] for o in b.opened] == ["BBB", "AAA"]
+
+
+def test_connection_lost_while_buying_is_reported_as_failed_not_a_crash(env):
+    from tradebot.broker.base import BrokerError
+
+    _, journal = env
+    b = buy_broker()
+    b.order_error = BrokerError("could not reach Capital.com (ConnectionError)")
+    d = run(b, cfg(), env)[0]
+    assert d.action == "failed"
+    assert "check the Capital.com app" in d.reason
+    assert "could not reach" in journal.path.read_text()
+    run(b, cfg(), env)
+    assert len(b.opened) == 1          # not sent a second time
+
+
+def test_connection_lost_while_selling_is_reported_as_failed_not_a_crash(env):
+    from tradebot.broker.base import BrokerError
+
+    b = FakeBroker()
+    b.add_market("AAA", bid=9.2, ask=9.3, bars=SELL_BARS)
+    b.hold("AAA", 10, 10.0, 8.0)
+    b.order_error = BrokerError("could not reach Capital.com (Timeout)")
+    d = run(b, cfg(), env)[0]
+    assert d.action == "failed" and "could not sell" in d.reason

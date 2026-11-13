@@ -2,7 +2,7 @@
 
 import datetime as dt
 
-from tradebot.broker.base import Account, Market, OrderResult, Position
+from tradebot.broker.base import Account, BrokerError, Market, OrderResult, Position
 
 
 class FakeBroker:
@@ -16,6 +16,8 @@ class FakeBroker:
         self.closed: list[str] = []
         self.reject_with: str | None = None
         self.fail_reading: Exception | None = None
+        self.fail_bars_for: set[str] = set()
+        self.order_error: Exception | None = None
         self._next_id = 1
 
     # setup helpers
@@ -43,6 +45,8 @@ class FakeBroker:
         return self.markets[epic]
 
     def daily_bars(self, epic, count):
+        if epic in self.fail_bars_for:
+            raise BrokerError(f"Capital.com answered HTTP 500 for /api/v1/prices/{epic}")
         return self.bars[epic][-count:]
 
     def positions(self):
@@ -55,6 +59,8 @@ class FakeBroker:
         if not stop_price or stop_price <= 0:
             raise ValueError("a trade is never opened without a stop-loss")
         self.opened.append((epic, size, stop_price))
+        if self.order_error:
+            raise self.order_error
         if self.reject_with:
             return OrderResult(False, reason=self.reject_with)
         deal_id = self.hold(epic, size, self.markets[epic].ask, stop_price)
@@ -63,6 +69,8 @@ class FakeBroker:
 
     def close(self, deal_id):
         self.closed.append(deal_id)
+        if self.order_error:
+            raise self.order_error
         if self.reject_with:
             return OrderResult(False, reason=self.reject_with)
         pos = next(p for p in self._positions if p.deal_id == deal_id)

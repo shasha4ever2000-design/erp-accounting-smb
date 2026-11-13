@@ -86,3 +86,4 @@ def test_levels_are_none_without_enough_history():
     from tradebot.strategy import next_levels
 
     assert next_levels(make_bars([10.0]), P) == (None, None, None)
+

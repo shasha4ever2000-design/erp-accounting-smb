@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from .broker.base import Broker, OrderResult, Position
+from .broker.base import Broker, BrokerError, OrderResult, Position
 from .config import Config
 from .journal import Journal
 from .models import Bar, Instrument, Mode, Signal
@@ -23,6 +23,7 @@ from .strategy import evaluate
 NEW_YORK = ZoneInfo("America/New_York")
 LIVE_CONFIRM_ENV = "TRADEBOT_CONFIRM_LIVE"
 LIVE_CONFIRM_VALUE = "I_UNDERSTAND_REAL_MONEY"
+CHECK_APP = "the order may or may not have gone through, so check the Capital.com app"
 
 
 @dataclass(frozen=True)
@@ -92,14 +93,22 @@ def run_daily_decisions(broker: Broker, config: Config, state: State, journal: J
     # 1. judge every instrument; sells go first because they lower risk
     for inst in config.instruments:
         pos = held.get(inst.epic)
-        sig = read_signal(broker, config, inst, pos is not None, utc_today)
+        try:
+            sig = read_signal(broker, config, inst, pos is not None, utc_today)
+        except BrokerError as exc:
+            retry_later = True
+            decisions.append(Decision(inst.symbol, "failed", f"could not read prices: {exc}"))
+            continue
         if sig.action == "sell" and pos is not None:
             if not place:
                 decisions.append(Decision(inst.symbol, "sell", sig.reason, signal=sig))
             elif blocked:
                 decisions.append(Decision(inst.symbol, "skip", blocked, signal=sig))
             else:
-                res = broker.close(pos.deal_id)
+                try:
+                    res = broker.close(pos.deal_id)
+                except BrokerError as exc:
+                    res = OrderResult(False, reason=f"{exc}; {CHECK_APP}")
                 journal.write(now, mode, inst.symbol, "sell", pos.size, res.fill_price, None, res.ok,
                               sig.reason if res.ok else res.reason)
                 if res.ok:
@@ -115,7 +124,13 @@ def run_daily_decisions(broker: Broker, config: Config, state: State, journal: J
     buys.sort(key=lambda x: (-(x[1].close - x[1].entry_level) / x[1].atr, x[0].symbol))
     open_count = len(positions)
     open_notional = sum(p.size * p.price for p in positions)
-    traded = broker.traded_today(utc_today) if place and buys and not blocked else set()
+    traded: set[str] = set()
+    if place and buys and not blocked:
+        try:
+            traded = broker.traded_today(utc_today)
+        except BrokerError as exc:
+            retry_later = True
+            blocked = f"could not check today's trades at Capital.com ({exc}), so nothing new is bought for now"
     start_equity = state.day_start_equity(day) or account.equity
     brake = brake_on(start_equity, account.equity, config.risk)
 
@@ -137,7 +152,12 @@ def run_daily_decisions(broker: Broker, config: Config, state: State, journal: J
         if inst.epic in traded:
             skip("this instrument was already traded today")
             continue
-        market = broker.market(inst.epic)
+        try:
+            market = broker.market(inst.epic)
+        except BrokerError as exc:
+            retry_later = True
+            skip(f"could not read the current price: {exc}")
+            continue
         if place and not market.tradeable:
             retry_later = True
             skip("the market is closed right now; the bot will try again at the next check")
@@ -165,7 +185,10 @@ def run_daily_decisions(broker: Broker, config: Config, state: State, journal: J
             open_count += 1
             open_notional += plan.notional
             continue
-        res = broker.open_long(inst.epic, plan.size, plan.stop_price)
+        try:
+            res = broker.open_long(inst.epic, plan.size, plan.stop_price)
+        except BrokerError as exc:
+            res = OrderResult(False, reason=f"{exc}; {CHECK_APP}")
         journal.write(now, mode, inst.symbol, "buy", plan.size, res.fill_price or price, plan.stop_price, res.ok,
                       sig.reason if res.ok else res.reason)
         if res.ok:
