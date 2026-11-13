@@ -150,6 +150,7 @@ class CapitalBroker:
             contract_size=float(inst.get("lotSize") or 1.0),
             day_change=float(change) / 100 if change is not None else None,
             overnight_long_rate=float(fee) if fee is not None else None,
+            price_decimals=int(snap.get("decimalPlacesFactor") or 2),
         )
 
     def daily_bars(self, epic: str, count: int) -> list[Bar]:

@@ -54,3 +54,16 @@ def evaluate(bars: Sequence[Bar], p: StrategyParams, holding: bool) -> Signal:
         f"closed at {today.close:g}, a new {p.entry_days}-day high, and above its {p.trend_days}-day average",
         **common,
     )
+
+
+def next_levels(bars: Sequence[Bar], p: StrategyParams) -> tuple[float | None, float | None, float | None]:
+    """The prices that matter for the NEXT close: (buy level, sell level, long-term average).
+
+    `bars` are finished days. A close above the buy level (and the average) is a buy;
+    a close below the sell level is a sell.
+    """
+    return (
+        highest([b.high for b in bars], p.entry_days),
+        lowest([b.low for b in bars], p.exit_days),
+        sma([b.close for b in bars], p.trend_days),
+    )

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Literal
 from zoneinfo import ZoneInfo
 
@@ -155,6 +155,11 @@ def run_daily_decisions(broker: Broker, config: Config, state: State, journal: J
         if isinstance(plan, Skip):
             skip(plan.reason)
             continue
+        stop = round(plan.stop_price, market.price_decimals)
+        if not 0 < stop < price:
+            skip("the stop-loss could not be placed below the price")
+            continue
+        plan = replace(plan, stop_price=stop, risk_amount=plan.size * (price - stop))
         if not place:
             decisions.append(Decision(inst.symbol, "buy", sig.reason, plan=plan, signal=sig))
             open_count += 1

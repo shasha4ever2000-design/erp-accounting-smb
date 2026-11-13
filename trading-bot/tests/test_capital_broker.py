@@ -185,3 +185,11 @@ def test_traded_today_reads_recent_position_activity():
     s = FakeSession().on("POST", S, LOGIN_OK).on("GET", "/api/v1/history/activity", FakeResponse(200, acts))
     assert broker(s).traded_today(dt.date(2026, 11, 13)) == {"AAPL"}
     assert s.calls_to("GET", "/api/v1/history/activity")[0][4] == {"lastPeriod": 86400}
+
+
+def test_market_reads_how_many_decimals_prices_use():
+    with_places = {**MARKET, "snapshot": {**MARKET["snapshot"], "decimalPlacesFactor": 3}}
+    s = FakeSession().on("POST", S, LOGIN_OK).on("GET", "/api/v1/markets/AAPL", FakeResponse(200, with_places))
+    assert broker(s).market("AAPL").price_decimals == 3
+    s = FakeSession().on("POST", S, LOGIN_OK).on("GET", "/api/v1/markets/AAPL", FakeResponse(200, MARKET))
+    assert broker(s).market("AAPL").price_decimals == 2

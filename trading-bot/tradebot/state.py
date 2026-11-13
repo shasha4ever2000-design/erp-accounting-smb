@@ -29,7 +29,7 @@ class State:
             return
         self._d.update({
             "day": day.isoformat(), "day_start_equity": equity,
-            "decisions_done": False, "brief_sent": False, "alerts": [],
+            "decisions_done": False,
         })
 
     def day_start_equity(self, day: dt.date) -> float | None:

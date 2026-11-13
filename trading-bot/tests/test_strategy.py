@@ -69,3 +69,20 @@ def test_holding_with_short_history_still_checks_exit():
     # only 30 days of prices, but enough for the 10-day exit rule
     closes = [100.0] * 29 + [90.0]
     assert evaluate(make_bars(closes), P, holding=True).action == "sell"
+
+
+def test_levels_for_the_next_close_include_the_latest_finished_day():
+    from tradebot.strategy import next_levels
+
+    bars = make_bars([10.0] * 5 + [11.0, 12.0, 13.0], spread=0.5)
+    p = StrategyParams(trend_days=4, entry_days=3, exit_days=2, atr_days=2, stop_atr=2.0)
+    buy, sell, trend = next_levels(bars, p)
+    assert buy == 13.5          # highest high of the last 3 finished days
+    assert sell == 11.5         # lowest low of the last 2 finished days
+    assert trend == 11.5        # average close of the last 4 finished days
+
+
+def test_levels_are_none_without_enough_history():
+    from tradebot.strategy import next_levels
+
+    assert next_levels(make_bars([10.0]), P) == (None, None, None)

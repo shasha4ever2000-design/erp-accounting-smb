@@ -1,0 +1,56 @@
+# Copy this file to  .github/workflows/tradebot.yml  in the bot's own PRIVATE repository.
+# It wakes the bot every 15 minutes on weekdays around US market hours.
+name: Trading bot
+
+on:
+  schedule:
+    # every 15 minutes, Monday to Friday, 12:00-21:59 UTC
+    # (covers the morning brief through the US close, summer and winter)
+    - cron: "*/15 12-21 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      command:
+        description: "What to run"
+        type: choice
+        default: check
+        options: [check, doctor, brief]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tradebot
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Run the bot
+        env:
+          CAPITAL_API_KEY: ${{ secrets.CAPITAL_API_KEY }}
+          CAPITAL_IDENTIFIER: ${{ secrets.CAPITAL_IDENTIFIER }}
+          CAPITAL_PASSWORD: ${{ secrets.CAPITAL_PASSWORD }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TRADEBOT_CONFIRM_LIVE: ${{ secrets.TRADEBOT_CONFIRM_LIVE }}
+        run: python -m tradebot --data-dir run ${{ inputs.command || 'check' }}
+      - name: Save the bot's memory and trade journal
+        if: always()
+        run: |
+          git config user.name "tradebot"
+          git config user.email "tradebot@users.noreply.github.com"
+          git add -f run/state.json run/journal.csv 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "nothing to save"
+          else
+            git commit -m "Bot memory and journal"
+            git push
+          fi

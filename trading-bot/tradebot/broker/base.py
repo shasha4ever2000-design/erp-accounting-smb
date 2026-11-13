@@ -35,6 +35,7 @@ class Market:
     contract_size: float = 1.0
     day_change: float | None = None           # today's move, 0.015 = +1.5%
     overnight_long_rate: float | None = None  # the broker's own overnight fee figure for a buy
+    price_decimals: int = 2                   # how many decimals the broker accepts in a price
 
 
 @dataclass(frozen=True)

@@ -212,3 +212,11 @@ def test_live_needs_both_switches():
     assert effective_mode(live, {"TRADEBOT_CONFIRM_LIVE": "yes"})[0] == "signals"
     assert effective_mode(live, {"TRADEBOT_CONFIRM_LIVE": "I_UNDERSTAND_REAL_MONEY"}) == ("live", None)
     assert effective_mode(cfg(mode="demo"), {"TRADEBOT_CONFIRM_LIVE": "I_UNDERSTAND_REAL_MONEY"}) == ("demo", None)
+
+
+def test_stop_price_is_rounded_to_the_markets_decimals(env):
+    bars = days_ending_yesterday([(10, 10.1, 9.9, 10)] * 6 + [(10, 12.1234, 9.9, 12)])  # ATR 1.2117
+    b = FakeBroker()
+    b.add_market("AAA", bid=12.4, ask=12.5, bars=bars, price_decimals=2)
+    run(b, cfg(), env)
+    assert b.opened[0][2] == 10.08      # 12.5 - 2 * 1.2117 = 10.0766 -> 10.08
