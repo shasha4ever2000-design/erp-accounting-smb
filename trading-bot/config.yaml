@@ -1,0 +1,54 @@
+# Trading bot settings. Change values here, not in the code.
+
+# signals = brief and pings only, no orders (the safe default)
+# demo    = places orders on your Capital.com DEMO account (pretend money)
+# live    = real money. Also needs the second switch described in README.md
+mode: signals
+
+# The off switch. Set to false and the bot opens no new trades.
+trading_enabled: true
+
+# Your watchlist. "epic" is the instrument's code at Capital.com.
+instruments:
+  - {symbol: AAPL,   name: Apple,       epic: AAPL,   kind: stock}
+  - {symbol: MSFT,   name: Microsoft,   epic: MSFT,   kind: stock}
+  - {symbol: NVDA,   name: Nvidia,      epic: NVDA,   kind: stock}
+  - {symbol: GOOGL,  name: Alphabet,    epic: GOOGL,  kind: stock}
+  - {symbol: META,   name: Meta,        epic: META,   kind: stock}
+  - {symbol: AMZN,   name: Amazon,      epic: AMZN,   kind: stock}
+  - {symbol: TSLA,   name: Tesla,       epic: TSLA,   kind: stock}
+  - {symbol: JPM,    name: JPMorgan,    epic: JPM,    kind: stock}
+  - {symbol: LLY,    name: Eli Lilly,   epic: LLY,    kind: stock}
+  - {symbol: XOM,    name: Exxon Mobil, epic: XOM,    kind: stock}
+  - {symbol: WMT,    name: Walmart,     epic: WMT,    kind: stock}
+  - {symbol: COST,   name: Costco,      epic: COST,   kind: stock}
+  - {symbol: GOLD,   name: Gold,        epic: GOLD,   kind: metal}
+  - {symbol: SILVER, name: Silver,      epic: SILVER, kind: metal}
+
+# The strategy: buy a new 20-day high in an uptrend, sell a 10-day low.
+strategy:
+  trend_days: 200   # long-term average that defines "uptrend"
+  entry_days: 20    # buy when the close is above the high of this many days
+  exit_days: 10     # sell when the close is below the low of this many days
+  atr_days: 20      # days used to measure normal daily movement
+  stop_atr: 2.0     # stop-loss distance = this many times normal daily movement
+
+# Safety rules.
+risk:
+  risk_per_trade: 0.01       # a losing trade costs about 1% of the account
+  max_trade_fraction: 0.20   # no single trade bigger than 20% of the account
+  max_total_fraction: 1.0    # all trades together never exceed the account (no borrowing)
+  max_open_trades: 5
+  daily_brake: 0.03          # down 3% in a day -> no new trades until tomorrow
+
+# Cost estimates used when testing on past prices. Check them in the Capital.com app.
+costs:
+  spread: {stock: 0.0015, metal: 0.0005}        # gap between buy and sell price
+  overnight_rate: {stock: 0.07, metal: 0.06}    # yearly overnight fee on an open trade
+
+alerts:
+  big_move: 0.03     # ping when something moves 3% in a day
+  near_level: 0.01   # "getting close" when within 1% of a buy level
+
+schedule:
+  check_minutes: 5   # how often the bot checks when run on your own computer
