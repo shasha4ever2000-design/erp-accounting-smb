@@ -1,0 +1,16 @@
+[project]
+name = "tradebot"
+version = "0.1.0"
+description = "Personal trading assistant for Capital.com: morning brief, live watch, rule-based orders"
+requires-python = ">=3.11"
+dependencies = ["requests>=2.31", "PyYAML>=6.0"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.setuptools.packages.find]
+include = ["tradebot*"]
