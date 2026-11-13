@@ -1,0 +1,65 @@
+TEST ON PAST PRICES
+Period: 17 Oct 2014 to 13 Nov 2026 (12.1 years)
+Watchlist: 14 instruments
+
+IN ONE LINE
+  The strategy made money, but less than simply buying everything and holding it. Its falls were smaller: the worst drop was -23% against -48% for buy and hold.
+
+THE RESULT
+  Started with     $10,000
+  Ended with       $29,253   (+193% in total, about +9.3% a year)
+  Buy and hold     $392,447   (+3,824% in total, about +35.5% a year)
+
+THE TRADES
+  Trades taken     486
+  Winners          38%  (186 won, 300 lost)
+  Average winner   +$328
+  Average loser    -$139
+  A winner is about 2.4 times the size of a loser
+  Typical hold     34 days
+  Stopped out      193 trades ended at the stop-loss
+
+THE HARD PARTS
+  Worst drop from a peak    -23%   (buy and hold: -48%)
+  Longest losing streak     14 trades in a row
+  Money in the market       71% of the account on average
+  Costs paid                $2,299 in price gaps, $10,906 in overnight fees
+
+YEAR BY YEAR
+  Year    Strategy    Buy and hold
+  2014       +1.4%       +5.8%
+  2015      +14.0%      +20.4%
+  2016      +12.3%      +32.4%
+  2017       +4.8%      +46.8%
+  2018       -2.4%       -6.6%
+  2019      +15.1%      +46.6%
+  2020       +8.8%      +92.6%
+  2021      +18.6%      +65.8%
+  2022       -4.6%      -42.5%
+  2023       +9.9%     +133.0%
+  2024      +32.9%     +117.3%
+  2025      +12.6%      +34.1%
+  2026       -5.5%       -7.1%
+
+BY INSTRUMENT
+  Nvidia        38 trades,   45% won, +$6,148
+  Tesla         25 trades,   36% won, +$3,347
+  Eli Lilly     42 trades,   43% won, +$2,063
+  Microsoft     39 trades,   41% won, +$1,871
+  Silver        28 trades,   32% won, +$1,644
+  Costco        35 trades,   49% won, +$1,415
+  JPMorgan      36 trades,   44% won, +$1,298
+  Gold          38 trades,   39% won, +$914
+  Alphabet      36 trades,   31% won, +$845
+  Apple         33 trades,   42% won, +$750
+  Amazon        33 trades,   36% won, +$450
+  Walmart       33 trades,   33% won, -$383
+  Meta          35 trades,   26% won, -$523
+  Exxon Mobil   35 trades,   34% won, -$586
+
+READ THIS BEFORE TRUSTING THE NUMBERS
+  - The watchlist was picked today, knowing which companies did well. Ten years ago
+    nobody knew that. This makes both columns look better than real life would have.
+  - Costs are estimates. Check the real price gaps and overnight fees in Capital.com.
+  - Gold and silver are tested with fund prices that follow the metals closely.
+  - Past results do not promise future results.
