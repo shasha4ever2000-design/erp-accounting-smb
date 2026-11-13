@@ -8,52 +8,33 @@ fh = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(fh)
 
 
-def test_parse_stooq_csv_reads_rows_oldest_first():
-    text = (
-        "Date,Open,High,Low,Close,Volume\n"
-        "2024-01-03,10.5,11,10,10.8,100\n"
-        "2024-01-02,10,10.6,9.9,10.5,90\n"
-    )
-    rows = fh.parse_stooq_csv(text)
-    assert rows == [
-        ("2024-01-02", 10.0, 10.6, 9.9, 10.5),
-        ("2024-01-03", 10.5, 11.0, 10.0, 10.8),
+def test_parse_tiingo_uses_adjusted_prices_and_sorts():
+    payload = [
+        {"date": "2024-01-03T00:00:00.000Z", "open": 400, "high": 420, "low": 390, "close": 410,
+         "adjOpen": 100.0, "adjHigh": 105.0, "adjLow": 97.5, "adjClose": 102.5},
+        {"date": "2024-01-02T00:00:00.000Z", "open": 396, "high": 404, "low": 392, "close": 400,
+         "adjOpen": 99.0, "adjHigh": 101.0, "adjLow": 98.0, "adjClose": 100.0},
+    ]
+    assert fh.parse_tiingo(payload) == [
+        ("2024-01-02", 99.0, 101.0, 98.0, 100.0),
+        ("2024-01-03", 100.0, 105.0, 97.5, 102.5),
     ]
 
 
-def test_parse_stooq_csv_returns_empty_for_a_refusal_page():
-    assert fh.parse_stooq_csv("Get your apikey: https://stooq.com/...") == []
-    assert fh.parse_stooq_csv("No data") == []
+def test_parse_tiingo_skips_broken_records_and_error_payloads():
+    assert fh.parse_tiingo([{"date": "2024-01-02T00:00:00.000Z", "adjOpen": None}]) == []
+    assert fh.parse_tiingo({"detail": "Invalid token."}) == []
 
 
-def test_parse_yahoo_chart_skips_days_with_missing_prices():
-    payload = {
-        "chart": {
-            "result": [
-                {
-                    "meta": {"gmtoffset": -18000},
-                    "timestamp": [1704205800, 1704292200],  # 2024-01-02, 2024-01-03 14:30 UTC
-                    "indicators": {
-                        "quote": [
-                            {
-                                "open": [10.0, None],
-                                "high": [10.6, 11.0],
-                                "low": [9.9, 10.0],
-                                "close": [10.5, 10.8],
-                            }
-                        ]
-                    },
-                }
-            ]
-        }
-    }
-    assert fh.parse_yahoo_chart(payload) == [("2024-01-02", 10.0, 10.6, 9.9, 10.5)]
+def test_metals_use_etf_stand_ins():
+    assert fh.TICKERS["GOLD"] == "GLD"
+    assert fh.TICKERS["SILVER"] == "SLV"
+    assert fh.TICKERS["AAPL"] == "AAPL"
 
 
-def test_parse_yahoo_chart_returns_empty_when_no_result():
-    assert fh.parse_yahoo_chart({"chart": {"result": None, "error": {"code": "x"}}}) == []
+def test_write_csv_round_trips_through_the_loader(tmp_path):
+    from tradebot.history import load_history
 
-
-def test_filter_start_drops_older_rows():
-    rows = [("2013-12-31", 1, 1, 1, 1), ("2014-01-02", 2, 2, 2, 2)]
-    assert fh.filter_start(rows, "2014-01-01") == [("2014-01-02", 2, 2, 2, 2)]
+    fh.write_csv(tmp_path / "AAPL.csv", [("2024-01-02", 99.0, 101.0, 98.0, 100.0)])
+    bar = load_history(tmp_path)["AAPL"][0]
+    assert (bar.date.isoformat(), bar.open, bar.high, bar.low, bar.close) == ("2024-01-02", 99.0, 101.0, 98.0, 100.0)
